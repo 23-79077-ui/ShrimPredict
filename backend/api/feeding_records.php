@@ -7,21 +7,7 @@ header('Access-Control-Allow-Headers: Content-Type');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit; }
 
-$debugLog = __DIR__ . '/feeding_debug.log';
-$debugMethod = $_SERVER['REQUEST_METHOD'] ?? 'none';
-$debugBody = file_get_contents('php://input');
-file_put_contents($debugLog, date('c') . ' method=' . $debugMethod . ' body=' . $debugBody . ' post=' . json_encode($_POST) . PHP_EOL, FILE_APPEND);
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    http_response_code(200);
-    echo json_encode([
-        'debug' => true,
-        'method' => $_SERVER['REQUEST_METHOD'] ?? 'none',
-        'post' => $_POST,
-        'input' => file_get_contents('php://input'),
-    ]);
-    exit;
-}
 
 $database = new Database();
 $conn = $database->getConnection();
@@ -40,8 +26,9 @@ $ensureFeedingTable = function ($conn): void {
             amount_kg DECIMAL(10,2) NOT NULL,
             feed_type VARCHAR(100) NOT NULL,
             feeding_time VARCHAR(20) DEFAULT NULL,
-            product_code VARCHAR(10) DEFAULT NULL,
+            product_code VARCHAR(20) DEFAULT NULL,
             has_vitamin TINYINT(1) DEFAULT 0,
+            vitamin_name VARCHAR(100) DEFAULT NULL,
             record_date DATE NOT NULL,
             notes TEXT,
             recorded_by_name VARCHAR(100) DEFAULT NULL,
@@ -61,7 +48,11 @@ $ensureFeedingTable = function ($conn): void {
     }
 
     $migrations = [
-        ['record_date', "ALTER TABLE feeding_records ADD COLUMN record_date DATE NOT NULL DEFAULT (CURRENT_DATE)"] ,
+        ['feeding_time', "ALTER TABLE feeding_records ADD COLUMN feeding_time VARCHAR(20) DEFAULT NULL"],
+        ['product_code', "ALTER TABLE feeding_records ADD COLUMN product_code VARCHAR(20) DEFAULT NULL"],
+        ['has_vitamin', "ALTER TABLE feeding_records ADD COLUMN has_vitamin TINYINT(1) DEFAULT 0"],
+        ['vitamin_name', "ALTER TABLE feeding_records ADD COLUMN vitamin_name VARCHAR(100) DEFAULT NULL"],
+        ['record_date', "ALTER TABLE feeding_records ADD COLUMN record_date DATE NOT NULL DEFAULT (CURRENT_DATE)"],
         ['recorded_by_name', "ALTER TABLE feeding_records ADD COLUMN recorded_by_name VARCHAR(100) DEFAULT NULL"],
         ['user_id', "ALTER TABLE feeding_records ADD COLUMN user_id INT DEFAULT NULL"],
         ['created_at', "ALTER TABLE feeding_records ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"],
@@ -95,7 +86,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $amountKg = isset($data['amount_kg']) ? (float)$data['amount_kg'] : 0;
     $feedingTime = isset($data['feeding_time']) ? trim((string)$data['feeding_time']) : '';
     $productCode = isset($data['product_code']) ? trim((string)$data['product_code']) : '';
-    $hasVitamin = isset($data['has_vitamin']) ? (int)$data['has_vitamin'] : 0;
+    $vitaminName = isset($data['vitamin_name']) ? trim((string)$data['vitamin_name']) : (isset($data['vitamin']) ? trim((string)$data['vitamin']) : 'None');
+    if ($vitaminName === '') {
+        $vitaminName = 'None';
+    }
+    $hasVitamin = ($vitaminName && $vitaminName !== 'None') ? 1 : (isset($data['has_vitamin']) ? (int)$data['has_vitamin'] : 0);
     $recordDate = isset($data['record_date']) ? trim((string)$data['record_date']) : date('Y-m-d');
     $notes = isset($data['notes']) ? trim((string)$data['notes']) : '';
     $recordedByName = isset($data['recorded_by_name']) ? trim((string)$data['recorded_by_name']) : (isset($data['recorded_by']) ? trim((string)$data['recorded_by']) : '');
@@ -107,11 +102,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    // Validate product code is within PO1-PO5
-    $validCodes = ['PO1', 'PO2', 'PO3', 'PO4', 'PO5'];
-    if (!in_array($productCode, $validCodes)) {
+    // Validate product code (Starter, Grower, or legacy PO1-PO5)
+    $validCodes = ['Starter', 'Grower', 'PO1', 'PO2', 'PO3', 'PO4', 'PO5'];
+    if (!in_array($productCode, $validCodes, true)) {
         http_response_code(400);
-        echo json_encode(['success' => false, 'message' => 'Product code must be PO1, PO2, PO3, PO4, or PO5.']);
+        echo json_encode(['success' => false, 'message' => 'Product code must be Starter or Grower.']);
         exit;
     }
 
@@ -124,6 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $hasRecordedByName = in_array('recorded_by_name', $columns, true);
     $hasUserId = in_array('user_id', $columns, true);
     $hasCreatedAt = in_array('created_at', $columns, true);
+    $hasVitaminName = in_array('vitamin_name', $columns, true);
 
     $insertFields = ['pond_id', 'amount_kg', 'feed_type', 'feeding_time', 'product_code', 'has_vitamin', 'record_date', 'notes'];
     $placeholders = [':pond_id', ':amount_kg', ':feed_type', ':feeding_time', ':product_code', ':has_vitamin', ':record_date', ':notes'];
@@ -137,6 +133,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ':record_date' => $recordDate,
         ':notes' => $notes,
     ];
+
+    if ($hasVitaminName) {
+        $insertFields[] = 'vitamin_name';
+        $placeholders[] = ':vitamin_name';
+        $params[':vitamin_name'] = $vitaminName;
+    }
 
     if ($hasRecordedByName) {
         $insertFields[] = 'recorded_by_name';

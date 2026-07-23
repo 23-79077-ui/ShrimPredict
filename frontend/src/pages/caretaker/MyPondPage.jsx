@@ -3,13 +3,14 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import Swal from 'sweetalert2';
 
-const feedingTimes = ['06:00 AM', '12:00 PM', '06:00 PM'];
-const productCodes = ['PO1', 'PO2', 'PO3', 'PO4', 'PO5'];
+const feedingTimes = ['6:00 AM', '9:00 AM', '12:00 PM', '3:00 PM', '6:00 PM'];
+const productCodes = ['Starter', 'Grower'];
+const vitaminOptions = ['None', 'Sanolife PRO-2', 'Sano Top-S'];
 const emptyForm = {
-  feedingTime: '06:00 AM',
+  feedingTime: '6:00 AM',
   amountKg: '',
-  productCode: 'PO1',
-  hasVitamin: false,
+  productCode: 'Starter',
+  vitaminName: 'None',
   notes: '',
 };
 
@@ -61,21 +62,21 @@ export default function MyPondPage() {
 
     setSubmitting(true);
     try {
-      const payload = new FormData();
-      payload.append('pond_id', String(selectedPond.id));
-      payload.append('amount_kg', String(amount));
-      payload.append('feeding_time', form.feedingTime);
-      payload.append('product_code', form.productCode);
-      payload.append('has_vitamin', form.hasVitamin ? '1' : '0');
-      payload.append('notes', form.notes || '');
-      payload.append('record_date', new Date().toISOString().split('T')[0]);
-      payload.append('recorded_by', user?.full_name || 'Caretaker');
-      payload.append('recorded_by_name', user?.full_name || 'Caretaker');
-      payload.append('user_id', String(user?.id || 0));
+      const payload = {
+        pond_id: Number(selectedPond.id),
+        amount_kg: amount,
+        feeding_time: form.feedingTime || '6:00 AM',
+        product_code: form.productCode || 'Starter',
+        vitamin_name: form.vitaminName || 'None',
+        has_vitamin: form.vitaminName && form.vitaminName !== 'None' ? 1 : 0,
+        notes: form.notes || '',
+        record_date: new Date().toISOString().split('T')[0],
+        recorded_by: user?.full_name || 'Caretaker',
+        recorded_by_name: user?.full_name || 'Caretaker',
+        user_id: Number(user?.id || 0),
+      };
 
-      const response = await api.post('/feeding_records.php', payload, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const response = await api.post('/feeding_records.php', payload);
 
       const responseData = response?.data && typeof response.data === 'object' ? response.data : {};
       if (!responseData.success && responseData.message) {
@@ -159,6 +160,7 @@ export default function MyPondPage() {
                       <option key={time} value={time}>{time}</option>
                     ))}
                   </select>
+                  <small className="text-muted">5 feeding times: 6:00 AM, 9:00 AM, 12:00 PM, 3:00 PM, 6:00 PM.</small>
                 </div>
 
                 <div className="mb-3">
@@ -178,23 +180,24 @@ export default function MyPondPage() {
                   <label className="form-label fw-semibold">Product code</label>
                   <select className="form-select" value={currentForm.productCode} onChange={(e) => handleChange('productCode', e.target.value)}>
                     {productCodes.map((code) => (
-                      <option key={code} value={code}>{code}</option>
+                      <option key={code} value={code}>
+                        {code} (Tateh)
+                      </option>
                     ))}
                   </select>
-                  <small className="text-muted">Use Tateh feed product code PO1–PO5.</small>
+                  <small className="text-muted">Select Tateh feed product: Starter or Grower.</small>
                 </div>
 
-                <div className="form-check form-switch mb-3">
-                  <input
-                    className="form-check-input"
-                    type="checkbox"
-                    id={`vitamin-${selectedPond.id}`}
-                    checked={currentForm.hasVitamin}
-                    onChange={(e) => handleChange('hasVitamin', e.target.checked)}
-                  />
-                  <label className="form-check-label" htmlFor={`vitamin-${selectedPond.id}`}>
-                    Add vitamin to this feeding
-                  </label>
+                <div className="mb-3">
+                  <label className="form-label fw-semibold">Vitamins</label>
+                  <select className="form-select" value={currentForm.vitaminName || 'None'} onChange={(e) => handleChange('vitaminName', e.target.value)}>
+                    {vitaminOptions.map((vit) => (
+                      <option key={vit} value={vit}>
+                        {vit === 'None' ? 'None (No Vitamin)' : vit}
+                      </option>
+                    ))}
+                  </select>
+                  <small className="text-muted">Vitamins: Sanolife PRO-2 or Sano Top-S.</small>
                 </div>
 
                 <div className="mb-4">

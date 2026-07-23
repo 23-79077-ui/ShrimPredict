@@ -96,7 +96,15 @@ export default function FeedingHistoryPage() {
                       <td>{record.feeding_time || '—'}</td>
                       <td>{record.amount_kg} kg</td>
                       <td>{record.feed_type}</td>
-                      <td>{record.has_vitamin ? 'Yes' : 'No'}</td>
+                      <td>
+                        {record.vitamin_name && record.vitamin_name !== 'None' ? (
+                          <span className="badge bg-info bg-opacity-10 text-dark fw-semibold">{record.vitamin_name}</span>
+                        ) : record.has_vitamin ? (
+                          'Yes'
+                        ) : (
+                          <span className="text-muted">None</span>
+                        )}
+                      </td>
                       <td>{record.notes || '—'}</td>
                     </tr>
                   ))}

@@ -80,16 +80,36 @@ $pondStmt = $conn->prepare(
 
 foreach ($usersRaw as $user) {
     $pondStmt->execute([':user_id' => $user['id']]);
-    $user['assigned_ponds'] = $pondStmt->fetchAll(PDO::FETCH_ASSOC);
-    $user['assigned_pond_ids'] = array_map(function($p) { return $p['id']; }, $user['assigned_ponds']);
+    $assignedPonds = $pondStmt->fetchAll(PDO::FETCH_ASSOC);
+    if (empty($assignedPonds) && !empty($user['pond_id'])) {
+        $singlePondStmt = $conn->prepare('SELECT id, pond_name FROM ponds WHERE id = :pond_id');
+        $singlePondStmt->execute([':pond_id' => $user['pond_id']]);
+        $sp = $singlePondStmt->fetch(PDO::FETCH_ASSOC);
+        if ($sp) {
+            $assignedPonds = [$sp];
+        }
+    }
+    $user['assigned_ponds'] = $assignedPonds;
+    $user['assigned_pond_ids'] = array_map(function($p) { return (int)$p['id']; }, $user['assigned_ponds']);
     $users[] = $user;
 }
 
 $ponds = [];
-$pondStmt2 = $conn->query('SELECT id, pond_name FROM ponds ORDER BY pond_name ASC');
+$pondStmt2 = $conn->query('
+    SELECT p.id, p.pond_name, 
+           COALESCE(cp.user_id, u_legacy.id) AS assigned_user_id, 
+           COALESCE(u_cp.full_name, u_legacy.full_name) AS assigned_user_name
+    FROM ponds p
+    LEFT JOIN caretaker_ponds cp ON p.id = cp.pond_id
+    LEFT JOIN users u_cp ON cp.user_id = u_cp.id
+    LEFT JOIN users u_legacy ON p.id = u_legacy.pond_id
+    GROUP BY p.id
+    ORDER BY p.pond_name ASC
+');
 $ponds = $pondStmt2->fetchAll(PDO::FETCH_ASSOC);
 
 echo json_encode([
     'users' => $users,
     'ponds' => $ponds,
 ]);
+

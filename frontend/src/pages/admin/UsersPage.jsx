@@ -36,7 +36,38 @@ export default function UsersPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const getAssignedInfo = (pond) => {
+    let assignedUserId = pond.assigned_user_id ? Number(pond.assigned_user_id) : null;
+    let assignedUserName = pond.assigned_user_name || null;
+
+    for (const u of users) {
+      if (u.role === 'caretaker') {
+        const ids = (u.assigned_pond_ids || []).map(Number);
+        if (u.pond_id) ids.push(Number(u.pond_id));
+        if (ids.includes(Number(pond.id))) {
+          assignedUserId = Number(u.id);
+          assignedUserName = u.full_name;
+          break;
+        }
+      }
+    }
+
+    if (!assignedUserId) return { isAssignedToOther: false, assignedUserName: null };
+
+    const isOther = editingUser ? Number(editingUser.id) !== assignedUserId : true;
+    return {
+      isAssignedToOther: isOther,
+      assignedUserName: isOther ? assignedUserName : null,
+    };
+  };
+
   const handlePondToggle = (pondId) => {
+    const targetPond = ponds.find((p) => p.id === pondId);
+    if (targetPond) {
+      const { isAssignedToOther } = getAssignedInfo(targetPond);
+      if (isAssignedToOther) return;
+    }
+
     setFormData((prev) => {
       const selected = [...prev.selected_ponds];
       const index = selected.indexOf(pondId);
@@ -216,17 +247,29 @@ export default function UsersPage() {
                   Assign Ponds <span className="text-muted fw-normal">(max 3)</span>
                 </label>
                 <div className="pond-checkbox-grid">
-                  {ponds.map((pond) => (
-                    <label key={pond.id} className={`pond-checkbox-item ${formData.selected_ponds.includes(pond.id) ? 'checked' : ''}`}>
-                      <input
-                        type="checkbox"
-                        className="form-check-input me-2"
-                        checked={formData.selected_ponds.includes(pond.id)}
-                        onChange={() => handlePondToggle(pond.id)}
-                      />
-                      {pond.pond_name}
-                    </label>
-                  ))}
+                  {ponds.map((pond) => {
+                    const { isAssignedToOther, assignedUserName } = getAssignedInfo(pond);
+                    const isChecked = formData.selected_ponds.includes(pond.id);
+
+                    return (
+                      <label
+                        key={pond.id}
+                        className={`pond-checkbox-item ${isChecked ? 'checked' : ''} ${isAssignedToOther ? 'disabled-assigned' : ''}`}
+                        title={isAssignedToOther ? `Assigned to ${assignedUserName || 'another caretaker'}` : ''}
+                      >
+                        <input
+                          type="checkbox"
+                          className="form-check-input me-2"
+                          checked={isChecked}
+                          disabled={isAssignedToOther}
+                          onChange={() => !isAssignedToOther && handlePondToggle(pond.id)}
+                        />
+                        <span className={`pond-label-text ${isAssignedToOther ? 'crossed-out' : ''}`}>
+                          {pond.pond_name}
+                        </span>
+                      </label>
+                    );
+                  })}
                 </div>
                 <div className="mt-2">
                   <small className="text-muted">
@@ -297,6 +340,20 @@ export default function UsersPage() {
           border-color: var(--primary);
           background: rgba(11,44,95,0.08);
           font-weight: 600;
+        }
+        .pond-checkbox-item.disabled-assigned {
+          background: #f1f3f5;
+          border-color: #dee2e6;
+          cursor: not-allowed;
+          opacity: 0.65;
+        }
+        .pond-checkbox-item.disabled-assigned:hover {
+          border-color: #dee2e6;
+          background: #f1f3f5;
+        }
+        .pond-label-text.crossed-out {
+          text-decoration: line-through;
+          color: #8c98a4;
         }
         .pond-checkbox-item input {
           margin: 0;
