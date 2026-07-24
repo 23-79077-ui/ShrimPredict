@@ -12,6 +12,7 @@ export default function AdminDashboard() {
   const [selectedCaretakerId, setSelectedCaretakerId] = useState('all');
   const [stats, setStats] = useState({});
   const [reports, setReports] = useState([]);
+  const [localFeedChart, setLocalFeedChart] = useState(null);
 
   // Load all registered caretakers
   useEffect(() => {
@@ -33,12 +34,72 @@ export default function AdminDashboard() {
       const params = {};
       if (selectedCaretakerId !== 'all') {
         params.user_id = selectedCaretakerId;
+        params.caretaker_id = selectedCaretakerId;
       }
-      const [statsRes, reportsRes] = await Promise.all([
-        api.get('/dashboard.php', { params }),
-        api.get('/disease_reports.php'),
-      ]);
-      setStats(statsRes.data || {});
+        const query = new URLSearchParams(params).toString();
+        let statsRes;
+        if (selectedCaretakerId !== 'all' && params.user_id) {
+          const url = `/dashboard.php?user_id=${encodeURIComponent(params.user_id)}&t=${Date.now()}`;
+          statsRes = await api.get(url);
+        } else {
+          statsRes = await api.get('/dashboard.php');
+        }
+        const reportsRes = await api.get('/disease_reports.php');
+      const statsData = statsRes.data || {};
+      setStats(statsData);
+      // If a caretaker is selected, build the feed chart client-side from feeding_records
+      if (selectedCaretakerId !== 'all') {
+        try {
+          const recRes = await api.get('/feeding_records.php', { params: { user_id: selectedCaretakerId } });
+          const records = Array.isArray(recRes.data) ? recRes.data : [];
+          const labels = [];
+          const data = [];
+          for (let i = 6; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            const dayStr = d.toISOString().slice(0, 10);
+            labels.push(d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
+            const sum = records.reduce((acc, r) => {
+              const recDate = (r.record_date || r.created_at || '').slice(0, 10);
+              if (recDate === dayStr) return acc + (Number(r.amount_kg) || 0);
+              return acc;
+            }, 0);
+            data.push(Math.round(sum * 100) / 100);
+          }
+          setLocalFeedChart({ labels, datasets: [{ label: 'Feed Consumption (kg)', data, borderColor: '#0B2C5F', backgroundColor: 'rgba(11,44,95,0.12)', tension: 0.35 }] });
+        } catch (e) {
+          setLocalFeedChart(null);
+        }
+      } else {
+        setLocalFeedChart(null);
+        // If API didn't provide a feed_chart or it's empty, build an aggregate chart client-side
+        const chartMissing = !(statsData.feed_chart && Array.isArray(statsData.feed_chart.labels) && statsData.feed_chart.labels.length > 0 && Array.isArray(statsData.feed_chart.data));
+        const allZero = Array.isArray(statsData.feed_chart?.data) && statsData.feed_chart.data.every((v) => !v);
+        if (chartMissing || allZero) {
+          try {
+            const recRes = await api.get('/feeding_records.php');
+            const records = Array.isArray(recRes.data) ? recRes.data : [];
+            const labels = [];
+            const data = [];
+            for (let i = 6; i >= 0; i--) {
+              const d = new Date();
+              d.setDate(d.getDate() - i);
+              const dayStr = d.toISOString().slice(0, 10);
+              labels.push(d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
+              const sum = records.reduce((acc, r) => {
+                const recDate = (r.record_date || r.created_at || '').slice(0, 10);
+                if (recDate === dayStr) return acc + (Number(r.amount_kg) || 0);
+                return acc;
+              }, 0);
+              data.push(Math.round(sum * 100) / 100);
+            }
+            setLocalFeedChart({ labels, datasets: [{ label: 'Feed Consumption (kg)', data, borderColor: '#0B2C5F', backgroundColor: 'rgba(11,44,95,0.12)', tension: 0.35 }] });
+          } catch (e) {
+            // ignore
+          }
+        }
+      }
+      
       const fetchedReports = reportsRes.data;
       setReports(Array.isArray(fetchedReports) ? fetchedReports.slice(0, 5) : []);
     } catch (error) {
@@ -72,14 +133,27 @@ export default function AdminDashboard() {
   const selectedCaretakerObj = caretakers.find((c) => String(c.id) === String(selectedCaretakerId));
 
   const cards = [
-    { title: 'Total Ponds', value: stats.total_ponds || 0, icon: <FaWater /> },
+    { title: 'Total Ponds', value: (() => {
+        // Prefer assigned_active_pond_ids from API when available (for both All and filtered views)
+        if (Array.isArray(stats.assigned_active_pond_ids) && stats.assigned_active_pond_ids.length > 0) return stats.assigned_active_pond_ids.length;
+        if (selectedCaretakerId === 'all') return stats.total_ponds || 0;
+        // Prefer assigned ponds from the users endpoint when available for a selected caretaker
+        if (selectedCaretakerObj && Array.isArray(selectedCaretakerObj.assigned_ponds) && selectedCaretakerObj.assigned_ponds.length > 0) {
+          return selectedCaretakerObj.assigned_ponds.length;
+        }
+        return stats.total_ponds || 0;
+      })(), icon: <FaWater /> },
     { title: 'Healthy Ponds', value: stats.healthy_ponds || 0, icon: <FaSeedling /> },
     { title: 'Disease Alerts', value: stats.disease_alerts || 0, icon: <FaVirus /> },
-    { title: "Today's Feeding", value: `${stats.todays_feeding || 0} ponds`, icon: <FaUtensils /> },
+    { title: "Today's Feeding", value: (() => {
+        const count = stats.feed_entries_count ?? null;
+        if (count !== null && count !== undefined) return `${count} entries`;
+        return `${stats.todays_feeding || 0} ponds`;
+      })(), icon: <FaUtensils /> },
     { title: 'Upcoming Harvest', value: stats.upcoming_harvest || 0, icon: <FaChartBar /> },
   ];
 
-  const feedChart = stats.feed_chart?.labels?.length
+  const feedChart = localFeedChart || (stats.feed_chart?.labels?.length
     ? {
         labels: stats.feed_chart.labels,
         datasets: [{ label: 'Feed Consumption (kg)', data: stats.feed_chart.data || [], borderColor: '#0B2C5F', backgroundColor: 'rgba(11,44,95,0.12)', tension: 0.35 }],
@@ -87,7 +161,7 @@ export default function AdminDashboard() {
     : {
         labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
         datasets: [{ label: 'Feed Consumption', data: [0, 0, 0, 0, 0, 0, 0], borderColor: '#0B2C5F', backgroundColor: 'rgba(11,44,95,0.12)', tension: 0.35 }],
-      };
+      });
 
   const diseaseChart = {
     labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
@@ -144,6 +218,8 @@ export default function AdminDashboard() {
         </div>
       )}
 
+      
+
       {/* Metrics Grid */}
       <div className="metric-grid mb-4">
         {cards.map((card) => (
@@ -176,7 +252,7 @@ export default function AdminDashboard() {
                       : `Weekly feed consumption by ${selectedCaretakerObj?.full_name}.`}
                   </p>
                 </div>
-                <Link to="/admin/feeding" className="btn btn-outline-primary btn-sm">Detailed view</Link>
+                <Link to={selectedCaretakerId === 'all' ? '/admin/feeding' : `/admin/feeding?user_id=${selectedCaretakerId}`} className="btn btn-outline-primary btn-sm">Detailed view</Link>
               </div>
               <Line data={feedChart} />
             </div>

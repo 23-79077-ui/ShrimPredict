@@ -73,16 +73,16 @@ $stmt = $conn->query('SELECT u.*, p.pond_name FROM users u LEFT JOIN ponds p ON 
 $usersRaw = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $users = [];
 
-// Fetch assigned ponds for each user
+// Fetch assigned ponds for each user (only include active/non-deleted ponds)
 $pondStmt = $conn->prepare(
-    'SELECT p.id, p.pond_name FROM caretaker_ponds cp JOIN ponds p ON cp.pond_id = p.id WHERE cp.user_id = :user_id ORDER BY p.pond_name ASC'
+    "SELECT p.id, p.pond_name FROM caretaker_ponds cp JOIN ponds p ON cp.pond_id = p.id WHERE cp.user_id = :user_id AND p.status NOT IN ('Inactive', 'Deleted') ORDER BY p.pond_name ASC"
 );
 
 foreach ($usersRaw as $user) {
     $pondStmt->execute([':user_id' => $user['id']]);
     $assignedPonds = $pondStmt->fetchAll(PDO::FETCH_ASSOC);
     if (empty($assignedPonds) && !empty($user['pond_id'])) {
-        $singlePondStmt = $conn->prepare('SELECT id, pond_name FROM ponds WHERE id = :pond_id');
+        $singlePondStmt = $conn->prepare('SELECT id, pond_name FROM ponds WHERE id = :pond_id AND status NOT IN (\'Inactive\', \'Deleted\')');
         $singlePondStmt->execute([':pond_id' => $user['pond_id']]);
         $sp = $singlePondStmt->fetch(PDO::FETCH_ASSOC);
         if ($sp) {

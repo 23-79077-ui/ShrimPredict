@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Line, Bar } from 'react-chartjs-2';
 import { FaSeedling, FaWarehouse, FaClock, FaChartLine } from 'react-icons/fa';
 import api, { safeArray } from '../../services/api';
@@ -9,7 +10,11 @@ export default function FeedingPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await api.get('/feeding_records.php');
+        const params = {};
+        const search = new URLSearchParams(window.location.search || '');
+        if (search.get('user_id')) params.user_id = search.get('user_id');
+        if (search.get('pond_id')) params.pond_id = search.get('pond_id');
+        const res = await api.get('/feeding_records.php', { params });
         setRecords(safeArray(res.data));
       } catch (error) {
         setRecords([]);

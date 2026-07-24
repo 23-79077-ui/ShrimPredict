@@ -208,12 +208,15 @@ if ($pondFilter) {
 } elseif ($userId || $recordedByName) {
     $query = 'SELECT fr.*, p.pond_name FROM feeding_records fr LEFT JOIN ponds p ON fr.pond_id = p.id WHERE 1=1';
     $params = [];
-    if ($userId) {
-        $query .= ' AND (fr.user_id = :user_id OR fr.user_id IS NULL)';
+    if ($userId && $recordedByName) {
+        $query .= ' AND (fr.user_id = :user_id OR LOWER(fr.recorded_by_name) LIKE LOWER(CONCAT("%", :recorded_by_name, "%")))';
         $params[':user_id'] = $userId;
-    }
-    if ($recordedByName) {
-        $query .= ' AND (fr.recorded_by_name = :recorded_by_name OR fr.recorded_by_name IS NULL)';
+        $params[':recorded_by_name'] = $recordedByName;
+    } elseif ($userId) {
+        $query .= ' AND (fr.user_id = :user_id)';
+        $params[':user_id'] = $userId;
+    } elseif ($recordedByName) {
+        $query .= ' AND (LOWER(fr.recorded_by_name) LIKE LOWER(CONCAT("%", :recorded_by_name, "%")))';
         $params[':recorded_by_name'] = $recordedByName;
     }
     $query .= ' ORDER BY fr.record_date DESC, fr.created_at DESC';
