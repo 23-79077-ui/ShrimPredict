@@ -21,6 +21,8 @@ import NotFoundPage from './pages/NotFoundPage';
 import AdminLayout from './layouts/AdminLayout';
 import CaretakerLayout from './layouts/CaretakerLayout';
 
+import NotificationsPage from './pages/admin/NotificationsPage';
+
 function ProtectedRoute({ children, role }) {
   const { user, loading } = useAuth();
 
@@ -42,6 +44,7 @@ function AppRoutes() {
       <Route path="/admin" element={<ProtectedRoute role="admin"><AdminLayout /></ProtectedRoute>}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<AdminDashboard />} />
+        <Route path="notifications" element={<NotificationsPage />} />
         <Route path="disease-reports" element={<DiseaseReportsPage />} />
         <Route path="ponds" element={<PondMonitoringPage />} />
         <Route path="feeding" element={<FeedingPage />} />

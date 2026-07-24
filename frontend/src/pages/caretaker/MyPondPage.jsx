@@ -88,7 +88,9 @@ export default function MyPondPage() {
 
       if (typeof window !== 'undefined') {
         localStorage.setItem('shrim-feed-updated', String(Date.now()));
+        localStorage.setItem('shrim-notification-updated', String(Date.now()));
         window.dispatchEvent(new Event('shrim-feed-updated'));
+        window.dispatchEvent(new Event('shrim-notification-updated'));
       }
 
       Swal.fire({ icon: 'success', title: 'Feeding logged', text: 'Your feeding record has been saved.' });

@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../utils/notifications_helper.php';
 header('Access-Control-Allow-Origin: *');
 header('Content-Type: application/json; charset=UTF-8');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
@@ -168,6 +169,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         );
         $stmt->execute($params);
         $newId = $conn->lastInsertId();
+
+        // Helper to notify admin of caretaker feeding action
+        $pondName = 'Pond #' . $pondId;
+        try {
+            $pondStmt = $conn->prepare("SELECT pond_name FROM ponds WHERE id = :pid");
+            $pondStmt->execute([':pid' => $pondId]);
+            if ($row = $pondStmt->fetch(PDO::FETCH_ASSOC)) {
+                if (!empty($row['pond_name'])) $pondName = $row['pond_name'];
+            }
+        } catch (Throwable $e) {}
+
+        $cName = $recordedByName ?: 'Caretaker';
+        $notifMsg = "{$cName} logged {$amountKg}kg of {$productCode} feed for {$pondName} at {$feedingTime}.";
+        createNotification($conn, 'Feeding Record Logged', $notifMsg, $cName, 'feeding', $pondName, $userId ?: null);
+
         http_response_code(201);
         echo json_encode(['success' => true, 'message' => 'Feeding record saved.', 'id' => $newId]);
         exit;
@@ -186,6 +202,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ':notes' => $notes,
         ]);
         $newId = $conn->lastInsertId();
+
+        $cName = $recordedByName ?: 'Caretaker';
+        $notifMsg = "{$cName} logged {$amountKg}kg of {$productCode} feed for Pond #{$pondId} at {$feedingTime}.";
+        createNotification($conn, 'Feeding Record Logged', $notifMsg, $cName, 'feeding', 'Pond #' . $pondId, $userId ?: null);
+
         http_response_code(201);
         echo json_encode(['success' => true, 'message' => 'Feeding record saved with fallback insert.', 'id' => $newId]);
         exit;

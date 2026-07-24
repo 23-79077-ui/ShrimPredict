@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import Swal from 'sweetalert2';
+import { useAuth } from '../../context/AuthContext';
+import api from '../../services/api';
 import { classifyDiseaseFromText } from '../../utils/diseaseClassifier';
 
 export default function DiseaseScanPage() {
+  const { user } = useAuth();
   const videoRef = useRef(null);
   const [image, setImage] = useState(null);
   const [analysisText, setAnalysisText] = useState('');
@@ -47,7 +50,7 @@ export default function DiseaseScanPage() {
     Swal.fire({ icon: 'success', title: 'Photo captured', text: 'The image is ready for analysis.' });
   };
 
-  const handleScan = () => {
+  const handleScan = async () => {
     if (!image) {
       Swal.fire({ icon: 'warning', title: 'No photo captured' });
       return;
@@ -57,10 +60,24 @@ export default function DiseaseScanPage() {
     const parsedResult = classifyDiseaseFromText(nextAnalysisText);
     setResult(parsedResult);
 
+    try {
+      await api.post('/disease_reports.php', {
+        disease_name: parsedResult.disease_name,
+        confidence_score: parsedResult.confidence_score,
+        risk_level: parsedResult.risk_level,
+        recommendation: parsedResult.recommendation,
+        status: 'Pending',
+        caretaker_name: user?.full_name || 'Caretaker',
+        pond_name: user?.assigned_ponds?.[0]?.pond_name || 'Assigned Pond',
+      });
+    } catch (e) {
+      console.error('Error saving disease scan report:', e);
+    }
+
     Swal.fire({
       icon: parsedResult.risk_level === 'High' ? 'warning' : 'info',
-      title: 'Scan completed',
-      text: `${parsedResult.disease_name} detected with ${parsedResult.confidence_score} confidence.`
+      title: 'Scan completed & recorded',
+      text: `${parsedResult.disease_name} detected with ${parsedResult.confidence_score}% confidence. Admin has been notified.`
     });
   };
 

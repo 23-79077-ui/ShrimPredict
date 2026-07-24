@@ -100,11 +100,19 @@ CREATE TABLE alerts (
 
 CREATE TABLE notifications (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  user_id INT NOT NULL,
+  user_id INT DEFAULT NULL,
+  title VARCHAR(255) NOT NULL DEFAULT 'Notification',
   message TEXT NOT NULL,
+  caretaker_name VARCHAR(150) DEFAULT NULL,
+  action_type VARCHAR(50) DEFAULT 'general',
+  pond_name VARCHAR(100) DEFAULT NULL,
   is_read TINYINT(1) DEFAULT 0,
+  status VARCHAR(20) DEFAULT 'active',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_notification_user (user_id)
+  INDEX idx_notification_user (user_id),
+  INDEX idx_notification_status (status),
+  INDEX idx_notification_read (is_read),
+  INDEX idx_notification_created (created_at)
 );
 
 CREATE TABLE users (
@@ -175,9 +183,10 @@ INSERT INTO alerts (title, message, severity) VALUES
 ('Water Quality Warning', 'Pond B salinity has exceeded safe thresholds.', 'High'),
 ('Disease Risk', 'Possible disease symptoms detected in Pond C.', 'Critical');
 
-INSERT INTO notifications (user_id, message, is_read) VALUES
-(1, 'New disease report uploaded.', 0),
-(2, 'Feeding schedule updated.', 1);
+INSERT INTO notifications (user_id, title, message, caretaker_name, action_type, pond_name, is_read, status, created_at) VALUES
+(NULL, 'Feeding Record Logged', 'Maria Santos logged 12.50kg of Starter feed for Pond A1 at 6:00 AM.', 'Maria Santos', 'feeding', 'Pond A1', 0, 'active', NOW()),
+(NULL, 'Disease Scan Submitted', 'Maria Santos scanned for disease: White Spot Syndrome with 93.00% confidence (High Risk).', 'Maria Santos', 'disease_scan', 'Pond C1', 0, 'active', NOW()),
+(NULL, 'Pond Conditions Logged', 'Maria Santos updated water quality for Pond B1 (Temp: 31.00°C, pH: 7.40, Salinity: 22.50ppt, Status: Warning).', 'Maria Santos', 'water_quality', 'Pond B1', 1, 'active', NOW());
 
 INSERT INTO users (full_name, email, password_hash, role, status, pond_id) VALUES
 ('Maria Santos', 'caretaker@shrimpredict.com', '$2y$10$eHnwobsFGe1hdLaqndWzFe.ZRY59SOmiF/oaLP/ENn/X2UNG1XOsa', 'caretaker', 'Active', 1),

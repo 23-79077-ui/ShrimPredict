@@ -1665,3 +1665,122 @@ button {
     padding: 1rem;
   }
 }
+
+/* ==========================================================================
+   Dark Mode Styling System
+   ========================================================================== */
+[data-theme="dark"] {
+  --primary: #3b82f6;
+  --secondary: #ff9500;
+  --background: #0f172a;
+  --surface: #1e293b;
+  --surface-soft: #334155;
+  --accent: #1e293b;
+  --text: #f8fafc;
+  --muted: #94a3b8;
+  --border: rgba(255, 255, 255, 0.12);
+  --shadow: 0 28px 70px rgba(0,0,0,0.5);
+  color-scheme: dark;
+}
+
+[data-theme="dark"] body {
+  background: #0f172a !important;
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .app-shell,
+[data-theme="dark"] .admin-shell,
+[data-theme="dark"] .admin-main {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .card,
+[data-theme="dark"] .activity-card,
+[data-theme="dark"] .chart-card,
+[data-theme="dark"] .metric-card,
+[data-theme="dark"] .table-card,
+[data-theme="dark"] .info-card,
+[data-theme="dark"] .admin-compact-card,
+[data-theme="dark"] .bg-white {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+[data-theme="dark"] .site-header,
+[data-theme="dark"] .admin-topbar {
+  background-color: #1e293b !important;
+  border-bottom-color: rgba(255, 255, 255, 0.12) !important;
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .layout-aside {
+  background-color: #0b1329 !important;
+  border-right-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-theme="dark"] .text-dark,
+[data-theme="dark"] h1, [data-theme="dark"] h2, [data-theme="dark"] h3,
+[data-theme="dark"] h4, [data-theme="dark"] h5, [data-theme="dark"] h6,
+[data-theme="dark"] strong {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .text-muted {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .table {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .table-light,
+[data-theme="dark"] .table th,
+[data-theme="dark"] .table td {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-theme="dark"] .form-select,
+[data-theme="dark"] .form-control {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+[data-theme="dark"] .dropdown-menu {
+  background-color: #1e293b !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+}
+
+[data-theme="dark"] .dropdown-item {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .dropdown-item:hover {
+  background-color: #334155 !important;
+}
+
+[data-theme="dark"] .bg-light {
+  background-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .list-group-item {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Custom Theme Switch */
+.custom-theme-switch {
+  cursor: pointer;
+}
+
+.custom-theme-switch:checked {
+  background-color: #0d6efd !important;
+  border-color: #0d6efd !important;
+}
