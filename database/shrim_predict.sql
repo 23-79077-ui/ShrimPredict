@@ -40,6 +40,17 @@ CREATE TABLE ponds (
   dissolved_oxygen DECIMAL(5,2) DEFAULT 0,
   water_level DECIMAL(5,2) DEFAULT 0,
   status VARCHAR(20) DEFAULT 'Healthy',
+  area_sqm INT DEFAULT 500,
+  stocking_date DATE DEFAULT '2026-04-02',
+  growth_percentage DECIMAL(5,2) DEFAULT 85.00,
+  disease_detection VARCHAR(150) DEFAULT 'Healthy',
+  disease_confidence DECIMAL(5,2) DEFAULT 0.00,
+  harvest_readiness DECIMAL(5,2) DEFAULT 85.00,
+  expected_harvest_date DATE DEFAULT '2026-08-10',
+  feed_today_kg DECIMAL(10,2) DEFAULT 12.00,
+  total_feed_kg DECIMAL(10,2) DEFAULT 450.00,
+  latest_image VARCHAR(255) DEFAULT 'uploads/sample.jpg',
+  assigned_caretaker_name VARCHAR(100) DEFAULT 'Juan Dela Cruz',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_pond_status (status)
 );
@@ -122,11 +133,44 @@ CREATE TABLE users (
   password_hash VARCHAR(255) NOT NULL,
   role VARCHAR(20) NOT NULL DEFAULT 'caretaker',
   status VARCHAR(20) DEFAULT 'Active',
+  phone VARCHAR(30) DEFAULT '09123456789',
+  position VARCHAR(100) DEFAULT 'System Administrator',
+  avatar_path VARCHAR(255) DEFAULT NULL,
+  two_factor_enabled TINYINT(1) DEFAULT 0,
+  last_login TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   pond_id INT DEFAULT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (pond_id) REFERENCES ponds(id) ON DELETE SET NULL,
   INDEX idx_user_role (role)
 );
+
+CREATE TABLE IF NOT EXISTS system_settings (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  setting_key VARCHAR(100) NOT NULL UNIQUE,
+  setting_value TEXT,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO system_settings (setting_key, setting_value) VALUES
+('max_ponds', '30'),
+('default_pond_status', 'Healthy'),
+('auto_assign_pond_number', 'ON'),
+('target_harvest_age', '120'),
+('harvest_ready_percentage', '95'),
+('prediction_refresh', 'Daily'),
+('receive_disease_alerts', 'ON'),
+('receive_harvest_alerts', 'ON'),
+('receive_feeding_alerts', 'ON'),
+('receive_caretaker_activity_alerts', 'ON'),
+('receive_email_notifications', 'OFF'),
+('theme', 'Light'),
+('language', 'English'),
+('date_format', 'MM/DD/YYYY'),
+('time_format', '12 Hours'),
+('last_backup', '2026-07-23 10:00:00'),
+('automatic_backup', 'ON'),
+('backup_frequency', 'Weekly')
+ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value);
 
 CREATE TABLE caretaker_ponds (
   id INT AUTO_INCREMENT PRIMARY KEY,

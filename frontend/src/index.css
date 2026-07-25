@@ -1784,3 +1784,230 @@ button {
   background-color: #0d6efd !important;
   border-color: #0d6efd !important;
 }
+
+/* ==========================================================================
+   PREMIUM ADMIN SETTINGS & PREFERENCES STYLING SYSTEM
+   ========================================================================== */
+
+/* Settings Header Glassmorphism Card */
+.settings-header-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(245, 248, 255, 0.9) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(11, 44, 95, 0.08);
+  box-shadow: 0 20px 45px rgba(11, 44, 95, 0.06);
+  transition: all 0.3s ease;
+}
+
+[data-theme="dark"] .settings-header-card {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.9) 100%) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Header Icon Container */
+.settings-icon-badge {
+  background: linear-gradient(135deg, #0B2C5F 0%, #1E40AF 100%);
+  color: #ffffff;
+  box-shadow: 0 10px 22px rgba(11, 44, 95, 0.25);
+  transition: transform 0.3s ease;
+}
+
+.settings-icon-badge:hover {
+  transform: rotate(12deg) scale(1.08);
+}
+
+/* Premium Search Bar */
+.settings-search-input {
+  background: #ffffff;
+  border: 1.5px solid rgba(11, 44, 95, 0.12);
+  box-shadow: 0 4px 14px rgba(11, 44, 95, 0.04);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 0.93rem;
+}
+
+.settings-search-input:focus {
+  background: #ffffff;
+  border-color: var(--primary, #0B2C5F);
+  box-shadow: 0 0 0 4px rgba(11, 44, 95, 0.12), 0 8px 20px rgba(11, 44, 95, 0.08);
+  outline: none;
+}
+
+[data-theme="dark"] .settings-search-input {
+  background: #0f172a !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .settings-search-input:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2), 0 8px 20px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Settings Sidebar Nav Links */
+.settings-nav-item {
+  position: relative;
+  background: transparent;
+  border: 1px solid transparent;
+  transition: all 0.25s ease;
+  border-radius: 14px;
+}
+
+.settings-nav-item:hover {
+  background: rgba(11, 44, 95, 0.04);
+  transform: translateX(4px);
+}
+
+.settings-nav-item.active {
+  background: linear-gradient(135deg, #0B2C5F 0%, #1E40AF 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 25px rgba(11, 44, 95, 0.22);
+}
+
+.settings-nav-item.active .settings-nav-icon {
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+}
+
+.settings-nav-icon {
+  background: rgba(11, 44, 95, 0.06);
+  color: var(--primary, #0B2C5F);
+  transition: all 0.25s ease;
+}
+
+[data-theme="dark"] .settings-nav-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .settings-nav-item.active {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+  box-shadow: 0 10px 25px rgba(37, 99, 235, 0.35);
+}
+
+/* Settings Content Card */
+.settings-card {
+  border: 1px solid rgba(11, 44, 95, 0.08);
+  box-shadow: 0 16px 40px rgba(11, 44, 95, 0.05);
+  border-radius: 20px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+[data-theme="dark"] .settings-card {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Section Header Accents */
+.settings-card-header {
+  border-bottom: 1px solid rgba(11, 44, 95, 0.08);
+  background: linear-gradient(180deg, rgba(248, 251, 255, 0.8) 0%, rgba(255, 255, 255, 0) 100%);
+}
+
+[data-theme="dark"] .settings-card-header {
+  border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(0, 0, 0, 0) 100%) !important;
+}
+
+/* Custom Switch Toggle styling */
+.settings-switch .form-check-input {
+  width: 3.2em !important;
+  height: 1.7em !important;
+  cursor: pointer;
+  background-color: #cbd5e1;
+  border-color: #cbd5e1;
+  transition: all 0.3s ease;
+}
+
+.settings-switch .form-check-input:checked {
+  background-color: #0B2C5F !important;
+  border-color: #0B2C5F !important;
+  box-shadow: 0 4px 12px rgba(11, 44, 95, 0.3);
+}
+
+[data-theme="dark"] .settings-switch .form-check-input {
+  background-color: #475569;
+  border-color: #475569;
+}
+
+[data-theme="dark"] .settings-switch .form-check-input:checked {
+  background-color: #3b82f6 !important;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+/* Profile Avatar Halo */
+.avatar-halo {
+  box-shadow: 0 0 0 5px rgba(11, 44, 95, 0.1), 0 14px 30px rgba(11, 44, 95, 0.15);
+  transition: transform 0.3s ease;
+}
+
+.avatar-halo:hover {
+  transform: scale(1.04);
+}
+
+/* Harvest Guidance Banner */
+.harvest-rule-box {
+  background: linear-gradient(135deg, rgba(255, 122, 0, 0.07) 0%, rgba(255, 193, 7, 0.12) 100%);
+  border: 1px solid rgba(255, 122, 0, 0.2);
+  border-radius: 16px;
+}
+
+[data-theme="dark"] .harvest-rule-box {
+  background: linear-gradient(135deg, rgba(255, 122, 0, 0.15) 0%, rgba(255, 193, 7, 0.1) 100%) !important;
+  border-color: rgba(255, 122, 0, 0.3) !important;
+}
+
+/* Button Animations */
+.btn-settings-primary {
+  background: linear-gradient(135deg, #0B2C5F 0%, #1E40AF 100%);
+  border: none;
+  color: #ffffff;
+  box-shadow: 0 8px 20px rgba(11, 44, 95, 0.22);
+  transition: all 0.25s ease;
+}
+
+.btn-settings-primary:hover {
+  background: linear-gradient(135deg, #09234c 0%, #183593 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 26px rgba(11, 44, 95, 0.3);
+  color: #ffffff;
+}
+
+.btn-settings-primary:active {
+  transform: translateY(0);
+}
+
+[data-theme="dark"] .btn-settings-primary {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35);
+}
+
+[data-theme="dark"] .btn-settings-primary:hover {
+  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+}
+
+/* Setting Group Row Cards */
+.setting-row-card {
+  background: #f8fafc;
+  border: 1px solid rgba(11, 44, 95, 0.08);
+  border-radius: 14px;
+  transition: all 0.25s ease;
+}
+
+.setting-row-card:hover {
+  background: #ffffff;
+  border-color: rgba(11, 44, 95, 0.16);
+  box-shadow: 0 6px 18px rgba(11, 44, 95, 0.05);
+}
+
+[data-theme="dark"] .setting-row-card {
+  background: #0f172a !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-theme="dark"] .setting-row-card:hover {
+  background: #1e293b !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+}
+

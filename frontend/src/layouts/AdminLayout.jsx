@@ -14,6 +14,9 @@ import {
   FaCog,
   FaSignOutAlt,
   FaSeedling,
+  FaCalendarAlt,
+  FaClock,
+  FaCheckDouble
 } from 'react-icons/fa';
 
 const links = [
@@ -40,12 +43,36 @@ export default function AdminLayout() {
   const [showNotifMenu, setShowNotifMenu] = useState(false);
   const bellRef = useRef(null);
 
+  // Real-Time System Clock Timer State
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formattedDate = currentTime.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+
+  const realTimeClock = currentTime.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+  });
+
   const fetchUnreadNotifications = async () => {
     try {
       const res = await api.get('/notifications.php?status=active');
       if (res.data?.success) {
         setUnreadCount(res.data.counts?.unread || 0);
-        setRecentNotifs((res.data.notifications || []).slice(0, 5));
+        setRecentNotifs((res.data.notifications || []).slice(0, 6));
       }
     } catch (e) {
       // Silently catch fetch errors
@@ -84,7 +111,17 @@ export default function AdminLayout() {
     navigate('/login');
   };
 
-  // Notification Click Handler: Mark read and navigate to target page (e.g. /admin/reports)
+  // Mark all as read handler
+  const handleMarkAllRead = async () => {
+    try {
+      await api.post('/notifications.php', { action: 'mark_all_read' });
+      fetchUnreadNotifications();
+    } catch (e) {
+      console.error('Error marking all read:', e);
+    }
+  };
+
+  // Notification Click Handler: Mark read and navigate to target page
   const handleNotifClick = async (notif) => {
     setShowNotifMenu(false);
     try {
@@ -105,7 +142,6 @@ export default function AdminLayout() {
     } else if (actionType === 'water_quality' || (title.includes('pond') && !title.includes('report')) || (msg.includes('pond') && !msg.includes('report'))) {
       navigate('/admin/ponds');
     } else {
-      // Maintenance / Reports / Disease Scans / General -> /admin/reports
       navigate('/admin/reports');
     }
   };
@@ -159,81 +195,167 @@ export default function AdminLayout() {
             <p className="text-muted mb-0">{currentPage.description}</p>
           </div>
           
-          <div className="admin-actions d-flex gap-2 align-items-center flex-wrap">
-            {/* Topbar Notification Bell */}
-            <div className="position-relative" ref={bellRef}>
+          {/* 🌟 100% PERFECT SPACIOUS VERTICAL HEADER STACK (260px FIXED WIDTH, 18px INLINE GAP) */}
+          <div className="admin-actions d-flex flex-column align-items-end gap-2.5">
+            {/* 1. Date Card */}
+            <div
+              className="bg-white border border-secondary border-opacity-25 shadow-sm rounded-pill w-100 d-flex align-items-center justify-content-between px-4 py-2 text-dark"
+              style={{ width: 260, height: 48, boxShadow: '0 4px 14px rgba(11,44,95,0.06)' }}
+              title="Today's Date"
+            >
+              <div className="d-flex align-items-center" style={{ gap: 18 }}>
+                <div
+                  className="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center flex-shrink-0"
+                  style={{ width: 34, height: 34, minWidth: 34 }}
+                >
+                  <FaCalendarAlt size={14} />
+                </div>
+                <span className="extra-small fw-bold text-dark text-truncate" style={{ fontSize: '0.88rem', letterSpacing: '0.2px' }}>
+                  {formattedDate}
+                </span>
+              </div>
+            </div>
+
+            {/* 2. Real-Time Ticking Clock Card */}
+            <div
+              className="bg-white border border-secondary border-opacity-25 shadow-sm rounded-pill w-100 d-flex align-items-center justify-content-between px-4 py-2 text-dark font-mono"
+              style={{ width: 260, height: 48, fontVariantNumeric: 'tabular-nums', boxShadow: '0 4px 14px rgba(11,44,95,0.06)' }}
+              title="Real-Time System Clock"
+            >
+              <div className="d-flex align-items-center" style={{ gap: 18 }}>
+                <div
+                  className="rounded-circle bg-info bg-opacity-10 text-info d-flex align-items-center justify-content-center flex-shrink-0"
+                  style={{ width: 34, height: 34, minWidth: 34 }}
+                >
+                  <FaClock size={14} />
+                </div>
+                <span className="extra-small fw-bold text-dark" style={{ fontSize: '0.9rem', letterSpacing: '0.5px' }}>
+                  {realTimeClock}
+                </span>
+              </div>
+            </div>
+
+            {/* 3. Notifications Pill Card */}
+            <div className="position-relative" ref={bellRef} style={{ width: 260 }}>
               <button
-                className="btn btn-light border position-relative d-flex align-items-center justify-content-center p-2 rounded-circle"
-                style={{ width: 40, height: 40 }}
+                type="button"
+                className="btn btn-white border border-secondary border-opacity-25 shadow-sm rounded-pill w-100 d-flex align-items-center justify-content-between px-4 py-2 transition-all hover-shadow text-dark"
+                style={{ height: 48, boxShadow: '0 4px 14px rgba(11,44,95,0.06)' }}
                 onClick={() => setShowNotifMenu(!showNotifMenu)}
                 title="Notifications"
               >
-                <FaBell className={unreadCount > 0 ? 'text-primary' : 'text-muted'} />
-                {unreadCount > 0 && (
-                  <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style={{ fontSize: '0.65rem' }}>
+                <div className="d-flex align-items-center" style={{ gap: 18 }}>
+                  <div
+                    className="rounded-circle bg-warning bg-opacity-20 d-flex align-items-center justify-content-center flex-shrink-0"
+                    style={{ width: 34, height: 34, minWidth: 34 }}
+                  >
+                    <FaBell className={unreadCount > 0 ? 'text-warning' : 'text-muted'} size={14} />
+                  </div>
+                  <span className="extra-small fw-bold text-dark" style={{ fontSize: '0.88rem' }}>
+                    Notifications
+                  </span>
+                </div>
+
+                {unreadCount > 0 ? (
+                  <span className="badge rounded-pill bg-danger shadow-xs px-2.5 py-1" style={{ fontSize: '0.74rem' }}>
                     {unreadCount}
+                  </span>
+                ) : (
+                  <span className="badge rounded-pill bg-light text-muted border px-2 py-1 extra-small" style={{ fontSize: '0.72rem' }}>
+                    0
                   </span>
                 )}
               </button>
 
-              {/* Notification Quick Preview Dropdown */}
+              {/* 🌟 ULTRA-SPACIOUS HIGH-CONTRAST DROPDOWN POPOVER */}
               {showNotifMenu && (
                 <div
-                  className="dropdown-menu show shadow-lg border-0 position-absolute end-0 mt-2 p-0 rounded-3 overflow-hidden"
-                  style={{ width: 340, zIndex: 1050 }}
+                  className="dropdown-menu show shadow-2xl border border-primary border-opacity-25 position-absolute end-0 mt-3 p-0 rounded-4 overflow-hidden bg-white"
+                  style={{ width: 410, zIndex: 1060, boxShadow: '0 25px 50px rgba(11, 44, 95, 0.25)' }}
                 >
-                  <div className="p-3 bg-primary text-white d-flex align-items-center justify-content-between">
-                    <span className="fw-semibold small">Caretaker Notifications</span>
-                    <span className="badge bg-white text-primary rounded-pill">{unreadCount} new</span>
+                  {/* Header with Generous Padding */}
+                  <div
+                    className="p-4 px-4.5 text-white d-flex align-items-center justify-content-between"
+                    style={{ background: 'linear-gradient(135deg, #0b2c5f 0%, #1e40af 100%)' }}
+                  >
+                    <div className="d-flex align-items-center gap-2.5">
+                      <FaBell size={18} className="text-warning" />
+                      <span className="fw-bold fs-6">Farm Notifications</span>
+                    </div>
+                    <div className="d-flex align-items-center gap-2">
+                      <span className="badge bg-white text-primary rounded-pill px-3 py-1.5 extra-small fw-bold shadow-xs">
+                        {unreadCount} New
+                      </span>
+                      {unreadCount > 0 && (
+                        <button
+                          type="button"
+                          className="btn btn-xs btn-link text-white text-decoration-none extra-small p-0 opacity-90 hover-opacity-100 ms-1"
+                          onClick={handleMarkAllRead}
+                          title="Mark all as read"
+                        >
+                          <FaCheckDouble size={13} className="me-1" /> Read All
+                        </button>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="list-group list-group-flush" style={{ maxHeight: 300, overflowY: 'auto' }}>
+                  {/* Scrollable Notifications List with Generous Padding */}
+                  <div className="list-group list-group-flush" style={{ maxHeight: 350, overflowY: 'auto' }}>
                     {recentNotifs.length === 0 ? (
-                      <div className="p-3 text-center text-muted small">No notifications yet.</div>
+                      <div className="p-5 text-center text-muted small">
+                        <FaBell size={28} className="mb-2 opacity-30 text-primary" />
+                        <p className="mb-0 fw-semibold">No new notifications</p>
+                        <small className="extra-small text-muted">All farm events are up to date.</small>
+                      </div>
                     ) : (
                       recentNotifs.map((n) => (
                         <div
                           key={n.id}
-                          className={`list-group-item p-2.5 small list-group-item-action cursor-pointer transition-all ${
-                            !n.is_read ? 'bg-light fw-medium border-start border-primary border-3' : ''
+                          className={`list-group-item p-4 px-4.5 small list-group-item-action cursor-pointer transition-all border-bottom ${
+                            !n.is_read ? 'bg-light bg-opacity-75 fw-semibold border-start border-primary border-4' : ''
                           }`}
                           style={{ cursor: 'pointer' }}
                           onClick={() => handleNotifClick(n)}
                         >
-                          <div className="d-flex justify-content-between align-items-center mb-1">
-                            <span className="fw-bold text-dark">{n.title}</span>
-                            <span className="text-muted extra-small">
+                          <div className="d-flex justify-content-between align-items-start mb-2 gap-3">
+                            <span className="fw-bold text-dark fs-6 d-flex flex-wrap align-items-center gap-2" style={{ lineHeight: 1.35 }}>
+                              {n.title}
+                              {n.pond_name && (
+                                <span className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2.5 py-1 extra-small rounded-pill">
+                                  {n.pond_name}
+                                </span>
+                              )}
+                            </span>
+                            <span className="text-muted extra-small font-mono flex-shrink-0 pt-0.5">
                               {new Date(n.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
-                          <p className="text-secondary mb-1 text-truncate" style={{ fontSize: '0.8rem' }}>
+                          <p className="text-secondary mb-2 extra-small" style={{ lineHeight: 1.55 }}>
                             {n.message}
                           </p>
-                          <span className="text-primary fw-semibold extra-small text-decoration-underline">
-                            View Report Details →
+                          <span className="text-primary fw-bold extra-small d-inline-flex align-items-center gap-1.5">
+                            View Details →
                           </span>
                         </div>
                       ))
                     )}
                   </div>
 
-                  <div className="p-2 bg-light text-center border-top">
+                  <div className="p-3.5 bg-light text-center border-top">
                     <button
-                      className="btn btn-link btn-sm text-decoration-none fw-semibold p-0 text-primary"
+                      type="button"
+                      className="btn btn-link btn-sm text-decoration-none fw-semibold p-0 text-primary extra-small"
                       onClick={() => {
                         setShowNotifMenu(false);
                         navigate('/admin/notifications');
                       }}
                     >
-                      View All Notifications →
+                      View All System Notifications →
                     </button>
                   </div>
                 </div>
               )}
             </div>
-
-            <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/admin/reports')}>Reports</button>
-            <button className="btn btn-primary btn-sm" onClick={() => navigate('/admin/ponds')}>Manage Ponds</button>
           </div>
         </div>
 
