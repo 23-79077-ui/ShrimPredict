@@ -1,0 +1,8 @@
+frontend/node_modules/
+.venv/
+.venv311/
+ml/artifacts/
+data/
+*.keras
+*.h5
+*.bin

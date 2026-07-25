@@ -65,6 +65,9 @@ CREATE TABLE feeding_records (
 
 CREATE TABLE disease_reports (
   id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT DEFAULT NULL,
+  caretaker_name VARCHAR(150) DEFAULT NULL,
+  pond_name VARCHAR(150) DEFAULT NULL,
   disease_name VARCHAR(100) NOT NULL,
   confidence_score DECIMAL(5,2) DEFAULT 0,
   risk_level VARCHAR(20) DEFAULT 'Low',
@@ -72,7 +75,8 @@ CREATE TABLE disease_reports (
   status VARCHAR(20) DEFAULT 'Pending',
   image_path VARCHAR(255),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_disease_risk (risk_level)
+  INDEX idx_disease_risk (risk_level),
+  INDEX idx_disease_user (user_id)
 );
 
 CREATE TABLE harvest_predictions (
@@ -171,9 +175,9 @@ INSERT INTO feeding_records (pond_id, amount_kg, feed_type, record_date, notes) 
 (2, 11.0, 'Grower Feed', '2026-07-16', 'Adjusted due to temperature'),
 (3, 9.5, 'Grower Feed', '2026-07-16', 'Critical water condition');
 
-INSERT INTO disease_reports (disease_name, confidence_score, risk_level, recommendation, status, image_path) VALUES
-('White Spot Syndrome', 93.00, 'High', 'Increase water quality checks and isolate affected pond.', 'Pending', 'uploads/sample.jpg'),
-('Black Gill Disease', 74.00, 'Medium', 'Adjust salinity and monitor shrimp behavior.', 'Reviewed', 'uploads/sample2.jpg');
+INSERT INTO disease_reports (user_id, caretaker_name, pond_name, disease_name, confidence_score, risk_level, recommendation, status, image_path) VALUES
+(1, 'Maria Santos', 'Pond A1', 'White Spot Syndrome', 93.00, 'High', 'Increase water quality checks and isolate affected pond.', 'Pending', 'uploads/sample.jpg'),
+(1, 'Maria Santos', 'Pond A1', 'Black Gill Disease', 74.00, 'Medium', 'Adjust salinity and monitor shrimp behavior.', 'Reviewed', 'uploads/sample2.jpg');
 
 INSERT INTO harvest_predictions (pond_id, estimated_harvest, average_weight, biomass, survival_rate, recommendation, prediction_date) VALUES
 (1, 420.50, 32.0, 1800.0, 88.0, 'Maintain current feeding and water quality.', '2026-09-10'),
