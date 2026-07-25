@@ -48,6 +48,19 @@ $ensureMaintenanceSchema = function ($conn): void {
             INDEX idx_mr_created (created_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
     );
+
+    $columns = $conn->query("SHOW COLUMNS FROM maintenance_reports")->fetchAll(PDO::FETCH_ASSOC);
+    $idColumn = null;
+    foreach ($columns as $column) {
+        if ($column['Field'] === 'id') {
+            $idColumn = $column;
+            break;
+        }
+    }
+
+    if ($idColumn && stripos($idColumn['Extra'] ?? '', 'auto_increment') === false) {
+        $conn->exec("ALTER TABLE maintenance_reports MODIFY id INT NOT NULL AUTO_INCREMENT");
+    }
 };
 
 $ensureMaintenanceSchema($conn);

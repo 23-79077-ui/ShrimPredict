@@ -1,0 +1,11 @@
+{
+  "task": "binary_wssv_detection",
+  "primaryDisease": "White Spot Syndrome Virus",
+  "labels": ["non_wssv", "wssv"],
+  "positiveFolders": ["WSSV", "BG_WSSV"],
+  "negativeFolders": ["Healthy", "BG"],
+  "thresholds": {
+    "highRisk": 0.6,
+    "mediumRisk": 0.4
+  }
+}

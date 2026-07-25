@@ -139,9 +139,12 @@ export default function AdminLayout() {
 
     if (actionType === 'feeding' || title.includes('feed') || msg.includes('feed')) {
       navigate('/admin/feeding');
+    } else if (actionType === 'disease_scan' || title.includes('disease') || msg.includes('scanned for disease')) {
+      navigate('/admin/disease-reports');
     } else if (actionType === 'water_quality' || (title.includes('pond') && !title.includes('report')) || (msg.includes('pond') && !msg.includes('report'))) {
       navigate('/admin/ponds');
     } else {
+      // Maintenance / Reports / General -> /admin/reports
       navigate('/admin/reports');
     }
   };

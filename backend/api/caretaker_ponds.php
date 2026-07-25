@@ -25,6 +25,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $stmt->execute([':user_id' => $userId]);
         $ponds = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+        if (empty($ponds)) {
+            $fallbackStmt = $conn->prepare(
+                'SELECT p.id, p.pond_name, p.status, p.temperature, p.ph_level, p.salinity, p.dissolved_oxygen, p.water_level
+                 FROM users u
+                 JOIN ponds p ON u.pond_id = p.id
+                 WHERE u.id = :user_id AND u.role = "caretaker"
+                 ORDER BY p.pond_name ASC'
+            );
+            $fallbackStmt->execute([':user_id' => $userId]);
+            $ponds = $fallbackStmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+
         echo json_encode([
             'success' => true,
             'ponds' => $ponds,

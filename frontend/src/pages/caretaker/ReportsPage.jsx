@@ -66,21 +66,42 @@ export default function ReportsPage() {
   // Load Caretaker Assigned Ponds
   useEffect(() => {
     const loadPonds = async () => {
+      if (!user?.id) {
+        const assigned = Array.isArray(user?.assigned_ponds) ? user.assigned_ponds : [];
+        setPonds(assigned);
+        if (assigned.length > 0) {
+          setForm((prev) => ({ ...prev, pondId: String(assigned[0].id) }));
+        }
+        setLoadingPonds(false);
+        return;
+      }
+
       try {
-        const res = await api.get('/ponds.php');
-        const list = Array.isArray(res.data) ? res.data : (res.data?.ponds || []);
+        const res = await api.get('/caretaker_ponds.php', { params: { user_id: user.id } });
+        const apiAssignedPonds = res.data?.success && Array.isArray(res.data.ponds) ? res.data.ponds : [];
+        const loginAssignedPonds = Array.isArray(user?.assigned_ponds) ? user.assigned_ponds : [];
+        const list = apiAssignedPonds.length > 0 ? apiAssignedPonds : loginAssignedPonds;
         setPonds(list);
         if (list.length > 0) {
           setForm((prev) => ({ ...prev, pondId: String(list[0].id) }));
+        } else {
+          setForm((prev) => ({ ...prev, pondId: '' }));
         }
       } catch (e) {
         console.error('Error loading ponds:', e);
+        const assigned = Array.isArray(user?.assigned_ponds) ? user.assigned_ponds : [];
+        setPonds(assigned);
+        if (assigned.length > 0) {
+          setForm((prev) => ({ ...prev, pondId: String(assigned[0].id) }));
+        } else {
+          setForm((prev) => ({ ...prev, pondId: '' }));
+        }
       } finally {
         setLoadingPonds(false);
       }
     };
     loadPonds();
-  }, []);
+  }, [user]);
 
   // Load My Submitted Reports
   const loadMyReports = useCallback(async () => {
@@ -306,6 +327,10 @@ export default function ReportsPage() {
                   </label>
                   {loadingPonds ? (
                     <div className="text-muted small">Loading ponds…</div>
+                  ) : ponds.length === 0 ? (
+                    <div className="alert alert-warning py-2 mb-0">
+                      No pond is assigned to your caretaker account.
+                    </div>
                   ) : (
                     <select
                       className="form-select fw-semibold"
