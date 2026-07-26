@@ -1,7 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import Swal from 'sweetalert2';
+import {
+  FaCheckCircle,
+  FaClipboardList,
+  FaClock,
+  FaFlask,
+  FaLeaf,
+  FaPlus,
+  FaThermometerHalf,
+  FaTint,
+  FaUtensils,
+  FaWater,
+} from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
-import Swal from 'sweetalert2';
 
 const feedingTimes = ['6:00 AM', '9:00 AM', '12:00 PM', '3:00 PM', '6:00 PM'];
 const productCodes = ['Starter', 'Grower'];
@@ -16,9 +28,11 @@ const emptyForm = {
 
 export default function MyPondPage() {
   const { user } = useAuth();
-  const assignedPonds = user?.assigned_ponds?.length
-    ? user.assigned_ponds
-    : (user?.pond_id ? [{ id: user.pond_id, pond_name: 'Assigned Pond', status: 'Healthy' }] : []);
+  const assignedPonds = useMemo(() => (
+    user?.assigned_ponds?.length
+      ? user.assigned_ponds
+      : (user?.pond_id ? [{ id: user.pond_id, pond_name: 'Assigned Pond', status: 'Healthy' }] : [])
+  ), [user?.assigned_ponds, user?.pond_id]);
   const [selectedPondId, setSelectedPondId] = useState('');
   const [formState, setFormState] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -37,6 +51,8 @@ export default function MyPondPage() {
 
   const selectedPond = assignedPonds.find((pond) => String(pond.id) === String(selectedPondId)) || assignedPonds[0] || null;
   const currentForm = formState[selectedPondId] || emptyForm;
+  const pondStatus = selectedPond?.status || 'Healthy';
+  const statusClass = pondStatus === 'Healthy' ? 'healthy' : pondStatus === 'Warning' ? 'warning' : 'danger';
 
   const handleChange = (field, value) => {
     if (!selectedPondId) return;
@@ -77,14 +93,9 @@ export default function MyPondPage() {
       };
 
       const response = await api.post('/feeding_records.php', payload);
-
       const responseData = response?.data && typeof response.data === 'object' ? response.data : {};
-      if (!responseData.success && responseData.message) {
-        throw new Error(responseData.message);
-      }
-      if (!responseData.success) {
-        throw new Error('Unable to save feeding record.');
-      }
+      if (!responseData.success && responseData.message) throw new Error(responseData.message);
+      if (!responseData.success) throw new Error('Unable to save feeding record.');
 
       if (typeof window !== 'undefined') {
         localStorage.setItem('shrim-feed-updated', String(Date.now()));
@@ -96,9 +107,7 @@ export default function MyPondPage() {
       Swal.fire({ icon: 'success', title: 'Feeding logged', text: 'Your feeding record has been saved.' });
       setFormState((prev) => ({
         ...prev,
-        [selectedPond.id]: {
-          ...emptyForm,
-        },
+        [selectedPond.id]: { ...emptyForm },
       }));
     } catch (error) {
       const backendMessage = error.response?.data?.message || error.response?.data?.error || error.message || 'Unable to save feeding record.';
@@ -108,125 +117,188 @@ export default function MyPondPage() {
       setSubmitting(false);
     }
   };
+
+  if (!assignedPonds.length) {
+    return (
+      <div className="caretaker-mypond-page">
+        <div className="caretaker-empty-state">
+          <p className="text-muted mb-0">No ponds assigned to you yet. Please contact your admin.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div>
-      <div className="d-flex justify-content-between align-items-start mb-3">
+    <div className="caretaker-mypond-page">
+      <section className="caretaker-dashboard-hero caretaker-mypond-hero">
         <div>
-          <h3 className="fw-bold mb-1">My Ponds</h3>
-          <p className="text-muted mb-0">Choose a pond from the dropdown below and log its feeding entry.</p>
+          <span className="caretaker-dashboard-kicker">Pond Feeding Workspace</span>
+          <h3>{selectedPond?.pond_name || 'My Pond'}</h3>
+          <p>Select an assigned pond, review its latest water details, and submit the correct feeding log.</p>
+          <div className="caretaker-hero-meta">
+            <span>{assignedPonds.length} assigned pond(s)</span>
+            <span>Tateh {currentForm.productCode}</span>
+            <span>{currentForm.feedingTime}</span>
+          </div>
+        </div>
+        <div className="caretaker-mypond-selector">
+          <label><FaWater /> Select Pond</label>
+          <select
+            className="form-select form-select-sm fw-semibold"
+            value={selectedPondId}
+            onChange={(event) => setSelectedPondId(event.target.value)}
+          >
+            {assignedPonds.map((pond) => (
+              <option key={pond.id} value={pond.id}>
+                {pond.pond_name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </section>
+
+      <div className="caretaker-pond-tabs">
+        {assignedPonds.map((pond) => (
+          <button
+            type="button"
+            key={pond.id}
+            className={String(pond.id) === String(selectedPondId) ? 'active' : ''}
+            onClick={() => setSelectedPondId(String(pond.id))}
+          >
+            {pond.pond_name}
+          </button>
+        ))}
+      </div>
+
+      <div className="row g-3 mb-4">
+        <div className="col-sm-6 col-xl-3">
+          <div className={`card caretaker-pond-metric ${statusClass} h-100`}>
+            <div className="card-body">
+              <span><FaCheckCircle /> Status</span>
+              <strong>{pondStatus}</strong>
+              <small>Current pond condition</small>
+            </div>
+          </div>
+        </div>
+        <div className="col-sm-6 col-xl-3">
+          <div className="card caretaker-pond-metric h-100">
+            <div className="card-body">
+              <span><FaThermometerHalf /> Temperature</span>
+              <strong>{selectedPond?.temperature ?? '-'} C</strong>
+              <small>Recommended: 26 C to 32 C</small>
+            </div>
+          </div>
+        </div>
+        <div className="col-sm-6 col-xl-3">
+          <div className="card caretaker-pond-metric h-100">
+            <div className="card-body">
+              <span><FaFlask /> pH Level</span>
+              <strong>{selectedPond?.ph_level ?? '-'}</strong>
+              <small>Keep readings stable</small>
+            </div>
+          </div>
+        </div>
+        <div className="col-sm-6 col-xl-3">
+          <div className="card caretaker-pond-metric h-100">
+            <div className="card-body">
+              <span><FaTint /> Salinity / Level</span>
+              <strong>{selectedPond?.salinity ?? '-'} ppt</strong>
+              <small>Water level: {selectedPond?.water_level ?? '-'} m</small>
+            </div>
+          </div>
         </div>
       </div>
 
-      {assignedPonds.length > 0 ? (
-        <div className="card border-0 shadow-sm">
-          <div className="card-body">
-            <div className="mb-4">
-              <label className="form-label fw-semibold">Select pond to log</label>
-              <select
-                className="form-select"
-                value={selectedPondId}
-                onChange={(e) => setSelectedPondId(e.target.value)}
+      <div className="card caretaker-panel-card">
+        <div className="card-body">
+          <div className="caretaker-panel-header">
+            <div>
+              <h5>Log Feeding Entry</h5>
+              <small className="text-muted">Save a real feeding record for {selectedPond?.pond_name || 'this pond'}.</small>
+            </div>
+            <div className="caretaker-history-total">
+              <FaClipboardList />
+              <span>5 scheduled times daily</span>
+            </div>
+          </div>
+
+          <div className="caretaker-feeding-time-grid mb-4">
+            {feedingTimes.map((time) => (
+              <button
+                type="button"
+                key={time}
+                className={currentForm.feedingTime === time ? 'active' : ''}
+                onClick={() => handleChange('feedingTime', time)}
               >
-                {assignedPonds.map((pond) => (
-                  <option key={pond.id} value={pond.id}>
-                    {pond.pond_name}
+                <FaClock />
+                <span>{time}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="caretaker-feed-form-grid">
+            <div>
+              <label className="form-label fw-semibold">Amount (kg)</label>
+              <input
+                type="number"
+                min="0.1"
+                step="0.1"
+                className="form-control"
+                value={currentForm.amountKg}
+                onChange={(event) => handleChange('amountKg', event.target.value)}
+                placeholder="Enter amount in kilograms"
+              />
+            </div>
+
+            <div>
+              <label className="form-label fw-semibold">Product Code</label>
+              <select className="form-select" value={currentForm.productCode} onChange={(event) => handleChange('productCode', event.target.value)}>
+                {productCodes.map((code) => (
+                  <option key={code} value={code}>
+                    {code} (Tateh)
                   </option>
                 ))}
               </select>
+              <small className="text-muted">Starter or Grower only.</small>
             </div>
 
-            {selectedPond ? (
-              <>
-                <div className="d-flex justify-content-between align-items-start mb-3">
-                  <div>
-                    <h5 className="fw-bold mb-1">{selectedPond.pond_name}</h5>
-                    <small className="text-muted">Feeding brand: Tateh</small>
-                  </div>
-                  <span className={`badge ${selectedPond.status === 'Healthy' ? 'bg-success' : selectedPond.status === 'Warning' ? 'bg-warning' : 'bg-danger'}`}>
-                    {selectedPond.status}
-                  </span>
-                </div>
+            <div>
+              <label className="form-label fw-semibold">Vitamins</label>
+              <select className="form-select" value={currentForm.vitaminName || 'None'} onChange={(event) => handleChange('vitaminName', event.target.value)}>
+                {vitaminOptions.map((vit) => (
+                  <option key={vit} value={vit}>
+                    {vit === 'None' ? 'None (No Vitamin)' : vit}
+                  </option>
+                ))}
+              </select>
+              <small className="text-muted">Sanolife PRO-2 or Sano Top-S.</small>
+            </div>
 
-                <div className="row g-3 mb-4">
-                  <div className="col-6"><div className="border rounded p-3"><small>Temperature</small><div className="fw-bold">{selectedPond.temperature}°C</div></div></div>
-                  <div className="col-6"><div className="border rounded p-3"><small>pH</small><div className="fw-bold">{selectedPond.ph_level}</div></div></div>
-                  <div className="col-6"><div className="border rounded p-3"><small>Salinity</small><div className="fw-bold">{selectedPond.salinity} ppt</div></div></div>
-                  <div className="col-6"><div className="border rounded p-3"><small>Water Level</small><div className="fw-bold">{selectedPond.water_level} m</div></div></div>
-                </div>
-
-                <div className="mb-3">
-                  <label className="form-label fw-semibold">Feeding time</label>
-                  <select className="form-select" value={currentForm.feedingTime} onChange={(e) => handleChange('feedingTime', e.target.value)}>
-                    {feedingTimes.map((time) => (
-                      <option key={time} value={time}>{time}</option>
-                    ))}
-                  </select>
-                  <small className="text-muted">5 feeding times: 6:00 AM, 9:00 AM, 12:00 PM, 3:00 PM, 6:00 PM.</small>
-                </div>
-
-                <div className="mb-3">
-                  <label className="form-label fw-semibold">Amount (kg)</label>
-                  <input
-                    type="number"
-                    min="0.1"
-                    step="0.1"
-                    className="form-control"
-                    value={currentForm.amountKg}
-                    onChange={(e) => handleChange('amountKg', e.target.value)}
-                    placeholder="Enter amount in kilograms"
-                  />
-                </div>
-
-                <div className="mb-3">
-                  <label className="form-label fw-semibold">Product code</label>
-                  <select className="form-select" value={currentForm.productCode} onChange={(e) => handleChange('productCode', e.target.value)}>
-                    {productCodes.map((code) => (
-                      <option key={code} value={code}>
-                        {code} (Tateh)
-                      </option>
-                    ))}
-                  </select>
-                  <small className="text-muted">Select Tateh feed product: Starter or Grower.</small>
-                </div>
-
-                <div className="mb-3">
-                  <label className="form-label fw-semibold">Vitamins</label>
-                  <select className="form-select" value={currentForm.vitaminName || 'None'} onChange={(e) => handleChange('vitaminName', e.target.value)}>
-                    {vitaminOptions.map((vit) => (
-                      <option key={vit} value={vit}>
-                        {vit === 'None' ? 'None (No Vitamin)' : vit}
-                      </option>
-                    ))}
-                  </select>
-                  <small className="text-muted">Vitamins: Sanolife PRO-2 or Sano Top-S.</small>
-                </div>
-
-                <div className="mb-4">
-                  <label className="form-label fw-semibold">Notes (optional)</label>
-                  <textarea
-                    className="form-control"
-                    rows="2"
-                    value={currentForm.notes}
-                    onChange={(e) => handleChange('notes', e.target.value)}
-                    placeholder="Add a note if needed"
-                  />
-                </div>
-
-                <button type="button" className="btn btn-primary w-100" disabled={submitting} onClick={handleSubmit}>
-                  {submitting ? 'Saving…' : 'Log Feeding'}
-                </button>
-              </>
-            ) : null}
+            <div>
+              <label className="form-label fw-semibold">Selected Pond</label>
+              <div className="caretaker-selected-pond-box">
+                <FaWater />
+                <span>{selectedPond?.pond_name || 'Assigned Pond'}</span>
+              </div>
+            </div>
           </div>
-        </div>
-      ) : (
-        <div className="card border-0 shadow-sm">
-          <div className="card-body text-center py-5">
-            <p className="text-muted mb-0">No ponds assigned to you yet. Please contact your admin.</p>
+
+          <div className="mt-3">
+            <label className="form-label fw-semibold">Notes (optional)</label>
+            <textarea
+              className="form-control"
+              rows="3"
+              value={currentForm.notes}
+              onChange={(event) => handleChange('notes', event.target.value)}
+              placeholder="Add a note if needed"
+            />
           </div>
+
+          <button type="button" className="btn btn-primary w-100 mt-4 caretaker-log-button" disabled={submitting} onClick={handleSubmit}>
+            {submitting ? 'Saving...' : <><FaPlus /> Log Feeding</>}
+          </button>
         </div>
-      )}
+      </div>
     </div>
   );
 }
-

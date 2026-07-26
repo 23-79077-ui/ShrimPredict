@@ -4,6 +4,25 @@ import { useAuth } from '../../context/AuthContext';
 import api, { safeArray } from '../../services/api';
 import { FaUtensils, FaWater, FaCheckCircle, FaExclamationTriangle, FaPlus, FaClock } from 'react-icons/fa';
 
+const feedingTimes = ['6:00 AM', '9:00 AM', '12:00 PM', '3:00 PM', '6:00 PM'];
+
+const normalizeFeedingTime = (value = '') => String(value).trim().replace(/^0(\d:)/, '$1').toUpperCase();
+
+const resolveImageUrl = (url) => {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:') || url.startsWith('data:')) {
+    return url;
+  }
+  const cleanPath = url.startsWith('/') ? url : `/${url}`;
+  if (cleanPath.startsWith('/shrim_predict_api')) {
+    return `http://localhost${cleanPath}`;
+  }
+  if (cleanPath.startsWith('/backend')) {
+    return `http://localhost/shrim_predict_api${cleanPath}`;
+  }
+  return `http://localhost/shrim_predict_api/backend/${cleanPath.replace(/^\/+/, '')}`;
+};
+
 export default function CaretakerDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -15,8 +34,8 @@ export default function CaretakerDashboard() {
   const [diseaseScans, setDiseaseScans] = useState([]);
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
-
   const [selectedPondFilter, setSelectedPondFilter] = useState('all');
+  const [selectedDiseasePondFilter, setSelectedDiseasePondFilter] = useState('all');
 
   const loadData = useCallback(async () => {
     try {
@@ -28,19 +47,18 @@ export default function CaretakerDashboard() {
             recorded_by_name: user?.full_name || '',
           },
         }),
-        api.get('/disease_reports.php'),
+        api.get('/disease_reports.php', {
+          params: {
+            user_id: user?.id || 0,
+            caretaker_name: user?.full_name || '',
+          },
+        }),
         api.get('/alerts.php'),
       ]);
 
-      if (feedRes.status === 'fulfilled') {
-        setRecords(safeArray(feedRes.value.data));
-      }
-      if (diseaseRes.status === 'fulfilled') {
-        setDiseaseScans(safeArray(diseaseRes.value.data));
-      }
-      if (alertsRes.status === 'fulfilled') {
-        setAlerts(safeArray(alertsRes.value.data));
-      }
+      if (feedRes.status === 'fulfilled') setRecords(safeArray(feedRes.value.data));
+      if (diseaseRes.status === 'fulfilled') setDiseaseScans(safeArray(diseaseRes.value.data));
+      if (alertsRes.status === 'fulfilled') setAlerts(safeArray(alertsRes.value.data));
     } catch (error) {
       console.error('Error loading dashboard data:', error);
     } finally {
@@ -55,7 +73,6 @@ export default function CaretakerDashboard() {
     return () => window.removeEventListener('shrim-feed-updated', handleUpdate);
   }, [loadData]);
 
-  // Filter records for today and by selected pond
   const todayStr = new Date().toISOString().split('T')[0];
   const todayRecords = records.filter((r) => r.record_date === todayStr);
   const filteredTodayRecords = todayRecords.filter((r) => {
@@ -64,107 +81,140 @@ export default function CaretakerDashboard() {
   });
   const totalAmountToday = filteredTodayRecords.reduce((sum, r) => sum + (parseFloat(r.amount_kg) || 0), 0);
   const selectedPondObj = assignedPonds.find((p) => String(p.id) === String(selectedPondFilter));
+  const loggedFeedingSlots = new Set(filteredTodayRecords.map((r) => normalizeFeedingTime(r.feeding_time)).filter(Boolean));
+  const completedFeedingSlots = feedingTimes.filter((time) => loggedFeedingSlots.has(normalizeFeedingTime(time))).length;
+  const feedingCompletion = Math.round((completedFeedingSlots / feedingTimes.length) * 100);
+  const currentScope = selectedPondFilter === 'all' ? 'All assigned ponds' : selectedPondObj?.pond_name || 'Selected pond';
+  const filteredDiseaseScans = diseaseScans.filter((scan) => {
+    if (selectedDiseasePondFilter === 'all') return true;
+    return String(scan.pond_name || '').trim().toLowerCase() === String(selectedDiseasePondFilter).trim().toLowerCase();
+  });
+  const latestDisease = filteredDiseaseScans[0];
+  const latestAlert = alerts[0];
 
   return (
-    <div>
-      <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div className="caretaker-dashboard-page">
+      <section className="caretaker-dashboard-hero">
         <div>
-          <h3 className="fw-bold mb-1">Caretaker Dashboard</h3>
-          <p className="text-muted mb-0">Welcome back, {user?.full_name || 'Caretaker'}! Here is your daily pond feeding overview.</p>
+          <span className="caretaker-dashboard-kicker">Daily Pond Operations</span>
+          <h3>Welcome back, {user?.full_name || 'Caretaker'}</h3>
+          <p>Monitor today's feeding logs, schedule completion, disease scans, and active pond alerts.</p>
+          <div className="caretaker-hero-meta">
+            <span>{todayStr}</span>
+            <span>{currentScope}</span>
+            <span>{completedFeedingSlots}/5 feedings logged</span>
+          </div>
         </div>
-        <button className="btn btn-primary d-flex align-items-center gap-2" onClick={() => navigate('/caretaker/my-pond')}>
-          <FaPlus /> Log Feeding
-        </button>
-      </div>
+        <div className="caretaker-dashboard-actions">
+          <button className="btn btn-light" onClick={() => navigate('/caretaker/feeding-history')}>
+            <FaClock /> History
+          </button>
+          <button className="btn btn-primary" onClick={() => navigate('/caretaker/my-pond')}>
+            <FaPlus /> Log Feeding
+          </button>
+        </div>
+      </section>
 
-      {/* Summary Cards Row */}
       <div className="row g-3 mb-4">
-        {/* Assigned Ponds */}
-        <div className="col-sm-6 col-lg-3">
-          <div className="card border-0 shadow-sm h-100">
+        <div className="col-sm-6 col-xl-3">
+          <div className="card caretaker-stat-card accent-blue h-100">
             <div className="card-body">
-              <div className="d-flex align-items-center justify-content-between mb-2">
-                <span className="text-muted small fw-bold">Assigned Ponds</span>
-                <span className="badge bg-primary bg-opacity-10 text-primary p-2"><FaWater /></span>
+              <div className="caretaker-stat-top">
+                <span>Assigned Ponds</span>
+                <span className="caretaker-stat-icon"><FaWater /></span>
               </div>
-              <h3 className="fw-bold mb-1">{assignedPonds.length}</h3>
-              <div className="d-flex flex-wrap gap-1 mt-2">
+              <h3>{assignedPonds.length}</h3>
+              <small className="text-muted">Tap a pond to focus the dashboard.</small>
+              <div className="caretaker-pond-chips">
+                <button type="button" className={selectedPondFilter === 'all' ? 'active' : ''} onClick={() => setSelectedPondFilter('all')}>
+                  All
+                </button>
                 {assignedPonds.map((pond) => (
-                  <span
+                  <button
+                    type="button"
                     key={pond.id}
-                    className={`badge ${selectedPondFilter === String(pond.id) ? 'bg-primary text-white' : 'bg-light text-dark border'}`}
-                    style={{ cursor: 'pointer' }}
+                    className={selectedPondFilter === String(pond.id) ? 'active' : ''}
                     onClick={() => setSelectedPondFilter(String(pond.id))}
                   >
                     {pond.pond_name}
-                  </span>
+                  </button>
                 ))}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Today's Feeding Count */}
-        <div className="col-sm-6 col-lg-3">
-          <div className="card border-0 shadow-sm h-100">
+        <div className="col-sm-6 col-xl-3">
+          <div className="card caretaker-stat-card accent-green h-100">
             <div className="card-body">
-              <div className="d-flex align-items-center justify-content-between mb-2">
-                <span className="text-muted small fw-bold">Today's Feeding Logs</span>
-                <span className="badge bg-success bg-opacity-10 text-success p-2"><FaUtensils /></span>
+              <div className="caretaker-stat-top">
+                <span>Today's Logs</span>
+                <span className="caretaker-stat-icon"><FaUtensils /></span>
               </div>
-              <h3 className="fw-bold mb-1">{filteredTodayRecords.length} entries</h3>
-              <small className="text-muted">
-                {selectedPondFilter === 'all' ? 'All assigned ponds' : selectedPondObj?.pond_name || 'Selected pond'}
-              </small>
+              <h3>{filteredTodayRecords.length}</h3>
+              <small className="text-muted">{currentScope}</small>
             </div>
           </div>
         </div>
 
-        {/* Today's Total Feed Weight */}
-        <div className="col-sm-6 col-lg-3">
-          <div className="card border-0 shadow-sm h-100">
+        <div className="col-sm-6 col-xl-3">
+          <div className="card caretaker-stat-card accent-cyan h-100">
             <div className="card-body">
-              <div className="d-flex align-items-center justify-content-between mb-2">
-                <span className="text-muted small fw-bold">Total Feed Today</span>
-                <span className="badge bg-info bg-opacity-10 text-info p-2"><FaCheckCircle /></span>
+              <div className="caretaker-stat-top">
+                <span>Total Feed Today</span>
+                <span className="caretaker-stat-icon"><FaCheckCircle /></span>
               </div>
-              <h3 className="fw-bold mb-1">{totalAmountToday.toFixed(1)} kg</h3>
-              <small className="text-muted">
-                {selectedPondFilter === 'all' ? 'All assigned ponds' : selectedPondObj?.pond_name || 'Selected pond'}
-              </small>
+              <h3>{totalAmountToday.toFixed(1)} kg</h3>
+              <small className="text-muted">{currentScope}</small>
             </div>
           </div>
         </div>
 
-        {/* Daily Schedule */}
-        <div className="col-sm-6 col-lg-3">
-          <div className="card border-0 shadow-sm h-100">
+        <div className="col-sm-6 col-xl-3">
+          <div className="card caretaker-stat-card accent-amber h-100">
             <div className="card-body">
-              <div className="d-flex align-items-center justify-content-between mb-2">
-                <span className="text-muted small fw-bold">Feeding Schedule</span>
-                <span className="badge bg-warning bg-opacity-10 text-warning p-2"><FaClock /></span>
+              <div className="caretaker-stat-top">
+                <span>Feeding Schedule</span>
+                <span className="caretaker-stat-icon"><FaClock /></span>
               </div>
-              <h6 className="fw-bold mb-1 text-primary">5 Times Daily</h6>
-              <small className="text-muted">6:00 AM • 9:00 AM • 12:00 PM • 3:00 PM • 6:00 PM</small>
+              <div className="caretaker-progress-line">
+                <strong>{feedingCompletion}%</strong>
+                <span>{completedFeedingSlots}/5 complete</span>
+              </div>
+              <div className="caretaker-progress-track" aria-hidden="true">
+                <span style={{ width: `${feedingCompletion}%` }} />
+              </div>
+              <div className="feeding-schedule-grid mt-3">
+                {feedingTimes.map((time) => {
+                  const isLogged = loggedFeedingSlots.has(normalizeFeedingTime(time));
+                  return (
+                    <span key={time} className={`feeding-slot ${isLogged ? 'logged' : 'pending'}`}>
+                      <strong>{time}</strong>
+                      <small>{isLogged ? 'Logged' : 'Pending'}</small>
+                    </span>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Main Today's Feeding Section */}
-      <div className="card border-0 shadow-sm mb-4">
+      <div className="card caretaker-panel-card mb-4">
         <div className="card-body">
-          <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+          <div className="caretaker-panel-header">
             <div>
-              <h5 className="fw-bold mb-0">Today's Feeding Records</h5>
+              <h5>Today's Feeding Records</h5>
               <small className="text-muted">
-                {selectedPondFilter === 'all' ? `Showing all assigned ponds (${todayStr})` : `Filtered by ${selectedPondObj?.pond_name || 'Selected Pond'} (${todayStr})`}
+                {selectedPondFilter === 'all'
+                  ? `Showing all assigned ponds (${todayStr})`
+                  : `Filtered by ${selectedPondObj?.pond_name || 'Selected Pond'} (${todayStr})`}
               </small>
             </div>
-            <div className="d-flex align-items-center gap-2">
-              <label className="small fw-semibold text-muted mb-0">Filter Pond:</label>
+            <div className="caretaker-panel-tools">
+              <label className="small fw-semibold text-muted mb-0">Pond</label>
               <select
-                className="form-select form-select-sm w-auto fw-semibold border-primary bg-primary bg-opacity-10"
+                className="form-select form-select-sm fw-semibold"
                 value={selectedPondFilter}
                 onChange={(e) => setSelectedPondFilter(e.target.value)}
               >
@@ -176,16 +226,16 @@ export default function CaretakerDashboard() {
                 ))}
               </select>
               <button className="btn btn-outline-primary btn-sm" onClick={() => navigate('/caretaker/my-pond')}>
-                + Add Log
+                <FaPlus /> Add Log
               </button>
             </div>
           </div>
 
           {loading ? (
-            <div className="text-center py-4 text-muted">Loading today's feeding logs…</div>
+            <div className="caretaker-empty-state">Loading today's feeding logs...</div>
           ) : filteredTodayRecords.length > 0 ? (
             <div className="table-responsive">
-              <table className="table table-hover align-middle mb-0">
+              <table className="table caretaker-record-table align-middle mb-0">
                 <thead>
                   <tr>
                     <th>Time Slot</th>
@@ -200,9 +250,7 @@ export default function CaretakerDashboard() {
                   {filteredTodayRecords.map((r) => (
                     <tr key={r.id}>
                       <td>
-                        <span className="badge bg-primary bg-opacity-10 text-primary fw-bold">
-                          {r.feeding_time || '—'}
-                        </span>
+                        <span className="caretaker-time-badge">{r.feeding_time || '-'}</span>
                       </td>
                       <td>
                         <strong>{r.pond_name || `Pond ${r.pond_id}`}</strong>
@@ -219,7 +267,9 @@ export default function CaretakerDashboard() {
                         )}
                       </td>
                       <td>
-                        <small className="text-muted">{r.created_at ? new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : r.record_date}</small>
+                        <small className="text-muted">
+                          {r.created_at ? new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : r.record_date}
+                        </small>
                       </td>
                     </tr>
                   ))}
@@ -227,7 +277,7 @@ export default function CaretakerDashboard() {
               </table>
             </div>
           ) : (
-            <div className="p-4 text-center bg-light rounded-3">
+            <div className="caretaker-empty-state">
               <p className="text-muted mb-2">
                 {selectedPondFilter === 'all'
                   ? "No feeding records logged for today yet."
@@ -241,42 +291,64 @@ export default function CaretakerDashboard() {
         </div>
       </div>
 
-      {/* Disease Scans & Alerts Grid */}
       <div className="row g-3">
         <div className="col-md-6">
-          <div className="card border-0 shadow-sm h-100">
+          <div className="card caretaker-panel-card h-100">
             <div className="card-body">
-              <h5 className="fw-bold mb-3">Latest Disease Scan</h5>
-              {diseaseScans.length > 0 ? (
-                <div className="d-flex align-items-center gap-3 p-3 bg-light rounded-3">
-                  {diseaseScans[0].image_path && (
-                    <img src={diseaseScans[0].image_path} alt="Scan" className="rounded" style={{ width: 50, height: 50, objectFit: 'cover' }} />
+              <div className="caretaker-panel-title">
+                <h5>Latest Disease Scan</h5>
+                <div className="caretaker-scan-filter">
+                  <select
+                    className="form-select form-select-sm fw-semibold"
+                    value={selectedDiseasePondFilter}
+                    onChange={(event) => setSelectedDiseasePondFilter(event.target.value)}
+                    aria-label="Filter disease scans by assigned pond"
+                  >
+                    <option value="all">All Assigned Ponds</option>
+                    {assignedPonds.map((pond) => (
+                      <option key={pond.id} value={pond.pond_name}>
+                        {pond.pond_name}
+                      </option>
+                    ))}
+                  </select>
+                  <span>{filteredDiseaseScans.length} record(s)</span>
+                </div>
+              </div>
+              {latestDisease ? (
+                <div className="caretaker-insight-card">
+                  {latestDisease.image_path && (
+                    <img src={resolveImageUrl(latestDisease.image_path)} alt="Latest disease scan" />
                   )}
                   <div>
-                    <div className="fw-bold">{diseaseScans[0].disease_name}</div>
-                    <small className="text-muted">Risk: <span className={`badge ${diseaseScans[0].risk_level === 'High' ? 'bg-danger' : 'bg-success'}`}>{diseaseScans[0].risk_level}</span> • Confidence: {diseaseScans[0].confidence_score}%</small>
+                    <div className="fw-bold">{latestDisease.disease_name}</div>
+                    <small className="text-muted">
+                      Risk: <span className={`badge ${latestDisease.risk_level === 'High' ? 'bg-danger' : 'bg-success'}`}>{latestDisease.risk_level}</span> | Confidence: {latestDisease.confidence_score}%
+                    </small>
                   </div>
                 </div>
               ) : (
-                <p className="text-muted mb-0">No disease scans recorded yet.</p>
+                <div className="caretaker-empty-state compact">No disease scans recorded yet.</div>
               )}
             </div>
           </div>
         </div>
 
         <div className="col-md-6">
-          <div className="card border-0 shadow-sm h-100">
+          <div className="card caretaker-panel-card h-100">
             <div className="card-body">
-              <h5 className="fw-bold mb-3">Latest System Alerts</h5>
-              {alerts.length > 0 ? (
-                <div className="p-3 bg-light rounded-3">
-                  <div className="fw-bold text-danger d-flex align-items-center gap-2">
-                    <FaExclamationTriangle /> {alerts[0].title}
+              <div className="caretaker-panel-title">
+                <h5>Latest System Alerts</h5>
+                <span>{alerts.length} active</span>
+              </div>
+              {latestAlert ? (
+                <div className="caretaker-alert-card">
+                  <div className="fw-bold d-flex align-items-center gap-2">
+                    <FaExclamationTriangle /> {latestAlert.title}
                   </div>
-                  <small className="text-muted">{alerts[0].message}</small>
+                  <small className="text-muted">{latestAlert.message}</small>
                 </div>
               ) : (
-                <p className="text-muted mb-0">No active alerts for your ponds.</p>
+                <div className="caretaker-empty-state compact">No active alerts for your ponds.</div>
               )}
             </div>
           </div>
@@ -285,4 +357,3 @@ export default function CaretakerDashboard() {
     </div>
   );
 }
-

@@ -22,6 +22,38 @@ if (!$conn) {
     exit;
 }
 
+function ensureProfileSchema(PDO $conn): void {
+    $columns = $conn->query("SHOW COLUMNS FROM users")->fetchAll(PDO::FETCH_ASSOC);
+    $columnNames = array_column($columns, 'Field');
+
+    if (!in_array('avatar_path', $columnNames, true)) {
+        $conn->exec("ALTER TABLE users ADD COLUMN avatar_path LONGTEXT DEFAULT NULL");
+    } else {
+        $avatarColumn = array_values(array_filter($columns, fn($column) => $column['Field'] === 'avatar_path'))[0] ?? null;
+        if ($avatarColumn && stripos((string)$avatarColumn['Type'], 'text') === false) {
+            $conn->exec("ALTER TABLE users MODIFY COLUMN avatar_path LONGTEXT DEFAULT NULL");
+        }
+    }
+
+    if (!in_array('two_factor_enabled', $columnNames, true)) {
+        $conn->exec("ALTER TABLE users ADD COLUMN two_factor_enabled TINYINT(1) DEFAULT 0");
+    }
+
+    if (!in_array('last_login', $columnNames, true)) {
+        $conn->exec("ALTER TABLE users ADD COLUMN last_login TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
+    }
+
+    if (!in_array('phone', $columnNames, true)) {
+        $conn->exec("ALTER TABLE users ADD COLUMN phone VARCHAR(30) DEFAULT ''");
+    }
+
+    if (!in_array('position', $columnNames, true)) {
+        $conn->exec("ALTER TABLE users ADD COLUMN position VARCHAR(100) DEFAULT 'Pond Caretaker'");
+    }
+}
+
+ensureProfileSchema($conn);
+
 // GET profile
 if ($method === 'GET') {
     $userId = isset($_GET['user_id']) ? (int)$_GET['user_id'] : 0;

@@ -50,7 +50,15 @@ export function AuthProvider({ children }) {
     window.location.href = '/login';
   };
 
-  return <AuthContext.Provider value={{ user, loading, login, logout }}>{children}</AuthContext.Provider>;
+  const updateUser = (updates) => {
+    setUser((current) => {
+      const nextUser = { ...(current || {}), ...(updates || {}) };
+      localStorage.setItem('shrim_user', JSON.stringify(nextUser));
+      return nextUser;
+    });
+  };
+
+  return <AuthContext.Provider value={{ user, loading, login, logout, updateUser }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
