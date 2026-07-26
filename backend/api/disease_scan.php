@@ -93,6 +93,9 @@ function ensureDiseaseReportsSchema($conn) {
             risk_level VARCHAR(20) DEFAULT 'Low',
             recommendation TEXT,
             status VARCHAR(20) DEFAULT 'Pending',
+            model_used VARCHAR(100) DEFAULT NULL,
+            health_status VARCHAR(50) DEFAULT NULL,
+            description TEXT,
             image_path VARCHAR(255),
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             INDEX idx_disease_risk (risk_level),
@@ -105,27 +108,35 @@ function ensureDiseaseReportsSchema($conn) {
         'user_id' => "ALTER TABLE disease_reports ADD COLUMN user_id INT DEFAULT NULL AFTER id",
         'caretaker_name' => "ALTER TABLE disease_reports ADD COLUMN caretaker_name VARCHAR(150) DEFAULT NULL AFTER user_id",
         'pond_name' => "ALTER TABLE disease_reports ADD COLUMN pond_name VARCHAR(150) DEFAULT NULL AFTER caretaker_name",
+        'model_used' => "ALTER TABLE disease_reports ADD COLUMN model_used VARCHAR(100) DEFAULT NULL AFTER status",
+        'health_status' => "ALTER TABLE disease_reports ADD COLUMN health_status VARCHAR(50) DEFAULT NULL AFTER model_used",
+        'description' => "ALTER TABLE disease_reports ADD COLUMN description TEXT AFTER health_status",
     ];
 
     foreach ($alterations as $column => $sql) {
         if (!in_array($column, $columns, true)) {
-            $conn->exec($sql);
+            try {
+                $conn->exec($sql);
+            } catch (Exception $e) {}
         }
     }
 }
 
 ensureDiseaseReportsSchema($conn);
 
-$diseaseName = $prediction['disease_name'] ?? 'Unknown Disease';
-$confidenceScore = isset($prediction['confidence_score']) ? (float)$prediction['confidence_score'] : 0;
+$diseaseName = $prediction['prediction'] ?? $prediction['disease_name'] ?? 'Unknown Disease';
+$confidenceScore = isset($prediction['confidence_score']) ? (float)$prediction['confidence_score'] : (isset($prediction['confidence']) ? (float)$prediction['confidence'] : 0);
 $riskLevel = $prediction['risk_level'] ?? 'Low';
 $recommendation = $prediction['recommendation'] ?? 'Monitor closely.';
 $status = $_POST['status'] ?? 'Pending';
+$modelUsed = $prediction['model_used'] ?? 'Desktop/Shrimp Trained Model';
+$healthStatus = $prediction['status'] ?? ($riskLevel === 'Low' ? 'Healthy' : 'Diseased');
+$description = $prediction['description'] ?? "Shrimp scan evaluated with {$confidenceScore}% confidence.";
 $userId = isset($_POST['user_id']) && is_numeric($_POST['user_id']) ? (int)$_POST['user_id'] : null;
 $caretakerName = $_POST['caretaker_name'] ?? 'Caretaker';
 $pondName = $_POST['pond_name'] ?? 'Assigned Pond';
 
-$stmt = $conn->prepare('INSERT INTO disease_reports (user_id, caretaker_name, pond_name, disease_name, confidence_score, risk_level, recommendation, status, image_path, created_at) VALUES (:user_id, :caretaker_name, :pond_name, :disease_name, :confidence_score, :risk_level, :recommendation, :status, :image_path, NOW())');
+$stmt = $conn->prepare('INSERT INTO disease_reports (user_id, caretaker_name, pond_name, disease_name, confidence_score, risk_level, recommendation, status, model_used, health_status, description, image_path, created_at) VALUES (:user_id, :caretaker_name, :pond_name, :disease_name, :confidence_score, :risk_level, :recommendation, :status, :model_used, :health_status, :description, :image_path, NOW())');
 $stmt->execute([
     ':user_id' => $userId,
     ':caretaker_name' => $caretakerName,
@@ -135,11 +146,14 @@ $stmt->execute([
     ':risk_level' => $riskLevel,
     ':recommendation' => $recommendation,
     ':status' => $status,
+    ':model_used' => $modelUsed,
+    ':health_status' => $healthStatus,
+    ':description' => $description,
     ':image_path' => $imagePath
 ]);
 
 $reportId = $conn->lastInsertId();
-$notifMsg = "{$caretakerName} scanned for disease: {$diseaseName} with {$confidenceScore}% confidence ({$riskLevel} Risk).";
+$notifMsg = "{$caretakerName} scanned for disease: {$diseaseName} ({$healthStatus}) using {$modelUsed} with {$confidenceScore}% confidence.";
 createNotification($conn, 'Disease Scan Submitted', $notifMsg, $caretakerName, 'disease_scan', $pondName, $userId, $reportId);
 
 echo json_encode([
@@ -153,6 +167,9 @@ echo json_encode([
         'risk_level' => $riskLevel,
         'recommendation' => $recommendation,
         'status' => $status,
+        'model_used' => $modelUsed,
+        'health_status' => $healthStatus,
+        'description' => $description,
         'user_id' => $userId,
         'caretaker_name' => $caretakerName,
         'pond_name' => $pondName,
