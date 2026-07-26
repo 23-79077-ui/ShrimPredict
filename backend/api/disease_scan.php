@@ -49,11 +49,13 @@ $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 curl_close($curl);
 
 if ($aiResponse === false || $httpCode >= 400) {
+    $parsedAi = $aiResponse ? json_decode($aiResponse, true) : null;
+    $errorMsg = $parsedAi['message'] ?? ($curlError ?: 'AI disease model is unavailable. Start the Flask model API after training.');
     http_response_code($httpCode >= 400 ? $httpCode : 503);
     echo json_encode([
         'success' => false,
-        'message' => $curlError ?: 'AI disease model is unavailable. Start the Flask model API after training.',
-        'ai_response' => $aiResponse ? json_decode($aiResponse, true) : null
+        'message' => $errorMsg,
+        'ai_response' => $parsedAi
     ]);
     exit;
 }

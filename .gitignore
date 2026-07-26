@@ -10,3 +10,12 @@ data/
 # Ignore large binary blobs but allow the desktop shrimp model weights
 *.bin
 !ml/artifacts/desktop_shrimp/weights.bin
+
+scratch/
+backend/uploads/disease_scans/*
+!backend/uploads/disease_scans/.gitkeep
+backend/uploads/reports/*
+!backend/uploads/reports/.gitkeep
+__pycache__/
+*.pyc
+
