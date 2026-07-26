@@ -103,7 +103,40 @@ def predict_endpoint():
         desktop_ready = is_desktop_model_ready()
 
         if not keras_ready and not forest_ready and not desktop_ready:
-            return jsonify({"success": False, "message": "No trained AI disease model artifact is available."}), 503
+            missing_models = []
+            desktop_model_dir = str(Path(__file__).parent.parent / "artifacts" / "desktop_shrimp")
+            missing_models.append({
+                "model": "Desktop/Shrimp Teachable Machine Model",
+                "expected_files": ["model.json", "weights.bin", "metadata.json"],
+                "expected_location": desktop_model_dir,
+                "status": "model.json: " + ("found" if (Path(desktop_model_dir) / "model.json").exists() else "MISSING")
+                         + ", weights.bin: " + ("found" if (Path(desktop_model_dir) / "weights.bin").exists() else "MISSING"),
+            })
+            missing_models.append({
+                "model": "Keras EfficientNet Transfer Learning Model",
+                "expected_files": ["best_model.keras", "labels.json"],
+                "expected_location": str(MODEL_DIR),
+                "status": "MISSING — run training first (see README.md)",
+            })
+            missing_models.append({
+                "model": "Random Forest Fallback Model",
+                "expected_files": ["wssv-forest-model.json"],
+                "expected_location": str(FOREST_MODEL_PATH),
+                "status": "found" if FOREST_MODEL_PATH.exists() else "MISSING",
+            })
+            return jsonify({
+                "success": False,
+                "message": "No trained AI disease model is available. The model files may be missing after cloning.",
+                "error": "MODEL_NOT_FOUND",
+                "missing_models": missing_models,
+                "how_to_fix": [
+                    "1. Ensure you pulled the latest code: git pull origin main",
+                    "2. The Desktop/Shrimp model should be in ml/artifacts/desktop_shrimp/ (model.json + weights.bin).",
+                    "3. If files are missing, ask the repository owner to commit the trained model.",
+                    "4. Alternatively, train a new model: see README.md section 'Train The Real WSSV Model'.",
+                    "5. After obtaining model files, restart the Flask API.",
+                ],
+            }), 503
 
         model_results = []
 

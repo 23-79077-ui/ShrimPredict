@@ -1,0 +1,152 @@
+{
+  "model_type": "trained_mlp_fallback",
+  "model_name": "fine_tuned_black_gill_v2",
+  "version": "2.0.0",
+  "labels": [
+    "Healthy",
+    "Black_Gill",
+    "White_Spot_Syndrome_Virus"
+  ],
+  "image_size": 224,
+  "preprocessing": "MobileNet [-1.0, 1.0] range: (pixel / 127.5) - 1.0",
+  "n_features": 170,
+  "class_weights": {
+    "0": 1.271,
+    "1": 0.746,
+    "2": 4.95
+  },
+  "dataset_before": {
+    "Black_Gill": 388,
+    "Healthy": 1484,
+    "White_Spot_Syndrome_Virus": 381,
+    "White_Spot_Syndrome_Virus_and_Black_Gill": 409
+  },
+  "dataset_after": {
+    "Healthy": 1484,
+    "Black_Gill": 3793,
+    "White_Spot_Syndrome_Virus": 381
+  },
+  "augmented_images_added": 2996,
+  "duplicates_removed": 3338,
+  "metrics_baseline": {
+    "accuracy": 85.18,
+    "per_class": {
+      "Healthy": {
+        "precision": 93.69,
+        "recall": 94.95,
+        "f1": 94.31,
+        "support": 297
+      },
+      "Black_Gill": {
+        "precision": 73.41,
+        "recall": 79.38,
+        "f1": 76.28,
+        "support": 160
+      },
+      "White_Spot_Syndrome_Virus": {
+        "precision": 76.27,
+        "recall": 59.21,
+        "f1": 66.67,
+        "support": 76
+      }
+    },
+    "confusion_matrix": [
+      [
+        282,
+        15,
+        0
+      ],
+      [
+        19,
+        127,
+        14
+      ],
+      [
+        0,
+        31,
+        45
+      ]
+    ]
+  },
+  "metrics_finetuned": {
+    "accuracy": 94.17,
+    "per_class": {
+      "Healthy": {
+        "precision": 95.68,
+        "recall": 96.97,
+        "f1": 96.32,
+        "support": 297
+      },
+      "Black_Gill": {
+        "precision": 95.81,
+        "recall": 96.31,
+        "f1": 96.06,
+        "support": 759
+      },
+      "White_Spot_Syndrome_Virus": {
+        "precision": 69.12,
+        "recall": 61.84,
+        "f1": 65.28,
+        "support": 76
+      }
+    },
+    "confusion_matrix": [
+      [
+        288,
+        5,
+        4
+      ],
+      [
+        11,
+        731,
+        17
+      ],
+      [
+        2,
+        27,
+        47
+      ]
+    ]
+  },
+  "metrics_on_original_data": {
+    "accuracy": 94.97,
+    "per_class": {
+      "Healthy": {
+        "precision": 98.0,
+        "recall": 98.92,
+        "f1": 98.46,
+        "support": 1484
+      },
+      "Black_Gill": {
+        "precision": 91.78,
+        "recall": 92.47,
+        "f1": 92.12,
+        "support": 797
+      },
+      "White_Spot_Syndrome_Virus": {
+        "precision": 89.47,
+        "recall": 84.78,
+        "f1": 87.06,
+        "support": 381
+      }
+    },
+    "confusion_matrix": [
+      [
+        1468,
+        11,
+        5
+      ],
+      [
+        27,
+        737,
+        33
+      ],
+      [
+        3,
+        55,
+        323
+      ]
+    ]
+  },
+  "threshold": 0.5
+}

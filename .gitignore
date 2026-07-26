@@ -2,7 +2,11 @@ frontend/node_modules/
 .venv/
 .venv311/
 ml/artifacts/
+!ml/artifacts/desktop_shrimp/
+!ml/artifacts/desktop_shrimp/**
 data/
 *.keras
 *.h5
+# Ignore large binary blobs but allow the desktop shrimp model weights
 *.bin
+!ml/artifacts/desktop_shrimp/weights.bin

@@ -1,13 +1,13 @@
 const path = require('path');
 const fs = require('fs');
 
-// Resolve tfjs and sharp from Desktop server node_modules
-const customNodeModules = 'C:/Users/HP/Desktop/Shrimp/Shrimp/server/node_modules';
+// Resolve tfjs and sharp — try normal require first, then project-local node_modules
+const projectNodeModules = path.resolve(__dirname, 'node_modules');
 const resolveModule = (name) => {
   try {
     return require(name);
   } catch (err) {
-    return require(require.resolve(name, { paths: [customNodeModules] }));
+    return require(require.resolve(name, { paths: [projectNodeModules] }));
   }
 };
 
