@@ -7,6 +7,7 @@ import numpy as np
 from PIL import Image
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, precision_score, recall_score, f1_score
+from scipy.ndimage import gaussian_filter
 
 from train_wssv_lightweight import (
     NEGATIVE_CLASSES,
@@ -44,10 +45,14 @@ def image_features(image_path: Path):
     punctate_spots = (spot_contrast > 22.0) & (brightness > 160) & (sat < 0.28)
     punctate_spot_ratio = float(punctate_spots.mean())
 
+    broad_shell_spots = (spot_contrast > 10.0) & (brightness > 135) & (sat < 0.45)
+    broad_shell_spot_ratio = float(broad_shell_spots.mean())
+
     uniform_bright = (brightness > 205) & (sat < 0.12)
     uniform_bright_ratio = float(uniform_bright.mean())
 
     shrimp_pigment_ratio = float(((sat >= 0.15) & (sat <= 0.70) & (brightness >= 40) & (brightness <= 220)).mean())
+    diagnostic_domain_ratio = float(((sat >= 0.18) & (sat <= 0.78) & (brightness >= 35) & (brightness <= 210)).mean())
 
     features = [
         brightness.mean() / 255.0,
@@ -60,6 +65,8 @@ def image_features(image_path: Path):
         ((r > 125) & (r > g * 1.12) & (r > b * 1.12)).mean(),
         shrimp_pigment_ratio,
         float(spot_contrast.std() / 255.0),
+        broad_shell_spot_ratio,
+        diagnostic_domain_ratio,
     ]
 
     for channel in range(3):
@@ -74,6 +81,7 @@ def image_features(image_path: Path):
             patch_contrast = spot_contrast[gy * cell : (gy + 1) * cell, gx * cell : (gx + 1) * cell]
             features.append(patch_brightness.mean() / 255.0)
             features.append(((patch_contrast > 22.0) & (patch_brightness > 160) & (patch_sat < 0.28)).mean())
+            features.append(((patch_contrast > 10.0) & (patch_brightness > 135) & (patch_sat < 0.45)).mean())
 
     return np.asarray(features, dtype=np.float32)
 

@@ -174,16 +174,19 @@ function extractForestFeatures(image, size = 96, gridSize = 6) {
   const pixelCount = size * size;
   const brightness = new Array(pixelCount);
   const saturationValues = new Array(pixelCount);
+  const redValues = new Array(pixelCount);
+  const greenValues = new Array(pixelCount);
+  const blueValues = new Array(pixelCount);
   const channelBins = Array.from({ length: 3 }, () => new Array(12).fill(0));
   const features = [];
   let brightnessSum = 0;
   let brightnessSquaredSum = 0;
   let saturationSum = 0;
   let saturationSquaredSum = 0;
-  let whiteSpotCount = 0;
-  let veryWhiteCount = 0;
   let darkCount = 0;
   let redCount = 0;
+  let pigmentCount = 0;
+  let diagnosticDomainCount = 0;
 
   for (let pixel = 0; pixel < pixelCount; pixel += 1) {
     const index = pixel * 4;
@@ -195,15 +198,18 @@ function extractForestFeatures(image, size = 96, gridSize = 6) {
 
     brightness[pixel] = value;
     saturationValues[pixel] = sat;
+    redValues[pixel] = r;
+    greenValues[pixel] = g;
+    blueValues[pixel] = b;
     brightnessSum += value;
     brightnessSquaredSum += value * value;
     saturationSum += sat;
     saturationSquaredSum += sat * sat;
 
-    if (value > 205 && value < 245 && sat < 0.2) whiteSpotCount += 1;
-    if (value >= 245 && sat < 0.12) veryWhiteCount += 1;
     if (value < 75) darkCount += 1;
     if (r > 125 && r > g * 1.12 && r > b * 1.12) redCount += 1;
+    if (sat >= 0.15 && sat <= 0.70 && value >= 40 && value <= 220) pigmentCount += 1;
+    if (sat >= 0.18 && sat <= 0.78 && value >= 35 && value <= 210) diagnosticDomainCount += 1;
 
     [r, g, b].forEach((channelValue, channelIndex) => {
       const bin = Math.min(11, Math.floor(channelValue / 21.25));
@@ -211,17 +217,54 @@ function extractForestFeatures(image, size = 96, gridSize = 6) {
     });
   }
 
+  const localSmooth = new Array(pixelCount).fill(0);
+  const radius = 2;
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      let sum = 0;
+      let count = 0;
+      for (let dy = -radius; dy <= radius; dy += 1) {
+        for (let dx = -radius; dx <= radius; dx += 1) {
+          const yy = Math.min(size - 1, Math.max(0, y + dy));
+          const xx = Math.min(size - 1, Math.max(0, x + dx));
+          sum += brightness[yy * size + xx];
+          count += 1;
+        }
+      }
+      localSmooth[y * size + x] = sum / count;
+    }
+  }
+
+  let punctateSpotCount = 0;
+  let broadShellSpotCount = 0;
+  let contrastSum = 0;
+  let contrastSquaredSum = 0;
+  for (let pixel = 0; pixel < pixelCount; pixel += 1) {
+    const contrast = brightness[pixel] - localSmooth[pixel];
+    const sat = saturationValues[pixel];
+    const value = brightness[pixel];
+    contrastSum += contrast;
+    contrastSquaredSum += contrast * contrast;
+    if (contrast > 22 && value > 160 && sat < 0.28) punctateSpotCount += 1;
+    if (contrast > 10 && value > 135 && sat < 0.45) broadShellSpotCount += 1;
+  }
+
   const brightnessMean = brightnessSum / pixelCount;
   const saturationMean = saturationSum / pixelCount;
+  const contrastMean = contrastSum / pixelCount;
   features.push(
     brightnessMean / 255,
     Math.sqrt(Math.max(0, brightnessSquaredSum / pixelCount - brightnessMean * brightnessMean)) / 255,
     saturationMean,
     Math.sqrt(Math.max(0, saturationSquaredSum / pixelCount - saturationMean * saturationMean)),
-    whiteSpotCount / pixelCount,
-    veryWhiteCount / pixelCount,
+    punctateSpotCount / pixelCount,
+    ((brightness.filter((value, index) => value > 205 && saturationValues[index] < 0.12).length) / pixelCount),
     darkCount / pixelCount,
-    redCount / pixelCount
+    redCount / pixelCount,
+    pigmentCount / pixelCount,
+    Math.sqrt(Math.max(0, contrastSquaredSum / pixelCount - contrastMean * contrastMean)) / 255,
+    broadShellSpotCount / pixelCount,
+    diagnosticDomainCount / pixelCount
   );
 
   channelBins.forEach((bins) => {
@@ -233,6 +276,7 @@ function extractForestFeatures(image, size = 96, gridSize = 6) {
     for (let gx = 0; gx < gridSize; gx += 1) {
       let cellBrightnessSum = 0;
       let cellWhiteSpotCount = 0;
+      let cellBroadSpotCount = 0;
       let cellPixels = 0;
 
       for (let y = gy * cell; y < (gy + 1) * cell; y += 1) {
@@ -240,14 +284,17 @@ function extractForestFeatures(image, size = 96, gridSize = 6) {
           const pixel = y * size + x;
           const value = brightness[pixel];
           const sat = saturationValues[pixel];
+          const contrast = value - localSmooth[pixel];
           cellBrightnessSum += value;
           cellPixels += 1;
-          if (value > 205 && value < 245 && sat < 0.2) cellWhiteSpotCount += 1;
+          if (contrast > 22 && value > 160 && sat < 0.28) cellWhiteSpotCount += 1;
+          if (contrast > 10 && value > 135 && sat < 0.45) cellBroadSpotCount += 1;
         }
       }
 
       features.push(cellBrightnessSum / cellPixels / 255);
       features.push(cellWhiteSpotCount / cellPixels);
+      features.push(cellBroadSpotCount / cellPixels);
     }
   }
 
@@ -269,12 +316,31 @@ function classifyWithForestModel(model, image) {
   const features = extractForestFeatures(image, model.imageSize || 96, model.gridSize || 6);
   const probability = model.trees.reduce((sum, tree) => sum + runForestTree(tree, features), 0) / model.trees.length;
   const highRiskThreshold = model.threshold || 0.48;
-  const whiteSpotRatio = features[4] || 0;
-  const veryWhiteRatio = features[5] || 0;
-  const hasLocalizedWhiteSpotPattern = whiteSpotRatio >= 0.018 && whiteSpotRatio <= 0.14 && veryWhiteRatio < 0.22;
+  const punctateSpotRatio = features[4] || 0;
+  const uniformBrightRatio = features[5] || 0;
+  const shrimpPigmentRatio = features[8] || 0;
+  const spotContrastStd = features[9] || 0;
+  const broadShellSpotRatio = features[10] || 0;
+  const diagnosticDomainRatio = features[11] || 0;
+  const hasDiagnosticShrimpCloseup = diagnosticDomainRatio >= 0.30 || shrimpPigmentRatio >= 0.30;
+  const hasLocalizedWhiteSpotPattern = (
+    (punctateSpotRatio >= 0.018 && punctateSpotRatio <= 0.14)
+    || broadShellSpotRatio >= 0.055
+  ) && uniformBrightRatio < 0.30;
 
-  if (hasLocalizedWhiteSpotPattern && probability >= 0.32) {
-    const boostedProbability = Math.min(0.92, Math.max(probability, 0.58 + whiteSpotRatio * 2.8));
+  if (!hasDiagnosticShrimpCloseup && hasLocalizedWhiteSpotPattern) {
+    return {
+      disease_name: 'Needs Review',
+      confidence_score: 55,
+      wssv_probability: Math.round(Math.max(probability, 0.45) * 100),
+      risk_level: 'Medium',
+      recommendation: 'Image is not a clear diagnostic shrimp close-up. Retake a close-up photo of the shell under good lighting before confirming WSSV.',
+      source: 'trained-wssv-forest-model + image-quality-check'
+    };
+  }
+
+  if (hasDiagnosticShrimpCloseup && hasLocalizedWhiteSpotPattern && probability >= 0.32 && spotContrastStd >= 0.052) {
+    const boostedProbability = Math.min(0.92, Math.max(probability, 0.58 + Math.max(punctateSpotRatio * 2.8, broadShellSpotRatio * 1.8)));
     return classifyDiseaseFromWssvProbability(boostedProbability, 0.48, 0.36, 'trained-wssv-forest-model + white-spot-check');
   }
 

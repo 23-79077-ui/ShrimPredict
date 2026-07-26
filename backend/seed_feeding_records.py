@@ -39,31 +39,31 @@ def seed_feeding_data():
 
         records_to_insert = [
             # Today's Feeding Records
-            (1, 15.0, 'Tateh - Starter', '06:00 AM', 'Starter', 1, 'Vitamin C', str(today), 'Morning feeding complete', 'Juan Dela Cruz'),
+            (1, 15.0, 'Tateh - Starter', '06:00 AM', 'Starter', 1, 'Sanolife PRO-2', str(today), 'Morning feeding complete', 'Juan Dela Cruz'),
             (1, 15.0, 'Tateh - Starter', '11:00 AM', 'Starter', 0, 'None', str(today), 'Noon feeding done', 'Juan Dela Cruz'),
-            (1, 15.0, 'Tateh - Starter', '04:00 PM', 'Starter', 1, 'Multi-Vit', str(today), 'Afternoon feeding done', 'Juan Dela Cruz'),
+            (1, 15.0, 'Tateh - Starter', '04:00 PM', 'Starter', 1, 'Sano Top-S', str(today), 'Afternoon feeding done', 'Juan Dela Cruz'),
 
-            (2, 18.0, 'Tateh - Grower', '06:30 AM', 'Grower', 1, 'Amino Boost', str(today), 'High appetite observed', 'Maria Santos'),
+            (2, 18.0, 'Tateh - Grower', '06:30 AM', 'Grower', 1, 'Sanolife PRO-2', str(today), 'High appetite observed', 'Maria Santos'),
             (2, 20.0, 'Tateh - Grower', '11:30 AM', 'Grower', 0, 'None', str(today), 'Heavy feeding', 'Maria Santos'),
-            (2, 20.0, 'Tateh - Grower', '04:30 PM', 'Grower', 1, 'Vitamin C', str(today), 'Slight overfeeding warning', 'Maria Santos'),
+            (2, 20.0, 'Tateh - Grower', '04:30 PM', 'Grower', 1, 'Sano Top-S', str(today), 'Slight overfeeding warning', 'Maria Santos'),
 
             (3, 13.0, 'Tateh - Starter', '07:00 AM', 'Starter', 0, 'None', str(today), 'Normal feeding', 'Pedro Penduko'),
-            (3, 13.0, 'Tateh - Starter', '12:00 PM', 'Starter', 1, 'Vitamin C', str(today), 'Good tray clearance', 'Pedro Penduko'),
+            (3, 13.0, 'Tateh - Starter', '12:00 PM', 'Starter', 1, 'Sanolife PRO-2', str(today), 'Good tray clearance', 'Pedro Penduko'),
             (3, 14.0, 'Tateh - Starter', '05:00 PM', 'Starter', 0, 'None', str(today), 'Evening ration complete', 'Pedro Penduko'),
 
             (4, 9.0, 'Tateh - Grower', '07:30 AM', 'Grower', 0, 'None', str(today), 'Lower feed response', 'Elena Cruz'),
             (4, 9.0, 'Tateh - Grower', '12:30 PM', 'Grower', 0, 'None', str(today), 'Underfeeding alert', 'Elena Cruz'),
-            (4, 10.0, 'Tateh - Grower', '05:30 PM', 'Grower', 1, 'Probiotics', str(today), 'Probiotics added', 'Elena Cruz'),
+            (4, 10.0, 'Tateh - Grower', '05:30 PM', 'Grower', 1, 'Sano Top-S', str(today), 'Sano Top-S added', 'Elena Cruz'),
 
             # Yesterday's Records
-            (1, 45.0, 'Tateh - Starter', '06:00 AM', 'Starter', 1, 'Vitamin C', str(yesterday), 'Full day feed ration', 'Juan Dela Cruz'),
+            (1, 45.0, 'Tateh - Starter', '06:00 AM', 'Starter', 1, 'Sanolife PRO-2', str(yesterday), 'Full day feed ration', 'Juan Dela Cruz'),
             (2, 52.0, 'Tateh - Grower', '06:30 AM', 'Grower', 0, 'None', str(yesterday), 'Full day feed ration', 'Maria Santos'),
-            (3, 39.0, 'Tateh - Starter', '07:00 AM', 'Starter', 1, 'Multi-Vit', str(yesterday), 'Full day feed ration', 'Pedro Penduko'),
+            (3, 39.0, 'Tateh - Starter', '07:00 AM', 'Starter', 1, 'Sano Top-S', str(yesterday), 'Full day feed ration', 'Pedro Penduko'),
 
             # Earlier Records
-            (1, 44.0, 'Tateh - Starter', '06:00 AM', 'Starter', 1, 'Vitamin C', str(two_days_ago), 'Normal log', 'Juan Dela Cruz'),
+            (1, 44.0, 'Tateh - Starter', '06:00 AM', 'Starter', 1, 'Sanolife PRO-2', str(two_days_ago), 'Normal log', 'Juan Dela Cruz'),
             (2, 48.0, 'Tateh - Grower', '06:30 AM', 'Grower', 0, 'None', str(two_days_ago), 'Normal log', 'Maria Santos'),
-            (3, 40.0, 'Tateh - Starter', '07:00 AM', 'Starter', 1, 'Multi-Vit', str(three_days_ago), 'Normal log', 'Pedro Penduko'),
+            (3, 40.0, 'Tateh - Starter', '07:00 AM', 'Starter', 1, 'Sano Top-S', str(three_days_ago), 'Normal log', 'Pedro Penduko'),
         ]
 
         query = """

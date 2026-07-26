@@ -5,7 +5,7 @@
 ## ⬜ Step 3: Rewrite MyPondPage.jsx - Add per-pond feeding log with:
    - 3 time slots (6:00 AM, 12:00 PM, 6:00 PM)
    - Amount in kg
-   - Product code dropdown (PO1-PO5) from Tateh brand
+   - Product code dropdown (Starter/Grower) from Tateh brand
    - Vitamin checkbox
    - Submit & history display
 ## ⬜ Step 4: Update FeedingHistoryPage.jsx - Show real feeding data with new fields

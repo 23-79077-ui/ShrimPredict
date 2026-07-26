@@ -2,10 +2,31 @@
   "task": "binary_wssv_detection",
   "primaryDisease": "White Spot Syndrome Virus",
   "labels": ["non_wssv", "wssv"],
-  "positiveFolders": ["WSSV", "BG_WSSV"],
+  "positiveFolders": ["WSSV", "BG_WSSV", "WSSV_BG"],
   "negativeFolders": ["Healthy", "BG"],
   "thresholds": {
-    "highRisk": 0.6,
+    "highRisk": 0.59,
     "mediumRisk": 0.4
+  },
+  "trainingSource": "prepared_manifest_plus_bg_hard_negatives",
+  "curation": {
+    "acceptedImages": 3687,
+    "duplicatesRemoved": 548,
+    "unsupportedLabelsExcluded": 396,
+    "binaryTrainingLabels": {
+      "Healthy": 1672,
+      "White Spot Syndrome Virus (WSSV)": 2015
+    },
+    "balancedTrainingImages": {
+      "Healthy": 1672,
+      "White Spot Syndrome Virus (WSSV)": 1922
+    }
+  },
+  "testMetrics": {
+    "accuracy": 0.9763157894736842,
+    "precision": 0.9842105263157894,
+    "recall": 0.9689119170984456,
+    "f1": 0.9765013054830287,
+    "falsePositiveRate": 0.016042780748663103
   }
 }

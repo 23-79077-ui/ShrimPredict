@@ -30,14 +30,18 @@ def _features(image_path: Path, image_size: int, grid_size: int) -> np.ndarray:
     local_smooth = gaussian_filter(brightness, sigma=2.0)
     spot_contrast = brightness - local_smooth
 
-    # Punctate white spot definition: local contrast (> 25.0), brightness (> 165), low saturation (< 0.20)
-    punctate_spots = (spot_contrast > 25.0) & (brightness > 165) & (sat < 0.20)
+    # Keep these thresholds aligned with ml/train_wssv_forest_model.py.
+    punctate_spots = (spot_contrast > 22.0) & (brightness > 160) & (sat < 0.28)
     punctate_spot_ratio = float(punctate_spots.mean())
+
+    broad_shell_spots = (spot_contrast > 10.0) & (brightness > 135) & (sat < 0.45)
+    broad_shell_spot_ratio = float(broad_shell_spots.mean())
 
     uniform_bright = (brightness > 205) & (sat < 0.10)
     uniform_bright_ratio = float(uniform_bright.mean())
 
     shrimp_pigment_ratio = float(((sat >= 0.15) & (sat <= 0.70) & (brightness >= 40) & (brightness <= 220)).mean())
+    diagnostic_domain_ratio = float(((sat >= 0.18) & (sat <= 0.78) & (brightness >= 35) & (brightness <= 210)).mean())
 
     values = [
         brightness.mean() / 255.0,
@@ -50,6 +54,8 @@ def _features(image_path: Path, image_size: int, grid_size: int) -> np.ndarray:
         ((r > 125) & (r > g * 1.12) & (r > b * 1.12)).mean(),
         shrimp_pigment_ratio,
         float(spot_contrast.std() / 255.0),
+        broad_shell_spot_ratio,
+        diagnostic_domain_ratio,
     ]
 
     for channel in range(3):
@@ -63,7 +69,8 @@ def _features(image_path: Path, image_size: int, grid_size: int) -> np.ndarray:
             patch_sat = sat[gy * cell : (gy + 1) * cell, gx * cell : (gx + 1) * cell]
             patch_contrast = spot_contrast[gy * cell : (gy + 1) * cell, gx * cell : (gx + 1) * cell]
             values.append(patch_brightness.mean() / 255.0)
-            values.append(((patch_contrast > 25.0) & (patch_brightness > 165) & (patch_sat < 0.20)).mean())
+            values.append(((patch_contrast > 22.0) & (patch_brightness > 160) & (patch_sat < 0.28)).mean())
+            values.append(((patch_contrast > 10.0) & (patch_brightness > 135) & (patch_sat < 0.45)).mean())
 
     return np.asarray(values, dtype=np.float32)
 
@@ -118,8 +125,8 @@ def predict_with_forest(image_path: Path, model_path: Path = FOREST_MODEL_PATH) 
     image_size = int(model.get("imageSize", 96))
     grid_size = int(model.get("gridSize", 6))
 
-    positive_threshold = 0.68
-    review_threshold = 0.54
+    positive_threshold = float(model.get("threshold", 0.62))
+    review_threshold = float(model.get("reviewLowerThreshold", max(0.38, positive_threshold - 0.22)))
 
     features = _features(image_path, image_size, grid_size)
 
@@ -127,6 +134,8 @@ def predict_with_forest(image_path: Path, model_path: Path = FOREST_MODEL_PATH) 
     uniform_bright_ratio = float(features[5])
     shrimp_pigment_ratio = float(features[8])
     spot_contrast_std = float(features[9])
+    broad_shell_spot_ratio = float(features[10])
+    diagnostic_domain_ratio = float(features[11])
 
     base_prob = sum(_run_tree(tree, features) for tree in model["trees"]) / len(model["trees"])
 
@@ -134,15 +143,27 @@ def predict_with_forest(image_path: Path, model_path: Path = FOREST_MODEL_PATH) 
     if uniform_bright_ratio > 0.30 and punctate_spot_ratio < 0.010:
         wssv_probability = min(base_prob, 0.10)
 
-    # 2. Healthy shrimp photo (without dense WSSV white spot lesion clusters) -> Healthy (Low Risk)
-    elif punctate_spot_ratio < 0.08:
+    # 1b. Product/plated/background-heavy photos are not reliable diagnostic close-ups.
+    elif diagnostic_domain_ratio < 0.30 and shrimp_pigment_ratio < 0.30:
+        wssv_probability = max(min(base_prob, review_threshold + 0.08), review_threshold)
+
+    # 2. Weak visual evidence -> Healthy unless the trained model strongly disagrees.
+    elif punctate_spot_ratio < 0.018 and broad_shell_spot_ratio < 0.050 and spot_contrast_std < 0.055:
         wssv_probability = min(base_prob, 0.20)
 
     # 3. True WSSV white spot lesions on carapace -> White Spot Syndrome Virus (WSSV)
-    elif punctate_spot_ratio >= 0.08 and spot_contrast_std >= 0.09:
+    elif punctate_spot_ratio >= 0.06 and spot_contrast_std >= 0.08 and diagnostic_domain_ratio >= 0.30:
         wssv_probability = max(base_prob, 0.82)
 
-    # 4. Standard baseline
+    # 3b. Broad pale WSSV lesions on darker/blue shell.
+    elif broad_shell_spot_ratio >= 0.055 and spot_contrast_std >= 0.052 and diagnostic_domain_ratio >= 0.30:
+        wssv_probability = max(base_prob, 0.78)
+
+    # 4. Suspicious but not dense enough for automatic high-risk confirmation.
+    elif (punctate_spot_ratio >= 0.045 or broad_shell_spot_ratio >= 0.075) and spot_contrast_std >= 0.060:
+        wssv_probability = max(base_prob, review_threshold)
+
+    # 5. Standard baseline
     else:
         wssv_probability = base_prob
 
@@ -169,8 +190,10 @@ def predict_with_forest(image_path: Path, model_path: Path = FOREST_MODEL_PATH) 
         "model_metrics": model.get("metrics", {}),
         "visual_evidence": {
             "punctate_spot_ratio": round(punctate_spot_ratio, 4),
+            "broad_shell_spot_ratio": round(broad_shell_spot_ratio, 4),
             "uniform_bright_ratio": round(uniform_bright_ratio, 4),
             "shrimp_pigment_ratio": round(shrimp_pigment_ratio, 4),
+            "diagnostic_domain_ratio": round(diagnostic_domain_ratio, 4),
             "spot_contrast_std": round(spot_contrast_std, 4),
             "review_threshold": round(review_threshold, 4),
             "positive_threshold": round(positive_threshold, 4),

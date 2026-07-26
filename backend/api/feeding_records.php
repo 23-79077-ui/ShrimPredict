@@ -87,6 +87,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $amountKg = isset($data['amount_kg']) ? (float)$data['amount_kg'] : 0;
     $feedingTime = isset($data['feeding_time']) ? trim((string)$data['feeding_time']) : '';
     $productCode = isset($data['product_code']) ? trim((string)$data['product_code']) : '';
+    $normalizedProduct = strtolower($productCode);
+    if ($normalizedProduct === 'starter') {
+        $productCode = 'Starter';
+    } elseif ($normalizedProduct === 'grower') {
+        $productCode = 'Grower';
+    }
     $vitaminName = isset($data['vitamin_name']) ? trim((string)$data['vitamin_name']) : (isset($data['vitamin']) ? trim((string)$data['vitamin']) : 'None');
     if ($vitaminName === '') {
         $vitaminName = 'None';
@@ -103,8 +109,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    // Validate product code (Starter, Grower, or legacy PO1-PO5)
-    $validCodes = ['Starter', 'Grower', 'PO1', 'PO2', 'PO3', 'PO4', 'PO5'];
+    if ($userId <= 0) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'A valid caretaker account is required to save a feeding record.']);
+        exit;
+    }
+
+    try {
+        $userStmt = $conn->prepare('SELECT id, full_name, role, status FROM users WHERE id = :id LIMIT 1');
+        $userStmt->execute([':id' => $userId]);
+        $recordingUser = $userStmt->fetch(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {
+        $recordingUser = null;
+    }
+
+    if (!$recordingUser || $recordingUser['role'] !== 'caretaker') {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Only logged-in caretaker accounts can save feeding records.']);
+        exit;
+    }
+
+    if ($recordedByName === '') {
+        $recordedByName = $recordingUser['full_name'] ?? 'Caretaker';
+    }
+
+    // Tateh feed products accepted by the caretaker feeding log.
+    $validCodes = ['Starter', 'Grower'];
     if (!in_array($productCode, $validCodes, true)) {
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'Product code must be Starter or Grower.']);

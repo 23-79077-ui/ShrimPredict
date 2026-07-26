@@ -4,7 +4,10 @@ import api from '../../services/api';
 import Swal from 'sweetalert2';
 
 const feedingTimes = ['6:00 AM', '9:00 AM', '12:00 PM', '3:00 PM', '6:00 PM'];
-const productCodes = ['Starter', 'Grower'];
+const productCodes = [
+  { code: 'Starter', label: 'Starter' },
+  { code: 'Grower', label: 'Grower' },
+];
 const vitaminOptions = ['None', 'Sanolife PRO-2', 'Sano Top-S'];
 const emptyForm = {
   feedingTime: '6:00 AM',
@@ -141,7 +144,7 @@ export default function MyPondPage() {
                 <div className="d-flex justify-content-between align-items-start mb-3">
                   <div>
                     <h5 className="fw-bold mb-1">{selectedPond.pond_name}</h5>
-                    <small className="text-muted">Feeding brand: Tateh</small>
+                  <small className="text-muted">Feeding brand: Tateh</small>
                   </div>
                   <span className={`badge ${selectedPond.status === 'Healthy' ? 'bg-success' : selectedPond.status === 'Warning' ? 'bg-warning' : 'bg-danger'}`}>
                     {selectedPond.status}
@@ -181,9 +184,9 @@ export default function MyPondPage() {
                 <div className="mb-3">
                   <label className="form-label fw-semibold">Product code</label>
                   <select className="form-select" value={currentForm.productCode} onChange={(e) => handleChange('productCode', e.target.value)}>
-                    {productCodes.map((code) => (
-                      <option key={code} value={code}>
-                        {code} (Tateh)
+                    {productCodes.map((item) => (
+                      <option key={item.code} value={item.code}>
+                        {item.label} (Tateh)
                       </option>
                     ))}
                   </select>
