@@ -253,15 +253,16 @@ export default function AdminDashboard() {
 
   return (
     <div>
-      {/* Sleek Header & Integrated Compact Filter Controls */}
+      {/* Integrated Compact Action & Filter Toolbar */}
       <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-        <div>
-          <h3 className="fw-bold mb-1">Admin Dashboard</h3>
-          <p className="text-muted mb-0">Overview of farm operations, caretaker logs, and pond status.</p>
+        <div className="d-flex align-items-center gap-2">
+          <span className="badge bg-primary bg-opacity-10 text-primary px-3 py-1.5 rounded-pill fw-semibold extra-small">
+            <FaChartBar className="me-1" /> Real-time Farm Monitoring & Analytics
+          </span>
         </div>
 
         {/* Compact Integrated Filter Toolbar (Right Aligned) */}
-        <div className="d-flex align-items-center gap-2 flex-wrap bg-white p-2 rounded-3 shadow-sm border">
+        <div className="d-flex align-items-center gap-2 flex-wrap bg-white p-2.5 rounded-4 shadow-sm border border-secondary border-opacity-25">
           {/* Caretaker Selector */}
           <div className="d-flex align-items-center gap-1">
             <FaUserTie className="text-primary small ms-1" />

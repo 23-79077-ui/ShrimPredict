@@ -44,7 +44,10 @@ export function AuthProvider({ children }) {
 
   const logout = () => {
     localStorage.removeItem('shrim_user');
+    localStorage.removeItem('user');
+    sessionStorage.clear();
     setUser(null);
+    window.location.href = '/login';
   };
 
   return <AuthContext.Provider value={{ user, loading, login, logout }}>{children}</AuthContext.Provider>;

@@ -32,6 +32,7 @@ function ensureNotificationsSchema($conn) {
             ['caretaker_name', "ALTER TABLE notifications ADD COLUMN caretaker_name VARCHAR(150) DEFAULT NULL AFTER message"],
             ['action_type', "ALTER TABLE notifications ADD COLUMN action_type VARCHAR(50) DEFAULT 'general' AFTER caretaker_name"],
             ['pond_name', "ALTER TABLE notifications ADD COLUMN pond_name VARCHAR(100) DEFAULT NULL AFTER action_type"],
+            ['target_id', "ALTER TABLE notifications ADD COLUMN target_id INT DEFAULT NULL AFTER pond_name"],
             ['status', "ALTER TABLE notifications ADD COLUMN status VARCHAR(20) DEFAULT 'active' AFTER is_read"],
         ];
 
@@ -45,13 +46,13 @@ function ensureNotificationsSchema($conn) {
     } catch (Throwable $e) {}
 }
 
-function createNotification($conn, $title, $message, $caretakerName = 'Caretaker', $actionType = 'general', $pondName = '', $userId = null) {
+function createNotification($conn, $title, $message, $caretakerName = 'Caretaker', $actionType = 'general', $pondName = '', $userId = null, $targetId = null) {
     if (!$conn) return false;
     ensureNotificationsSchema($conn);
     try {
         $stmt = $conn->prepare(
-            "INSERT INTO notifications (user_id, title, message, caretaker_name, action_type, pond_name, is_read, status, created_at)
-             VALUES (:user_id, :title, :message, :caretaker_name, :action_type, :pond_name, 0, 'active', NOW())"
+            "INSERT INTO notifications (user_id, title, message, caretaker_name, action_type, pond_name, target_id, is_read, status, created_at)
+             VALUES (:user_id, :title, :message, :caretaker_name, :action_type, :pond_name, :target_id, 0, 'active', NOW())"
         );
         return $stmt->execute([
             ':user_id' => $userId,
@@ -60,6 +61,7 @@ function createNotification($conn, $title, $message, $caretakerName = 'Caretaker
             ':caretaker_name' => $caretakerName,
             ':action_type' => $actionType,
             ':pond_name' => $pondName,
+            ':target_id' => $targetId,
         ]);
     } catch (Throwable $e) {
         error_log("Failed to insert notification: " . $e->getMessage());

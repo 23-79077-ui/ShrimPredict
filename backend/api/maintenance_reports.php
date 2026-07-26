@@ -187,7 +187,7 @@ if ($method === 'POST') {
             // Trigger Admin Notification automatically
             $notifTitle = "New Maintenance Report: {$severityLevel} Severity";
             $notifMsg = "{$caretakerName} reported an issue for {$pondName}: {$specificIssue} ({$problemType}).";
-            createNotification($conn, $notifTitle, $notifMsg, $caretakerName, 'maintenance', $pondName, $userId);
+            createNotification($conn, $notifTitle, $notifMsg, $caretakerName, 'maintenance', $pondName, $userId, $newId);
 
             http_response_code(201);
             echo json_encode([

@@ -444,6 +444,15 @@ p, li, label, span, a {
   max-width: 680px;
 }
 
+.hero-title {
+  color: #ffffff !important;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.hero-copy {
+  color: rgba(255, 255, 255, 0.90) !important;
+}
+
 .hero-subtitle {
   max-width: 620px;
   font-size: 1.05rem;
@@ -789,8 +798,8 @@ button {
 }
 
 .login-hero-side {
-  background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.92));
-  color: var(--text);
+  background: linear-gradient(135deg, #0B2C5F 0%, #10356C 50%, #143F74 100%) !important;
+  color: #ffffff !important;
 }
 
 .login-hero-side .brand {
@@ -1010,6 +1019,27 @@ button {
   background: linear-gradient(180deg, rgba(11,44,95,1), rgba(11,44,95,0.9));
   color: white;
   padding: 2rem 1.5rem;
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
+.dashboard-sidebar::-webkit-scrollbar,
+.layout-aside::-webkit-scrollbar,
+.dashboard-sidebar *::-webkit-scrollbar,
+.layout-aside *::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+}
+
+.dashboard-sidebar::-webkit-scrollbar-button,
+.layout-aside::-webkit-scrollbar-button,
+.dashboard-sidebar *::-webkit-scrollbar-button,
+.layout-aside *::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 .dashboard-sidebar .brand,
@@ -1038,7 +1068,34 @@ button {
 .layout-aside .sidebar-footer,
 .dashboard-sidebar .sidebar-footer {
   margin-top: auto;
+  padding-top: 1.5rem;
+  position: relative;
+  z-index: 105;
+  pointer-events: auto;
 }
+
+.admin-logout,
+.sidebar-footer button {
+  position: relative !important;
+  z-index: 110 !important;
+  cursor: pointer !important;
+  pointer-events: auto !important;
+}
+
+.bg-primary-soft { background: rgba(11, 44, 95, 0.08) !important; }
+.bg-success-soft { background: rgba(31, 181, 103, 0.12) !important; }
+.bg-warning-soft { background: rgba(255, 122, 0, 0.12) !important; }
+.bg-danger-soft { background: rgba(224, 72, 72, 0.12) !important; }
+
+.hover-shadow { transition: all 0.25s ease; }
+.hover-shadow:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 32px rgba(11, 44, 95, 0.08) !important;
+}
+
+.max-w-700 { max-width: 700px; }
+.max-w-600 { max-width: 600px; }
+.tiny { font-size: 0.75rem; }
 
 .dashboard-sidebar .brand,
 .layout-aside .brand {
@@ -2072,5 +2129,149 @@ button {
   .disease-camera-frame {
     width: 100%;
     max-height: 240px;
+  }
+}
+
+.nav-pill-btn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 0.55rem 1.15rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.nav-pill-btn:hover {
+  color: var(--primary);
+  background: rgba(11, 44, 95, 0.06);
+}
+
+.nav-pill-btn.active {
+  background: var(--primary);
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(11, 44, 95, 0.22);
+}
+
+.bg-white-10 { background: rgba(255, 255, 255, 0.10) !important; }
+.bg-white-20 { background: rgba(255, 255, 255, 0.20) !important; }
+.border-white-20 { border-color: rgba(255, 255, 255, 0.20) !important; }
+.max-w-1000 { max-width: 1000px; }
+
+.text-white-90 { color: rgba(255, 255, 255, 0.90) !important; }
+.text-white-80 { color: rgba(255, 255, 255, 0.80) !important; }
+.text-white-75 { color: rgba(255, 255, 255, 0.75) !important; }
+
+/* Highlighted Report Notification Deep Link Pulse */
+.highlighted-report-card {
+  border: 2px solid #0B2C5F !important;
+  box-shadow: 0 0 20px rgba(11, 44, 95, 0.35), 0 0 0 4px rgba(255, 193, 7, 0.45) !important;
+  background-color: rgba(255, 243, 205, 0.45) !important;
+  border-radius: 1rem !important;
+  transition: all 0.4s ease-in-out !important;
+  animation: pulseReportHighlight 2s infinite ease-in-out !important;
+}
+
+@keyframes pulseReportHighlight {
+  0% {
+    box-shadow: 0 0 15px rgba(11, 44, 95, 0.3), 0 0 0 3px rgba(255, 193, 7, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(11, 44, 95, 0.55), 0 0 0 6px rgba(255, 193, 7, 0.85);
+  }
+  100% {
+    box-shadow: 0 0 15px rgba(11, 44, 95, 0.3), 0 0 0 3px rgba(255, 193, 7, 0.5);
+  }
+}
+
+/* ==========================================================================
+   INDEPENDENT SCROLLBAR SYSTEM (SIDEBAR VS MAIN CONTENT PANEL)
+   ========================================================================== */
+
+@media (min-width: 992px) {
+  .app-shell,
+  .admin-shell,
+  .caretaker-shell {
+    height: 100vh !important;
+    max-height: 100vh !important;
+    overflow: hidden !important;
+    display: flex !important;
+  }
+
+  /* Fixed Independent Sidebar (Hidden Scrollbar Track & White Arrow Buttons for Ultra-Clean UI) */
+  .layout-aside,
+  .dashboard-sidebar,
+  aside {
+    height: 100vh !important;
+    max-height: 100vh !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    flex-shrink: 0 !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 100;
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
+  }
+
+  .layout-aside::-webkit-scrollbar,
+  .dashboard-sidebar::-webkit-scrollbar,
+  .admin-sidebar-nav::-webkit-scrollbar,
+  aside::-webkit-scrollbar,
+  .layout-aside *::-webkit-scrollbar,
+  .dashboard-sidebar *::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    background: transparent !important;
+  }
+
+  .layout-aside::-webkit-scrollbar-button,
+  .dashboard-sidebar::-webkit-scrollbar-button,
+  .admin-sidebar-nav::-webkit-scrollbar-button,
+  aside::-webkit-scrollbar-button,
+  .layout-aside *::-webkit-scrollbar-button,
+  .dashboard-sidebar *::-webkit-scrollbar-button {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+
+  .layout-aside::-webkit-scrollbar-track,
+  .dashboard-sidebar::-webkit-scrollbar-track,
+  .layout-aside::-webkit-scrollbar-thumb,
+  .dashboard-sidebar::-webkit-scrollbar-thumb {
+    display: none !important;
+    background: transparent !important;
+  }
+
+  /* Fixed Independent Main Panel (Sleek 6px Custom Scrollbar) */
+  .admin-main,
+  .dashboard-main {
+    height: 100vh !important;
+    max-height: 100vh !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    flex-grow: 1 !important;
+    scroll-behavior: smooth !important;
+  }
+  .admin-main::-webkit-scrollbar,
+  .dashboard-main::-webkit-scrollbar {
+    width: 6px;
+  }
+  .admin-main::-webkit-scrollbar-track,
+  .dashboard-main::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .admin-main::-webkit-scrollbar-thumb,
+  .dashboard-main::-webkit-scrollbar-thumb {
+    background: rgba(11, 44, 95, 0.18);
+    border-radius: 999px;
+  }
+  .admin-main::-webkit-scrollbar-thumb:hover,
+  .dashboard-main::-webkit-scrollbar-thumb:hover {
+    background: rgba(11, 44, 95, 0.35);
   }
 }

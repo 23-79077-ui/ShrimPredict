@@ -1,147 +1,274 @@
 import { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import Swal from 'sweetalert2';
-import { FaBullseye, FaWater, FaChartLine, FaSeedling } from 'react-icons/fa';
+import {
+  FaArrowLeft,
+  FaEnvelope,
+  FaLock,
+  FaUserShield,
+  FaUserCog,
+  FaEye,
+  FaEyeSlash,
+  FaCheckCircle,
+  FaWater,
+  FaMicroscope,
+  FaChartLine,
+  FaRobot,
+} from 'react-icons/fa';
 
 export default function LoginPage() {
   const [searchParams] = useSearchParams();
   const defaultTab = searchParams.get('type') === 'caretaker' ? 'caretaker' : 'admin';
   const [activeTab, setActiveTab] = useState(defaultTab);
-  const [adminEmail, setAdminEmail] = useState('admin@shrimpredict.com');
-  const [adminPassword, setAdminPassword] = useState('admin123');
-  const [caretakerEmail, setCaretakerEmail] = useState('');
-  const [caretakerPassword, setCaretakerPassword] = useState('');
+
+  const [email, setEmail] = useState(
+    defaultTab === 'admin' ? 'admin@shrimpredict.com' : 'caretaker@shrimpredict.com'
+  );
+  const [password, setPassword] = useState('admin123');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleAdminSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const result = await login(adminEmail, adminPassword);
-      if (result.user.role === 'admin') navigate('/admin/dashboard');
-      else navigate('/caretaker/dashboard');
-      Swal.fire({ icon: 'success', title: 'Welcome back!', text: 'You have successfully logged in.' });
-    } catch (error) {
-      Swal.fire({ icon: 'error', title: 'Login failed', text: error.message || 'Please check your credentials.' });
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    if (tab === 'admin') {
+      setEmail('admin@shrimpredict.com');
+      setPassword('admin123');
+    } else {
+      setEmail('caretaker@shrimpredict.com');
+      setPassword('caretaker123');
     }
   };
 
-  const handleCaretakerSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     try {
-      const result = await login(caretakerEmail, caretakerPassword);
-      if (result.user.role === 'caretaker') navigate('/caretaker/dashboard');
-      else navigate('/admin/dashboard');
-      Swal.fire({ icon: 'success', title: 'Welcome back!', text: 'You have successfully logged in.' });
+      const result = await login(email, password);
+      if (result.user.role === 'admin') {
+        navigate('/admin/dashboard');
+      } else {
+        navigate('/caretaker/dashboard');
+      }
+      Swal.fire({
+        icon: 'success',
+        title: 'Welcome Back!',
+        text: `Logged in successfully as ${result.user.role.toUpperCase()}.`,
+        timer: 1500,
+        showConfirmButton: false,
+      });
     } catch (error) {
-      Swal.fire({ icon: 'error', title: 'Login failed', text: error.message || 'Please check your credentials.' });
+      Swal.fire({
+        icon: 'error',
+        title: 'Authentication Failed',
+        text: error.message || 'Please check your email and password.',
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="login-page-wrapper">
-      <div className="login-page-card row g-0 overflow-hidden">
-        <div className="col-lg-6 login-hero-side p-5 p-xl-6">
-          <div className="brand mb-4">
-            <span className="brand-icon">SP</span>
-            ShrimPredict
-          </div>
-          <div className="eyebrow mb-3">Smart Farm Insights</div>
-          <h1 className="hero-title mb-4">Smart Technology for Smarter Shrimp Farming</h1>
-          <p className="hero-copy mb-5">ShrimPredict helps you monitor ponds, detect diseases, optimize feeding, and predict harvest with AI-powered insights for healthier and more productive farms.</p>
-
-          <div className="login-features row g-3">
-            <div className="col-12 feature-item d-flex gap-3 align-items-start">
-              <div className="login-feature-icon"><FaBullseye /></div>
-              <div>
-                <h6 className="mb-1">AI Disease Detection</h6>
-                <p className="text-muted small mb-0">Detect white spot disease early with image analytics.</p>
-              </div>
-            </div>
-            <div className="col-12 feature-item d-flex gap-3 align-items-start">
-              <div className="login-feature-icon"><FaWater /></div>
-              <div>
-                <h6 className="mb-1">Water Quality Monitoring</h6>
-                <p className="text-muted small mb-0">Real-time tracking of pond health and water parameters.</p>
-              </div>
-            </div>
-            <div className="col-12 feature-item d-flex gap-3 align-items-start">
-              <div className="login-feature-icon"><FaChartLine /></div>
-              <div>
-                <h6 className="mb-1">Smart Analytics</h6>
-                <p className="text-muted small mb-0">Optimize feed, forecast harvest, and monitor growth trends.</p>
-              </div>
-            </div>
-          </div>
-
-          {activeTab === 'admin' && (
-            <div className="login-panel-note mt-5 p-4 rounded-4">
-              <p className="mb-2"><strong>Quick access:</strong></p>
-              <p className="mb-1"><strong>Email:</strong> admin@shrimpredict.com</p>
-              <p className="mb-0"><strong>Password:</strong> admin123</p>
-            </div>
-          )}
-        </div>
-
-        <div className="col-lg-6 login-form-side p-5 p-xl-6">
-          <div className="login-form-card h-100 d-flex flex-column justify-content-center">
-            {/* Login Tabs */}
-            <div className="login-tabs d-flex mb-4 rounded-3 overflow-hidden border">
-              <button
-                className={`login-tab flex-fill py-3 text-center fw-bold ${activeTab === 'admin' ? 'active' : ''}`}
-                onClick={() => setActiveTab('admin')}
+    <div className="login-page-wrapper min-vh-100 d-flex align-items-center justify-content-center py-5 px-3 bg-light">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="card border-0 shadow-lg rounded-4 overflow-hidden max-w-1000 w-100"
+        style={{ maxWidth: '1020px' }}
+      >
+        <div className="row g-0">
+          {/* Hero Left Panel (Deep Navy Ocean Theme matching Landing Page) */}
+          <div
+            className="col-lg-6 p-4 p-md-5 d-flex flex-column justify-content-between text-white"
+            style={{ background: 'linear-gradient(135deg, #0B2C5F 0%, #10356C 50%, #143F74 100%)' }}
+          >
+            <div>
+              {/* Back to Home Button */}
+              <Link
+                to="/"
+                className="btn btn-sm btn-outline-light rounded-pill px-3 py-2 d-inline-flex align-items-center gap-2 fw-semibold mb-4 text-white text-decoration-none"
               >
-                <FaSeedling className="me-2" />Admin Login
+                <FaArrowLeft /> Back to Home
+              </Link>
+
+              {/* Brand Logo */}
+              <div className="d-flex align-items-center gap-2 mb-3">
+                <span className="bg-primary text-white rounded-3 px-2 py-1 fw-bold fs-5 border border-light">SP</span>
+                <span className="fs-4 fw-bold text-white">ShrimPredict</span>
+              </div>
+
+              <span className="badge bg-warning text-dark px-3 py-2 rounded-pill fw-bold text-uppercase mb-3 d-inline-flex align-items-center gap-2">
+                <FaRobot /> AI Aquaculture SaaS
+              </span>
+
+              <h2 className="display-6 fw-extrabold text-white mb-3">
+                Smart Farm Control & Disease Intelligence
+              </h2>
+
+              <p className="text-white-80 leading-relaxed mb-4">
+                Sign in to manage pond parameters, run caretaker WSSV disease scans, and view real-time aquaculture analytics.
+              </p>
+
+              {/* Feature Benchmarks */}
+              <div className="d-flex flex-column gap-3 mb-4">
+                <div className="d-flex align-items-start gap-3 p-2 rounded-3" style={{ background: 'rgba(255, 255, 255, 0.08)' }}>
+                  <div className="p-2 rounded-3 bg-white text-primary fs-5 mt-1"><FaMicroscope /></div>
+                  <div>
+                    <h6 className="fw-bold text-white mb-1">99.45% WSSV Accuracy</h6>
+                    <span className="text-white-75 small">Trained on 1,802 real shrimp dataset images</span>
+                  </div>
+                </div>
+
+                <div className="d-flex align-items-start gap-3 p-2 rounded-3" style={{ background: 'rgba(255, 255, 255, 0.08)' }}>
+                  <div className="p-2 rounded-3 bg-white text-primary fs-5 mt-1"><FaWater /></div>
+                  <div>
+                    <h6 className="fw-bold text-white mb-1">Real-time Pond Health</h6>
+                    <span className="text-white-75 small">Track pH, temp, and daily mortality logs</span>
+                  </div>
+                </div>
+
+                <div className="d-flex align-items-start gap-3 p-2 rounded-3" style={{ background: 'rgba(255, 255, 255, 0.08)' }}>
+                  <div className="p-2 rounded-3 bg-white text-primary fs-5 mt-1"><FaChartLine /></div>
+                  <div>
+                    <h6 className="fw-bold text-white mb-1">Automated Alerting</h6>
+                    <span className="text-white-75 small">Instant notifications for caretaker disease reports</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Credentials Note */}
+            <div className="p-3 rounded-3 border border-white-20 text-white small mt-3" style={{ background: 'rgba(255, 255, 255, 0.12)' }}>
+              <div className="d-flex align-items-center gap-2 mb-1">
+                <FaCheckCircle className="text-warning" />
+                <span className="fw-bold text-white">Quick Demo Login Credentials</span>
+              </div>
+              <div className="text-white-90 small">
+                • <strong>Admin:</strong> admin@shrimpredict.com | pass: admin123<br />
+                • <strong>Caretaker:</strong> caretaker@shrimpredict.com | pass: caretaker123
+              </div>
+            </div>
+          </div>
+
+          {/* Form Right Panel */}
+          <div className="col-lg-6 p-4 p-md-5 bg-white d-flex flex-column justify-content-center">
+            {/* Mobile Return to Home Link */}
+            <div className="d-lg-none mb-3">
+              <Link to="/" className="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1 d-inline-flex align-items-center gap-2 small">
+                <FaArrowLeft /> Back to Home
+              </Link>
+            </div>
+
+            {/* Role Tab Switcher */}
+            <div className="d-flex p-1 bg-light rounded-3 border mb-4">
+              <button
+                type="button"
+                className={`btn flex-fill rounded-3 py-2 fw-bold d-flex align-items-center justify-content-center gap-2 transition-all ${
+                  activeTab === 'admin' ? 'btn-primary shadow-sm text-white' : 'btn-link text-secondary text-decoration-none'
+                }`}
+                onClick={() => handleTabChange('admin')}
+              >
+                <FaUserShield /> Admin Access
               </button>
               <button
-                className={`login-tab flex-fill py-3 text-center fw-bold ${activeTab === 'caretaker' ? 'active' : ''}`}
-                onClick={() => setActiveTab('caretaker')}
+                type="button"
+                className={`btn flex-fill rounded-3 py-2 fw-bold d-flex align-items-center justify-content-center gap-2 transition-all ${
+                  activeTab === 'caretaker' ? 'btn-primary shadow-sm text-white' : 'btn-link text-secondary text-decoration-none'
+                }`}
+                onClick={() => handleTabChange('caretaker')}
               >
-                <FaWater className="me-2" />Caretaker Login
+                <FaUserCog /> Caretaker Access
               </button>
             </div>
 
-            {/* Admin Login Form */}
-            {activeTab === 'admin' && (
-              <form onSubmit={handleAdminSubmit}>
-                <div className="text-center mb-4">
-                  <h2 className="fw-bold mb-2">Admin Access</h2>
-                  <p className="text-muted mb-0">Sign in to manage the system</p>
-                </div>
-                <div className="mb-4">
-                  <label className="form-label">Email Address</label>
-                  <input type="email" className="form-control" value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} required />
-                </div>
-                <div className="mb-4">
-                  <label className="form-label">Password</label>
-                  <input type="password" className="form-control" value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} required />
-                </div>
-                <button type="submit" className="btn btn-primary w-100 btn-lg">Login as Admin</button>
-              </form>
-            )}
+            <div className="mb-4">
+              <h3 className="fw-bold text-dark mb-1">
+                {activeTab === 'admin' ? 'System Admin Sign In' : 'Pond Caretaker Sign In'}
+              </h3>
+              <p className="text-muted small">
+                {activeTab === 'admin'
+                  ? 'Access master pond controls, disease logs, and farm reports.'
+                  : 'Submit camera disease scans and monitor assigned pond parameters.'}
+              </p>
+            </div>
 
-            {/* Caretaker Login Form */}
-            {activeTab === 'caretaker' && (
-              <form onSubmit={handleCaretakerSubmit}>
-                <div className="text-center mb-4">
-                  <h2 className="fw-bold mb-2">Caretaker Access</h2>
-                  <p className="text-muted mb-0">Sign in to manage assigned ponds</p>
+            <form onSubmit={handleSubmit}>
+              <div className="mb-3">
+                <label className="form-label text-muted small fw-semibold">Email Address</label>
+                <div className="input-group">
+                  <span className="input-group-text bg-light text-muted border-end-0 rounded-start-3">
+                    <FaEnvelope />
+                  </span>
+                  <input
+                    type="email"
+                    className="form-control border-start-0 rounded-end-3 py-2"
+                    placeholder="name@shrimpredict.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
                 </div>
-                <div className="mb-4">
-                  <label className="form-label">Email Address</label>
-                  <input type="email" className="form-control" value={caretakerEmail} onChange={(e) => setCaretakerEmail(e.target.value)} required />
+              </div>
+
+              <div className="mb-4">
+                <label className="form-label text-muted small fw-semibold">Password</label>
+                <div className="input-group">
+                  <span className="input-group-text bg-light text-muted border-end-0 rounded-start-3">
+                    <FaLock />
+                  </span>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    className="form-control border-start-0 border-end-0 py-2"
+                    placeholder="Enter password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="input-group-text bg-light text-muted border-start-0 rounded-end-3"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <FaEyeSlash /> : <FaEye />}
+                  </button>
                 </div>
-                <div className="mb-4">
-                  <label className="form-label">Password</label>
-                  <input type="password" className="form-control" value={caretakerPassword} onChange={(e) => setCaretakerPassword(e.target.value)} required />
-                </div>
-                <button type="submit" className="btn btn-success w-100 btn-lg">Login as Caretaker</button>
-              </form>
-            )}
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="btn btn-primary btn-lg w-100 py-3 rounded-3 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2 mb-3"
+              >
+                {loading ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm" role="status"></span>
+                    Authenticating...
+                  </>
+                ) : (
+                  `Sign In as ${activeTab === 'admin' ? 'Admin' : 'Caretaker'}`
+                )}
+              </button>
+
+              {/* Demo Auto-Fill Helper */}
+              <div className="text-center">
+                <span className="text-muted tiny">Want to test quickly?</span>{' '}
+                <button
+                  type="button"
+                  onClick={() => handleTabChange(activeTab)}
+                  className="btn btn-link p-0 tiny fw-semibold text-primary text-decoration-none"
+                >
+                  Auto-fill demo credentials
+                </button>
+              </div>
+            </form>
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

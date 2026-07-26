@@ -38,15 +38,28 @@ def image_features(image_path: Path):
     sat = saturation(arr)
     r, g, b = arr[:, :, 0], arr[:, :, 1], arr[:, :, 2]
 
+    local_smooth = gaussian_filter(brightness, sigma=2.0)
+    spot_contrast = brightness - local_smooth
+
+    punctate_spots = (spot_contrast > 22.0) & (brightness > 160) & (sat < 0.28)
+    punctate_spot_ratio = float(punctate_spots.mean())
+
+    uniform_bright = (brightness > 205) & (sat < 0.12)
+    uniform_bright_ratio = float(uniform_bright.mean())
+
+    shrimp_pigment_ratio = float(((sat >= 0.15) & (sat <= 0.70) & (brightness >= 40) & (brightness <= 220)).mean())
+
     features = [
-        brightness.mean() / 255,
-        brightness.std() / 255,
+        brightness.mean() / 255.0,
+        brightness.std() / 255.0,
         sat.mean(),
         sat.std(),
-        ((brightness > 205) & (brightness < 245) & (sat < 0.2)).mean(),
-        ((brightness >= 245) & (sat < 0.12)).mean(),
+        punctate_spot_ratio,
+        uniform_bright_ratio,
         (brightness < 75).mean(),
         ((r > 125) & (r > g * 1.12) & (r > b * 1.12)).mean(),
+        shrimp_pigment_ratio,
+        float(spot_contrast.std() / 255.0),
     ]
 
     for channel in range(3):
@@ -58,8 +71,9 @@ def image_features(image_path: Path):
         for gx in range(GRID_SIZE):
             patch_brightness = brightness[gy * cell : (gy + 1) * cell, gx * cell : (gx + 1) * cell]
             patch_sat = sat[gy * cell : (gy + 1) * cell, gx * cell : (gx + 1) * cell]
-            features.append(patch_brightness.mean() / 255)
-            features.append(((patch_brightness > 205) & (patch_brightness < 245) & (patch_sat < 0.2)).mean())
+            patch_contrast = spot_contrast[gy * cell : (gy + 1) * cell, gx * cell : (gx + 1) * cell]
+            features.append(patch_brightness.mean() / 255.0)
+            features.append(((patch_contrast > 22.0) & (patch_brightness > 160) & (patch_sat < 0.28)).mean())
 
     return np.asarray(features, dtype=np.float32)
 

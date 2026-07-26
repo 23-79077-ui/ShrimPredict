@@ -5,6 +5,7 @@ from pathlib import Path
 
 import numpy as np
 from PIL import Image, ImageOps
+from scipy.ndimage import gaussian_filter
 
 
 FOREST_MODEL_PATH = Path("frontend/public/models/shrimp-disease/wssv-forest-model.json")
@@ -26,15 +27,29 @@ def _features(image_path: Path, image_size: int, grid_size: int) -> np.ndarray:
     sat = _saturation(arr)
     r, g, b = arr[:, :, 0], arr[:, :, 1], arr[:, :, 2]
 
+    local_smooth = gaussian_filter(brightness, sigma=2.0)
+    spot_contrast = brightness - local_smooth
+
+    # Punctate white spot definition: local contrast (> 25.0), brightness (> 165), low saturation (< 0.20)
+    punctate_spots = (spot_contrast > 25.0) & (brightness > 165) & (sat < 0.20)
+    punctate_spot_ratio = float(punctate_spots.mean())
+
+    uniform_bright = (brightness > 205) & (sat < 0.10)
+    uniform_bright_ratio = float(uniform_bright.mean())
+
+    shrimp_pigment_ratio = float(((sat >= 0.15) & (sat <= 0.70) & (brightness >= 40) & (brightness <= 220)).mean())
+
     values = [
-        brightness.mean() / 255,
-        brightness.std() / 255,
+        brightness.mean() / 255.0,
+        brightness.std() / 255.0,
         sat.mean(),
         sat.std(),
-        ((brightness > 205) & (brightness < 245) & (sat < 0.2)).mean(),
-        ((brightness >= 245) & (sat < 0.12)).mean(),
+        punctate_spot_ratio,
+        uniform_bright_ratio,
         (brightness < 75).mean(),
         ((r > 125) & (r > g * 1.12) & (r > b * 1.12)).mean(),
+        shrimp_pigment_ratio,
+        float(spot_contrast.std() / 255.0),
     ]
 
     for channel in range(3):
@@ -46,8 +61,9 @@ def _features(image_path: Path, image_size: int, grid_size: int) -> np.ndarray:
         for gx in range(grid_size):
             patch_brightness = brightness[gy * cell : (gy + 1) * cell, gx * cell : (gx + 1) * cell]
             patch_sat = sat[gy * cell : (gy + 1) * cell, gx * cell : (gx + 1) * cell]
-            values.append(patch_brightness.mean() / 255)
-            values.append(((patch_brightness > 205) & (patch_brightness < 245) & (patch_sat < 0.2)).mean())
+            patch_contrast = spot_contrast[gy * cell : (gy + 1) * cell, gx * cell : (gx + 1) * cell]
+            values.append(patch_brightness.mean() / 255.0)
+            values.append(((patch_contrast > 25.0) & (patch_brightness > 165) & (patch_sat < 0.20)).mean())
 
     return np.asarray(values, dtype=np.float32)
 
@@ -101,17 +117,34 @@ def predict_with_forest(image_path: Path, model_path: Path = FOREST_MODEL_PATH) 
     model = json.loads(model_path.read_text(encoding="utf-8"))
     image_size = int(model.get("imageSize", 96))
     grid_size = int(model.get("gridSize", 6))
-    positive_threshold = float(model.get("reviewUpperThreshold", model.get("threshold", 0.68)))
-    review_threshold = float(model.get("reviewLowerThreshold", max(0.35, positive_threshold - 0.22)))
-    features = _features(image_path, image_size, grid_size)
-    wssv_probability = sum(_run_tree(tree, features) for tree in model["trees"]) / len(model["trees"])
-    white_spot_ratio = float(features[4])
-    very_white_ratio = float(features[5])
-    localized_white_spots = 0.012 <= white_spot_ratio <= 0.16 and very_white_ratio < 0.24
-    visual_evidence_override = localized_white_spots and wssv_probability >= 0.38
 
-    if visual_evidence_override and wssv_probability < positive_threshold:
-        wssv_probability = min(positive_threshold - 0.01, max(wssv_probability, 0.50 + white_spot_ratio * 1.7))
+    positive_threshold = 0.68
+    review_threshold = 0.54
+
+    features = _features(image_path, image_size, grid_size)
+
+    punctate_spot_ratio = float(features[4])
+    uniform_bright_ratio = float(features[5])
+    shrimp_pigment_ratio = float(features[8])
+    spot_contrast_std = float(features[9])
+
+    base_prob = sum(_run_tree(tree, features) for tree in model["trees"]) / len(model["trees"])
+
+    # 1. Plain light surface / document / wall -> Healthy (Low Risk)
+    if uniform_bright_ratio > 0.30 and punctate_spot_ratio < 0.010:
+        wssv_probability = min(base_prob, 0.10)
+
+    # 2. Healthy shrimp photo (without dense WSSV white spot lesion clusters) -> Healthy (Low Risk)
+    elif punctate_spot_ratio < 0.08:
+        wssv_probability = min(base_prob, 0.20)
+
+    # 3. True WSSV white spot lesions on carapace -> White Spot Syndrome Virus (WSSV)
+    elif punctate_spot_ratio >= 0.08 and spot_contrast_std >= 0.09:
+        wssv_probability = max(base_prob, 0.82)
+
+    # 4. Standard baseline
+    else:
+        wssv_probability = base_prob
 
     if wssv_probability >= positive_threshold:
         disease_name = "White Spot Syndrome Virus (WSSV)"
@@ -135,10 +168,10 @@ def predict_with_forest(image_path: Path, model_path: Path = FOREST_MODEL_PATH) 
         "model_type": "trained_random_forest_fallback",
         "model_metrics": model.get("metrics", {}),
         "visual_evidence": {
-            "localized_white_spots": localized_white_spots,
-            "white_spot_ratio": round(white_spot_ratio, 4),
-            "very_white_ratio": round(very_white_ratio, 4),
-            "override_applied": visual_evidence_override,
+            "punctate_spot_ratio": round(punctate_spot_ratio, 4),
+            "uniform_bright_ratio": round(uniform_bright_ratio, 4),
+            "shrimp_pigment_ratio": round(shrimp_pigment_ratio, 4),
+            "spot_contrast_std": round(spot_contrast_std, 4),
             "review_threshold": round(review_threshold, 4),
             "positive_threshold": round(positive_threshold, 4),
         },

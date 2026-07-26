@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Bar, Doughnut, Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -57,6 +58,12 @@ const formatDate = (value) => {
 const normalizeText = (value) => String(value || '').trim().toLowerCase();
 
 export default function DiseaseReportsPage() {
+  const [searchParams] = useSearchParams();
+  const targetId = searchParams.get('id') || searchParams.get('report_id');
+  const targetPond = searchParams.get('pond');
+  const targetIssue = searchParams.get('issue');
+  const targetCaretaker = searchParams.get('caretaker');
+
   const [reports, setReports] = useState([]);
   const [caretakers, setCaretakers] = useState([]);
   const [search, setSearch] = useState('');
@@ -95,6 +102,36 @@ export default function DiseaseReportsPage() {
   useEffect(() => {
     loadReports();
   }, [loadReports]);
+
+  // Check if a disease report matches deep link parameters
+  const checkIsHighlighted = useCallback(
+    (report) => {
+      if (targetId && String(report.id) === String(targetId)) return true;
+      if (targetIssue && String(report.disease_name || '').toLowerCase().includes(targetIssue.toLowerCase())) return true;
+      if (targetPond && String(report.pond_name || '').toLowerCase() === targetPond.toLowerCase()) return true;
+      return false;
+    },
+    [targetId, targetIssue, targetPond]
+  );
+
+  // Auto-scroll & Auto-open preview modal if target parameter is present in URL
+  useEffect(() => {
+    if ((targetId || targetIssue || targetPond) && reports.length > 0) {
+      const matched = reports.find(checkIsHighlighted);
+      if (matched) {
+        setTimeout(() => {
+          const el = document.getElementById(`disease-report-${matched.id}`);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 350);
+
+        if (matched.image_path) {
+          setPreviewImage(resolveImageUrl(matched.image_path));
+        }
+      }
+    }
+  }, [targetId, targetIssue, targetPond, reports, checkIsHighlighted]);
 
   const caretakerOptions = useMemo(() => {
     const options = caretakers.map((caretaker) => ({
@@ -207,13 +244,12 @@ export default function DiseaseReportsPage() {
   return (
     <div>
       <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-        <div>
-          <h3 className="fw-bold mb-1 d-flex align-items-center gap-2">
-            <FaShieldVirus className="text-danger" /> Admin Disease Reports
-          </h3>
-          <p className="text-muted mb-0">Review caretaker disease scan results, photos, risk levels, and disease trends.</p>
+        <div className="d-flex align-items-center gap-2">
+          <span className="badge bg-danger bg-opacity-10 text-danger px-3 py-1.5 rounded-pill fw-semibold extra-small">
+            <FaShieldVirus className="me-1" /> WSSV & Disease Risk Scanning Intelligence
+          </span>
         </div>
-        <button className="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2" onClick={loadReports}>
+        <button className="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2 rounded-pill px-3" onClick={loadReports}>
           <FaSync /> Refresh
         </button>
       </div>
@@ -360,8 +396,13 @@ export default function DiseaseReportsPage() {
                 )}
                 {!loading && filteredReports.map((report) => {
                   const imageUrl = resolveImageUrl(report.image_path);
+                  const isHighlighted = checkIsHighlighted(report);
                   return (
-                    <tr key={report.id}>
+                    <tr
+                      key={report.id}
+                      id={`disease-report-${report.id}`}
+                      className={isHighlighted ? 'highlighted-report-card' : ''}
+                    >
                       <td>
                         {imageUrl ? (
                           <button

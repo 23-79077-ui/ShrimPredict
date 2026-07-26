@@ -140,7 +140,7 @@ $stmt->execute([
 
 $reportId = $conn->lastInsertId();
 $notifMsg = "{$caretakerName} scanned for disease: {$diseaseName} with {$confidenceScore}% confidence ({$riskLevel} Risk).";
-createNotification($conn, 'Disease Scan Submitted', $notifMsg, $caretakerName, 'disease_scan', $pondName);
+createNotification($conn, 'Disease Scan Submitted', $notifMsg, $caretakerName, 'disease_scan', $pondName, $userId, $reportId);
 
 echo json_encode([
     'success' => true,

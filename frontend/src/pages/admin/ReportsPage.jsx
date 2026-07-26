@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import api from '../../services/api';
 import Swal from 'sweetalert2';
 import {
@@ -36,6 +37,12 @@ const resolveMediaUrl = (url) => {
 };
 
 export default function AdminReportsPage() {
+  const [searchParams] = useSearchParams();
+  const targetId = searchParams.get('id') || searchParams.get('report_id');
+  const targetPond = searchParams.get('pond');
+  const targetIssue = searchParams.get('issue');
+  const targetCaretaker = searchParams.get('caretaker');
+
   const [reports, setReports] = useState([]);
   const [counts, setCounts] = useState({ total: 0, pending: 0, in_progress: 0, done: 0 });
   const [caretakers, setCaretakers] = useState([]);
@@ -96,6 +103,32 @@ export default function AdminReportsPage() {
       window.removeEventListener('storage', handleUpdate);
     };
   }, [loadReports]);
+
+  // Helper function to check if a report matches deep link parameters
+  const checkIsHighlighted = useCallback(
+    (report) => {
+      if (targetId && String(report.id) === String(targetId)) return true;
+      if (targetIssue && String(report.specific_issue || '').toLowerCase().includes(targetIssue.toLowerCase())) return true;
+      if (targetPond && String(report.pond_name || '').toLowerCase() === targetPond.toLowerCase()) return true;
+      return false;
+    },
+    [targetId, targetIssue, targetPond]
+  );
+
+  // Auto-scroll to highlighted target report card
+  useEffect(() => {
+    if ((targetId || targetIssue || targetPond) && reports.length > 0) {
+      const matched = reports.find(checkIsHighlighted);
+      if (matched) {
+        setTimeout(() => {
+          const el = document.getElementById(`maintenance-report-${matched.id}`);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 350);
+      }
+    }
+  }, [targetId, targetIssue, targetPond, reports, checkIsHighlighted]);
 
   // Admin Action: Update Report Status (Mark as Done, Set In Progress, etc.)
   const handleUpdateStatus = async (report, newStatus) => {
@@ -350,9 +383,16 @@ export default function AdminReportsPage() {
               {reports.map((report) => {
                 const resolvedPhotoUrl = resolveMediaUrl(report.photo_url);
                 const resolvedVideoUrl = resolveMediaUrl(report.video_url);
+                const isHighlighted = checkIsHighlighted(report);
 
                 return (
-                  <div key={report.id} className="list-group-item p-4 border-bottom">
+                  <div
+                    key={report.id}
+                    id={`maintenance-report-${report.id}`}
+                    className={`list-group-item p-4 border-bottom ${
+                      isHighlighted ? 'highlighted-report-card' : ''
+                    }`}
+                  >
                     <div className="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-2">
                       <div>
                         <div className="d-flex align-items-center gap-2 flex-wrap mb-1">

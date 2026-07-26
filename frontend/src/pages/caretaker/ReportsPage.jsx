@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import Swal from 'sweetalert2';
@@ -35,7 +36,10 @@ const resolveMediaUrl = (url) => {
 
 export default function ReportsPage() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState('submit'); // 'submit' | 'history'
+  const [searchParams] = useSearchParams();
+  const targetId = searchParams.get('id') || searchParams.get('report_id');
+
+  const [activeTab, setActiveTab] = useState(targetId ? 'history' : 'submit'); // 'submit' | 'history'
   const [ponds, setPonds] = useState([]);
   const [myReports, setMyReports] = useState([]);
   const [loadingPonds, setLoadingPonds] = useState(true);
@@ -124,6 +128,18 @@ export default function ReportsPage() {
       loadMyReports();
     }
   }, [activeTab, loadMyReports]);
+
+  // Auto-scroll to target report when targetId parameter is present in URL
+  useEffect(() => {
+    if (targetId && myReports.length > 0) {
+      setTimeout(() => {
+        const el = document.getElementById(`caretaker-report-${targetId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 300);
+    }
+  }, [targetId, myReports]);
 
   // Handle Image File selection & upload
   const handleImageChange = async (e) => {
@@ -597,9 +613,16 @@ export default function ReportsPage() {
                 {myReports.map((report) => {
                   const resPhoto = resolveMediaUrl(report.photo_url);
                   const resVideo = resolveMediaUrl(report.video_url);
+                  const isHighlighted = String(report.id) === String(targetId);
 
                   return (
-                    <div key={report.id} className="list-group-item p-4 border-bottom">
+                    <div
+                      key={report.id}
+                      id={`caretaker-report-${report.id}`}
+                      className={`list-group-item p-4 border-bottom ${
+                        isHighlighted ? 'highlighted-report-card' : ''
+                      }`}
+                    >
                       <div className="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
                         <div>
                           <span className={`badge me-2 ${severityBadges[report.severity_level] || 'bg-secondary'}`}>

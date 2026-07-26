@@ -106,9 +106,17 @@ export default function AdminLayout() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
+  const handleLogout = (e) => {
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
+    if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+    try {
+      logout();
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
+    localStorage.clear();
+    sessionStorage.clear();
+    window.location.href = '/login';
   };
 
   // Mark all as read handler
@@ -121,7 +129,7 @@ export default function AdminLayout() {
     }
   };
 
-  // Notification Click Handler: Mark read and navigate to target page
+  // Notification Click Handler: Mark read and navigate to exact report target page
   const handleNotifClick = async (notif) => {
     setShowNotifMenu(false);
     try {
@@ -136,16 +144,32 @@ export default function AdminLayout() {
     const actionType = (notif.action_type || '').toLowerCase();
     const title = (notif.title || '').toLowerCase();
     const msg = (notif.message || '').toLowerCase();
+    const targetId = notif.target_id || notif.report_id || '';
+    const pondName = notif.pond_name || '';
+    const caretakerName = notif.caretaker_name || '';
 
-    if (actionType === 'feeding' || title.includes('feed') || msg.includes('feed')) {
-      navigate('/admin/feeding');
-    } else if (actionType === 'disease_scan' || title.includes('disease') || msg.includes('scanned for disease')) {
-      navigate('/admin/disease-reports');
+    let issueKey = notif.title || '';
+    if (issueKey.includes(':')) {
+      issueKey = issueKey.split(':')[1].trim();
+    }
+
+    const queryParams = [];
+    if (targetId) queryParams.push(`id=${targetId}`);
+    if (pondName) queryParams.push(`pond=${encodeURIComponent(pondName)}`);
+    if (issueKey) queryParams.push(`issue=${encodeURIComponent(issueKey.slice(0, 35))}`);
+    if (caretakerName) queryParams.push(`caretaker=${encodeURIComponent(caretakerName)}`);
+
+    const queryString = queryParams.length > 0 ? `?${queryParams.join('&')}` : '';
+
+    if (actionType === 'disease_scan' || title.includes('disease') || msg.includes('scanned for disease') || msg.includes('wssv')) {
+      navigate('/admin/disease-reports' + queryString);
+    } else if (actionType === 'feeding' || title.includes('feed') || msg.includes('feed')) {
+      navigate('/admin/feeding' + queryString);
     } else if (actionType === 'water_quality' || (title.includes('pond') && !title.includes('report')) || (msg.includes('pond') && !msg.includes('report'))) {
-      navigate('/admin/ponds');
+      navigate('/admin/ponds' + queryString);
     } else {
-      // Maintenance / Reports / General -> /admin/reports
-      navigate('/admin/reports');
+      // Maintenance / Reports / General -> /admin/reports?id=XX&pond=YY&issue=ZZ
+      navigate('/admin/reports' + queryString);
     }
   };
 
@@ -179,8 +203,8 @@ export default function AdminLayout() {
             </NavLink>
           ))}
         </nav>
-        <div className="sidebar-footer">
-          <button className="btn btn-outline-light w-100 admin-logout" onClick={handleLogout}>
+        <div className="sidebar-footer mt-auto">
+          <button type="button" className="btn btn-outline-light w-100" onClick={handleLogout}>
             <FaSignOutAlt className="me-2" />Logout
           </button>
         </div>
@@ -198,74 +222,67 @@ export default function AdminLayout() {
             <p className="text-muted mb-0">{currentPage.description}</p>
           </div>
           
-          {/* 🌟 100% PERFECT SPACIOUS VERTICAL HEADER STACK (260px FIXED WIDTH, 18px INLINE GAP) */}
-          <div className="admin-actions d-flex flex-column align-items-end gap-2.5">
-            {/* 1. Date Card */}
+          {/* 🌟 STEADY SPACIOUS SIDE-BY-SIDE DATE, CLOCK, AND BELL ICON BUTTON */}
+          <div className="admin-actions d-flex align-items-center flex-wrap gap-2.5">
+            {/* 1. Date Card (Spacious 215px width - Ample 30px+ right padding buffer) */}
             <div
-              className="bg-white border border-secondary border-opacity-25 shadow-sm rounded-pill w-100 d-flex align-items-center justify-content-between px-4 py-2 text-dark"
-              style={{ width: 260, height: 48, boxShadow: '0 4px 14px rgba(11,44,95,0.06)' }}
+              className="bg-white border border-secondary border-opacity-25 shadow-sm rounded-pill d-flex align-items-center text-dark"
+              style={{ width: 215, height: 44, padding: '0 1.25rem', gap: '0.75rem', boxShadow: '0 4px 14px rgba(11,44,95,0.06)', flexShrink: 0 }}
               title="Today's Date"
             >
-              <div className="d-flex align-items-center" style={{ gap: 18 }}>
-                <div
-                  className="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center flex-shrink-0"
-                  style={{ width: 34, height: 34, minWidth: 34 }}
-                >
-                  <FaCalendarAlt size={14} />
-                </div>
-                <span className="extra-small fw-bold text-dark text-truncate" style={{ fontSize: '0.88rem', letterSpacing: '0.2px' }}>
-                  {formattedDate}
-                </span>
+              <div
+                className="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center flex-shrink-0"
+                style={{ width: 28, height: 28 }}
+              >
+                <FaCalendarAlt size={13} />
               </div>
+              <span className="extra-small fw-bold text-dark text-nowrap" style={{ fontSize: '0.85rem', letterSpacing: '0.1px' }}>
+                {formattedDate}
+              </span>
             </div>
 
-            {/* 2. Real-Time Ticking Clock Card */}
+            {/* 2. Real-Time Ticking Clock Card (Spacious 175px width & Tabular Nums - Steady & No Wobbling!) */}
             <div
-              className="bg-white border border-secondary border-opacity-25 shadow-sm rounded-pill w-100 d-flex align-items-center justify-content-between px-4 py-2 text-dark font-mono"
-              style={{ width: 260, height: 48, fontVariantNumeric: 'tabular-nums', boxShadow: '0 4px 14px rgba(11,44,95,0.06)' }}
+              className="bg-white border border-secondary border-opacity-25 shadow-sm rounded-pill d-flex align-items-center text-dark font-mono"
+              style={{ width: 175, height: 44, padding: '0 1.25rem', gap: '0.75rem', fontVariantNumeric: 'tabular-nums', boxShadow: '0 4px 14px rgba(11,44,95,0.06)', flexShrink: 0 }}
               title="Real-Time System Clock"
             >
-              <div className="d-flex align-items-center" style={{ gap: 18 }}>
-                <div
-                  className="rounded-circle bg-info bg-opacity-10 text-info d-flex align-items-center justify-content-center flex-shrink-0"
-                  style={{ width: 34, height: 34, minWidth: 34 }}
-                >
-                  <FaClock size={14} />
-                </div>
-                <span className="extra-small fw-bold text-dark" style={{ fontSize: '0.9rem', letterSpacing: '0.5px' }}>
-                  {realTimeClock}
-                </span>
+              <div
+                className="rounded-circle bg-info bg-opacity-10 text-info d-flex align-items-center justify-content-center flex-shrink-0"
+                style={{ width: 28, height: 28 }}
+              >
+                <FaClock size={13} />
               </div>
+              <span
+                className="extra-small fw-bold text-dark text-nowrap"
+                style={{ fontSize: '0.85rem', fontVariantNumeric: 'tabular-nums', letterSpacing: '0.4px', display: 'inline-block', width: 96 }}
+              >
+                {realTimeClock}
+              </span>
             </div>
 
-            {/* 3. Notifications Pill Card */}
-            <div className="position-relative" ref={bellRef} style={{ width: 260 }}>
+            {/* 3. Clean Notification Bell Icon Button */}
+            <div className="position-relative" ref={bellRef}>
               <button
                 type="button"
-                className="btn btn-white border border-secondary border-opacity-25 shadow-sm rounded-pill w-100 d-flex align-items-center justify-content-between px-4 py-2 transition-all hover-shadow text-dark"
-                style={{ height: 48, boxShadow: '0 4px 14px rgba(11,44,95,0.06)' }}
+                className="btn btn-white border border-secondary border-opacity-25 shadow-sm rounded-circle d-flex align-items-center justify-content-center position-relative transition-all hover-shadow p-0"
+                style={{ width: 44, height: 44, boxShadow: '0 4px 14px rgba(11,44,95,0.06)' }}
                 onClick={() => setShowNotifMenu(!showNotifMenu)}
                 title="Notifications"
               >
-                <div className="d-flex align-items-center" style={{ gap: 18 }}>
-                  <div
-                    className="rounded-circle bg-warning bg-opacity-20 d-flex align-items-center justify-content-center flex-shrink-0"
-                    style={{ width: 34, height: 34, minWidth: 34 }}
-                  >
-                    <FaBell className={unreadCount > 0 ? 'text-warning' : 'text-muted'} size={14} />
-                  </div>
-                  <span className="extra-small fw-bold text-dark" style={{ fontSize: '0.88rem' }}>
-                    Notifications
-                  </span>
+                <div
+                  className="rounded-circle bg-warning bg-opacity-20 d-flex align-items-center justify-content-center"
+                  style={{ width: 32, height: 32 }}
+                >
+                  <FaBell className={unreadCount > 0 ? 'text-warning' : 'text-muted'} size={15} />
                 </div>
 
-                {unreadCount > 0 ? (
-                  <span className="badge rounded-pill bg-danger shadow-xs px-2.5 py-1" style={{ fontSize: '0.74rem' }}>
+                {unreadCount > 0 && (
+                  <span
+                    className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-white shadow-xs d-flex align-items-center justify-content-center"
+                    style={{ fontSize: '0.7rem', padding: '0.2rem 0.45rem', transform: 'translate(-30%, -10%)' }}
+                  >
                     {unreadCount}
-                  </span>
-                ) : (
-                  <span className="badge rounded-pill bg-light text-muted border px-2 py-1 extra-small" style={{ fontSize: '0.72rem' }}>
-                    0
                   </span>
                 )}
               </button>

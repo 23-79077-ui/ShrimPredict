@@ -1090,9 +1090,15 @@ export default function UsersPage() {
                     </label>
 
                     <div className="row g-2">
-                      {ponds.map((pond) => {
+                      {ponds.map((pond, idx) => {
                         const { isAssignedToOther, assignedUserName } = getAssignedInfo(pond);
                         const isChecked = formData.selected_ponds.includes(pond.id);
+
+                        const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+                        const lIdx = Math.floor(idx / 3);
+                        const nIdx = (idx % 3) + 1;
+                        const defaultPondCode = `Pond ${letters[lIdx % 26]}${nIdx}`;
+                        const displayName = pond.pond_name && !/^Pond\s+\d+$/i.test(pond.pond_name) ? pond.pond_name : defaultPondCode;
 
                         return (
                           <div key={pond.id} className="col-4">
@@ -1116,7 +1122,7 @@ export default function UsersPage() {
                                   disabled={isAssignedToOther}
                                   onChange={() => {}}
                                 />
-                                <span>{pond.pond_name}</span>
+                                <span>{displayName}</span>
                               </div>
                             </div>
                           </div>

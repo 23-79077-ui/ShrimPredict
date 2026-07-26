@@ -135,7 +135,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     }
 } else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = json_decode(file_get_contents('php://input'), true) ?: $_POST;
-    $pondName = $data['pond_name'] ?? 'Pond';
+    $providedName = trim((string)($data['pond_name'] ?? ''));
+
+    if (empty($providedName) || $providedName === 'Pond' || preg_match('/^Pond\s*\d+$/i', $providedName)) {
+        // Compute next sequence name (A1, A2, A3, B1, B2, B3, C1, C2, C3...)
+        $countStmt = $conn->query("SELECT COUNT(*) FROM ponds");
+        $totalPonds = (int)$countStmt->fetchColumn();
+
+        $letters = range('A', 'Z');
+        $letterIdx = floor($totalPonds / 3);
+        $numberIdx = ($totalPonds % 3) + 1;
+        $letter = $letters[$letterIdx % 26];
+        if ($letterIdx >= 26) {
+            $letter .= (floor($letterIdx / 26));
+        }
+        $pondName = "Pond {$letter}{$numberIdx}";
+    } else {
+        $pondName = $providedName;
+    }
     $location = $data['location'] ?? '';
     $temp = $data['temperature'] ?? 29.0;
     $ph = $data['ph_level'] ?? 7.5;

@@ -15,13 +15,21 @@ export default function CaretakerLayout() {
   const { logout, user } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
+  const handleLogout = (e) => {
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
+    if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+    try {
+      logout();
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
+    localStorage.clear();
+    sessionStorage.clear();
+    window.location.href = '/login';
   };
 
   return (
-    <div className="d-flex">
+    <div className="app-shell caretaker-shell d-flex">
       <aside className="dashboard-sidebar d-none d-lg-flex flex-column">
         <div className="brand mb-5">
           <span className="brand-icon"><FaSeedling /></span>
@@ -43,24 +51,24 @@ export default function CaretakerLayout() {
             </NavLink>
           ))}
         </nav>
-        <div className="sidebar-footer mt-auto">
-          <button className="btn btn-outline-primary w-100" onClick={handleLogout}>
+        <div className="sidebar-footer">
+          <button type="button" className="btn btn-outline-light w-100" onClick={handleLogout}>
             <FaSignOutAlt className="me-2" />Logout
           </button>
         </div>
       </aside>
 
       <main className="dashboard-main">
-        <div className="dashboard-header">
+        <div className="dashboard-header d-flex align-items-center justify-content-between">
           <div className="header-left">
             <h1 className="mb-2">Caretaker Console</h1>
             <p className="text-muted mb-0">Fast access to scan, monitor, and manage your assigned ponds.</p>
           </div>
-          <div className="profile-chip">
-            <img src="https://i.pravatar.cc/100?img=47" alt="Caretaker avatar" />
+          <div className="profile-chip d-flex align-items-center gap-2 p-2 px-3 rounded-pill bg-white border shadow-sm">
+            <img src="https://i.pravatar.cc/100?img=47" alt="Caretaker avatar" style={{ width: 36, height: 36, borderRadius: '50%' }} />
             <div>
-              <div className="fw-semibold">{user?.full_name || 'Field Staff'}</div>
-              <small className="text-muted">Caretaker access</small>
+              <div className="fw-semibold text-dark small mb-0">{user?.full_name || 'Field Staff'}</div>
+              <small className="text-muted extra-small">Caretaker access</small>
             </div>
           </div>
         </div>

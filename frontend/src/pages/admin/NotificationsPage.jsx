@@ -118,7 +118,7 @@ export default function NotificationsPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Click Notification Handler: Marks read and redirects directly to target page (/admin/reports)
+  // Click Notification Handler: Marks read and redirects directly to exact report page with query parameters
   const handleNotificationClick = async (notif) => {
     try {
       if (!notif.is_read) {
@@ -131,14 +131,33 @@ export default function NotificationsPage() {
     const actionType = (notif.action_type || '').toLowerCase();
     const title = (notif.title || '').toLowerCase();
     const msg = (notif.message || '').toLowerCase();
+    const targetId = notif.target_id || notif.report_id || '';
+    const pondName = notif.pond_name || '';
+    const caretakerName = notif.caretaker_name || '';
 
-    if (actionType === 'feeding' || title.includes('feed') || msg.includes('feed')) {
-      navigate('/admin/feeding');
+    // Extract key issue phrase from notification title or message
+    let issueKey = notif.title || '';
+    if (issueKey.includes(':')) {
+      issueKey = issueKey.split(':')[1].trim();
+    }
+
+    const queryParams = [];
+    if (targetId) queryParams.push(`id=${targetId}`);
+    if (pondName) queryParams.push(`pond=${encodeURIComponent(pondName)}`);
+    if (issueKey) queryParams.push(`issue=${encodeURIComponent(issueKey.slice(0, 35))}`);
+    if (caretakerName) queryParams.push(`caretaker=${encodeURIComponent(caretakerName)}`);
+
+    const queryString = queryParams.length > 0 ? `?${queryParams.join('&')}` : '';
+
+    if (actionType === 'disease_scan' || title.includes('disease') || msg.includes('scanned for disease') || msg.includes('wssv')) {
+      navigate('/admin/disease-reports' + queryString);
+    } else if (actionType === 'feeding' || title.includes('feed') || msg.includes('feed')) {
+      navigate('/admin/feeding' + queryString);
     } else if (actionType === 'water_quality' || (title.includes('pond') && !title.includes('report')) || (msg.includes('pond') && !msg.includes('report'))) {
-      navigate('/admin/ponds');
+      navigate('/admin/ponds' + queryString);
     } else {
-      // Default report / maintenance / disease scan -> /admin/reports
-      navigate('/admin/reports');
+      // General Maintenance / Reports -> /admin/reports?id=XX&pond=YY&issue=ZZ
+      navigate('/admin/reports' + queryString);
     }
   };
 
@@ -282,26 +301,23 @@ export default function NotificationsPage() {
 
   return (
     <div>
-      {/* Header and Quick Stats */}
+      {/* Action Toolbar */}
       <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-        <div>
-          <h3 className="fw-bold mb-1 d-flex align-items-center gap-2">
-            <FaBell className="text-primary" /> Admin Caretaker Notifications
-            {counts.unread > 0 && (
-              <span className="badge bg-danger rounded-pill fs-6 ms-2">{counts.unread} unread</span>
-            )}
-          </h3>
-          <p className="text-muted mb-0">
-            Click any notification to view detailed caretaker reports and operational entries.
-          </p>
+        <div className="d-flex align-items-center gap-2">
+          <span className="badge bg-primary bg-opacity-10 text-primary px-3 py-1.5 rounded-pill fw-semibold extra-small">
+            <FaBell className="me-1" /> Real-time Caretaker Reports & System Alerts
+          </span>
+          {counts.unread > 0 && (
+            <span className="badge bg-danger rounded-pill px-3 py-1.5 extra-small fw-bold">{counts.unread} Unread</span>
+          )}
         </div>
 
         <div className="d-flex gap-2 align-items-center">
-          <button className="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1" onClick={loadNotifications}>
+          <button className="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1.5 rounded-pill px-3" onClick={loadNotifications}>
             <FaSync /> Refresh
           </button>
           <button
-            className="btn btn-primary btn-sm d-flex align-items-center gap-2"
+            className="btn btn-primary btn-sm d-flex align-items-center gap-2 rounded-pill px-3"
             onClick={handleMarkAllRead}
             disabled={counts.unread === 0}
           >

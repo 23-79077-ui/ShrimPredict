@@ -53,6 +53,7 @@ $ensureNotificationsTable = function ($conn): void {
         ['caretaker_name', "ALTER TABLE notifications ADD COLUMN caretaker_name VARCHAR(150) DEFAULT NULL AFTER message"],
         ['action_type', "ALTER TABLE notifications ADD COLUMN action_type VARCHAR(50) DEFAULT 'general' AFTER caretaker_name"],
         ['pond_name', "ALTER TABLE notifications ADD COLUMN pond_name VARCHAR(100) DEFAULT NULL AFTER action_type"],
+        ['target_id', "ALTER TABLE notifications ADD COLUMN target_id INT DEFAULT NULL AFTER pond_name"],
         ['status', "ALTER TABLE notifications ADD COLUMN status VARCHAR(20) DEFAULT 'active' AFTER is_read"],
     ];
 
@@ -195,6 +196,7 @@ if ($method === 'POST') {
     $actionType = isset($payload['action_type']) ? trim((string)$payload['action_type']) : 'general';
     $pondName = isset($payload['pond_name']) ? trim((string)$payload['pond_name']) : '';
     $userId = isset($payload['user_id']) ? (int)$payload['user_id'] : null;
+    $targetId = isset($payload['target_id']) ? (int)$payload['target_id'] : (isset($payload['report_id']) ? (int)$payload['report_id'] : null);
 
     if (empty($message)) {
         http_response_code(400);
@@ -204,8 +206,8 @@ if ($method === 'POST') {
 
     try {
         $stmt = $conn->prepare(
-            "INSERT INTO notifications (user_id, title, message, caretaker_name, action_type, pond_name, is_read, status, created_at)
-             VALUES (:user_id, :title, :message, :caretaker_name, :action_type, :pond_name, 0, 'active', NOW())"
+            "INSERT INTO notifications (user_id, title, message, caretaker_name, action_type, pond_name, target_id, is_read, status, created_at)
+             VALUES (:user_id, :title, :message, :caretaker_name, :action_type, :pond_name, :target_id, 0, 'active', NOW())"
         );
         $stmt->execute([
             ':user_id' => $userId,
@@ -214,6 +216,7 @@ if ($method === 'POST') {
             ':caretaker_name' => $caretakerName,
             ':action_type' => $actionType,
             ':pond_name' => $pondName,
+            ':target_id' => $targetId,
         ]);
         $newId = $conn->lastInsertId();
         http_response_code(201);
