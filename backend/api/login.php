@@ -74,6 +74,10 @@ $sendLoginSuccess = function (array $user) use ($conn): void {
             'email' => $user['email'],
             'role' => $user['role'],
             'status' => $user['status'],
+            'phone' => $user['phone'] ?? '',
+            'position' => $user['position'] ?? ($user['role'] === 'caretaker' ? 'Pond Caretaker' : 'System Administrator'),
+            'avatar_path' => $user['avatar_path'] ?? '',
+            'pond_id' => $user['pond_id'] ?? null,
             'assigned_ponds' => $assignedPonds,
         ]
     ]);
