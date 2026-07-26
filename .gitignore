@@ -2,7 +2,7 @@ frontend/node_modules/
 .venv/
 .venv311/
 ml/artifacts/
-data
+data/
 *.keras
 *.h5
 *.bin
