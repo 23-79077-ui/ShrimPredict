@@ -9,7 +9,8 @@ from pathlib import Path
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 
-SCRIPT_DIR = Path(__file__).parent
+SCRIPT_DIR = Path(__file__).resolve().parent
+REPO_ROOT = SCRIPT_DIR.parents[1]
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
@@ -17,9 +18,9 @@ from desktop_shrimp import is_desktop_model_ready, predict_desktop_shrimp
 from quality_validator import validate_image_quality
 from shrimp_detector import detect_shrimp
 
-MODEL_DIR = Path(os.getenv("SHRIMP_WSSV_MODEL_DIR", "ml/artifacts/wssv_transfer/efficientnetb0"))
+MODEL_DIR = Path(os.getenv("SHRIMP_WSSV_MODEL_DIR", REPO_ROOT / "ml" / "artifacts" / "wssv_transfer" / "efficientnetb0"))
 IMAGE_SIZE = int(os.getenv("SHRIMP_WSSV_IMAGE_SIZE", "224"))
-FOREST_MODEL_PATH = Path(os.getenv("SHRIMP_FOREST_MODEL_PATH", "frontend/public/models/shrimp-disease/wssv-forest-model.json"))
+FOREST_MODEL_PATH = Path(os.getenv("SHRIMP_FOREST_MODEL_PATH", REPO_ROOT / "frontend" / "public" / "models" / "shrimp-disease" / "wssv-forest-model.json"))
 
 app = Flask(__name__)
 CORS(app)

@@ -5,8 +5,20 @@ import subprocess
 import sys
 from pathlib import Path
 
-PREDICTOR_SCRIPT = Path(__file__).parent / "desktop_shrimp_predictor.js"
-MODEL_DIR = Path(__file__).parent.parent / "artifacts" / "desktop_shrimp"
+SCRIPT_DIR = Path(__file__).resolve().parent
+REPO_ROOT = SCRIPT_DIR.parents[1]
+PREDICTOR_SCRIPT = SCRIPT_DIR / "desktop_shrimp_predictor.js"
+MODEL_DIR = SCRIPT_DIR.parent / "artifacts" / "desktop_shrimp"
+NODE_MODULE_DIRS = [
+    SCRIPT_DIR / "node_modules",
+    REPO_ROOT / "node_modules",
+    REPO_ROOT / "frontend" / "node_modules",
+]
+
+
+def _node_package_exists(package_name: str) -> bool:
+    parts = package_name.split("/")
+    return any((node_modules / Path(*parts)).exists() for node_modules in NODE_MODULE_DIRS)
 
 
 def is_desktop_model_ready() -> bool:
@@ -15,6 +27,8 @@ def is_desktop_model_ready() -> bool:
         and (MODEL_DIR / "model.json").exists()
         and (MODEL_DIR / "weights.bin").exists()
         and PREDICTOR_SCRIPT.exists()
+        and _node_package_exists("@tensorflow/tfjs")
+        and _node_package_exists("sharp")
     )
 
 
