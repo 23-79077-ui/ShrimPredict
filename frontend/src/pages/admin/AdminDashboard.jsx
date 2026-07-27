@@ -189,7 +189,8 @@ export default function AdminDashboard() {
       slots.forEach((slot) => {
         labels.push(slot);
         const sum = filteredFeedingRecords.reduce((acc, r) => {
-          if (r.feeding_time === slot) return acc + (parseFloat(r.amount_kg) || 0);
+          const normTime = String(r.feeding_time || '').trim().replace(/^0(\d:)/, '$1').toUpperCase();
+          if (normTime === slot.toUpperCase()) return acc + (parseFloat(r.amount_kg) || 0);
           return acc;
         }, 0);
         data.push(Math.round(sum * 100) / 100);
@@ -240,15 +241,42 @@ export default function AdminDashboard() {
         return stats.total_ponds || 0;
       })(),
       icon: <FaWater />,
+      theme: 'primary',
+      borderClass: 'border-primary border-opacity-25',
+      bgGradient: 'linear-gradient(180deg, rgba(13, 110, 253, 0.03) 0%, #ffffff 100%)',
     },
-    { title: 'Healthy Ponds', value: stats.healthy_ponds || 0, icon: <FaSeedling /> },
-    { title: 'Disease Alerts', value: stats.disease_alerts || 0, icon: <FaVirus /> },
+    {
+      title: 'Healthy Ponds',
+      value: stats.healthy_ponds || 0,
+      icon: <FaSeedling />,
+      theme: 'success',
+      borderClass: 'border-success border-opacity-25',
+      bgGradient: 'linear-gradient(180deg, rgba(25, 135, 84, 0.03) 0%, #ffffff 100%)',
+    },
+    {
+      title: 'Disease Alerts',
+      value: stats.disease_alerts || 0,
+      icon: <FaVirus />,
+      theme: 'danger',
+      borderClass: 'border-danger border-opacity-25',
+      bgGradient: 'linear-gradient(180deg, rgba(220, 53, 69, 0.03) 0%, #ffffff 100%)',
+    },
     {
       title: dateFilterType === 'today' ? "Today's Feeding Logs" : 'Filtered Feeding Logs',
       value: `${filteredFeedingRecords.length} entries (${totalFilteredFeedKg.toFixed(1)} kg)`,
       icon: <FaUtensils />,
+      theme: 'info',
+      borderClass: 'border-info border-opacity-25',
+      bgGradient: 'linear-gradient(180deg, rgba(13, 202, 240, 0.03) 0%, #ffffff 100%)',
     },
-    { title: 'Upcoming Harvest', value: stats.upcoming_harvest || 0, icon: <FaChartBar /> },
+    {
+      title: 'Upcoming Harvest',
+      value: stats.upcoming_harvest || 0,
+      icon: <FaChartBar />,
+      theme: 'warning',
+      borderClass: 'border-warning border-opacity-50',
+      bgGradient: 'linear-gradient(180deg, rgba(255, 193, 7, 0.03) 0%, #ffffff 100%)',
+    },
   ];
 
   return (
@@ -363,11 +391,15 @@ export default function AdminDashboard() {
       {/* Metrics Summary Grid */}
       <div className="row g-3 mb-4">
         {cards.map((card) => (
-          <div key={card.title} className="col-12 col-sm-6 col-xl-3">
-            <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+          <div key={card.title} className="col-12 col-sm-6 col-xl-2.4 col-lg-4">
+            <div
+              className={`card border ${card.borderClass} shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden transition-all hover-shadow`}
+              style={{ background: card.bgGradient }}
+            >
+              <div className={`position-absolute top-0 start-0 end-0 bg-${card.theme}`} style={{ height: 4 }} />
               <div className="d-flex align-items-center justify-content-between mb-3">
                 <span className="text-muted small fw-semibold">{card.title}</span>
-                <div className="rounded-3 p-2.5 bg-primary bg-opacity-10 text-primary fs-5">
+                <div className={`rounded-3 p-2.5 bg-${card.theme} bg-opacity-10 text-${card.theme} fs-5`}>
                   {card.icon}
                 </div>
               </div>

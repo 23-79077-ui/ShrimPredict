@@ -142,17 +142,6 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Credentials Note */}
-            <div className="p-3 rounded-3 border border-white-20 text-white small mt-3" style={{ background: 'rgba(255, 255, 255, 0.12)' }}>
-              <div className="d-flex align-items-center gap-2 mb-1">
-                <FaCheckCircle className="text-warning" />
-                <span className="fw-bold text-white">Quick Demo Login Credentials</span>
-              </div>
-              <div className="text-white-90 small">
-                • <strong>Admin:</strong> admin@shrimpredict.com | pass: admin123<br />
-                • <strong>Caretaker:</strong> caretaker@shrimpredict.com | pass: caretaker123
-              </div>
-            </div>
           </div>
 
           {/* Form Right Panel */}

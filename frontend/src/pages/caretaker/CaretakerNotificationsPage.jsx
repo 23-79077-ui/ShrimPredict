@@ -219,14 +219,6 @@ export default function CaretakerNotificationsPage() {
 
   return (
     <div className="caretaker-notifications-page">
-      {/* Top Hero Banner */}
-      <section className="caretaker-dashboard-hero mb-4">
-        <div>
-          <span className="caretaker-dashboard-kicker">Caretaker Console</span>
-          <h3>Notifications</h3>
-          <p>Admin responses and status updates for your submitted pond reports.</p>
-        </div>
-      </section>
 
       {/* Action Toolbar */}
       <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">

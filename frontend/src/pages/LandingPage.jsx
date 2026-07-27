@@ -19,6 +19,8 @@ import {
   FaMapMarkerAlt,
   FaPhoneAlt,
   FaPlay,
+  FaClipboardList,
+  FaUtensils,
 } from 'react-icons/fa';
 
 const stats = [
@@ -36,43 +38,49 @@ const features = [
     badge: 'AI Powered',
   },
   {
-    title: 'Pond Water Health',
-    description: 'Continuous water quality tracking to prevent environmental stress and maintain ideal pH and temp.',
-    icon: <FaWater className="text-info fs-3" />,
-    badge: 'Real-time',
+    title: 'Feed Monitoring & Digital Log',
+    description: 'Replaces manual paper logbooks with instant digital feeding entry. Caretakers log daily feed amounts effortlessly in seconds.',
+    icon: <FaClipboardList className="text-info fs-3" />,
+    badge: 'Digital Feed Log',
   },
   {
     title: 'Smart Analytics & Logs',
-    description: 'Track daily caretaker scans, mortality events, and feeding schedules with intuitive visual charts.',
+    description: 'Track caretaker scans, mortality events, and historical feeding schedules with intuitive visual charts.',
     icon: <FaChartLine className="text-success fs-3" />,
     badge: 'Analytics',
   },
   {
-    title: 'Harvest Prediction',
-    description: 'Data-driven insights to determine the best harvest window for maximum biomass yield and revenue.',
+    title: 'Harvest Yield Prediction',
+    description: 'Calculates optimal harvest timing and expected shrimp biomass yield based directly on daily feed consumption rates (FCR).',
     icon: <FaShieldAlt className="text-warning fs-3" />,
-    badge: 'Yield Boost',
+    badge: 'Feed-Based AI',
   },
 ];
 
 const steps = [
   {
     step: '01',
+    badge: 'STEP ONE',
     title: 'Snap or Upload Photo',
-    description: 'Caretakers capture shrimp photos directly from pond side using camera or gallery upload.',
-    icon: <FaCamera />,
+    description: 'Caretakers capture shrimp photos directly from pond side using their smartphone camera or gallery upload.',
+    icon: <FaCamera className="fs-3 text-primary" />,
+    accent: 'primary',
   },
   {
     step: '02',
+    badge: 'STEP TWO',
     title: 'AI Multi-Feature Scan',
-    description: 'Our trained model inspects spot contrast, shell texture, and color HSV channels in under 2 seconds.',
-    icon: <FaRobot />,
+    description: 'Our trained neural network model inspects spot contrast, shell texture, and HSV color channels in under 2 seconds.',
+    icon: <FaRobot className="fs-3 text-info" />,
+    accent: 'info',
   },
   {
     step: '03',
-    title: 'Actionable Insights',
-    description: 'Receive immediate risk ratings, isolation steps, and automatic admin pond notifications.',
-    icon: <FaCheckCircle />,
+    badge: 'STEP THREE',
+    title: 'Actionable Insights & Alerts',
+    description: 'Receive immediate risk ratings, isolation protocols, and automatic notifications sent straight to admin dashboards.',
+    icon: <FaCheckCircle className="fs-3 text-success" />,
+    accent: 'success',
   },
 ];
 
@@ -85,41 +93,6 @@ export default function LandingPage() {
     analyzing: false,
     result: null,
   });
-
-  const [contactForm, setContactForm] = useState({
-    name: '',
-    email: '',
-    subject: '',
-    message: '',
-  });
-  const [contactSubmitting, setContactSubmitting] = useState(false);
-  const [contactSuccess, setContactSuccess] = useState(null);
-
-  const handleContactSubmit = async (e) => {
-    e.preventDefault();
-    setContactSubmitting(true);
-    setContactSuccess(null);
-
-    try {
-      const res = await fetch('http://localhost/shrim_predict_api/contact.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(contactForm),
-      });
-      const data = await res.json();
-      if (data.status === 'success') {
-        setContactSuccess(data.message || 'Thank you! Your message has been saved in the database.');
-        setContactForm({ name: '', email: '', subject: '', message: '' });
-      } else {
-        alert(data.message || 'Error submitting message.');
-      }
-    } catch (err) {
-      console.error('Contact submit error:', err);
-      alert('Network error. Please ensure XAMPP MySQL and Apache are running.');
-    } finally {
-      setContactSubmitting(false);
-    }
-  };
 
   // Track active section on scroll
   useEffect(() => {
@@ -438,6 +411,19 @@ export default function LandingPage() {
                       <strong className="text-warning">&lt; 1.5 seconds per scan</strong>
                     </li>
                   </ul>
+
+                  {/* Commercial Facility Profile Card */}
+                  <div className="p-3 bg-white rounded-3 border border-primary border-opacity-20 mt-3 shadow-xs">
+                    <h6 className="fw-bold text-primary mb-2 d-flex align-items-center gap-2 extra-small text-uppercase">
+                      <FaWater /> Commercial Partner: O&B Aqua Farm
+                    </h6>
+                    <div className="extra-small text-dark">
+                      <div className="mb-1">📍 <strong>Address:</strong> Sitio Carbonan Rd, Brgy. Balitoc, Calatagan, Batangas</div>
+                      <div className="mb-1">🦐 <strong>Primary Crop:</strong> <em>Penaeus vannamei</em> (Pacific White Shrimp)</div>
+                      <div className="mb-1">📐 <strong>Facility Scale:</strong> 8.4-Hectare Commercial Aquaculture Ponds</div>
+                      <div>🛡️ <strong>Compliance:</strong> BFAR Food Safety Certified (Valid thru June 23, 2027)</div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -484,22 +470,46 @@ export default function LandingPage() {
         <section id="how-it-works" className="py-5 bg-white border-top">
           <div className="container py-lg-4">
             <div className="text-center max-w-700 mx-auto mb-5">
-              <span className="badge bg-warning-soft text-warning px-3 py-2 rounded-pill fw-bold text-uppercase mb-2">
+              <span className="badge bg-warning bg-opacity-10 text-warning-emphasis px-3 py-2 rounded-pill fw-bold text-uppercase mb-2 border border-warning border-opacity-25">
                 Simple Workflow
               </span>
               <h2 className="display-6 fw-bold text-dark mb-3">How Caretakers Use ShrimPredict</h2>
-              <p className="lead text-secondary">Three simple steps to protect your ponds from disease outbreaks.</p>
+              <p className="lead text-secondary">Three simple steps to protect your ponds from disease outbreaks and optimize harvest yields.</p>
             </div>
 
-            <div className="row g-4 justify-content-center">
+            <div className="row g-4 justify-content-center align-items-stretch">
               {steps.map((s, idx) => (
                 <div key={idx} className="col-md-4">
-                  <div className="card border-0 shadow-sm rounded-4 p-4 text-center h-100 bg-light">
-                    <div className="display-4 fw-extrabold text-primary opacity-25 mb-2">{s.step}</div>
-                    <div className="fs-2 text-primary mb-3">{s.icon}</div>
-                    <h5 className="fw-bold text-dark mb-2">{s.title}</h5>
-                    <p className="text-secondary small mb-0">{s.description}</p>
-                  </div>
+                  <motion.div
+                    whileHover={{ y: -8 }}
+                    transition={{ duration: 0.25 }}
+                    className={`card h-100 border border-${s.accent} border-opacity-25 shadow-sm rounded-4 p-4 text-center bg-white position-relative overflow-hidden hover-shadow`}
+                    style={{ background: `linear-gradient(180deg, rgba(13, 110, 253, 0.02) 0%, #ffffff 100%)` }}
+                  >
+                    {/* Top Accent Bar */}
+                    <div className={`position-absolute top-0 start-0 end-0 bg-${s.accent}`} style={{ height: 4 }} />
+
+                    <div className="card-body d-flex flex-column align-items-center p-2">
+                      {/* Step Number & Badge */}
+                      <div className="d-flex align-items-center justify-content-between w-100 mb-3">
+                        <span className={`badge bg-${s.accent} bg-opacity-10 text-${s.accent} border border-${s.accent} border-opacity-25 px-2.5 py-1 rounded-pill extra-small fw-bold`}>
+                          {s.badge}
+                        </span>
+                        <span className={`display-6 fw-extrabold text-${s.accent} opacity-25 font-mono`}>
+                          {s.step}
+                        </span>
+                      </div>
+
+                      {/* Circular Icon Container */}
+                      <div className={`p-4 rounded-circle bg-${s.accent} bg-opacity-10 mb-3 d-flex align-items-center justify-content-center shadow-xs`} style={{ width: 72, height: 72 }}>
+                        {s.icon}
+                      </div>
+
+                      {/* Title & Description */}
+                      <h5 className="fw-bold text-dark mb-2">{s.title}</h5>
+                      <p className="text-secondary small mb-0">{s.description}</p>
+                    </div>
+                  </motion.div>
                 </div>
               ))}
             </div>
@@ -509,116 +519,61 @@ export default function LandingPage() {
         {/* Contact Section */}
         <section id="contact" className="py-5 bg-light border-top">
           <div className="container py-lg-4">
-            <div className="row gy-4">
-              <div className="col-lg-5">
-                <span className="badge bg-primary-soft text-primary px-3 py-2 rounded-pill fw-bold text-uppercase mb-3">
-                  <FaEnvelope /> Get In Touch
+            <div className="max-w-900 mx-auto">
+              <div className="text-center mb-4">
+                <span className="badge bg-primary-soft text-primary px-3 py-2 rounded-pill fw-bold text-uppercase mb-2">
+                  <FaEnvelope /> Contact & Location
                 </span>
-                <h2 className="display-6 fw-bold text-dark mb-3">Contact ShrimPredict Support</h2>
-                <p className="text-secondary mb-4">
-                  Have questions about integrating ShrimPredict into your commercial shrimp farm or capstone project? Send us a message!
+                <h2 className="display-6 fw-bold text-dark mb-2">O&B Aqua Farm & Platform Support</h2>
+                <p className="text-secondary small mb-0">
+                  Official contact and operational details for O&B Aqua Farm commercial grow-out operations, wholesale seafood inquiries, and ShrimPredict AI platform support.
                 </p>
-                <div className="d-flex flex-column gap-3">
-                  <div className="d-flex align-items-center gap-3">
-                    <div className="bg-white p-3 rounded-3 border text-primary fs-5"><FaMapMarkerAlt /></div>
-                    <div>
-                      <h6 className="fw-bold text-dark mb-0">Location</h6>
-                      <span className="text-secondary small">Aquaculture Tech Center, Philippines</span>
+              </div>
+
+              <div className="row g-4 mb-4">
+                <div className="col-md-4">
+                  <div className="card h-100 border-0 shadow-sm rounded-4 p-4 bg-white text-center">
+                    <div className="bg-primary bg-opacity-10 p-3 rounded-circle text-primary fs-4 mx-auto mb-3 d-flex align-items-center justify-content-center" style={{ width: 60, height: 60 }}>
+                      <FaMapMarkerAlt />
                     </div>
+                    <h6 className="fw-bold text-dark mb-1">Physical Address</h6>
+                    <span className="text-secondary extra-small d-block">
+                      O&B Aqua Farm, Sitio Carbonan Rd, Brgy. Balitoc, Calatagan, 4215 Batangas, Philippines
+                    </span>
                   </div>
-                  <div className="d-flex align-items-center gap-3">
-                    <div className="bg-white p-3 rounded-3 border text-primary fs-5"><FaEnvelope /></div>
-                    <div>
-                      <h6 className="fw-bold text-dark mb-0">Email</h6>
-                      <span className="text-secondary small">support@shrimp-predict.com</span>
+                </div>
+
+                <div className="col-md-4">
+                  <div className="card h-100 border-0 shadow-sm rounded-4 p-4 bg-white text-center">
+                    <div className="bg-success bg-opacity-10 p-3 rounded-circle text-success fs-4 mx-auto mb-3 d-flex align-items-center justify-content-center" style={{ width: 60, height: 60 }}>
+                      <FaPhoneAlt />
                     </div>
+                    <h6 className="fw-bold text-dark mb-1">Mobile / Management Line</h6>
+                    <a href="tel:+639622316169" className="text-primary fw-bold text-decoration-none small">+63 962 231 6169</a>
+                    <small className="text-muted extra-small d-block mt-1">Available for wholesale farm inquiries</small>
                   </div>
-                  <div className="d-flex align-items-center gap-3">
-                    <div className="bg-white p-3 rounded-3 border text-primary fs-5"><FaPhoneAlt /></div>
-                    <div>
-                      <h6 className="fw-bold text-dark mb-0">Phone</h6>
-                      <span className="text-secondary small">+63 (02) 8888-5555</span>
+                </div>
+
+                <div className="col-md-4">
+                  <div className="card h-100 border-0 shadow-sm rounded-4 p-4 bg-white text-center">
+                    <div className="bg-info bg-opacity-10 p-3 rounded-circle text-info fs-4 mx-auto mb-3 d-flex align-items-center justify-content-center" style={{ width: 60, height: 60 }}>
+                      <FaEnvelope />
                     </div>
+                    <h6 className="fw-bold text-dark mb-1">Support Email</h6>
+                    <span className="text-secondary small d-block">support@shrimp-predict.com</span>
+                    <small className="text-muted extra-small d-block mt-1">AI platform technical support</small>
                   </div>
                 </div>
               </div>
 
-              <div className="col-lg-7">
-                <div className="card border-0 shadow-sm rounded-4 p-4 bg-white">
-                  <h5 className="fw-bold text-dark mb-3">Send Us a Direct Message</h5>
-
-                  {contactSuccess && (
-                    <div className="alert alert-success d-flex align-items-center gap-2 rounded-3 mb-3">
-                      <FaCheckCircle className="fs-5" />
-                      <span>{contactSuccess}</span>
-                    </div>
-                  )}
-
-                  <form onSubmit={handleContactSubmit}>
-                    <div className="row g-3">
-                      <div className="col-md-6">
-                        <label className="form-label text-dark small fw-bold">Your Name</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          placeholder="Juan Dela Cruz"
-                          value={contactForm.name}
-                          onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
-                          required
-                        />
-                      </div>
-                      <div className="col-md-6">
-                        <label className="form-label text-dark small fw-bold">Email Address</label>
-                        <input
-                          type="email"
-                          className="form-control"
-                          placeholder="juan@farm.com"
-                          value={contactForm.email}
-                          onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
-                          required
-                        />
-                      </div>
-                      <div className="col-12">
-                        <label className="form-label text-dark small fw-bold">Subject</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          placeholder="Pond Setup / Inquiry"
-                          value={contactForm.subject}
-                          onChange={(e) => setContactForm({ ...contactForm, subject: e.target.value })}
-                          required
-                        />
-                      </div>
-                      <div className="col-12">
-                        <label className="form-label text-dark small fw-bold">Message</label>
-                        <textarea
-                          className="form-control"
-                          rows="4"
-                          placeholder="How can we help your farm?"
-                          value={contactForm.message}
-                          onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
-                          required
-                        ></textarea>
-                      </div>
-                      <div className="col-12">
-                        <button
-                          type="submit"
-                          disabled={contactSubmitting}
-                          className="btn btn-primary px-4 py-2 rounded-3 fw-bold d-flex align-items-center gap-2 text-white shadow-sm"
-                        >
-                          {contactSubmitting ? (
-                            <>
-                              <span className="spinner-border spinner-border-sm" role="status"></span>
-                              Saving to Database...
-                            </>
-                          ) : (
-                            'Send Message'
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  </form>
+              {/* 💡 VISITOR & WHOLESALE ADVISORY */}
+              <div className="p-4 bg-warning bg-opacity-10 border border-warning border-opacity-30 rounded-4 text-dark shadow-xs">
+                <div className="fw-bold text-dark mb-1 d-flex align-items-center gap-2 fs-6">
+                  <FaInfoCircle className="text-warning fs-5" /> Commercial Visitor & Wholesale Advisory
                 </div>
+                <p className="mb-0 text-secondary small">
+                  O&B Aqua Farm operates strictly as a commercial grow-out aquaculture facility. For wholesale fresh Pacific White Shrimp (<em>Penaeus vannamei</em>) purchases direct from the farm gate, please call our management line (+63 962 231 6169) before traveling to confirm harvest schedules and minimum order quantities.
+                </p>
               </div>
             </div>
           </div>
@@ -778,13 +733,19 @@ export default function LandingPage() {
       </AnimatePresence>
 
       {/* Footer */}
-      <footer className="bg-dark text-white py-4 mt-auto">
+      <footer className="bg-dark text-white py-4 mt-auto border-top border-secondary border-opacity-25">
         <div className="container text-center">
-          <div className="d-inline-flex align-items-center justify-content-center gap-2 flex-wrap">
-            <span className="brand-icon bg-primary text-white rounded-2 px-2 py-1 fs-6 border border-light">SP</span>
-            <span className="fw-bold text-white fs-5 ms-1">ShrimPredict</span>
-            <span className="text-white-75 small ms-2">© 2026 Aquaculture Intelligence. All rights reserved.</span>
+          <div className="d-flex align-items-center justify-content-center gap-3 flex-wrap mb-2">
+            <div className="d-inline-flex align-items-center gap-2">
+              <span className="brand-icon bg-primary text-white rounded-2 px-2 py-1 fs-6 border border-light">SP</span>
+              <span className="fw-bold text-white fs-5">ShrimPredict</span>
+            </div>
+            <span className="text-white-50 d-none d-md-inline">|</span>
+            <span className="text-white-75 extra-small">O&B Aqua Farm, Sitio Carbonan Rd, Brgy. Balitoc, Calatagan, 4215 Batangas</span>
+            <span className="text-white-50 d-none d-md-inline">|</span>
+            <span className="text-white-75 extra-small">📞 +63 962 231 6169</span>
           </div>
+          <p className="text-white-50 tiny mb-0">© 2026 ShrimPredict & O&B Aqua Farm Commercial Operations. All rights reserved.</p>
         </div>
       </footer>
     </div>

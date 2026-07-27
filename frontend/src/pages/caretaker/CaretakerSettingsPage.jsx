@@ -254,14 +254,6 @@ export default function CaretakerSettingsPage() {
 
   return (
     <div className="caretaker-settings-container p-3 p-md-4">
-      {/* Top Hero Banner (Matching Caretaker Console Standard Design) */}
-      <section className="caretaker-dashboard-hero mb-4">
-        <div>
-          <span className="caretaker-dashboard-kicker">CARETAKER CONSOLE</span>
-          <h3>Account Settings</h3>
-          <p>Manage your caretaker profile, pond preferences, notification alerts, and security options.</p>
-        </div>
-      </section>
 
       <div className="row g-4">
         {/* LEFT SETTINGS MENU SIDEBAR */}

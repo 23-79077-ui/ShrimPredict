@@ -15,63 +15,53 @@ try {
 } catch (Throwable $e) {}
 
 // 2. Fetch existing pond IDs
-$pondStmt = $conn->query("SELECT id FROM ponds");
+$pondStmt = $conn->query("SELECT id FROM ponds ORDER BY id ASC");
 $existingPondIds = $pondStmt->fetchAll(PDO::FETCH_COLUMN);
 
 if (empty($existingPondIds)) {
-    $conn->exec("INSERT INTO ponds (pond_name, target_feed_kg) VALUES ('Pond A1', 45.0), ('Pond A2', 50.0), ('Pond B1', 40.0), ('Pond B2', 35.0)");
-    $pondStmt = $conn->query("SELECT id FROM ponds");
+    $conn->exec("INSERT INTO ponds (pond_name, target_feed_kg) VALUES ('Pond A1', 45.0), ('Pond A2', 45.0), ('Pond B1', 45.0), ('Pond B2', 45.0)");
+    $pondStmt = $conn->query("SELECT id FROM ponds ORDER BY id ASC");
     $existingPondIds = $pondStmt->fetchAll(PDO::FETCH_COLUMN);
 }
 
-$p1 = $existingPondIds[0] ?? 1;
-$p2 = $existingPondIds[1] ?? 2;
-$p3 = $existingPondIds[2] ?? 3;
-$p4 = $existingPondIds[3] ?? 4;
-
-// 2. Check feeding records count
-$countStmt = $conn->query("SELECT COUNT(*) FROM feeding_records");
-$count = $countStmt->fetchColumn();
+// Clear old feeding records
+$conn->exec("DELETE FROM feeding_records");
+$conn->exec("ALTER TABLE feeding_records AUTO_INCREMENT = 1");
 
 $today = date('Y-m-d');
 $yesterday = date('Y-m-d', strtotime('-1 day'));
-$twoDaysAgo = date('Y-m-d', strtotime('-2 days'));
 
-$records = [
-    // Today's Feeding Records (12 entries for Today)
-    [$p1, 15.0, 'Tateh - Starter', '06:00 AM', 'Starter', 1, 'Vitamin C', $today, 'Morning feeding complete', 'Juan Dela Cruz'],
-    [$p1, 15.0, 'Tateh - Starter', '11:00 AM', 'Starter', 0, 'None', $today, 'Noon feeding done', 'Juan Dela Cruz'],
-    [$p1, 15.0, 'Tateh - Starter', '04:00 PM', 'Starter', 1, 'Multi-Vit', $today, 'Afternoon feeding done', 'Juan Dela Cruz'],
-
-    [$p2, 18.0, 'Tateh - Grower', '06:30 AM', 'Grower', 1, 'Amino Boost', $today, 'High appetite observed', 'Maria Santos'],
-    [$p2, 20.0, 'Tateh - Grower', '11:30 AM', 'Grower', 0, 'None', $today, 'Heavy feeding', 'Maria Santos'],
-    [$p2, 20.0, 'Tateh - Grower', '04:30 PM', 'Grower', 1, 'Vitamin C', $today, 'Slight overfeeding warning', 'Maria Santos'],
-
-    [$p3, 13.0, 'Tateh - Starter', '07:00 AM', 'Starter', 0, 'None', $today, 'Normal feeding', 'Pedro Penduko'],
-    [$p3, 13.0, 'Tateh - Starter', '12:00 PM', 'Starter', 1, 'Vitamin C', $today, 'Good tray clearance', 'Pedro Penduko'],
-    [$p3, 14.0, 'Tateh - Starter', '05:00 PM', 'Starter', 0, 'None', $today, 'Evening ration complete', 'Pedro Penduko'],
-
-    [$p4, 9.0, 'Tateh - Grower', '07:30 AM', 'Grower', 0, 'None', $today, 'Lower feed response', 'Elena Cruz'],
-    [$p4, 9.0, 'Tateh - Grower', '12:30 PM', 'Grower', 0, 'None', $today, 'Underfeeding alert', 'Elena Cruz'],
-    [$p4, 10.0, 'Tateh - Grower', '05:30 PM', 'Grower', 1, 'Probiotics', $today, 'Probiotics added', 'Elena Cruz'],
-
-    // Additional Today Records to total > 10 rows
-    [$p1, 16.0, 'Tateh - Starter', '08:00 PM', 'Starter', 1, 'Vitamin C', $today, 'Night ration complete', 'Juan Dela Cruz'],
-    [$p2, 22.0, 'Tateh - Grower', '08:30 PM', 'Grower', 0, 'None', $today, 'Late evening feeding', 'Maria Santos'],
-    [$p3, 15.0, 'Tateh - Starter', '09:00 PM', 'Starter', 1, 'Amino Boost', $today, 'Final tray check complete', 'Pedro Penduko'],
-
-    // Yesterday's Records
-    [$p1, 45.0, 'Tateh - Starter', '06:00 AM', 'Starter', 1, 'Vitamin C', $yesterday, 'Full day feed ration', 'Juan Dela Cruz'],
-    [$p2, 58.0, 'Tateh - Grower', '06:30 AM', 'Grower', 0, 'None', $yesterday, 'Full day feed ration', 'Maria Santos'],
-    [$p3, 38.0, 'Tateh - Starter', '07:00 AM', 'Starter', 1, 'Multi-Vit', $yesterday, 'Full day feed ration', 'Pedro Penduko'],
+// Standard 5 Feeding Sessions: 6:00 AM, 9:00 AM, 12:00 PM, 3:00 PM, 6:00 PM
+$standardSlots = [
+    ['time' => '6:00 AM',  'vitamin' => 'None',           'notes' => '1st feeding session (Morning)'],
+    ['time' => '9:00 AM',  'vitamin' => 'Vitamin C',      'notes' => '2nd feeding session (Mid-Morning)'],
+    ['time' => '12:00 PM', 'vitamin' => 'None',           'notes' => '3rd feeding session (Noon)'],
+    ['time' => '3:00 PM',  'vitamin' => 'Sanolife PRO-2', 'notes' => '4th feeding session (Afternoon)'],
+    ['time' => '6:00 PM',  'vitamin' => 'None',           'notes' => '5th feeding session (Evening)'],
 ];
 
-$insertStmt = $conn->prepare("INSERT INTO feeding_records (pond_id, amount_kg, feed_type, feeding_time, product_code, has_vitamin, vitamin_name, record_date, notes, recorded_by_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+$insertStmt = $conn->prepare("
+    INSERT INTO feeding_records 
+    (pond_id, amount_kg, feed_type, feeding_time, product_code, has_vitamin, vitamin_name, record_date, notes, recorded_by_name, created_at) 
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+");
 
-$inserted = 0;
-foreach ($records as $r) {
-    $insertStmt->execute($r);
-    $inserted++;
+$totalInserted = 0;
+foreach ($existingPondIds as $pId) {
+    foreach ($standardSlots as $idx => $slot) {
+        $hasVit = ($slot['vitamin'] !== 'None') ? 1 : 0;
+        $createdAtToday = "{$today} " . sprintf("%02d:00:00", ($idx * 3) + 6);
+        $insertStmt->execute([
+            $pId, 9.00, 'Tateh - Starter', $slot['time'], 'Starter', $hasVit, $slot['vitamin'], $today, $slot['notes'], 'Caretaker Staff', $createdAtToday
+        ]);
+        $totalInserted++;
+
+        $createdAtYest = "{$yesterday} " . sprintf("%02d:00:00", ($idx * 3) + 6);
+        $insertStmt->execute([
+            $pId, 9.00, 'Tateh - Starter', $slot['time'], 'Starter', $hasVit, $slot['vitamin'], $yesterday, $slot['notes'], 'Caretaker Staff', $createdAtYest
+        ]);
+        $totalInserted++;
+    }
 }
 
-echo "Successfully seeded {$inserted} feeding records into XAMPP MySQL shrim_predict_db!\n";
+echo "Successfully seeded {$totalInserted} standard 5-session feeding records into MySQL database!\n";

@@ -231,7 +231,11 @@ export default function AdminReportsPage() {
       {/* Summary Cards */}
       <div className="row g-3 mb-4">
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+          <div
+            className="card border border-primary border-opacity-25 shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden transition-all hover-shadow"
+            style={{ background: 'linear-gradient(180deg, rgba(13, 110, 253, 0.03) 0%, #ffffff 100%)' }}
+          >
+            <div className="position-absolute top-0 start-0 end-0 bg-primary" style={{ height: 4 }} />
             <div className="d-flex align-items-center justify-content-between mb-3">
               <span className="text-muted small fw-semibold">Total Reports</span>
               <div className="rounded-3 p-2.5 bg-primary bg-opacity-10 text-primary fs-5">
@@ -244,7 +248,11 @@ export default function AdminReportsPage() {
         </div>
 
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+          <div
+            className="card border border-warning border-opacity-50 shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden transition-all hover-shadow"
+            style={{ background: 'linear-gradient(180deg, rgba(255, 193, 7, 0.03) 0%, #ffffff 100%)' }}
+          >
+            <div className="position-absolute top-0 start-0 end-0 bg-warning" style={{ height: 4 }} />
             <div className="d-flex align-items-center justify-content-between mb-3">
               <span className="text-muted small fw-semibold">Pending Review</span>
               <div className="rounded-3 p-2.5 bg-warning bg-opacity-10 text-warning fs-5">
@@ -257,7 +265,11 @@ export default function AdminReportsPage() {
         </div>
 
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+          <div
+            className="card border border-info border-opacity-25 shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden transition-all hover-shadow"
+            style={{ background: 'linear-gradient(180deg, rgba(13, 202, 240, 0.03) 0%, #ffffff 100%)' }}
+          >
+            <div className="position-absolute top-0 start-0 end-0 bg-info" style={{ height: 4 }} />
             <div className="d-flex align-items-center justify-content-between mb-3">
               <span className="text-muted small fw-semibold">In Progress</span>
               <div className="rounded-3 p-2.5 bg-info bg-opacity-10 text-info fs-5">
@@ -270,7 +282,11 @@ export default function AdminReportsPage() {
         </div>
 
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+          <div
+            className="card border border-success border-opacity-25 shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden transition-all hover-shadow"
+            style={{ background: 'linear-gradient(180deg, rgba(25, 135, 84, 0.03) 0%, #ffffff 100%)' }}
+          >
+            <div className="position-absolute top-0 start-0 end-0 bg-success" style={{ height: 4 }} />
             <div className="d-flex align-items-center justify-content-between mb-3">
               <span className="text-muted small fw-semibold">Done / Resolved</span>
               <div className="rounded-3 p-2.5 bg-success bg-opacity-10 text-success fs-5">

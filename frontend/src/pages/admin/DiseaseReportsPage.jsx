@@ -17,13 +17,12 @@ import {
   FaChartBar,
   FaExclamationTriangle,
   FaEye,
-  FaFilter,
   FaImage,
   FaSearch,
   FaShieldVirus,
   FaSync,
   FaTimes,
-  FaUserTie,
+  FaWater,
 } from 'react-icons/fa';
 import api, { safeArray } from '../../services/api';
 
@@ -52,7 +51,18 @@ const riskBadgeClass = (risk) => {
 
 const formatDate = (value) => {
   if (!value) return 'No date';
-  return new Date(value).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return String(value);
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const m = months[d.getMonth()];
+  const day = d.getDate();
+  const year = d.getFullYear();
+  let hours = d.getHours();
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  hours = hours ? hours : 12;
+  return `${m} ${day}, ${year}, ${hours}:${minutes} ${ampm}`;
 };
 
 const normalizeText = (value) => String(value || '').trim().toLowerCase();
@@ -62,29 +72,13 @@ export default function DiseaseReportsPage() {
   const targetId = searchParams.get('id') || searchParams.get('report_id');
   const targetPond = searchParams.get('pond');
   const targetIssue = searchParams.get('issue');
-  const targetCaretaker = searchParams.get('caretaker');
 
   const [reports, setReports] = useState([]);
-  const [caretakers, setCaretakers] = useState([]);
   const [search, setSearch] = useState('');
+  const [pondFilter, setPondFilter] = useState(targetPond || 'all');
   const [riskFilter, setRiskFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [caretakerFilter, setCaretakerFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [previewImage, setPreviewImage] = useState(null);
-
-  useEffect(() => {
-    const loadCaretakers = async () => {
-      try {
-        const res = await api.get('/users.php');
-        const list = Array.isArray(res.data?.users || res.data) ? (res.data.users || res.data) : [];
-        setCaretakers(list.filter((user) => user.role === 'caretaker'));
-      } catch (error) {
-        setCaretakers([]);
-      }
-    };
-    loadCaretakers();
-  }, []);
 
   const loadReports = useCallback(async () => {
     setLoading(true);
@@ -133,49 +127,26 @@ export default function DiseaseReportsPage() {
     }
   }, [targetId, targetIssue, targetPond, reports, checkIsHighlighted]);
 
-  const caretakerOptions = useMemo(() => {
-    const options = caretakers.map((caretaker) => ({
-      value: String(caretaker.id),
-      label: caretaker.full_name,
-      id: String(caretaker.id),
-      name: caretaker.full_name,
-    }));
-    const knownNames = new Set(options.map((option) => normalizeText(option.name)));
-
+  const pondOptions = useMemo(() => {
+    const set = new Set();
     reports.forEach((report) => {
-      const reportName = String(report.caretaker_name || '').trim();
-      const normalizedName = normalizeText(reportName);
-      if (reportName && !knownNames.has(normalizedName)) {
-        knownNames.add(normalizedName);
-        options.push({
-          value: `name:${reportName}`,
-          label: reportName,
-          id: '',
-          name: reportName,
-        });
-      }
+      const name = String(report.pond_name || '').trim();
+      if (name) set.add(name);
     });
-
-    return options;
-  }, [caretakers, reports]);
+    return Array.from(set).sort();
+  }, [reports]);
 
   const filteredReports = useMemo(() => {
-    const selectedCaretaker = caretakerOptions.find((caretaker) => caretaker.value === caretakerFilter);
-    const selectedCaretakerId = String(selectedCaretaker?.id || '');
-    const selectedCaretakerName = normalizeText(selectedCaretaker?.name);
     const keyword = search.trim().toLowerCase();
 
     return reports.filter((report) => (
-      (caretakerFilter === 'all'
-        || (selectedCaretakerId && String(report.user_id || '') === selectedCaretakerId)
-        || (selectedCaretakerName && normalizeText(report.caretaker_name) === selectedCaretakerName))
+      (pondFilter === 'all' || normalizeText(report.pond_name) === normalizeText(pondFilter))
       && (riskFilter === 'all' || report.risk_level === riskFilter)
-      && (statusFilter === 'all' || report.status === statusFilter)
       && (!keyword || `${report.disease_name || ''} ${report.recommendation || ''} ${report.caretaker_name || ''} ${report.pond_name || ''}`
           .toLowerCase()
           .includes(keyword))
     ));
-  }, [caretakerFilter, caretakerOptions, reports, riskFilter, search, statusFilter]);
+  }, [pondFilter, reports, riskFilter, search]);
 
   const summary = useMemo(() => {
     const high = filteredReports.filter((report) => report.risk_level === 'High').length;
@@ -243,6 +214,7 @@ export default function DiseaseReportsPage() {
 
   return (
     <div>
+      {/* TOP BAR */}
       <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
         <div className="d-flex align-items-center gap-2">
           <span className="badge bg-danger bg-opacity-10 text-danger px-3 py-1.5 rounded-pill fw-semibold extra-small">
@@ -254,6 +226,7 @@ export default function DiseaseReportsPage() {
         </button>
       </div>
 
+      {/* KPI METRICS */}
       <div className="row g-3 mb-4">
         <div className="col-12 col-sm-6 col-xl-3">
           <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
@@ -297,54 +270,54 @@ export default function DiseaseReportsPage() {
         <div className="col-12 col-sm-6 col-xl-3">
           <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
             <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold">Caretaker Filter</span>
+              <span className="text-muted small fw-semibold">Pond Filter</span>
               <div className="rounded-3 p-2.5 bg-info bg-opacity-10 text-info fs-5">
-                <FaUserTie />
+                <FaWater />
               </div>
             </div>
-            <h3 className="fw-extrabold text-dark mb-2">{caretakerFilter === 'all' ? 'All Caretakers' : caretakerOptions.find((c) => c.value === caretakerFilter)?.label || 'Selected'}</h3>
+            <h3 className="fw-extrabold text-dark mb-2">{pondFilter === 'all' ? 'All Ponds' : pondFilter}</h3>
             <span className="text-muted extra-small">Active Filter Context</span>
           </div>
         </div>
       </div>
 
-      <div className="card border-0 shadow-sm mb-4">
-        <div className="card-body">
-          <div className="d-flex align-items-center gap-2 flex-wrap">
-            <span className="text-muted small fw-semibold d-flex align-items-center gap-1">
-              <FaFilter /> Filters:
-            </span>
-            <select className="form-select form-select-sm w-auto" value={caretakerFilter} onChange={(e) => setCaretakerFilter(e.target.value)}>
-              <option value="all">All Caretakers</option>
-              {caretakerOptions.map((caretaker) => (
-                <option key={caretaker.value} value={caretaker.value}>{caretaker.label}</option>
-              ))}
-            </select>
-            <select className="form-select form-select-sm w-auto" value={riskFilter} onChange={(e) => setRiskFilter(e.target.value)}>
-              <option value="all">All Risks</option>
-              <option value="High">High</option>
-              <option value="Medium">Medium</option>
-              <option value="Low">Low</option>
-            </select>
-            <select className="form-select form-select-sm w-auto" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-              <option value="all">All Status</option>
-              <option value="Pending">Pending</option>
-              <option value="Reviewed">Reviewed</option>
-              <option value="Resolved">Resolved</option>
-            </select>
-            <div className="input-group input-group-sm ms-lg-auto" style={{ maxWidth: 320 }}>
-              <span className="input-group-text bg-white"><FaSearch /></span>
+      {/* FILTER TOOLBAR: SEARCH LEFT, POND & RISK DROPDOWNS RIGHT */}
+      <div className="card border-0 shadow-sm mb-4 rounded-4">
+        <div className="card-body p-3">
+          <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+            <div className="input-group input-group-sm" style={{ maxWidth: 320 }}>
+              <span className="input-group-text bg-white text-muted border-end-0"><FaSearch /></span>
               <input
-                className="form-control"
-                placeholder="Search disease, pond, caretaker"
+                className="form-control border-start-0 ps-0"
+                placeholder="Search disease, pond, caretaker..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
+              {search && (
+                <button type="button" className="btn btn-white border-start-0 text-muted" onClick={() => setSearch('')}>
+                  <FaTimes />
+                </button>
+              )}
+            </div>
+            <div className="d-flex align-items-center gap-2 ms-auto">
+              <select className="form-select form-select-sm w-auto rounded-3" value={pondFilter} onChange={(e) => setPondFilter(e.target.value)}>
+                <option value="all">All Ponds</option>
+                {pondOptions.map((pond) => (
+                  <option key={pond} value={pond}>{pond}</option>
+                ))}
+              </select>
+              <select className="form-select form-select-sm w-auto rounded-3" value={riskFilter} onChange={(e) => setRiskFilter(e.target.value)}>
+                <option value="all">All Risks</option>
+                <option value="High">High Risk</option>
+                <option value="Medium">Medium Risk</option>
+                <option value="Low">Low Risk</option>
+              </select>
             </div>
           </div>
         </div>
       </div>
 
+      {/* CHARTS */}
       <div className="row g-4 mb-4">
         <div className="col-xl-5">
           <div className="chart-card h-100">
@@ -372,26 +345,32 @@ export default function DiseaseReportsPage() {
         </div>
       </div>
 
-      <div className="table-card">
-        <div className="card-body">
+      {/* CARETAKER SCAN HISTORY TABLE */}
+      <div className="table-card rounded-4 shadow-sm border-0 mb-4">
+        <div className="card-body p-4">
           <div className="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-3">
             <div>
-              <h5 className="card-title mb-1">Caretaker Scan History</h5>
-              <p className="text-muted mb-0">Images and AI results submitted from caretaker disease scans.</p>
+              <h5 className="card-title mb-1 fw-bold text-dark">Caretaker Scan History</h5>
+              <p className="text-muted extra-small mb-0">Images and AI results submitted from caretaker disease scans.</p>
+            </div>
+            <div className="d-flex align-items-center gap-2">
+              <span className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-3 py-1.5 fw-semibold extra-small">
+                Showing {filteredReports.length} {filteredReports.length === 1 ? 'Scan Record' : 'Scan Records'} {filteredReports.length > 10 ? '(Scroll to view all)' : ''}
+              </span>
             </div>
           </div>
 
-          <div className="table-responsive">
-            <table className="table align-middle mb-0">
-              <thead>
+          <div className="table-responsive rounded-3 border" style={{ maxHeight: '560px', overflowY: 'auto' }}>
+            <table className="table align-middle text-start small mb-0">
+              <thead className="table-light sticky-top" style={{ zIndex: 2 }}>
                 <tr>
-                  <th>Image</th>
-                  <th>Caretaker</th>
-                  <th>Disease</th>
-                  <th>Confidence</th>
-                  <th>Risk</th>
-                  <th>Date</th>
-                  <th>Recommendation</th>
+                  <th className="ps-3 py-2.5">Image</th>
+                  <th className="py-2.5">Caretaker & Pond</th>
+                  <th className="py-2.5">Disease</th>
+                  <th className="py-2.5">Confidence</th>
+                  <th className="py-2.5">Risk</th>
+                  <th className="py-2.5">Date & Time</th>
+                  <th className="pe-3 py-2.5">Recommendation</th>
                 </tr>
               </thead>
               <tbody>
@@ -408,38 +387,40 @@ export default function DiseaseReportsPage() {
                     <tr
                       key={report.id}
                       id={`disease-report-${report.id}`}
-                      className={isHighlighted ? 'highlighted-report-card' : ''}
+                      className={isHighlighted ? 'highlighted-report-card border-bottom' : 'border-bottom'}
                     >
-                      <td>
+                      <td className="ps-3">
                         {imageUrl ? (
                           <button
                             type="button"
                             className="btn p-0 border-0 bg-transparent"
                             onClick={() => setPreviewImage(imageUrl)}
-                            title="View scan image"
+                            title="View scan image snapshot"
                           >
-                            <img src={imageUrl} alt="Disease scan" className="disease-report-thumb" />
+                            <img src={imageUrl} alt="Disease scan" className="disease-report-thumb shadow-sm rounded-2" />
                           </button>
                         ) : (
                           <span className="badge bg-light text-muted border"><FaImage className="me-1" /> No image</span>
                         )}
                       </td>
                       <td>
-                        <div className="fw-semibold">{report.caretaker_name || 'Caretaker'}</div>
-                        <small className="text-muted">{report.pond_name || 'Assigned Pond'}</small>
+                        <div className="fw-semibold text-dark">{report.caretaker_name || 'Caretaker'}</div>
+                        <div className="extra-small mt-0.5">
+                          <span className="badge bg-light text-primary border border-primary border-opacity-25 px-2 py-0.5 fw-semibold">{report.pond_name || 'Pond A1'}</span>
+                        </div>
                       </td>
-                      <td className="fw-semibold">{report.disease_name}</td>
-                      <td>{Number(report.confidence_score || 0).toFixed(2)}%</td>
+                      <td className="fw-bold text-dark">{report.disease_name}</td>
+                      <td className="fw-semibold text-dark">{Number(report.confidence_score || 0).toFixed(2)}%</td>
                       <td><span className={`badge ${riskBadgeClass(report.risk_level)}`}>{report.risk_level || 'Low'}</span></td>
-                      <td>
-                        <span className="d-flex align-items-center gap-2 text-muted small">
-                          <FaCalendarAlt /> {formatDate(report.created_at)}
+                      <td style={{ whiteSpace: 'nowrap' }}>
+                        <span className="d-flex align-items-center gap-1.5 text-muted extra-small fw-medium">
+                          <FaCalendarAlt className="text-secondary" /> {formatDate(report.created_at)}
                         </span>
                       </td>
-                      <td style={{ minWidth: 260 }}>
+                      <td className="pe-3" style={{ minWidth: 240 }}>
                         <div className="d-flex align-items-start gap-2">
-                          <FaEye className="text-primary mt-1" />
-                          <span>{report.recommendation || 'Monitor closely.'}</span>
+                          <FaEye className="text-primary mt-1 flex-shrink-0" />
+                          <span className="text-secondary">{report.recommendation || 'Monitor closely.'}</span>
                         </div>
                       </td>
                     </tr>
@@ -451,6 +432,7 @@ export default function DiseaseReportsPage() {
         </div>
       </div>
 
+      {/* PREVIEW IMAGE MODAL */}
       {previewImage && (
         <div
           className="modal show d-block"

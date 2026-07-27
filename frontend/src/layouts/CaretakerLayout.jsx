@@ -10,7 +10,6 @@ import {
   FaVirus,
   FaUtensils,
   FaFileAlt,
-  FaUser,
   FaSignOutAlt,
   FaSeedling,
   FaSlidersH,
@@ -18,19 +17,60 @@ import {
   FaClock,
   FaBell,
   FaCheckDouble,
-  FaCheckCircle,
   FaInfoCircle
 } from 'react-icons/fa';
 import CaretakerAssistantChatHead from '../components/CaretakerAssistantChatHead';
 
 const links = [
-  { to: '/caretaker/dashboard', label: 'Dashboard', icon: <FaTachometerAlt /> },
-  { to: '/caretaker/my-pond', label: 'My Pond', icon: <FaWater /> },
-  { to: '/caretaker/disease-scan', label: 'Disease Scan', icon: <FaVirus /> },
-  { to: '/caretaker/feeding-history', label: 'Feeding History', icon: <FaUtensils /> },
-  { to: '/caretaker/reports', label: 'Reports', icon: <FaFileAlt /> },
-  { to: '/caretaker/notifications', label: 'Notifications', icon: <FaBell /> },
-  { to: '/caretaker/settings', label: 'Settings', icon: <FaSlidersH /> },
+  { 
+    to: '/caretaker/dashboard', 
+    label: 'Dashboard', 
+    kicker: 'CARETAKER CONSOLE',
+    description: 'Monitor today\'s feeding logs, schedule completion, disease scans, and active pond alerts.', 
+    icon: <FaTachometerAlt /> 
+  },
+  { 
+    to: '/caretaker/my-pond', 
+    label: 'My Pond', 
+    kicker: 'CARETAKER CONSOLE',
+    description: 'Track water quality, log feeding schedules, and manage your assigned ponds.', 
+    icon: <FaWater /> 
+  },
+  { 
+    to: '/caretaker/disease-scan', 
+    label: 'Disease Scan', 
+    kicker: 'CARETAKER CONSOLE',
+    description: 'Scan shrimp for WSSV and health risks using AI computer vision.', 
+    icon: <FaVirus /> 
+  },
+  { 
+    to: '/caretaker/feeding-history', 
+    label: 'Feeding History', 
+    kicker: 'CARETAKER FEEDING RECORDS',
+    description: 'Review feed consumption, vitamins, product type, and pond activity logs.', 
+    icon: <FaUtensils /> 
+  },
+  { 
+    to: '/caretaker/reports', 
+    label: 'Pond Issue Reports', 
+    kicker: 'MAINTENANCE REPORTING',
+    description: 'Send clear pond issues, equipment concerns, photos, and videos directly to farm administrators.', 
+    icon: <FaFileAlt /> 
+  },
+  { 
+    to: '/caretaker/notifications', 
+    label: 'Notifications', 
+    kicker: 'CARETAKER CONSOLE',
+    description: 'Admin responses and status updates for your submitted pond reports.', 
+    icon: <FaBell /> 
+  },
+  { 
+    to: '/caretaker/settings', 
+    label: 'Account Settings', 
+    kicker: 'CARETAKER CONSOLE',
+    description: 'Manage your caretaker profile, pond preferences, notification alerts, and security options.', 
+    icon: <FaSlidersH /> 
+  },
 ];
 
 export default function CaretakerLayout() {
@@ -134,8 +174,10 @@ export default function CaretakerLayout() {
     }
 
     // Navigate to Reports if report update notification
-    if (notif.action_type === 'report_update' || notif.title.includes('Report')) {
+    if (notif.action_type === 'report_update' || (notif.title || '').includes('Report')) {
       navigate('/caretaker/reports');
+    } else {
+      navigate('/caretaker/notifications');
     }
   };
 
@@ -153,12 +195,6 @@ export default function CaretakerLayout() {
   };
 
   const closeMenu = () => setMenuOpen(false);
-  const initials = (user?.full_name || 'Caretaker')
-    .split(' ')
-    .map((part) => part.charAt(0))
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
 
   return (
     <div className="app-shell caretaker-shell d-flex">
@@ -170,7 +206,7 @@ export default function CaretakerLayout() {
         </div>
         <div className="mb-5 text-white-75">
           <div className="fw-semibold">{user?.full_name || 'Caretaker'}</div>
-          <small>Field operator</small>
+          <small>Caretaker</small>
         </div>
         <nav>
           {links.map((link) => (
@@ -179,8 +215,18 @@ export default function CaretakerLayout() {
               to={link.to}
               className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
             >
-              <span>{link.icon}</span>
+              <span className="position-relative">
+                {link.icon}
+                {link.to === '/caretaker/notifications' && unreadCount > 0 && (
+                  <span className="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle" style={{ width: 8, height: 8 }} />
+                )}
+              </span>
               {link.label}
+              {link.to === '/caretaker/notifications' && unreadCount > 0 && (
+                <span className="badge bg-danger rounded-pill ms-auto extra-small shadow-xs px-2 py-1 fw-bold">
+                  {unreadCount}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>
@@ -205,7 +251,7 @@ export default function CaretakerLayout() {
         </div>
         <div className="mb-4 text-white-75">
           <div className="fw-semibold">{user?.full_name || 'Caretaker'}</div>
-          <small>Field operator</small>
+          <small>Caretaker</small>
         </div>
         <nav>
           {links.map((link) => (
@@ -215,8 +261,18 @@ export default function CaretakerLayout() {
               onClick={closeMenu}
               className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
             >
-              <span>{link.icon}</span>
+              <span className="position-relative">
+                {link.icon}
+                {link.to === '/caretaker/notifications' && unreadCount > 0 && (
+                  <span className="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle" style={{ width: 8, height: 8 }} />
+                )}
+              </span>
               {link.label}
+              {link.to === '/caretaker/notifications' && unreadCount > 0 && (
+                <span className="badge bg-danger rounded-pill ms-auto extra-small shadow-xs px-2 py-1 fw-bold">
+                  {unreadCount}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>
@@ -228,30 +284,36 @@ export default function CaretakerLayout() {
       </aside>
 
       {/* MAIN CONTENT AREA */}
-      <main className="dashboard-main">
-        {/* MOBILE TOPBAR */}
-        <div className="caretaker-mobile-topbar d-lg-none">
-          <button type="button" className="btn btn-primary rounded-circle mobile-menu-btn" aria-label="Open menu" onClick={() => setMenuOpen(true)}>
-            <FaBars />
-          </button>
-          <div>
-            <div className="small text-muted">Caretaker Console</div>
-            <h1 className="mb-0">{currentPage.label}</h1>
+      <main className="dashboard-main flex-grow-1 p-3 p-md-4">
+        {/* TOP HERO HEADER BANNER (EXACT SAME DESIGN AS ADMIN HEADER) */}
+        <div className="site-header caretaker-topbar caretaker-dashboard-hero mb-4">
+          <div className="flex-grow-1 me-3" style={{ minWidth: 0 }}>
+            <div className="d-flex align-items-center gap-2 d-lg-none mb-3">
+              <button
+                type="button"
+                className="btn btn-sm btn-light rounded-circle p-2 d-flex align-items-center justify-content-center"
+                aria-label="Open menu"
+                onClick={() => setMenuOpen(true)}
+                style={{ width: 36, height: 36 }}
+              >
+                <FaBars />
+              </button>
+              <div className="admin-brand mb-0 text-white fw-bold d-flex align-items-center gap-2">
+                <span className="brand-icon"><FaSeedling /></span>
+                <span>ShrimPredict</span>
+              </div>
+            </div>
+            <span className="caretaker-dashboard-kicker">{currentPage.kicker || 'CARETAKER CONSOLE'}</span>
+            <h3 className="fw-bold mb-1 text-white text-truncate">{currentPage.label}</h3>
+            <p className="mb-0 text-white-75 small">{currentPage.description}</p>
           </div>
-        </div>
 
-        {/* HEADER BAR (DATE, CLOCK, NOTIFICATIONS, PROFILE CHIP - SAME AS ADMIN) */}
-        <div className="dashboard-header d-flex flex-column flex-md-row align-items-center justify-content-between gap-3 mb-4">
-          <div className="header-left">
-            {/* Clean top header area without redundant Caretaker Console text */}
-          </div>
-
-          {/* TOPBAR ACTION WIDGETS: DATE, REAL-TIME CLOCK, NOTIFICATION BELL, PROFILE CHIP */}
-          <div className="d-flex align-items-center flex-wrap gap-2.5 ms-auto">
-            {/* 1. Date Card */}
+          {/* TOPBAR ACTION WIDGETS: DATE, REAL-TIME CLOCK, NOTIFICATION BELL BUTTON */}
+          <div className="admin-actions d-flex align-items-center flex-nowrap gap-2.5 flex-shrink-0 ms-auto">
+            {/* 1. Date Card Pill */}
             <div
-              className="bg-white border border-secondary border-opacity-25 shadow-sm rounded-pill d-flex align-items-center text-dark"
-              style={{ width: 205, height: 44, padding: '0 1.15rem', gap: '0.65rem', flexShrink: 0 }}
+              className="bg-white border border-secondary border-opacity-25 shadow-sm rounded-pill d-flex align-items-center text-dark flex-shrink-0"
+              style={{ width: 205, height: 44, padding: '0 1.15rem', gap: '0.65rem' }}
               title="Today's Date"
             >
               <div
@@ -260,15 +322,15 @@ export default function CaretakerLayout() {
               >
                 <FaCalendarAlt size={13} />
               </div>
-              <span className="extra-small fw-bold text-dark text-nowrap" style={{ fontSize: '0.82rem' }}>
+              <span className="extra-small fw-bold text-dark text-nowrap" style={{ fontSize: '0.85rem', letterSpacing: '0.1px' }}>
                 {formattedDate}
               </span>
             </div>
 
-            {/* 2. Real-Time Ticking Clock Card */}
+            {/* 2. Real-Time Ticking Clock Card Pill (Steady fixed digit widths) */}
             <div
-              className="bg-white border border-secondary border-opacity-25 shadow-sm rounded-pill d-flex align-items-center text-dark"
-              style={{ width: 175, height: 44, padding: '0 1.15rem', gap: '0.65rem', flexShrink: 0 }}
+              className="bg-white border border-secondary border-opacity-25 shadow-sm rounded-pill d-flex align-items-center text-dark flex-shrink-0"
+              style={{ width: 175, height: 44, padding: '0 1.15rem', gap: '0.65rem' }}
               title="Real-Time System Clock"
             >
               <div
@@ -303,102 +365,119 @@ export default function CaretakerLayout() {
               </div>
             </div>
 
-            {/* 3. Notification Bell Icon Button with Dropdown */}
-            <div className="position-relative" ref={bellRef}>
+            {/* 3. Notification Bell Icon Button */}
+            <div className="position-relative flex-shrink-0" ref={bellRef}>
               <button
                 type="button"
-                className="btn btn-white border border-secondary border-opacity-25 shadow-sm rounded-circle d-flex align-items-center justify-content-center position-relative p-0"
+                className="btn bg-white border border-secondary border-opacity-25 shadow-sm rounded-circle d-flex align-items-center justify-content-center position-relative transition-all hover-shadow p-0 flex-shrink-0"
                 style={{ width: 44, height: 44 }}
                 onClick={() => setShowNotifMenu(!showNotifMenu)}
                 title="Notifications"
               >
-                <FaBell className="text-secondary fs-5" />
+                <div
+                  className="rounded-circle bg-warning text-dark d-flex align-items-center justify-content-center"
+                  style={{ width: 32, height: 32 }}
+                >
+                  <FaBell size={15} />
+                </div>
                 {unreadCount > 0 && (
                   <span
-                    className="position-absolute top-0 start-100 translate-middle badge rounded-circle bg-danger border border-2 border-white d-flex align-items-center justify-content-center"
-                    style={{ width: 20, height: 20, fontSize: '0.7rem' }}
+                    className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-white"
+                    style={{ fontSize: '0.65rem' }}
                   >
-                    {unreadCount > 9 ? '9+' : unreadCount}
+                    {unreadCount}
                   </span>
                 )}
               </button>
 
-              {/* NOTIFICATION DROPDOWN MENU */}
+              {/* NOTIFICATION POPOVER DROPDOWN MENU */}
               {showNotifMenu && (
                 <div
-                  className="position-absolute end-0 mt-2 bg-white border border-slate-200 rounded-4 shadow-2xl p-0 overflow-hidden z-3"
-                  style={{ width: 350, zIndex: 1050 }}
+                  className="dropdown-menu show shadow-2xl border border-primary border-opacity-25 position-absolute end-0 mt-3 p-0 rounded-4 overflow-hidden bg-white"
+                  style={{ width: 410, zIndex: 1060, boxShadow: '0 25px 50px rgba(11, 44, 95, 0.25)' }}
                 >
-                  <div className="p-3 bg-primary text-white d-flex align-items-center justify-content-between">
-                    <div className="d-flex align-items-center gap-2">
-                      <FaBell />
-                      <h6 className="fw-bold mb-0 text-white fs-6">Admin Responses & Updates</h6>
+                  {/* Header with Generous Padding */}
+                  <div
+                    className="p-4 px-4.5 text-white d-flex align-items-center justify-content-between"
+                    style={{ background: 'linear-gradient(135deg, #0b2c5f 0%, #1e40af 100%)' }}
+                  >
+                    <div className="d-flex align-items-center gap-2.5">
+                      <FaBell size={18} className="text-warning" />
+                      <span className="fw-bold fs-6">Admin Updates</span>
                     </div>
-                    {unreadCount > 0 && (
-                      <button
-                        type="button"
-                        className="btn btn-xs btn-outline-light rounded-pill extra-small px-2 py-0.5"
-                        onClick={handleMarkAllRead}
-                      >
-                        <FaCheckDouble className="me-1" /> Mark all read
-                      </button>
+                    <div className="d-flex align-items-center gap-2">
+                      <span className="badge bg-white text-primary rounded-pill px-3 py-1.5 extra-small fw-bold shadow-xs">
+                        {unreadCount} New
+                      </span>
+                      {unreadCount > 0 && (
+                        <button
+                          type="button"
+                          className="btn btn-xs btn-link text-white text-decoration-none extra-small p-0 opacity-90 hover-opacity-100 ms-1"
+                          onClick={handleMarkAllRead}
+                          title="Mark all as read"
+                        >
+                          <FaCheckDouble size={13} className="me-1" /> Read All
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Scrollable Notifications List */}
+                  <div className="list-group list-group-flush" style={{ maxHeight: 350, overflowY: 'auto' }}>
+                    {notifications.length === 0 ? (
+                      <div className="p-5 text-center text-muted small">
+                        <FaBell size={28} className="mb-2 opacity-30 text-primary" />
+                        <p className="mb-0 fw-semibold">No new notifications</p>
+                        <small className="extra-small text-muted">All farm updates are up to date.</small>
+                      </div>
+                    ) : (
+                      notifications.map((n) => (
+                        <div
+                          key={n.id}
+                          className={`list-group-item p-4 px-4.5 small list-group-item-action cursor-pointer transition-all border-bottom ${
+                            !n.is_read ? 'bg-light bg-opacity-75 fw-semibold border-start border-primary border-4' : ''
+                          }`}
+                          style={{ cursor: 'pointer' }}
+                          onClick={() => handleNotifClick(n)}
+                        >
+                          <div className="d-flex justify-content-between align-items-start mb-2 gap-3">
+                            <span className="fw-bold text-dark fs-6 d-flex flex-wrap align-items-center gap-2" style={{ lineHeight: 1.35 }}>
+                              {n.title}
+                            </span>
+                            <span className="text-muted extra-small font-mono flex-shrink-0 pt-0.5">
+                              {new Date(n.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <p className="text-secondary mb-2 extra-small" style={{ lineHeight: 1.55 }}>
+                            {n.message}
+                          </p>
+                          <span className="text-primary fw-bold extra-small d-inline-flex align-items-center gap-1.5">
+                            View Details →
+                          </span>
+                        </div>
+                      ))
                     )}
                   </div>
 
-                  <div className="list-group list-group-flush overflow-auto" style={{ maxHeight: 320 }}>
-                    {notifications.length === 0 ? (
-                      <div className="p-4 text-center text-muted">
-                        <FaInfoCircle size={24} className="mb-2 opacity-50" />
-                        <p className="small mb-0">No admin responses yet for your reported issues.</p>
-                      </div>
-                    ) : (
-                      notifications.slice(0, 8).map((notif) => (
-                        <button
-                          key={notif.id}
-                          type="button"
-                          className={`list-group-item list-group-item-action p-3 text-start border-bottom transition-all ${
-                            !notif.is_read ? 'bg-primary bg-opacity-10' : 'bg-white'
-                          }`}
-                          onClick={() => handleNotifClick(notif)}
-                        >
-                          <div className="d-flex align-items-start justify-content-between mb-1">
-                            <h6 className={`mb-0 small ${!notif.is_read ? 'fw-extrabold text-primary' : 'fw-bold text-dark'}`}>
-                              {notif.title}
-                            </h6>
-                            {!notif.is_read && (
-                              <span className="badge bg-primary rounded-circle p-1" style={{ width: 8, height: 8 }}></span>
-                            )}
-                          </div>
-                          <p className="text-secondary extra-small mb-1" style={{ fontSize: '0.8rem', lineHeight: 1.4 }}>
-                            {notif.message}
-                          </p>
-                          <span className="text-muted extra-small font-mono" style={{ fontSize: '0.72rem' }}>
-                            {new Date(notif.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </button>
-                      ))
-                    )}
+                  <div className="p-3.5 bg-light text-center border-top">
+                    <button
+                      type="button"
+                      className="btn btn-link btn-sm text-decoration-none fw-semibold p-0 text-primary extra-small"
+                      onClick={() => {
+                        setShowNotifMenu(false);
+                        navigate('/caretaker/notifications');
+                      }}
+                    >
+                      View All System Notifications →
+                    </button>
                   </div>
                 </div>
               )}
             </div>
-
-            {/* 4. Profile Chip */}
-            <div className="profile-chip d-flex align-items-center gap-2 p-1.5 px-3 rounded-pill bg-white border shadow-sm" style={{ height: 44 }}>
-              {user?.avatar_path ? (
-                <img src={user.avatar_path} alt="Caretaker avatar" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
-              ) : (
-                <span className="caretaker-avatar-fallback small">{initials}</span>
-              )}
-              <div>
-                <div className="fw-semibold text-dark small mb-0 lh-1">{user?.full_name || 'Field Staff'}</div>
-                <small className="text-muted extra-small" style={{ fontSize: '0.7rem' }}>Caretaker</small>
-              </div>
-            </div>
           </div>
         </div>
 
-        <div className="glass-card">
+        <div>
           <Outlet />
         </div>
       </main>
@@ -406,3 +485,4 @@ export default function CaretakerLayout() {
     </div>
   );
 }
+

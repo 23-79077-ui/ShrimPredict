@@ -129,13 +129,6 @@ export default function ProfilePage() {
 
   return (
     <div className="caretaker-profile-page">
-      <section className="caretaker-dashboard-hero caretaker-profile-hero">
-        <div>
-          <span className="caretaker-dashboard-kicker">Caretaker Account</span>
-          <h3>Profile</h3>
-          <p>Manage your contact details and upload your own profile picture.</p>
-        </div>
-      </section>
 
       <form className="card caretaker-panel-card" onSubmit={saveProfile}>
         <div className="card-body">

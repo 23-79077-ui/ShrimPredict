@@ -2087,7 +2087,7 @@ export default function SettingsPage() {
                     {/* 4. Preserved Activity History Logs */}
                     <div className="card border-0 shadow-sm rounded-4 bg-white p-4">
                       <h6 className="fw-bold text-primary mb-3 pb-2 border-bottom d-flex align-items-center gap-2">
-                        <FaClipboardList /> Preserved Activity History & Logs
+                        <FaClipboardList /> Preserved Activity History & Full Caretaker Logs
                       </h6>
                       <div className="row g-2 mb-3">
                         <div className="col-auto">
@@ -2107,20 +2107,140 @@ export default function SettingsPage() {
                         </div>
                         <div className="col-auto">
                           <span className="badge bg-light text-dark border px-3 py-2 rounded-pill small">
-                            <FaFish className="me-1 text-success" /> Harvest Records: <strong>{selectedArchivedDetails.activity_history.harvest_records_count}</strong>
-                          </span>
-                        </div>
-                        <div className="col-auto">
-                          <span className="badge bg-light text-dark border px-3 py-2 rounded-pill small">
                             <FaBell className="me-1 text-warning" /> Reports Submitted: <strong>{selectedArchivedDetails.activity_history.reports_submitted_count}</strong>
                           </span>
                         </div>
                       </div>
 
-                      {/* Recent Preserved Reports List */}
+                      {/* A. PRESERVED FEEDING LOGS */}
+                      {selectedArchivedDetails.activity_history.recent_feeding_logs?.length > 0 && (
+                        <div className="mt-3 mb-4">
+                          <small className="fw-bold text-primary text-uppercase extra-small mb-2 d-flex align-items-center gap-1">
+                            <FaUtensils /> Preserved Feeding Logs History
+                          </small>
+                          <div className="table-responsive rounded-3 border" style={{ maxHeight: 240, overflowY: 'auto' }}>
+                            <table className="table table-sm align-middle text-start small mb-0">
+                              <thead className="table-light sticky-top">
+                                <tr>
+                                  <th className="ps-3">Time / Session</th>
+                                  <th>Pond</th>
+                                  <th>Feed Type</th>
+                                  <th>Amount (kg)</th>
+                                  <th>Vitamins</th>
+                                  <th>Date</th>
+                                  <th className="pe-3">Notes</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {selectedArchivedDetails.activity_history.recent_feeding_logs.map((f) => (
+                                  <tr key={f.id}>
+                                    <td className="ps-3 fw-bold text-primary">{f.feeding_time || '06:00 AM'}</td>
+                                    <td>
+                                      <span className="badge bg-light text-primary border border-primary border-opacity-25 px-2 py-0.5 fw-semibold">{f.pond_name || 'Pond A1'}</span>
+                                    </td>
+                                    <td className="fw-semibold text-dark">{f.feed_type || 'Tateh - Starter'}</td>
+                                    <td className="fw-bold text-success">{f.amount_kg} kg</td>
+                                    <td>
+                                      {f.vitamin_name && f.vitamin_name !== 'None' ? (
+                                        <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">+ {f.vitamin_name}</span>
+                                      ) : (
+                                        <span className="text-muted extra-small">None</span>
+                                      )}
+                                    </td>
+                                    <td className="text-muted extra-small">{f.record_date}</td>
+                                    <td className="pe-3 text-secondary extra-small">{f.notes || 'Normal feeding session'}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* B. PRESERVED DISEASE SCANS */}
+                      {selectedArchivedDetails.activity_history.recent_disease_scans?.length > 0 && (
+                        <div className="mb-4">
+                          <small className="fw-bold text-danger text-uppercase extra-small mb-2 d-flex align-items-center gap-1">
+                            <FaBug /> Preserved Disease Risk Scans
+                          </small>
+                          <div className="table-responsive rounded-3 border" style={{ maxHeight: 240, overflowY: 'auto' }}>
+                            <table className="table table-sm align-middle text-start small mb-0">
+                              <thead className="table-light sticky-top">
+                                <tr>
+                                  <th className="ps-3">Pond</th>
+                                  <th>Disease Detected</th>
+                                  <th>Confidence</th>
+                                  <th>Risk Level</th>
+                                  <th>Date & Time</th>
+                                  <th className="pe-3">Recommendation</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {selectedArchivedDetails.activity_history.recent_disease_scans.map((d) => (
+                                  <tr key={d.id}>
+                                    <td className="ps-3">
+                                      <span className="badge bg-light text-primary border border-primary border-opacity-25 px-2 py-0.5 fw-semibold">{d.pond_name || 'Pond A1'}</span>
+                                    </td>
+                                    <td className="fw-bold text-dark">{d.disease_name}</td>
+                                    <td className="fw-semibold">{Number(d.confidence_score || 0).toFixed(2)}%</td>
+                                    <td>
+                                      <span className={`badge ${d.risk_level === 'High' ? 'bg-danger' : d.risk_level === 'Medium' ? 'bg-warning text-dark' : 'bg-success'} rounded-pill extra-small`}>
+                                        {d.risk_level || 'Low'}
+                                      </span>
+                                    </td>
+                                    <td className="text-muted extra-small">{d.created_at}</td>
+                                    <td className="pe-3 text-secondary extra-small" style={{ maxWidth: 220 }}>{d.recommendation || 'Monitor closely.'}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* C. PRESERVED WATER QUALITY RECORDS */}
+                      {selectedArchivedDetails.activity_history.water_quality_records?.length > 0 && (
+                        <div className="mb-4">
+                          <small className="fw-bold text-info text-uppercase extra-small mb-2 d-flex align-items-center gap-1">
+                            <FaWater /> Preserved Water Quality & Pond Conditions
+                          </small>
+                          <div className="table-responsive rounded-3 border">
+                            <table className="table table-sm align-middle text-start small mb-0">
+                              <thead className="table-light">
+                                <tr>
+                                  <th className="ps-3">Pond</th>
+                                  <th>Temperature</th>
+                                  <th>pH Level</th>
+                                  <th>Salinity</th>
+                                  <th>Dissolved Oxygen</th>
+                                  <th className="pe-3">Status</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {selectedArchivedDetails.activity_history.water_quality_records.map((w) => (
+                                  <tr key={w.id}>
+                                    <td className="ps-3 fw-bold text-dark">{w.pond_name}</td>
+                                    <td>{w.temperature ? `${w.temperature}°C` : '29.5°C'}</td>
+                                    <td>{w.ph_level || '7.6'}</td>
+                                    <td>{w.salinity ? `${w.salinity} ppt` : '18.0 ppt'}</td>
+                                    <td>{w.dissolved_oxygen ? `${w.dissolved_oxygen} mg/L` : '6.5 mg/L'}</td>
+                                    <td className="pe-3">
+                                      <span className={`badge ${w.status === 'Healthy' ? 'bg-success bg-opacity-10 text-success border border-success border-opacity-25' : 'bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25'} rounded-pill extra-small`}>
+                                        {w.status || 'Healthy'}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* D. PRESERVED SUBMITTED REPORTS */}
                       {selectedArchivedDetails.activity_history.recent_reports?.length > 0 && (
                         <div className="mt-2">
-                          <small className="fw-bold text-muted text-uppercase extra-small mb-2 d-block">Submitted Problem Reports History</small>
+                          <small className="fw-bold text-dark text-uppercase extra-small mb-2 d-block">Submitted Problem Reports History</small>
                           <div className="table-responsive border rounded-3">
                             <table className="table table-sm align-middle mb-0">
                               <thead className="table-light">

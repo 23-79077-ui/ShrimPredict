@@ -87,6 +87,10 @@ export default function FeedingPage() {
 
   // Format Helper for YYYY-MM-DD
   const formatYMD = (date) => {
+    if (!date) return '';
+    if (typeof date === 'string' && date.match(/^\d{4}-\d{2}-\d{2}/)) {
+      return date.substring(0, 10);
+    }
     const d = new Date(date);
     if (isNaN(d.getTime())) return '';
     const year = d.getFullYear();
@@ -234,70 +238,215 @@ export default function FeedingPage() {
     };
   }, [records]);
 
-  // View Logs Action Handler: Opens SweetAlert2 Modal with Pond Feeding Breakdown
+  // Group Feeding Records PER POND for clean consolidated display
+  const perPondRecords = useMemo(() => {
+    const pondMap = {};
+
+    // Initialize with all active ponds from database and their actual assigned caretakers
+    if (ponds.length > 0) {
+      ponds.forEach((p) => {
+        const name = p.pond_name || p.name || `Pond #${p.id}`;
+        const caretaker = p.caretaker_name || p.assigned_caretaker_name || (p.assigned_caretaker ? p.assigned_caretaker : '');
+        pondMap[name.toLowerCase()] = {
+          pond_id: p.id,
+          pond_name: name,
+          target_feed_kg: Number(p.target_feed_kg) || 45.0,
+          location: p.location || '',
+          assigned_caretaker: caretaker,
+          records: [],
+        };
+      });
+    }
+
+    // Add/populate records from filteredRecords
+    filteredRecords.forEach((r) => {
+      const name = r.pond_name || `Pond #${r.pond_id}`;
+      const key = name.toLowerCase();
+      if (!pondMap[key]) {
+        pondMap[key] = {
+          pond_id: r.pond_id || r.id,
+          pond_name: name,
+          target_feed_kg: 45.0,
+          location: '',
+          assigned_caretaker: r.recorded_by_name || '',
+          records: [],
+        };
+      }
+      pondMap[key].records.push(r);
+    });
+
+    // Transform into per-pond summary rows
+    const list = Object.values(pondMap).map((item) => {
+      const actualGivenKg = item.records.reduce((sum, r) => sum + (Number(r.amount_kg) || 0), 0);
+      const logCount = item.records.length;
+      const latestRecord = item.records[0] || {};
+      const feedType = latestRecord.feed_type || 'Tateh - Starter';
+      const assignedCaretaker = (item.assigned_caretaker && item.assigned_caretaker !== 'Caretaker')
+        ? item.assigned_caretaker
+        : (latestRecord.recorded_by_name && latestRecord.recorded_by_name !== 'Caretaker' ? latestRecord.recorded_by_name : 'Unassigned');
+      const compliance = Math.round((actualGivenKg / Math.max(1, item.target_feed_kg)) * 100);
+
+      let status = 'Optimal';
+      let statusTone = 'success';
+      if (compliance > 110) {
+        status = 'Overfeeding Warning';
+        statusTone = 'warning';
+      } else if (logCount === 0) {
+        status = 'Pending Feed Logs';
+        statusTone = 'secondary';
+      } else if (compliance < 85) {
+        status = 'Underfeeding Alert';
+        statusTone = 'danger';
+      }
+
+      return {
+        pond_id: item.pond_id,
+        pond_name: item.pond_name,
+        target_feed_kg: item.target_feed_kg,
+        actual_given_kg: actualGivenKg,
+        log_count: logCount,
+        feed_type: feedType,
+        assigned_caretaker: assignedCaretaker,
+        compliance,
+        status,
+        statusTone,
+        records: item.records,
+      };
+    });
+
+    // Apply pond search filter if any
+    if (searchTerm) {
+      return list.filter(
+        (p) =>
+          p.pond_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          p.feed_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          p.assigned_caretaker.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    return list;
+  }, [ponds, filteredRecords, searchTerm]);
+
+  // View Logs Action Handler: Opens SweetAlert2 Modal Card with Pond Feeding Logs & Breakdown (Filtered by active date filter)
   const handleViewPondLogs = (pondName, pondId) => {
-    const pondLogs = records.filter(
+    // 1. Get assigned caretaker for this pond from ponds array
+    const targetPondObj = ponds.find(
+      (p) => String(p.pond_name || p.name || `Pond #${p.id}`).toLowerCase() === String(pondName || pondId).toLowerCase()
+    );
+    const assignedCaretakerName = (targetPondObj?.caretaker_name || targetPondObj?.assigned_caretaker_name || targetPondObj?.assigned_caretaker) || 'Unassigned';
+
+    // 2. Filter strictly from filteredRecords so it obeys the active date filter (e.g. today's records)
+    const pondLogs = filteredRecords.filter(
       (r) => String(r.pond_name || r.pond_id).toLowerCase() === String(pondName || pondId).toLowerCase()
     );
 
     const totalGiven = pondLogs.reduce((sum, r) => sum + (Number(r.amount_kg) || 0), 0);
+    const targetKg = Number(targetPondObj?.target_feed_kg) || 45.0;
+    const compliance = Math.round((totalGiven / Math.max(1, targetKg)) * 100);
 
-    const logHtml =
-      pondLogs.length === 0
-        ? `<div class="p-3 text-muted">No feeding records found for ${pondName}.</div>`
-        : `
-          <div class="text-start mb-3 p-3 bg-light rounded-3">
-            <div class="d-flex justify-content-between mb-1">
-              <span class="fw-bold text-dark">Target Daily Feed:</span>
-              <span class="fw-bold text-primary">45.0 kg</span>
-            </div>
-            <div class="d-flex justify-content-between mb-1">
-              <span class="fw-bold text-dark">Total Logged Feed:</span>
-              <span class="fw-bold text-success">${totalGiven.toFixed(1)} kg</span>
-            </div>
-            <div class="d-flex justify-content-between">
-              <span class="fw-bold text-dark">Total Log Entries:</span>
-              <span>${pondLogs.length} logs</span>
+    const dateLabel =
+      dateFilter === 'today'
+        ? "Today's Logs"
+        : dateFilter === 'yesterday'
+        ? "Yesterday's Logs"
+        : dateFilter === 'week'
+        ? "This Week's Logs"
+        : dateFilter === 'month'
+        ? "This Month's Logs"
+        : dateFilter === 'custom' && customDate
+        ? `Logs (${customDate})`
+        : "All Historical Logs";
+
+    let statusBadge = `<span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2.5 py-1 rounded-pill">Optimal (${compliance}%)</span>`;
+    if (compliance > 110) {
+      statusBadge = `<span class="badge bg-warning bg-opacity-10 text-warning-emphasis border border-warning border-opacity-25 px-2.5 py-1 rounded-pill">Overfeeding Warning (${compliance}%)</span>`;
+    } else if (pondLogs.length === 0) {
+      statusBadge = `<span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 px-2.5 py-1 rounded-pill">No Logs Recorded (${dateLabel})</span>`;
+    } else if (compliance < 85) {
+      statusBadge = `<span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-2.5 py-1 rounded-pill">Underfeeding Alert (${compliance}%)</span>`;
+    }
+
+    const logHtml = `
+      <div class="text-start">
+        <!-- TOP KPI STATS SUMMARY CARDS -->
+        <div class="row g-2 mb-3">
+          <div class="col-4">
+            <div class="p-2.5 rounded-3 bg-light border text-center">
+              <span class="text-muted extra-small d-block fw-semibold text-uppercase">Target Feed</span>
+              <strong class="text-dark fs-6">${targetKg.toFixed(1)} kg</strong>
             </div>
           </div>
-          <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
-            <table class="table table-sm table-striped text-start small align-middle mb-0">
-              <thead class="table-primary">
-                <tr>
-                  <th>Date</th>
-                  <th>Time</th>
-                  <th>Feed Type</th>
-                  <th>Amount</th>
-                  <th>Vitamins</th>
-                  <th>Caretaker</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${pondLogs
-                  .map(
-                    (l) => `
-                  <tr>
-                    <td>${l.record_date || 'Today'}</td>
-                    <td><span class="badge bg-secondary">${l.feeding_time || '08:00 AM'}</span></td>
-                    <td>${l.feed_type || 'Starter Feed'}</td>
-                    <td class="fw-bold text-success">${l.amount_kg} kg</td>
-                    <td>${l.vitamin_name && l.vitamin_name !== 'None' ? `<span class="badge bg-success">${l.vitamin_name}</span>` : '<span class="text-muted">None</span>'}</td>
-                    <td>${l.recorded_by_name || 'Caretaker'}</td>
-                  </tr>`
-                  )
-                  .join('')}
-              </tbody>
-            </table>
+          <div class="col-4">
+            <div class="p-2.5 rounded-3 bg-success bg-opacity-10 border border-success border-opacity-25 text-center">
+              <span class="text-success extra-small d-block fw-semibold text-uppercase">Total Logged</span>
+              <strong class="text-success fs-6">${totalGiven.toFixed(1)} kg</strong>
+            </div>
           </div>
-        `;
+          <div class="col-4">
+            <div class="p-2.5 rounded-3 bg-primary bg-opacity-10 border border-primary border-opacity-25 text-center">
+              <span class="text-primary extra-small d-block fw-semibold text-uppercase">Log Sessions</span>
+              <strong class="text-primary fs-6">${pondLogs.length} Logs</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <h6 class="fw-bold text-dark mb-0">Feed Logs Breakdown (${dateLabel})</h6>
+          ${statusBadge}
+        </div>
+
+        <!-- FEEDING LOGS DETAILED TABLE WITH REMARKS & NOTES -->
+        <div class="table-responsive rounded-3 border" style="max-height: 320px; overflow-y: auto;">
+          <table class="table table-sm text-start small align-middle mb-0">
+            <thead class="table-light sticky-top">
+              <tr>
+                <th class="ps-3 py-2">Time / Session</th>
+                <th class="py-2">Feed Type</th>
+                <th class="py-2">Amount (kg)</th>
+                <th class="py-2">Vitamins</th>
+                <th class="py-2">Caretaker</th>
+                <th class="pe-3 py-2">Notes / Remarks</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${
+                pondLogs.length === 0
+                  ? `<tr><td colspan="6" class="text-center py-4 text-muted">No feed logs recorded for ${pondName} for ${dateLabel}.</td></tr>`
+                  : pondLogs
+                      .map(
+                        (l) => `
+                <tr class="border-bottom">
+                  <td class="ps-3">
+                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 fw-bold px-2 py-1">${String(l.feeding_time || '6:00 AM').replace(/^0(\d:)/, '$1')}</span>
+                    <div class="extra-small text-muted mt-0.5">${l.record_date || 'Today'}</div>
+                  </td>
+                  <td class="fw-semibold text-dark">${l.feed_type || 'Tateh - Starter'}</td>
+                  <td class="fw-bold text-success fs-6">${l.amount_kg} kg</td>
+                  <td>${l.vitamin_name && l.vitamin_name !== 'None' ? `<span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">+ ${l.vitamin_name}</span>` : '<span class="text-muted extra-small">None</span>'}</td>
+                  <td>
+                    <div class="fw-semibold text-dark">${assignedCaretakerName}</div>
+                    <div class="extra-small text-muted">Assigned Caretaker</div>
+                  </td>
+                  <td class="pe-3">
+                    <small class="text-secondary d-block" style="max-width: 220px; word-wrap: break-word;">${l.notes || 'Normal feeding session'}</small>
+                  </td>
+                </tr>`
+                      )
+                      .join('')
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
 
     Swal.fire({
-      title: `<i class="fa fa-water text-primary me-2"></i> Feeding Logs: ${pondName}`,
+      title: `<div class="d-flex align-items-center gap-2"><i class="fa fa-water text-primary"></i> <span>Pond Feeding Logs: ${pondName}</span></div>`,
       html: logHtml,
-      width: 650,
+      width: 760,
       showCloseButton: true,
-      confirmButtonColor: '#0B2C5F',
-      confirmButtonText: 'Close Panel'
+      confirmButtonColor: '#0d6efd',
+      confirmButtonText: 'Close Details'
     });
   };
 
@@ -336,9 +485,13 @@ export default function FeedingPage() {
 
       {/* 2. TOP METRIC CARDS ROW WITH GENEROUS SPACING & PADDING (4 CARDS) */}
       <div className="row g-3 mb-4">
-        {/* Card 1: Total Feed */}
+        {/* Card 1: Cumulative Feed */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+          <div
+            className="card border border-primary border-opacity-25 shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden transition-all hover-shadow"
+            style={{ background: 'linear-gradient(180deg, rgba(13, 110, 253, 0.03) 0%, #ffffff 100%)' }}
+          >
+            <div className="position-absolute top-0 start-0 end-0 bg-primary" style={{ height: 4 }} />
             <div className="d-flex align-items-center justify-content-between mb-3">
               <span className="text-muted small fw-semibold">Total Cumulative Feed</span>
               <div className="rounded-3 p-2.5 bg-primary bg-opacity-10 text-primary">
@@ -354,7 +507,11 @@ export default function FeedingPage() {
 
         {/* Card 2: Weekly Feed */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+          <div
+            className="card border border-success border-opacity-25 shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden transition-all hover-shadow"
+            style={{ background: 'linear-gradient(180deg, rgba(25, 135, 84, 0.03) 0%, #ffffff 100%)' }}
+          >
+            <div className="position-absolute top-0 start-0 end-0 bg-success" style={{ height: 4 }} />
             <div className="d-flex align-items-center justify-content-between mb-3">
               <span className="text-muted small fw-semibold">Weekly Consumption</span>
               <div className="rounded-3 p-2.5 bg-success bg-opacity-10 text-success">
@@ -368,7 +525,11 @@ export default function FeedingPage() {
 
         {/* Card 3: Feed Cost */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+          <div
+            className="card border border-warning border-opacity-50 shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden transition-all hover-shadow"
+            style={{ background: 'linear-gradient(180deg, rgba(255, 193, 7, 0.03) 0%, #ffffff 100%)' }}
+          >
+            <div className="position-absolute top-0 start-0 end-0 bg-warning" style={{ height: 4 }} />
             <div className="d-flex align-items-center justify-content-between mb-3">
               <span className="text-muted small fw-semibold">Estimated Feed Cost</span>
               <div className="rounded-3 p-2.5 bg-warning bg-opacity-10 text-warning">
@@ -382,7 +543,11 @@ export default function FeedingPage() {
 
         {/* Card 4: Average Feed */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+          <div
+            className="card border border-info border-opacity-25 shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden transition-all hover-shadow"
+            style={{ background: 'linear-gradient(180deg, rgba(13, 202, 240, 0.03) 0%, #ffffff 100%)' }}
+          >
+            <div className="position-absolute top-0 start-0 end-0 bg-info" style={{ height: 4 }} />
             <div className="d-flex align-items-center justify-content-between mb-3">
               <span className="text-muted small fw-semibold">Average Rate</span>
               <div className="rounded-3 p-2.5 bg-info bg-opacity-10 text-info">
@@ -451,157 +616,7 @@ export default function FeedingPage() {
         </div>
       </div>
 
-      {/* 4. POND FEEDING STATUS TABLE */}
-      <div className="card border-0 shadow-sm rounded-4 bg-white p-4 mb-4">
-        <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-          <div>
-            <h5 className="fw-bold text-dark mb-1">
-              <FaWater className="text-primary me-2" /> Pond Feeding Status Table
-            </h5>
-            <p className="text-muted small mb-0">Compliance and feed rate targets for each monitored pond.</p>
-          </div>
-          <span className="badge bg-light text-muted border px-3 py-1.5 extra-small">
-            {ponds.length > 0 ? `${ponds.length} Active Ponds` : 'Monitored Ponds'}
-          </span>
-        </div>
-
-        <div className="table-responsive">
-          <table className="table align-middle mb-0">
-            <thead className="table-light rounded-3">
-              <tr>
-                <th className="border-0 ps-3">Pond Name</th>
-                <th className="border-0">Daily Target</th>
-                <th className="border-0">Actual Given</th>
-                <th className="border-0">Compliance</th>
-                <th className="border-0">Feeding Status</th>
-                <th className="border-0 pe-3 text-end">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ponds.length === 0 ? (
-                [
-                  { id: 1, name: 'Pond A1', target: '45.0 kg', actual: '45.0 kg', compliance: 100, status: 'Optimal' },
-                  { id: 2, name: 'Pond A2', target: '50.0 kg', actual: '58.0 kg', compliance: 116, status: 'Overfeeding Warning' },
-                  { id: 3, name: 'Pond B1', target: '40.0 kg', actual: '38.0 kg', compliance: 95, status: 'Optimal' },
-                  { id: 4, name: 'Pond B2', target: '35.0 kg', actual: '28.0 kg', compliance: 80, status: 'Underfeeding Alert' },
-                ].map((p) => (
-                  <tr key={p.id} className="border-bottom">
-                    <td className="ps-3 fw-bold text-dark">
-                      <FaWater className="text-primary me-2" /> {p.name}
-                    </td>
-                    <td>{p.target}</td>
-                    <td className="fw-semibold">{p.actual}</td>
-                    <td style={{ width: 160 }}>
-                      <div className="d-flex align-items-center gap-2">
-                        <div className="progress flex-grow-1" style={{ height: 6 }}>
-                          <div
-                            className={`progress-bar ${p.compliance > 110 ? 'bg-warning' : p.compliance < 90 ? 'bg-danger' : 'bg-success'}`}
-                            style={{ width: `${Math.min(100, p.compliance)}%` }}
-                          ></div>
-                        </div>
-                        <small className="extra-small font-mono fw-bold">{p.compliance}%</small>
-                      </div>
-                    </td>
-                    <td>
-                      <span
-                        className={`badge rounded-pill px-3 py-1 extra-small fw-semibold ${
-                          p.status.includes('Optimal')
-                            ? 'bg-success bg-opacity-10 text-success'
-                            : p.status.includes('Overfeeding')
-                            ? 'bg-warning bg-opacity-10 text-warning'
-                            : 'bg-danger bg-opacity-10 text-danger'
-                        }`}
-                      >
-                        {p.status.includes('Optimal') && <FaCheckCircle className="me-1" />}
-                        {p.status.includes('Warning') && <FaExclamationTriangle className="me-1" />}
-                        {p.status.includes('Alert') && <FaExclamationTriangle className="me-1" />}
-                        {p.status}
-                      </span>
-                    </td>
-                    <td className="pe-3 text-end">
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline-primary rounded-circle d-inline-flex align-items-center justify-content-center p-0 shadow-xs"
-                        style={{ width: 34, height: 34 }}
-                        onClick={() => handleViewPondLogs(p.name, p.id)}
-                        title="View Logs"
-                      >
-                        <FaEye size={15} />
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                ponds.map((pond) => {
-                  const pondRecords = records.filter(
-                    (r) => String(r.pond_name || r.pond_id).toLowerCase() === String(pond.name || pond.id).toLowerCase()
-                  );
-                  const actualKg = pondRecords.reduce((sum, r) => sum + (Number(r.amount_kg) || 0), 0);
-                  const targetKg = Number(pond.target_feed_kg) || 45;
-                  const compliance = Math.round((actualKg / Math.max(1, targetKg)) * 100);
-
-                  const status =
-                    compliance > 110
-                      ? 'Overfeeding Warning'
-                      : compliance < 85
-                      ? 'Underfeeding Alert'
-                      : 'Optimal';
-
-                  return (
-                    <tr key={pond.id} className="border-bottom">
-                      <td className="ps-3 fw-bold text-dark">
-                        <FaWater className="text-primary me-2" /> {pond.pond_name || pond.name || `Pond A${pond.id}`}
-                      </td>
-                      <td>{targetKg.toFixed(1)} kg</td>
-                      <td className="fw-semibold">{actualKg.toFixed(1)} kg</td>
-                      <td style={{ width: 160 }}>
-                        <div className="d-flex align-items-center gap-2">
-                          <div className="progress flex-grow-1" style={{ height: 6 }}>
-                            <div
-                              className={`progress-bar ${compliance > 110 ? 'bg-warning' : compliance < 85 ? 'bg-danger' : 'bg-success'}`}
-                              style={{ width: `${Math.min(100, compliance)}%` }}
-                            ></div>
-                          </div>
-                          <small className="extra-small font-mono fw-bold">{compliance}%</small>
-                        </div>
-                      </td>
-                      <td>
-                        <span
-                          className={`badge rounded-pill px-3 py-1 extra-small fw-semibold ${
-                            status.includes('Optimal')
-                              ? 'bg-success bg-opacity-10 text-success'
-                              : status.includes('Overfeeding')
-                              ? 'bg-warning bg-opacity-10 text-warning'
-                              : 'bg-danger bg-opacity-10 text-danger'
-                          }`}
-                        >
-                          {status.includes('Optimal') && <FaCheckCircle className="me-1" />}
-                          {status.includes('Warning') && <FaExclamationTriangle className="me-1" />}
-                          {status.includes('Alert') && <FaExclamationTriangle className="me-1" />}
-                          {status}
-                        </span>
-                      </td>
-                      <td className="pe-3 text-end">
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline-primary rounded-circle d-inline-flex align-items-center justify-content-center p-0 shadow-xs"
-                          style={{ width: 34, height: 34 }}
-                          onClick={() => handleViewPondLogs(pond.name || `Pond #${pond.id}`, pond.id)}
-                          title="View Logs"
-                        >
-                          <FaEye size={15} />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* 5. TODAY'S FEEDING RECORDS (FULL WIDTH) WITH SWAPPED SEARCH & FILTERS */}
+      {/* 5. TODAY'S FEEDING RECORDS (FULL WIDTH WITH ACTION COLUMN) */}
       <div className="row g-4 mb-4">
         <div className="col-12">
           <div className="card border-0 shadow-sm rounded-4 bg-white p-4">
@@ -687,63 +702,60 @@ export default function FeedingPage() {
               <table className="table align-middle mb-0">
                 <thead className="table-light sticky-top shadow-xs" style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: '#f8fafc' }}>
                   <tr>
-                    <th>Date & Time</th>
-                    <th>Pond</th>
-                    <th>Feed Type</th>
-                    <th>Amount</th>
-                    <th>Vitamins Added</th>
-                    <th>Recorded By</th>
-                    <th>Notes</th>
+                    <th className="border-0 ps-3">Pond Name</th>
+                    <th className="border-0">Feed Type</th>
+                    <th className="border-0">Daily Target</th>
+                    <th className="border-0">Actual Given</th>
+                    <th className="border-0">Compliance Status</th>
+                    <th className="border-0">Assigned Caretaker</th>
+                    <th className="border-0 pe-3 text-end">Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
                     <tr>
                       <td colSpan="7" className="text-center py-4 text-muted">
-                        Loading feeding logs...
+                        Loading pond feeding records...
                       </td>
                     </tr>
-                  ) : filteredRecords.length === 0 ? (
+                  ) : perPondRecords.length === 0 ? (
                     <tr>
                       <td colSpan="7" className="text-center py-4 text-muted">
-                        No feeding records found for the selected date filter.
+                        No active pond feeding records found for the selected filter.
                       </td>
                     </tr>
                   ) : (
-                    filteredRecords.map((r) => (
-                      <tr key={r.id} className="border-bottom">
-                        <td>
-                          <div className="fw-semibold text-dark">
-                            {r.record_date || new Date(r.created_at || Date.now()).toLocaleDateString()}
-                          </div>
-                          <small className="badge bg-secondary bg-opacity-10 text-dark extra-small">
-                            {r.feeding_time || '08:00 AM'}
-                          </small>
-                        </td>
-                        <td>
-                          <span className="badge bg-primary bg-opacity-10 text-primary fw-bold rounded-pill px-3 py-1">
-                            <FaWater className="me-1" /> {r.pond_name || `Pond #${r.pond_id}`}
+                    perPondRecords.map((p) => (
+                      <tr key={p.pond_id} className="border-bottom">
+                        <td className="ps-3">
+                          <span className="badge bg-primary bg-opacity-10 text-primary fw-bold rounded-pill px-3 py-1.5 fs-6">
+                            <FaWater className="me-1.5" /> {p.pond_name}
                           </span>
                         </td>
                         <td>
-                          <div className="fw-semibold text-dark">{r.feed_type || 'Tateh - Starter'}</div>
+                          <div className="fw-semibold text-dark">{p.feed_type}</div>
                         </td>
-                        <td className="fw-bold text-success fs-6">{r.amount_kg} kg</td>
+                        <td className="fw-semibold text-secondary">{p.target_feed_kg.toFixed(1)} kg</td>
+                        <td className="fw-bold text-success fs-6">{p.actual_given_kg.toFixed(1)} kg</td>
                         <td>
-                          {r.vitamin_name && r.vitamin_name !== 'None' ? (
-                            <span className="badge bg-success bg-opacity-10 text-success rounded-pill px-3 py-1 extra-small fw-semibold">
-                              + {r.vitamin_name}
-                            </span>
-                          ) : (
-                            <span className="text-muted extra-small">None</span>
-                          )}
+                          <span className={`badge bg-${p.statusTone} bg-opacity-10 text-${p.statusTone} border border-${p.statusTone} border-opacity-25 rounded-pill px-3 py-1.5 fw-bold extra-small`}>
+                            {p.status} ({p.compliance}%)
+                          </span>
                         </td>
                         <td>
-                          <div className="fw-semibold text-dark">{r.recorded_by_name || 'Caretaker'}</div>
-                          <small className="text-muted extra-small">Field Staff</small>
+                          <div className="fw-semibold text-dark">{p.assigned_caretaker}</div>
+                          <small className="text-muted extra-small">Caretaker Staff</small>
                         </td>
-                        <td>
-                          <small className="text-secondary extra-small">{r.notes || 'Normal feeding session'}</small>
+                        <td className="pe-3 text-end">
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-primary rounded-circle d-inline-flex align-items-center justify-content-center p-0 shadow-xs"
+                            style={{ width: 36, height: 36 }}
+                            onClick={() => handleViewPondLogs(p.pond_name, p.pond_id)}
+                            title="View 5 Feeding Logs & Details"
+                          >
+                            <FaEye size={16} />
+                          </button>
                         </td>
                       </tr>
                     ))

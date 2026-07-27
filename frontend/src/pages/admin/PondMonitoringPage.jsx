@@ -4,6 +4,7 @@ import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import {
   FaBug,
   FaCalendarAlt,
+  FaChartPie,
   FaCheckCircle,
   FaExclamationTriangle,
   FaFileCsv,
@@ -347,13 +348,17 @@ export default function PondMonitoringPage() {
         </div>
       </div>
 
-      <div className="row g-4">
-        <div className="col-12 col-xl-8">
-          <div className="card border-0 shadow-sm rounded-4 bg-white">
+      {/* 🌊 POND MONITORING TABLE CARD (FULL WIDTH COL-12 WITH STICKY HEADER & MAX 10 ROWS VISIBLE) */}
+      <div className="row g-4 mb-4">
+        <div className="col-12">
+          <div className="card border border-primary border-opacity-20 shadow-sm rounded-4 bg-white position-relative overflow-hidden">
+            <div className="position-absolute top-0 start-0 end-0 bg-primary" style={{ height: 4 }} />
             <div className="card-body p-4">
               <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
                 <div>
-                  <h5 className="fw-bold text-dark mb-1 d-flex align-items-center gap-2"><FaWater className="text-primary" /> Pond Monitoring</h5>
+                  <h5 className="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
+                    <FaWater className="text-primary" /> Pond Monitoring
+                  </h5>
                   <p className="small text-muted mb-0">Showing {filteredPonds.length} of {ponds.length} database records.</p>
                 </div>
               </div>
@@ -370,17 +375,18 @@ export default function PondMonitoringPage() {
                   <p className="small text-muted mb-0">No database records match the current filters.</p>
                 </div>
               ) : (
-                <div className="table-responsive">
+                /* 📜 Scrollable container displaying ~10 rows before vertical scroll bar appears */
+                <div className="table-responsive border rounded-3 shadow-xs" style={{ maxHeight: 540, overflowY: 'auto' }}>
                   <table className="table align-middle mb-0">
-                    <thead>
+                    <thead className="table-light sticky-top shadow-xs" style={{ top: 0, zIndex: 5 }}>
                       <tr>
-                        <th>Pond</th>
-                        <th>Status</th>
-                        <th>Caretaker</th>
-                        <th>Water</th>
-                        <th>Feed</th>
-                        <th>Disease</th>
-                        <th></th>
+                        <th className="ps-3 py-3 text-secondary text-uppercase extra-small fw-bold">Pond</th>
+                        <th className="py-3 text-secondary text-uppercase extra-small fw-bold">Status</th>
+                        <th className="py-3 text-secondary text-uppercase extra-small fw-bold">Caretaker</th>
+                        <th className="py-3 text-secondary text-uppercase extra-small fw-bold">Water Quality</th>
+                        <th className="py-3 text-secondary text-uppercase extra-small fw-bold">Feed Consumption</th>
+                        <th className="py-3 text-secondary text-uppercase extra-small fw-bold">Disease Alert</th>
+                        <th className="pe-3 py-3 text-secondary text-uppercase extra-small fw-bold text-end">Action</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -388,30 +394,41 @@ export default function PondMonitoringPage() {
                         const tone = statusClass[pond.status] || 'secondary';
                         return (
                           <tr key={pond.id}>
-                            <td>
+                            <td className="ps-3">
                               <div className="fw-bold text-dark">{pond.pond_name}</div>
-                              <small className="text-muted"><FaMapMarkerAlt className="me-1" />{valueOrDash(pond.location)}</small>
-                            </td>
-                            <td><span className={`badge bg-${tone} ${tone === 'warning' ? 'text-dark' : ''}`}>{pond.status || '-'}</span></td>
-                            <td>{valueOrDash(pond.assigned_caretaker_name)}</td>
-                            <td>
-                              <small className="d-block">Temp: {valueOrDash(pond.temperature, ' C')}</small>
-                              <small className="d-block">pH: {valueOrDash(pond.ph_level)}</small>
-                              <small className="d-block">DO: {valueOrDash(pond.dissolved_oxygen, ' mg/L')}</small>
+                              <small className="text-muted"><FaMapMarkerAlt className="me-1 text-primary" />{valueOrDash(pond.location)}</small>
                             </td>
                             <td>
-                              <small className="d-block">Today: {formatNumber(pond.feed_today_kg)} kg</small>
-                              <small className="d-block">Total: {formatNumber(pond.total_feed_kg)} kg</small>
+                              <span className={`badge bg-${tone} ${tone === 'warning' ? 'text-dark' : ''} px-2.5 py-1.5 fw-bold`}>
+                                {pond.status || '-'}
+                              </span>
+                            </td>
+                            <td className="fw-medium text-dark">{valueOrDash(pond.assigned_caretaker_name)}</td>
+                            <td>
+                              <small className="d-block text-secondary">Temp: <strong className="text-dark">{valueOrDash(pond.temperature, ' °C')}</strong></small>
+                              <small className="d-block text-secondary">pH: <strong className="text-dark">{valueOrDash(pond.ph_level)}</strong></small>
+                              <small className="d-block text-secondary">DO: <strong className="text-dark">{valueOrDash(pond.dissolved_oxygen, ' mg/L')}</strong></small>
+                            </td>
+                            <td>
+                              <small className="d-block text-secondary">Today: <strong className="text-dark">{formatNumber(pond.feed_today_kg)} kg</strong></small>
+                              <small className="d-block text-secondary">Total: <strong className="text-dark">{formatNumber(pond.total_feed_kg)} kg</strong></small>
                             </td>
                             <td>
                               {isDiseaseAlert(pond.disease_detection) ? (
-                                <span className="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25">{pond.disease_detection}</span>
+                                <span className="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-2.5 py-1.5 fw-bold">
+                                  {pond.disease_detection}
+                                </span>
                               ) : (
-                                <span className="badge bg-success bg-opacity-10 text-success">Clear</span>
+                                <span className="badge bg-success bg-opacity-10 text-success px-2.5 py-1.5 fw-bold">Clear</span>
                               )}
                             </td>
-                            <td className="text-end">
-                              <button className="btn btn-sm btn-outline-primary" onClick={() => setSelectedPond(pond)}>Details</button>
+                            <td className="pe-3 text-end">
+                              <button
+                                className="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 fw-bold shadow-xs"
+                                onClick={() => setSelectedPond(pond)}
+                              >
+                                Details
+                              </button>
                             </td>
                           </tr>
                         );
@@ -423,19 +440,75 @@ export default function PondMonitoringPage() {
             </div>
           </div>
         </div>
+      </div>
 
-        <div className="col-12 col-xl-4">
-          <div className="card border-0 shadow-sm rounded-4 bg-white h-100">
+      {/* 📊 HEALTH DISTRIBUTION CARD (PLACED DIRECTLY BELOW POND MONITORING TABLE) */}
+      <div className="row g-4 mb-4">
+        <div className="col-12">
+          <div className="card border border-info border-opacity-25 shadow-sm rounded-4 bg-white position-relative overflow-hidden">
+            <div className="position-absolute top-0 start-0 end-0 bg-info" style={{ height: 4 }} />
             <div className="card-body p-4">
-              <h5 className="fw-bold text-dark mb-1">Health Distribution</h5>
-              <p className="small text-muted">Computed from pond statuses returned by the database API.</p>
-              <div style={{ height: 240 }}>
-                <Doughnut data={pieData} options={pieOptions} />
-              </div>
-              <div className="row g-2 mt-3">
-                <div className="col-4"><div className="p-2 rounded-3 bg-success bg-opacity-10 text-center"><strong>{summary.pie_chart?.healthy_pct || 0}%</strong><small className="d-block text-muted">Healthy</small></div></div>
-                <div className="col-4"><div className="p-2 rounded-3 bg-warning bg-opacity-10 text-center"><strong>{summary.pie_chart?.warning_pct || 0}%</strong><small className="d-block text-muted">Warning</small></div></div>
-                <div className="col-4"><div className="p-2 rounded-3 bg-danger bg-opacity-10 text-center"><strong>{summary.pie_chart?.critical_pct || 0}%</strong><small className="d-block text-muted">Critical</small></div></div>
+              <div className="row align-items-center gy-4">
+                <div className="col-lg-5 text-center text-lg-start">
+                  <h5 className="fw-bold text-dark mb-1 d-flex align-items-center gap-2 justify-content-center justify-content-lg-start">
+                    <FaChartPie className="text-info" /> Health Distribution
+                  </h5>
+                  <p className="small text-muted mb-4">Computed overall health status breakdown across all monitored ponds.</p>
+                  <div className="d-flex flex-column gap-2.5">
+                    <div className="p-3 rounded-4 bg-success bg-opacity-10 border border-success border-opacity-25 d-flex align-items-center justify-content-between">
+                      <span className="fw-bold text-success d-flex align-items-center gap-2">
+                        <span className="p-1.5 rounded-circle bg-success"></span> Healthy Ponds
+                      </span>
+                      <div className="text-end">
+                        <strong className="fs-5 text-success d-block">{summary.pie_chart?.healthy_pct || 0}%</strong>
+                        <small className="text-muted extra-small">{summary.healthy_ponds || 0} Ponds</small>
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-4 bg-warning bg-opacity-10 border border-warning border-opacity-25 d-flex align-items-center justify-content-between">
+                      <span className="fw-bold text-warning-emphasis d-flex align-items-center gap-2">
+                        <span className="p-1.5 rounded-circle bg-warning"></span> Warning Ponds
+                      </span>
+                      <div className="text-end">
+                        <strong className="fs-5 text-warning-emphasis d-block">{summary.pie_chart?.warning_pct || 0}%</strong>
+                        <small className="text-muted extra-small">{summary.warning_ponds || 0} Ponds</small>
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-4 bg-danger bg-opacity-10 border border-danger border-opacity-25 d-flex align-items-center justify-content-between">
+                      <span className="fw-bold text-danger d-flex align-items-center gap-2">
+                        <span className="p-1.5 rounded-circle bg-danger"></span> Critical Ponds
+                      </span>
+                      <div className="text-end">
+                        <strong className="fs-5 text-danger d-block">{summary.pie_chart?.critical_pct || 0}%</strong>
+                        <small className="text-muted extra-small">{summary.critical_ponds || 0} Ponds</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="col-lg-7 d-flex justify-content-center align-items-center">
+                  <div
+                    className="p-4 rounded-4 border border-info border-opacity-25 bg-light bg-opacity-50 shadow-xs w-100 d-flex flex-column align-items-center justify-content-center position-relative"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(13, 202, 240, 0.04) 0%, rgba(255, 255, 255, 0.95) 100%)',
+                      maxWidth: 420,
+                    }}
+                  >
+                    <div className="d-flex align-items-center justify-content-between w-100 mb-3 border-bottom pb-2">
+                      <span className="extra-small fw-bold text-uppercase text-secondary tracking-wider d-flex align-items-center gap-1.5">
+                        <FaChartPie className="text-info" /> Visual Distribution Breakdown
+                      </span>
+                      <span className="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 rounded-pill extra-small fw-bold">
+                        {summary.total_ponds || 0} Total Ponds
+                      </span>
+                    </div>
+
+                    <div style={{ height: 250, width: '100%', maxWidth: 350 }}>
+                      <Doughnut data={pieData} options={pieOptions} />
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

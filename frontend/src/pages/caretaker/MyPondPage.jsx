@@ -462,19 +462,6 @@ export default function MyPondPage() {
 
   return (
     <div className="caretaker-mypond-page">
-      {/* Hero Workspace Header */}
-      <section className="caretaker-dashboard-hero caretaker-mypond-hero mb-4">
-        <div>
-          <span className="caretaker-dashboard-kicker">Pond Feeding Workspace</span>
-          <h3>{selectedPond?.pond_name || 'My Pond'}</h3>
-          <p>Select an assigned pond tab below to log real feeding records and manage daily schedules.</p>
-          <div className="caretaker-hero-meta">
-            <span>{assignedPonds.length} assigned pond(s)</span>
-            <span>Tateh {currentForm.productCode}</span>
-            <span>{currentForm.feedingTime}</span>
-          </div>
-        </div>
-      </section>
 
       <div className="card border-0 shadow-sm mb-4">
         <div className="card-body p-3 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">

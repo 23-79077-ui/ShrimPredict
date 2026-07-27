@@ -214,22 +214,22 @@ export default function AdminLayout() {
 
       <main className="admin-main">
         <div className="site-header admin-topbar caretaker-dashboard-hero mb-4">
-          <div>
+          <div className="flex-grow-1 me-3" style={{ minWidth: 0 }}>
             <div className="admin-brand d-flex d-lg-none mb-3">
               <span className="brand-icon"><FaSeedling /></span>
               <span>ShrimPredict</span>
             </div>
             <span className="caretaker-dashboard-kicker">ADMIN CONSOLE</span>
-            <h3 className="fw-bold mb-1 text-white">{currentPage.label}</h3>
+            <h3 className="fw-bold mb-1 text-white text-truncate">{currentPage.label}</h3>
             <p className="mb-0 text-white-75 small">{currentPage.description}</p>
           </div>
           
           {/* 🌟 STEADY SPACIOUS SIDE-BY-SIDE DATE, CLOCK, AND BELL ICON BUTTON */}
-          <div className="admin-actions d-flex align-items-center flex-wrap gap-2.5">
+          <div className="admin-actions d-flex align-items-center flex-nowrap gap-2.5 flex-shrink-0 ms-auto">
             {/* 1. Date Card */}
             <div
-              className="bg-white border border-secondary border-opacity-25 shadow-sm rounded-pill d-flex align-items-center text-dark"
-              style={{ width: 215, height: 44, padding: '0 1.25rem', gap: '0.75rem', flexShrink: 0 }}
+              className="bg-white border border-secondary border-opacity-25 shadow-sm rounded-pill d-flex align-items-center text-dark flex-shrink-0"
+              style={{ width: 205, height: 44, padding: '0 1.15rem', gap: '0.65rem' }}
               title="Today's Date"
             >
               <div
@@ -243,10 +243,10 @@ export default function AdminLayout() {
               </span>
             </div>
 
-            {/* 2. Real-Time Ticking Clock Card */}
+            {/* 2. Real-Time Ticking Clock Card (Steady fixed digit widths) */}
             <div
-              className="bg-white border border-secondary border-opacity-25 shadow-sm rounded-pill d-flex align-items-center text-dark"
-              style={{ width: 175, height: 44, padding: '0 1.15rem', gap: '0.65rem', flexShrink: 0 }}
+              className="bg-white border border-secondary border-opacity-25 shadow-sm rounded-pill d-flex align-items-center text-dark flex-shrink-0"
+              style={{ width: 175, height: 44, padding: '0 1.15rem', gap: '0.65rem' }}
               title="Real-Time System Clock"
             >
               <div
@@ -282,10 +282,10 @@ export default function AdminLayout() {
             </div>
 
             {/* 3. Clean Notification Bell Icon Button */}
-            <div className="position-relative" ref={bellRef}>
+            <div className="position-relative flex-shrink-0" ref={bellRef}>
               <button
                 type="button"
-                className="btn bg-white border border-secondary border-opacity-25 shadow-sm rounded-circle d-flex align-items-center justify-content-center position-relative transition-all hover-shadow p-0"
+                className="btn bg-white border border-secondary border-opacity-25 shadow-sm rounded-circle d-flex align-items-center justify-content-center position-relative transition-all hover-shadow p-0 flex-shrink-0"
                 style={{ width: 44, height: 44 }}
                 onClick={() => setShowNotifMenu(!showNotifMenu)}
                 title="Notifications"
