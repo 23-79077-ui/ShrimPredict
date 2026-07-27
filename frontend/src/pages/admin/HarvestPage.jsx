@@ -11,12 +11,15 @@ export default function HarvestPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedCaretaker, setSelectedCaretaker] = useState('all');
+  const [selectedPond, setSelectedPond] = useState('all');
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       try {
-        const params = selectedCaretaker !== 'all' ? { caretaker_id: selectedCaretaker } : {};
+        const params = {};
+        if (selectedCaretaker !== 'all') params.caretaker_id = selectedCaretaker;
+        if (selectedPond !== 'all') params.pond_id = selectedPond;
         const res = await api.get('/harvest_predictions.php', { params });
         setData(res.data || {});
       } catch (error) {
@@ -26,10 +29,11 @@ export default function HarvestPage() {
       }
     };
     load();
-  }, [selectedCaretaker]);
+  }, [selectedCaretaker, selectedPond]);
 
   const predictions = safeArray(data?.predictions);
   const caretakers = safeArray(data?.caretakers);
+  const pondsList = safeArray(data?.ponds);
   const summary = data?.summary || {};
   const feedReferenceKg = data?.feed_reference_kg || summary.feed_reference_kg || 15000;
   const baselineHarvestTons = data?.target_harvest_tons || summary.target_harvest_tons_per_pond || 11;
@@ -65,26 +69,53 @@ export default function HarvestPage() {
 
   return (
     <div>
-      <div className="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-4">
-        <div>
-          <h1 className="mb-1">Harvest Prediction</h1>
-          <p className="text-muted mb-0">Harvest estimate based on caretaker historical feeding data.</p>
+      {/* FILTER TOOLBAR (Single Header handled by AdminLayout) */}
+      <div className="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4 bg-white p-3 rounded-4 border shadow-xs">
+        <div className="d-flex align-items-center gap-2">
+          <span className="fw-bold text-dark extra-small text-uppercase me-1">Filters:</span>
+          <span className="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3 py-1 extra-small fw-bold">
+            Showing {predictions.length} Pond Prediction(s)
+          </span>
         </div>
-        <div style={{ minWidth: 240 }}>
-          <label className="form-label small text-muted mb-1" htmlFor="caretakerFilter">Caretaker filter</label>
-          <select
-            id="caretakerFilter"
-            className="form-select"
-            value={selectedCaretaker}
-            onChange={(event) => setSelectedCaretaker(event.target.value)}
-          >
-            <option value="all">All caretakers</option>
-            {caretakers.map((caretaker) => (
-              <option key={caretaker.id} value={caretaker.id}>
-                {caretaker.full_name || `Caretaker ${caretaker.id}`}
-              </option>
-            ))}
-          </select>
+
+        <div className="d-flex align-items-center flex-wrap gap-3">
+          {/* Per-Pond Filter */}
+          <div className="d-flex align-items-center gap-2">
+            <label className="form-label extra-small fw-bold text-muted mb-0" htmlFor="pondFilter">Pond:</label>
+            <select
+              id="pondFilter"
+              className="form-select form-select-sm rounded-pill fw-bold border-primary text-primary bg-primary bg-opacity-10"
+              style={{ width: 150 }}
+              value={selectedPond}
+              onChange={(event) => setSelectedPond(event.target.value)}
+            >
+              <option value="all">All Ponds</option>
+              {pondsList.map((pond) => (
+                <option key={pond.id} value={pond.id}>
+                  {pond.pond_name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Caretaker Filter */}
+          <div className="d-flex align-items-center gap-2">
+            <label className="form-label extra-small fw-bold text-muted mb-0" htmlFor="caretakerFilter">Caretaker:</label>
+            <select
+              id="caretakerFilter"
+              className="form-select form-select-sm rounded-pill fw-semibold border-secondary border-opacity-25"
+              style={{ width: 170 }}
+              value={selectedCaretaker}
+              onChange={(event) => setSelectedCaretaker(event.target.value)}
+            >
+              <option value="all">All Caretakers</option>
+              {caretakers.map((caretaker) => (
+                <option key={caretaker.id} value={caretaker.id}>
+                  {caretaker.full_name || `Caretaker ${caretaker.id}`}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -99,53 +130,56 @@ export default function HarvestPage() {
         </div>
       </div>
 
-      <div className="row g-4 mb-4">
-        <div className="col-xl-3 col-md-6">
-          <div className="metric-card">
-            <div className="d-flex align-items-center gap-3">
-              <FaWeightHanging className="text-primary" />
-              <div>
-                <p className="text-muted small mb-1">Predicted Harvest</p>
-                <h4 className="mb-0">{formatKg(summary.adjusted_harvest_kg)}</h4>
-                <small className="text-muted">Current estimate: {formatTons(summary.predicted_harvest_tons)}</small>
+      <div className="row g-3 mb-4">
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+            <div className="d-flex align-items-center justify-content-between mb-3">
+              <span className="text-muted small fw-semibold">Predicted Harvest</span>
+              <div className="rounded-3 p-2.5 bg-primary bg-opacity-10 text-primary fs-5">
+                <FaWeightHanging />
               </div>
             </div>
+            <h3 className="fw-extrabold text-dark mb-2">{formatKg(summary.adjusted_harvest_kg)}</h3>
+            <span className="text-muted extra-small">Current estimate: {formatTons(summary.predicted_harvest_tons)}</span>
           </div>
         </div>
-        <div className="col-xl-3 col-md-6">
-          <div className="metric-card">
-            <div className="d-flex align-items-center gap-3">
-              <FaSeedling className="text-primary" />
-              <div>
-                <p className="text-muted small mb-1">Total Feed Consumed</p>
-                <h4 className="mb-0">{formatKg(summary.total_feed_consumed_kg)}</h4>
-                <small className="text-muted">From caretaker feeding logs</small>
+
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+            <div className="d-flex align-items-center justify-content-between mb-3">
+              <span className="text-muted small fw-semibold">Total Feed Consumed</span>
+              <div className="rounded-3 p-2.5 bg-success bg-opacity-10 text-success fs-5">
+                <FaSeedling />
               </div>
             </div>
+            <h3 className="fw-extrabold text-dark mb-2">{formatKg(summary.total_feed_consumed_kg)}</h3>
+            <span className="text-muted extra-small">From caretaker feeding logs</span>
           </div>
         </div>
-        <div className="col-xl-3 col-md-6">
-          <div className="metric-card">
-            <div className="d-flex align-items-center gap-3">
-              <FaChartLine className="text-primary" />
-              <div>
-                <p className="text-muted small mb-1">Average Feed Progress</p>
-                <h4 className="mb-0">{formatPct(summary.average_feed_progress_percentage)}</h4>
-                <small className="text-muted">Historical {formatKg(feedReferenceKg)} feed baseline</small>
+
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+            <div className="d-flex align-items-center justify-content-between mb-3">
+              <span className="text-muted small fw-semibold">Average Feed Progress</span>
+              <div className="rounded-3 p-2.5 bg-warning bg-opacity-10 text-warning fs-5">
+                <FaChartLine />
               </div>
             </div>
+            <h3 className="fw-extrabold text-dark mb-2">{formatPct(summary.average_feed_progress_percentage)}</h3>
+            <span className="text-muted extra-small">Historical {formatKg(feedReferenceKg)} feed baseline</span>
           </div>
         </div>
-        <div className="col-xl-3 col-md-6">
-          <div className="metric-card">
-            <div className="d-flex align-items-center gap-3">
-              <FaCalendarAlt className="text-primary" />
-              <div>
-                <p className="text-muted small mb-1">Historical Baseline</p>
-                <h4 className="mb-0">{formatTons(baselineHarvestTons)}</h4>
-                <small className="text-muted">usual harvest at {formatKg(feedReferenceKg)} feed</small>
+
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+            <div className="d-flex align-items-center justify-content-between mb-3">
+              <span className="text-muted small fw-semibold">Historical Baseline</span>
+              <div className="rounded-3 p-2.5 bg-info bg-opacity-10 text-info fs-5">
+                <FaCalendarAlt />
               </div>
             </div>
+            <h3 className="fw-extrabold text-dark mb-2">{formatTons(baselineHarvestTons)}</h3>
+            <span className="text-muted extra-small">Usual harvest at {formatKg(feedReferenceKg)} feed</span>
           </div>
         </div>
       </div>

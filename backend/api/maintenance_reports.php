@@ -111,18 +111,36 @@ if ($method === 'GET') {
         $stmt->execute($params);
         $reports = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Counts
-        $totalStmt = $conn->query("SELECT COUNT(*) FROM maintenance_reports");
-        $totalCount = (int)$totalStmt->fetchColumn();
+        // Calculate summary counts (filtered for caretaker if user_id > 0)
+        if ($userId > 0) {
+            $totalStmt = $conn->prepare("SELECT COUNT(*) FROM maintenance_reports WHERE user_id = :uid");
+            $totalStmt->execute([':uid' => $userId]);
+            $totalCount = (int)$totalStmt->fetchColumn();
 
-        $pendingStmt = $conn->query("SELECT COUNT(*) FROM maintenance_reports WHERE status = 'Pending'");
-        $pendingCount = (int)$pendingStmt->fetchColumn();
+            $pendingStmt = $conn->prepare("SELECT COUNT(*) FROM maintenance_reports WHERE user_id = :uid AND status = 'Pending'");
+            $pendingStmt->execute([':uid' => $userId]);
+            $pendingCount = (int)$pendingStmt->fetchColumn();
 
-        $inProgressStmt = $conn->query("SELECT COUNT(*) FROM maintenance_reports WHERE status = 'In Progress'");
-        $inProgressCount = (int)$inProgressStmt->fetchColumn();
+            $inProgressStmt = $conn->prepare("SELECT COUNT(*) FROM maintenance_reports WHERE user_id = :uid AND status = 'In Progress'");
+            $inProgressStmt->execute([':uid' => $userId]);
+            $inProgressCount = (int)$inProgressStmt->fetchColumn();
 
-        $doneStmt = $conn->query("SELECT COUNT(*) FROM maintenance_reports WHERE status = 'Done'");
-        $doneCount = (int)$doneStmt->fetchColumn();
+            $doneStmt = $conn->prepare("SELECT COUNT(*) FROM maintenance_reports WHERE user_id = :uid AND (status = 'Done' OR status = 'Resolved')");
+            $doneStmt->execute([':uid' => $userId]);
+            $doneCount = (int)$doneStmt->fetchColumn();
+        } else {
+            $totalStmt = $conn->query("SELECT COUNT(*) FROM maintenance_reports");
+            $totalCount = (int)$totalStmt->fetchColumn();
+
+            $pendingStmt = $conn->query("SELECT COUNT(*) FROM maintenance_reports WHERE status = 'Pending'");
+            $pendingCount = (int)$pendingStmt->fetchColumn();
+
+            $inProgressStmt = $conn->query("SELECT COUNT(*) FROM maintenance_reports WHERE status = 'In Progress'");
+            $inProgressCount = (int)$inProgressStmt->fetchColumn();
+
+            $doneStmt = $conn->query("SELECT COUNT(*) FROM maintenance_reports WHERE (status = 'Done' OR status = 'Resolved')");
+            $doneCount = (int)$doneStmt->fetchColumn();
+        }
 
         echo json_encode([
             'success' => true,
@@ -184,10 +202,10 @@ if ($method === 'POST') {
             ]);
             $newId = $conn->lastInsertId();
 
-            // Trigger Admin Notification automatically
+            // Trigger Admin Notification automatically (user_id = null so it goes to Admin only)
             $notifTitle = "New Maintenance Report: {$severityLevel} Severity";
             $notifMsg = "{$caretakerName} reported an issue for {$pondName}: {$specificIssue} ({$problemType}).";
-            createNotification($conn, $notifTitle, $notifMsg, $caretakerName, 'maintenance', $pondName, $userId, $newId);
+            createNotification($conn, $notifTitle, $notifMsg, $caretakerName, 'maintenance', $pondName, null, $newId);
 
             http_response_code(201);
             echo json_encode([
@@ -234,6 +252,30 @@ if ($method === 'POST') {
                 ':resolved_by' => $resolvedBy,
                 ':id' => $id,
             ]);
+
+            // Trigger Caretaker Notification specifically for the report submitter
+            $fetchReport = $conn->prepare("SELECT user_id, caretaker_name, pond_name, specific_issue FROM maintenance_reports WHERE id = :id LIMIT 1");
+            $fetchReport->execute([':id' => $id]);
+            $reportData = $fetchReport->fetch(PDO::FETCH_ASSOC);
+
+            if ($reportData && !empty($reportData['user_id'])) {
+                $caretakerUserId = (int)$reportData['user_id'];
+                $pName = $reportData['pond_name'];
+                $issue = $reportData['specific_issue'];
+
+                if ($newStatus === 'Done') {
+                    $notifTitle = "Report Resolved: Done ({$pName})";
+                    $notifMsg = "Admin {$resolvedBy} marked your maintenance report '{$issue}' as Done (Resolved)." . ($adminNotes ? " Note: {$adminNotes}" : "");
+                } else if ($newStatus === 'In Progress') {
+                    $notifTitle = "Report Status: In Progress ({$pName})";
+                    $notifMsg = "Admin {$resolvedBy} updated your maintenance report '{$issue}' to In Progress." . ($adminNotes ? " Note: {$adminNotes}" : "");
+                } else {
+                    $notifTitle = "Report Status Update: {$pName} ({$newStatus})";
+                    $notifMsg = "Admin {$resolvedBy} updated your maintenance report '{$issue}' status to {$newStatus}." . ($adminNotes ? " Note: {$adminNotes}" : "");
+                }
+
+                createNotification($conn, $notifTitle, $notifMsg, 'System Admin', 'report_update', $pName, $caretakerUserId, $id);
+            }
 
             echo json_encode([
                 'success' => true,

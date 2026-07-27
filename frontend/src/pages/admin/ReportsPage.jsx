@@ -230,59 +230,55 @@ export default function AdminReportsPage() {
 
       {/* Summary Cards */}
       <div className="row g-3 mb-4">
-        <div className="col-md-3">
-          <div className="card border-0 shadow-sm p-3 bg-white">
-            <div className="d-flex align-items-center justify-content-between">
-              <div>
-                <small className="text-muted text-uppercase fw-semibold">Total Reports</small>
-                <h4 className="fw-bold mb-0 text-dark">{counts.total}</h4>
-              </div>
-              <div className="p-3 bg-primary bg-opacity-10 text-primary rounded-circle">
-                <FaExclamationTriangle size={20} />
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+            <div className="d-flex align-items-center justify-content-between mb-3">
+              <span className="text-muted small fw-semibold">Total Reports</span>
+              <div className="rounded-3 p-2.5 bg-primary bg-opacity-10 text-primary fs-5">
+                <FaExclamationTriangle />
               </div>
             </div>
+            <h3 className="fw-extrabold text-dark mb-2">{counts.total}</h3>
+            <span className="text-muted extra-small">Caretaker Submitted Reports</span>
           </div>
         </div>
 
-        <div className="col-md-3">
-          <div className="card border-0 shadow-sm p-3 bg-white">
-            <div className="d-flex align-items-center justify-content-between">
-              <div>
-                <small className="text-muted text-uppercase fw-semibold">Pending Review</small>
-                <h4 className="fw-bold mb-0 text-warning">{counts.pending}</h4>
-              </div>
-              <div className="p-3 bg-warning bg-opacity-10 text-warning rounded-circle">
-                <FaClock size={20} />
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+            <div className="d-flex align-items-center justify-content-between mb-3">
+              <span className="text-muted small fw-semibold">Pending Review</span>
+              <div className="rounded-3 p-2.5 bg-warning bg-opacity-10 text-warning fs-5">
+                <FaClock />
               </div>
             </div>
+            <h3 className="fw-extrabold text-warning mb-2">{counts.pending}</h3>
+            <span className="badge bg-warning bg-opacity-10 text-warning rounded-pill extra-small fw-semibold">Awaiting Review</span>
           </div>
         </div>
 
-        <div className="col-md-3">
-          <div className="card border-0 shadow-sm p-3 bg-white">
-            <div className="d-flex align-items-center justify-content-between">
-              <div>
-                <small className="text-muted text-uppercase fw-semibold">In Progress</small>
-                <h4 className="fw-bold mb-0 text-info">{counts.in_progress}</h4>
-              </div>
-              <div className="p-3 bg-info bg-opacity-10 text-info rounded-circle">
-                <FaTools size={20} />
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+            <div className="d-flex align-items-center justify-content-between mb-3">
+              <span className="text-muted small fw-semibold">In Progress</span>
+              <div className="rounded-3 p-2.5 bg-info bg-opacity-10 text-info fs-5">
+                <FaTools />
               </div>
             </div>
+            <h3 className="fw-extrabold text-info mb-2">{counts.in_progress}</h3>
+            <span className="text-muted extra-small">Action In Progress</span>
           </div>
         </div>
 
-        <div className="col-md-3">
-          <div className="card border-0 shadow-sm p-3 bg-white">
-            <div className="d-flex align-items-center justify-content-between">
-              <div>
-                <small className="text-muted text-uppercase fw-semibold">Done / Resolved</small>
-                <h4 className="fw-bold mb-0 text-success">{counts.done}</h4>
-              </div>
-              <div className="p-3 bg-success bg-opacity-10 text-success rounded-circle">
-                <FaCheckCircle size={20} />
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+            <div className="d-flex align-items-center justify-content-between mb-3">
+              <span className="text-muted small fw-semibold">Done / Resolved</span>
+              <div className="rounded-3 p-2.5 bg-success bg-opacity-10 text-success fs-5">
+                <FaCheckCircle />
               </div>
             </div>
+            <h3 className="fw-extrabold text-success mb-2">{counts.done}</h3>
+            <span className="badge bg-success bg-opacity-10 text-success rounded-pill extra-small fw-semibold">Closed & Resolved</span>
           </div>
         </div>
       </div>

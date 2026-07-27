@@ -30,6 +30,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = json_decode(file_get_contents('php://input'), true) ?: $_POST;
     $action = isset($data['action']) ? $data['action'] : 'create_caretaker';
 
+    // Archive Caretaker Action
+    if ($action === 'archive_caretaker') {
+        $userId = isset($data['user_id']) ? (int)$data['user_id'] : 0;
+        $reason = isset($data['archive_reason']) ? trim((string)$data['archive_reason']) : 'Resigned';
+
+        if ($userId <= 0) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Invalid user ID.']);
+            exit;
+        }
+
+        $up = $conn->prepare('
+            UPDATE users 
+            SET status = "Archived", date_archived = NOW(), archive_reason = :reason 
+            WHERE id = :id AND LOWER(role) = "caretaker"
+        ');
+        $up->execute([':reason' => $reason, ':id' => $userId]);
+
+        $delP = $conn->prepare('DELETE FROM caretaker_ponds WHERE user_id = :user_id');
+        $delP->execute([':user_id' => $userId]);
+
+        echo json_encode(['success' => true, 'message' => 'Caretaker archived successfully to repository.']);
+        exit;
+    }
+
+    // Restore Caretaker Action
+    if ($action === 'restore_caretaker') {
+        $userId = isset($data['user_id']) ? (int)$data['user_id'] : 0;
+        if ($userId <= 0) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Invalid user ID.']);
+            exit;
+        }
+
+        $up = $conn->prepare('
+            UPDATE users 
+            SET status = "Active", date_archived = NULL, archive_reason = NULL 
+            WHERE id = :id
+        ');
+        $up->execute([':id' => $userId]);
+
+        echo json_encode(['success' => true, 'message' => 'Caretaker account restored to active caretakers successfully!']);
+        exit;
+    }
+
     // Delete User Action
     if ($action === 'delete_user') {
         $userId = isset($data['user_id']) ? (int)$data['user_id'] : 0;

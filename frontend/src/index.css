@@ -1359,8 +1359,18 @@ button {
 }
 
 .metric-card {
-  min-height: 150px;
-  padding: 1.25rem;
+  min-height: 140px;
+  padding: 1.25rem 1.35rem;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(11, 44, 95, 0.08);
+  background: #ffffff;
+  box-shadow: 0 4px 18px rgba(11, 44, 95, 0.05);
+  transition: all 0.25s ease-in-out;
+}
+
+.metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(11, 44, 95, 0.09);
 }
 
 .metric-card h3,
@@ -1375,10 +1385,10 @@ button {
 }
 
 .metric-card .metric-icon {
-  width: 48px;
-  height: 48px;
-  min-width: 48px;
-  border-radius: 16px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  border-radius: 12px;
   display: grid;
   place-items: center;
   background: rgba(11,44,95,0.08);
@@ -3839,5 +3849,91 @@ button {
   .admin-main::-webkit-scrollbar-thumb:hover,
   .dashboard-main::-webkit-scrollbar-thumb:hover {
     background: rgba(11, 44, 95, 0.35);
+    border-radius: 999px;
   }
 }
+
+/* ==========================================================================
+   SHRIMPREDICT GLOBAL DARK MODE STYLING SYSTEM
+   ========================================================================== */
+[data-theme="dark"],
+[data-bs-theme="dark"],
+body.dark-theme {
+  background-color: #0b132b !important;
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .dashboard-main,
+[data-theme="dark"] .admin-main,
+[data-theme="dark"] .app-shell,
+body.dark-theme .dashboard-main,
+body.dark-theme .app-shell {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .card,
+[data-theme="dark"] .glass-card,
+[data-theme="dark"] .caretaker-panel-card,
+[data-theme="dark"] .bg-white,
+[data-theme="dark"] .bg-light,
+body.dark-theme .card,
+body.dark-theme .glass-card,
+body.dark-theme .caretaker-panel-card,
+body.dark-theme .bg-white {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .text-dark,
+[data-theme="dark"] .text-secondary,
+[data-theme="dark"] h1, [data-theme="dark"] h2, [data-theme="dark"] h3,
+[data-theme="dark"] h4, [data-theme="dark"] h5, [data-theme="dark"] h6,
+body.dark-theme .text-dark,
+body.dark-theme h1, body.dark-theme h2, body.dark-theme h3 {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .text-muted,
+body.dark-theme .text-muted {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .form-control,
+[data-theme="dark"] .form-select,
+[data-theme="dark"] .input-group-text,
+body.dark-theme .form-control,
+body.dark-theme .form-select {
+  background-color: #0f172a !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .form-control::placeholder {
+  color: #64748b !important;
+}
+
+[data-theme="dark"] .table,
+[data-theme="dark"] .table-light,
+body.dark-theme .table {
+  color: #f8fafc !important;
+  border-color: #334155 !important;
+}
+
+[data-theme="dark"] .table-light,
+[data-theme="dark"] thead.table-light {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] tr:hover {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+[data-theme="dark"] .border,
+[data-theme="dark"] .border-bottom,
+[data-theme="dark"] .border-top {
+  border-color: #334155 !important;
+}
+

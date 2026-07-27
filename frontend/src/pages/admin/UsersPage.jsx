@@ -376,61 +376,107 @@ export default function UsersPage() {
     });
   };
 
+  // Archive Caretaker Handler (Resigned / Inactive)
+  const handleArchiveCaretaker = (userToArchive) => {
+    Swal.fire({
+      title: `Archive Caretaker`,
+      html: `
+        <p class="text-muted small mb-3">Archive <strong>${toTitleCase(userToArchive.full_name)}</strong> to the Archived Caretakers repository.</p>
+        <label class="form-label fw-bold small text-start d-block mb-1">Reason for Archiving:</label>
+        <select id="archive-reason-select" class="form-select mb-2">
+          <option value="Resigned">Resigned</option>
+          <option value="Career Transition">Career Transition</option>
+          <option value="Health Reason">Health Reason</option>
+          <option value="On Leave">On Leave</option>
+          <option value="Terminated">Terminated</option>
+          <option value="Other">Other</option>
+        </select>
+      `,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Archive Caretaker',
+      confirmButtonColor: '#f59e0b',
+      cancelButtonText: 'Cancel',
+      preConfirm: () => {
+        const reasonSelect = document.getElementById('archive-reason-select');
+        return reasonSelect ? reasonSelect.value : 'Resigned';
+      }
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          const res = await api.post('/users.php', {
+            action: 'archive_caretaker',
+            user_id: userToArchive.id,
+            archive_reason: result.value || 'Resigned'
+          });
+          if (res.data && res.data.success) {
+            Swal.fire('Archived!', `${toTitleCase(userToArchive.full_name)} has been moved to Archived Caretakers repository in Settings.`, 'success');
+            loadUsers();
+          } else {
+            Swal.fire('Error', res.data?.message || 'Failed to archive caretaker.', 'error');
+          }
+        } catch (err) {
+          Swal.fire('Error', err.response?.data?.message || err.message, 'error');
+        }
+      }
+    });
+  };
+
   return (
     <div className="pb-5">
       {/* 📊 SUMMARY CARDS (Dashboard style metric-card layout) */}
       <div className="row g-3 mb-4">
         {/* Total Users */}
         <div className="col-12 col-sm-6 col-md-3">
-          <div className="metric-card p-3.5 h-100 d-flex flex-column justify-content-between">
-            <div className="d-flex justify-content-between align-items-center mb-2">
+          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+            <div className="d-flex align-items-center justify-content-between mb-3">
               <span className="text-muted small fw-semibold">Total Users</span>
-              <div className="p-2 rounded-circle bg-primary bg-opacity-10 text-primary">
-                <FaUsers size={18} />
+              <div className="rounded-3 p-2.5 bg-primary bg-opacity-10 text-primary fs-5">
+                <FaUsers />
               </div>
             </div>
-            <h3 className="fw-bold text-dark mb-0">{summary.total_users}</h3>
-            <small className="text-muted extra-small">Registered Accounts</small>
+            <h3 className="fw-extrabold text-dark mb-2">{summary.total_users}</h3>
+            <span className="text-muted extra-small">Registered Accounts</span>
           </div>
         </div>
 
         {/* Admins */}
         <div className="col-12 col-sm-6 col-md-3">
-          <div className="metric-card p-3.5 h-100 d-flex flex-column justify-content-between">
-            <div className="d-flex justify-content-between align-items-center mb-2">
+          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+            <div className="d-flex align-items-center justify-content-between mb-3">
               <span className="text-muted small fw-semibold">Admins</span>
-              <div className="p-2 rounded-circle bg-info bg-opacity-10 text-info">
-                <FaUserShield size={18} />
+              <div className="rounded-3 p-2.5 bg-info bg-opacity-10 text-info fs-5">
+                <FaUserShield />
               </div>
             </div>
-            <h3 className="fw-bold text-dark mb-0">{summary.admin_count}</h3>
-            <small className="text-muted extra-small">System Administrators</small>
+            <h3 className="fw-extrabold text-dark mb-2">{summary.admin_count}</h3>
+            <span className="text-muted extra-small">System Administrators</span>
           </div>
         </div>
 
         {/* Caretakers */}
         <div className="col-12 col-sm-6 col-md-3">
-          <div className="metric-card p-3.5 h-100 d-flex flex-column justify-content-between">
-            <div className="d-flex justify-content-between align-items-center mb-2">
+          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+            <div className="d-flex align-items-center justify-content-between mb-3">
               <span className="text-muted small fw-semibold">Caretakers</span>
-              <div className="p-2 rounded-circle bg-secondary bg-opacity-10 text-secondary">
-                <FaUserTie size={18} />
+              <div className="rounded-3 p-2.5 bg-secondary bg-opacity-10 text-secondary fs-5">
+                <FaUserTie />
               </div>
             </div>
-            <h3 className="fw-bold text-dark mb-0">{summary.caretaker_count}</h3>
-            <small className="text-muted extra-small">Field Farm Caretakers</small>
+            <h3 className="fw-extrabold text-dark mb-2">{summary.caretaker_count}</h3>
+            <span className="text-muted extra-small">Field Farm Caretakers</span>
           </div>
         </div>
 
         {/* Active Users */}
         <div className="col-12 col-sm-6 col-md-3">
-          <div className="metric-card p-3.5 h-100 d-flex flex-column justify-content-between border-start border-4 border-success">
-            <div className="d-flex justify-content-between align-items-center mb-2">
+          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+            <div className="d-flex align-items-center justify-content-between mb-3">
               <span className="text-muted small fw-semibold">Active Accounts</span>
-              <span className="badge bg-success bg-opacity-10 text-success rounded-pill">🟢 Active</span>
+              <span className="badge bg-success bg-opacity-10 text-success rounded-pill extra-small fw-semibold">🟢 Active</span>
             </div>
-            <h3 className="fw-bold text-success mb-0">{summary.active_count}</h3>
-            <small className="text-muted extra-small">Operational Status</small>
+            <h3 className="fw-extrabold text-success mb-2">{summary.active_count}</h3>
+            <span className="text-muted extra-small">Operational Status</span>
           </div>
         </div>
       </div>
@@ -689,16 +735,26 @@ export default function UsersPage() {
                             <FaEdit size={14} />
                           </button>
 
-                          {/* 🗑 Delete Button */}
+                          {/* 🗑 Delete & 📁 Archive Buttons */}
                           {user.role !== 'admin' && (
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline-danger p-2 rounded-3"
-                              title="🗑 Delete Caretaker Account"
-                              onClick={() => handleDeleteUser(user)}
-                            >
-                              <FaTrashAlt size={14} />
-                            </button>
+                            <>
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline-warning p-2 rounded-3"
+                                title="📁 Archive Caretaker (Resigned / Inactive)"
+                                onClick={() => handleArchiveCaretaker(user)}
+                              >
+                                <FaCalendarCheck size={14} />
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline-danger p-2 rounded-3"
+                                title="🗑 Delete Caretaker Account"
+                                onClick={() => handleDeleteUser(user)}
+                              >
+                                <FaTrashAlt size={14} />
+                              </button>
+                            </>
                           )}
                         </div>
                       </td>

@@ -117,84 +117,84 @@ export default function CaretakerDashboard() {
 
       <div className="row g-3 mb-4">
         <div className="col-sm-6 col-xl-3">
-          <div className="card caretaker-stat-card accent-blue h-100">
-            <div className="card-body">
-              <div className="caretaker-stat-top">
-                <span>Assigned Ponds</span>
-                <span className="caretaker-stat-icon"><FaWater /></span>
+          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+            <div className="d-flex align-items-center justify-content-between mb-3">
+              <span className="text-muted small fw-semibold">Assigned Ponds</span>
+              <div className="rounded-3 p-2.5 bg-primary bg-opacity-10 text-primary fs-5">
+                <FaWater />
               </div>
-              <h3>{assignedPonds.length}</h3>
-              <small className="text-muted">Tap a pond to focus the dashboard.</small>
-              <div className="caretaker-pond-chips">
-                <button type="button" className={selectedPondFilter === 'all' ? 'active' : ''} onClick={() => setSelectedPondFilter('all')}>
-                  All
+            </div>
+            <h3 className="fw-extrabold text-dark mb-2">{assignedPonds.length}</h3>
+            <span className="text-muted extra-small d-block mb-2">Tap a pond to focus dashboard:</span>
+            <div className="caretaker-pond-chips">
+              <button type="button" className={selectedPondFilter === 'all' ? 'active' : ''} onClick={() => setSelectedPondFilter('all')}>
+                All
+              </button>
+              {assignedPonds.map((pond) => (
+                <button
+                  type="button"
+                  key={pond.id}
+                  className={selectedPondFilter === String(pond.id) ? 'active' : ''}
+                  onClick={() => setSelectedPondFilter(String(pond.id))}
+                >
+                  {pond.pond_name}
                 </button>
-                {assignedPonds.map((pond) => (
-                  <button
-                    type="button"
-                    key={pond.id}
-                    className={selectedPondFilter === String(pond.id) ? 'active' : ''}
-                    onClick={() => setSelectedPondFilter(String(pond.id))}
-                  >
-                    {pond.pond_name}
-                  </button>
-                ))}
-              </div>
+              ))}
             </div>
           </div>
         </div>
 
         <div className="col-sm-6 col-xl-3">
-          <div className="card caretaker-stat-card accent-green h-100">
-            <div className="card-body">
-              <div className="caretaker-stat-top">
-                <span>Today's Logs</span>
-                <span className="caretaker-stat-icon"><FaUtensils /></span>
+          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+            <div className="d-flex align-items-center justify-content-between mb-3">
+              <span className="text-muted small fw-semibold">Today's Logs</span>
+              <div className="rounded-3 p-2.5 bg-success bg-opacity-10 text-success fs-5">
+                <FaUtensils />
               </div>
-              <h3>{filteredTodayRecords.length}</h3>
-              <small className="text-muted">{currentScope}</small>
             </div>
+            <h3 className="fw-extrabold text-dark mb-2">{filteredTodayRecords.length}</h3>
+            <span className="text-muted extra-small">{currentScope}</span>
           </div>
         </div>
 
         <div className="col-sm-6 col-xl-3">
-          <div className="card caretaker-stat-card accent-cyan h-100">
-            <div className="card-body">
-              <div className="caretaker-stat-top">
-                <span>Total Feed Today</span>
-                <span className="caretaker-stat-icon"><FaCheckCircle /></span>
+          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+            <div className="d-flex align-items-center justify-content-between mb-3">
+              <span className="text-muted small fw-semibold">Total Feed Today</span>
+              <div className="rounded-3 p-2.5 bg-info bg-opacity-10 text-info fs-5">
+                <FaCheckCircle />
               </div>
-              <h3>{totalAmountToday.toFixed(1)} kg</h3>
-              <small className="text-muted">{currentScope}</small>
             </div>
+            <h3 className="fw-extrabold text-dark mb-2">{totalAmountToday.toFixed(1)} <small className="fs-6 text-muted fw-normal">kg</small></h3>
+            <span className="text-muted extra-small">{currentScope}</span>
           </div>
         </div>
 
         <div className="col-sm-6 col-xl-3">
-          <div className="card caretaker-stat-card accent-amber h-100">
-            <div className="card-body">
-              <div className="caretaker-stat-top">
-                <span>Feeding Schedule</span>
-                <span className="caretaker-stat-icon"><FaClock /></span>
+          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+            <div className="d-flex align-items-center justify-content-between mb-3">
+              <span className="text-muted small fw-semibold">Feeding Schedule</span>
+              <div className="rounded-3 p-2.5 bg-warning bg-opacity-10 text-warning fs-5">
+                <FaClock />
               </div>
-              <div className="caretaker-progress-line">
-                <strong>{feedingCompletion}%</strong>
-                <span>{completedFeedingSlots}/5 complete</span>
-              </div>
-              <div className="caretaker-progress-track" aria-hidden="true">
-                <span style={{ width: `${feedingCompletion}%` }} />
-              </div>
-              <div className="feeding-schedule-grid mt-3">
-                {feedingTimes.map((time) => {
-                  const isLogged = loggedFeedingSlots.has(normalizeFeedingTime(time));
-                  return (
-                    <span key={time} className={`feeding-slot ${isLogged ? 'logged' : 'pending'}`}>
-                      <strong>{time}</strong>
-                      <small>{isLogged ? 'Logged' : 'Pending'}</small>
-                    </span>
-                  );
-                })}
-              </div>
+            </div>
+            <div className="caretaker-progress-line mb-2">
+              <h3 className="fw-extrabold text-dark d-inline me-2 mb-0">{feedingCompletion}%</h3>
+              <span className="text-muted extra-small">{completedFeedingSlots}/5 complete</span>
+            </div>
+            <div className="caretaker-progress-track mb-3" aria-hidden="true">
+              <span style={{ width: `${feedingCompletion}%` }} />
+            </div>
+            <div className="feeding-schedule-grid">
+              {feedingTimes.map((time) => {
+                const isLogged = loggedFeedingSlots.has(normalizeFeedingTime(time));
+                return (
+                  <span key={time} className={`feeding-slot ${isLogged ? 'logged' : 'pending'}`}>
+                    <strong>{time}</strong>
+                    <small>{isLogged ? 'Logged' : 'Pending'}</small>
+                  </span>
+                );
+              })}
             </div>
           </div>
         </div>

@@ -361,19 +361,21 @@ export default function AdminDashboard() {
       </div>
 
       {/* Metrics Summary Grid */}
-      <div className="metric-grid mb-4">
+      <div className="row g-3 mb-4">
         {cards.map((card) => (
-          <div key={card.title} className="metric-card">
-            <div className="d-flex align-items-center justify-content-between mb-3">
-              <div>
-                <p className="text-muted mb-1 text-uppercase small">{card.title}</p>
-                <h4 className="mb-0 fw-bold">{card.value}</h4>
+          <div key={card.title} className="col-12 col-sm-6 col-xl-3">
+            <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <span className="text-muted small fw-semibold">{card.title}</span>
+                <div className="rounded-3 p-2.5 bg-primary bg-opacity-10 text-primary fs-5">
+                  {card.icon}
+                </div>
               </div>
-              <div className="metric-icon">{card.icon}</div>
+              <h3 className="fw-extrabold text-dark mb-2">{card.value}</h3>
+              <span className="text-muted extra-small">
+                {selectedCaretakerId === 'all' ? 'All registered caretakers' : selectedCaretakerObj?.full_name}
+              </span>
             </div>
-            <p className="text-muted mb-0 small">
-              {selectedCaretakerId === 'all' ? 'All registered caretakers' : selectedCaretakerObj?.full_name}
-            </p>
           </div>
         ))}
       </div>

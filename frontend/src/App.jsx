@@ -15,7 +15,8 @@ import CaretakerDashboard from './pages/caretaker/CaretakerDashboard';
 import MyPondPage from './pages/caretaker/MyPondPage';
 import DiseaseScanPage from './pages/caretaker/DiseaseScanPage';
 import FeedingHistoryPage from './pages/caretaker/FeedingHistoryPage';
-import ProfilePage from './pages/caretaker/ProfilePage';
+import CaretakerSettingsPage from './pages/caretaker/CaretakerSettingsPage';
+import CaretakerNotificationsPage from './pages/caretaker/CaretakerNotificationsPage';
 import CaretakerReportsPage from './pages/caretaker/ReportsPage';
 import NotFoundPage from './pages/NotFoundPage';
 import AdminLayout from './layouts/AdminLayout';
@@ -62,7 +63,9 @@ function AppRoutes() {
         <Route path="disease-scan" element={<DiseaseScanPage />} />
         <Route path="feeding-history" element={<FeedingHistoryPage />} />
         <Route path="reports" element={<CaretakerReportsPage />} />
-        <Route path="profile" element={<ProfilePage />} />
+        <Route path="notifications" element={<CaretakerNotificationsPage />} />
+        <Route path="profile" element={<Navigate to="/caretaker/settings" replace />} />
+        <Route path="settings" element={<CaretakerSettingsPage />} />
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />
