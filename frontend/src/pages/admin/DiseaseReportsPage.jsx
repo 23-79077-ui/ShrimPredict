@@ -255,48 +255,55 @@ export default function DiseaseReportsPage() {
       </div>
 
       <div className="row g-3 mb-4">
-        <div className="col-md-3">
-          <div className="metric-card">
-            <div className="d-flex align-items-center justify-content-between">
-              <div>
-                <p className="text-muted small fw-semibold mb-1">Total Scans</p>
-                <h3 className="mb-0">{summary.total}</h3>
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+            <div className="d-flex align-items-center justify-content-between mb-3">
+              <span className="text-muted small fw-semibold">Total Scans</span>
+              <div className="rounded-3 p-2.5 bg-primary bg-opacity-10 text-primary fs-5">
+                <FaChartBar />
               </div>
-              <span className="metric-icon"><FaChartBar /></span>
             </div>
+            <h3 className="fw-extrabold text-dark mb-2">{summary.total}</h3>
+            <span className="text-muted extra-small">Recorded Scan Logs</span>
           </div>
         </div>
-        <div className="col-md-3">
-          <div className="metric-card">
-            <div className="d-flex align-items-center justify-content-between">
-              <div>
-                <p className="text-muted small fw-semibold mb-1">High Risk</p>
-                <h3 className="mb-0 text-danger">{summary.high}</h3>
+
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+            <div className="d-flex align-items-center justify-content-between mb-3">
+              <span className="text-muted small fw-semibold">High Risk</span>
+              <div className="rounded-3 p-2.5 bg-danger bg-opacity-10 text-danger fs-5">
+                <FaExclamationTriangle />
               </div>
-              <span className="metric-icon"><FaExclamationTriangle /></span>
             </div>
+            <h3 className="fw-extrabold text-danger mb-2">{summary.high}</h3>
+            <span className="badge bg-danger bg-opacity-10 text-danger rounded-pill extra-small fw-semibold">Requires Attention</span>
           </div>
         </div>
-        <div className="col-md-3">
-          <div className="metric-card">
-            <div className="d-flex align-items-center justify-content-between">
-              <div>
-                <p className="text-muted small fw-semibold mb-1">Avg Confidence</p>
-                <h3 className="mb-0">{summary.avgConfidence.toFixed(1)}%</h3>
+
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+            <div className="d-flex align-items-center justify-content-between mb-3">
+              <span className="text-muted small fw-semibold">Avg Confidence</span>
+              <div className="rounded-3 p-2.5 bg-success bg-opacity-10 text-success fs-5">
+                <FaShieldVirus />
               </div>
-              <span className="metric-icon"><FaShieldVirus /></span>
             </div>
+            <h3 className="fw-extrabold text-dark mb-2">{summary.avgConfidence.toFixed(1)}%</h3>
+            <span className="text-muted extra-small">Model Detection Accuracy</span>
           </div>
         </div>
-        <div className="col-md-3">
-          <div className="metric-card">
-            <div className="d-flex align-items-center justify-content-between">
-              <div>
-                <p className="text-muted small fw-semibold mb-1">Caretaker Filter</p>
-                <h4 className="mb-0">{caretakerFilter === 'all' ? 'All' : caretakerOptions.find((c) => c.value === caretakerFilter)?.label || 'Selected'}</h4>
+
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+            <div className="d-flex align-items-center justify-content-between mb-3">
+              <span className="text-muted small fw-semibold">Caretaker Filter</span>
+              <div className="rounded-3 p-2.5 bg-info bg-opacity-10 text-info fs-5">
+                <FaUserTie />
               </div>
-              <span className="metric-icon"><FaUserTie /></span>
             </div>
+            <h3 className="fw-extrabold text-dark mb-2">{caretakerFilter === 'all' ? 'All Caretakers' : caretakerOptions.find((c) => c.value === caretakerFilter)?.label || 'Selected'}</h3>
+            <span className="text-muted extra-small">Active Filter Context</span>
           </div>
         </div>
       </div>

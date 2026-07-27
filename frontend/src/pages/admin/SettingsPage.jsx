@@ -28,11 +28,21 @@ import {
   FaTimes,
   FaEnvelope,
   FaPhone,
-  FaUserShield
+  FaUserShield,
+  FaUserCheck,
+  FaArchive,
+  FaTrashAlt,
+  FaEye,
+  FaHistory,
+  FaClipboardList,
+  FaBug,
+  FaStar,
+  FaUtensils
 } from 'react-icons/fa';
 import Swal from 'sweetalert2';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import { applyAppTheme } from '../../main';
 
 export default function SettingsPage() {
   const { user: authUser, logout } = useAuth();
@@ -45,6 +55,106 @@ export default function SettingsPage() {
   // Profile Edit Mode state & backup draft
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [tempProfile, setTempProfile] = useState(null);
+
+  // Archived Caretakers Repository State
+  const [archivedCaretakers, setArchivedCaretakers] = useState([]);
+  const [loadingArchived, setLoadingArchived] = useState(false);
+  const [archivedSearch, setArchivedSearch] = useState('');
+  const [selectedArchivedDetails, setSelectedArchivedDetails] = useState(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+
+  const fetchArchivedCaretakers = async () => {
+    setLoadingArchived(true);
+    try {
+      const res = await api.get('/archived_caretakers.php');
+      if (res.data && res.data.success) {
+        setArchivedCaretakers(res.data.archived_caretakers || []);
+      }
+    } catch (err) {
+      console.warn('Archived caretakers fetch error:', err);
+    } finally {
+      setLoadingArchived(false);
+    }
+  };
+
+  const openArchivedDetails = async (caretakerId) => {
+    setLoadingDetails(true);
+    setSelectedArchivedDetails(null);
+    try {
+      const res = await api.get(`/archived_caretakers.php?action=details&user_id=${caretakerId}`);
+      if (res.data && res.data.success) {
+        setSelectedArchivedDetails(res.data.details);
+      } else {
+        Swal.fire('Error', res.data?.message || 'Could not load profile details.', 'error');
+      }
+    } catch (err) {
+      Swal.fire('Error', err.response?.data?.message || err.message, 'error');
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
+
+  const handleRestoreCaretaker = (caretaker) => {
+    const info = caretaker.personal_info || caretaker;
+    const name = info.full_name || 'Caretaker';
+    const id = info.id || caretaker.id;
+
+    Swal.fire({
+      title: `Restore Caretaker "${name}"?`,
+      text: 'This account will be restored to Active Caretakers.',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Restore Account',
+      confirmButtonColor: '#10b981'
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          const res = await api.post('/users.php', { action: 'restore_caretaker', user_id: id });
+          if (res.data && res.data.success) {
+            Swal.fire('Restored!', `${name} has been restored to active caretakers successfully!`, 'success');
+            setSelectedArchivedDetails(null);
+            fetchArchivedCaretakers();
+          }
+        } catch (err) {
+          Swal.fire('Error', err.message, 'error');
+        }
+      }
+    });
+  };
+
+  const handleDeletePermanently = (caretaker) => {
+    const info = caretaker.personal_info || caretaker;
+    const name = info.full_name || 'Caretaker';
+    const id = info.id || caretaker.id;
+
+    Swal.fire({
+      title: `Delete Permanently "${name}"?`,
+      text: 'This action is permanent and cannot be undone.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Delete Permanently',
+      confirmButtonColor: '#ef4444'
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          const res = await api.post('/users.php', { action: 'delete_user', user_id: id });
+          if (res.data && res.data.success) {
+            Swal.fire('Deleted!', `${name} record removed permanently.`, 'success');
+            setSelectedArchivedDetails(null);
+            fetchArchivedCaretakers();
+          }
+        } catch (err) {
+          Swal.fire('Error', err.message, 'error');
+        }
+      }
+    });
+  };
+
+  useEffect(() => {
+    if (activeTab === 'archived_caretakers') {
+      fetchArchivedCaretakers();
+    }
+  }, [activeTab]);
 
   // Profile State
   const [profile, setProfile] = useState({
@@ -557,6 +667,13 @@ export default function SettingsPage() {
       icon: FaDatabase,
       desc: 'Gumawa o mag-restore ng backup ng system data.',
       keywords: 'backup, restore, last backup, automatic backup, backup frequency, weekly, backup now, restore backup'
+    },
+    {
+      id: 'archived_caretakers',
+      label: 'Archived Caretakers',
+      icon: FaUserCheck,
+      desc: 'Preserved record repository of resigned or inactive caretakers.',
+      keywords: 'archived caretakers, resigned caretakers, former caretakers, caretaker history, performance logs, resign'
     },
     {
       id: 'about',
@@ -1584,6 +1701,146 @@ export default function SettingsPage() {
             </div>
           )}
 
+          {/* ARCHIVED CARETAKERS SECTION */}
+          {activeTab === 'archived_caretakers' && (
+            <div className="settings-card bg-white shadow-sm border border-slate-200 rounded-4 overflow-hidden mb-4">
+              <div className="settings-card-header p-4 border-bottom bg-slate-50 d-flex align-items-center justify-content-between flex-wrap gap-3">
+                <div className="d-flex align-items-center gap-3">
+                  <div className="settings-icon-badge p-3 rounded-4 bg-warning bg-opacity-10 text-warning">
+                    <FaUserCheck size={20} />
+                  </div>
+                  <div>
+                    <h4 className="fw-bold mb-0 text-dark">📁 Archived Caretakers Directory</h4>
+                    <small className="text-muted">Preserved record archives of resigned, inactive, or former farm caretakers.</small>
+                  </div>
+                </div>
+                <span className="badge bg-warning bg-opacity-10 text-warning rounded-pill px-3.5 py-1.5 extra-small fw-bold">
+                  {archivedCaretakers.length} Archived Accounts
+                </span>
+              </div>
+
+              <div className="card-body p-4">
+                {/* Search Bar */}
+                <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+                  <div className="position-relative flex-grow-1" style={{ maxWidth: 380 }}>
+                    <FaSearch className="position-absolute top-50 translate-middle-y text-muted" style={{ left: 14 }} />
+                    <input
+                      type="text"
+                      className="form-control ps-5 rounded-3 py-2 border-slate-200"
+                      placeholder="Search by name, employee ID, or reason..."
+                      value={archivedSearch}
+                      onChange={(e) => setArchivedSearch(e.target.value)}
+                    />
+                  </div>
+                  <button type="button" className="btn btn-outline-secondary btn-sm rounded-3 px-3 py-2 d-flex align-items-center gap-1.5" onClick={fetchArchivedCaretakers}>
+                    <FaHistory /> Refresh Repository
+                  </button>
+                </div>
+
+                {/* Table View (Matching user's requested layout format) */}
+                <div className="table-responsive border rounded-4 bg-white">
+                  {loadingArchived ? (
+                    <div className="text-center py-5 text-muted">
+                      <div className="spinner-border text-warning" role="status"></div>
+                      <p className="mt-2 mb-0">Loading Archived Caretakers Directory...</p>
+                    </div>
+                  ) : archivedCaretakers.length === 0 ? (
+                    <div className="text-center py-5 text-muted">
+                      <FaUserCheck size={36} className="text-warning mb-2 opacity-50" />
+                      <h6 className="fw-bold mb-1">No Archived Caretakers Found</h6>
+                      <p className="small mb-0">Resigned or archived caretaker records will appear here.</p>
+                    </div>
+                  ) : (
+                    <table className="table align-middle mb-0">
+                      <thead className="table-light">
+                        <tr>
+                          <th style={{ padding: '12px 16px' }}>Name</th>
+                          <th style={{ padding: '12px 16px' }}>Employee ID</th>
+                          <th style={{ padding: '12px 16px' }}>Date Hired</th>
+                          <th style={{ padding: '12px 16px' }}>Date Archived</th>
+                          <th style={{ padding: '12px 16px' }}>Reason</th>
+                          <th style={{ padding: '12px 16px' }} className="text-end">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {archivedCaretakers
+                          .filter((c) => {
+                            if (!archivedSearch.trim()) return true;
+                            const q = archivedSearch.toLowerCase();
+                            return (
+                              c.full_name.toLowerCase().includes(q) ||
+                              (c.employee_id && c.employee_id.toLowerCase().includes(q)) ||
+                              (c.archive_reason && c.archive_reason.toLowerCase().includes(q))
+                            );
+                          })
+                          .map((caretaker) => (
+                            <tr key={caretaker.id}>
+                              <td style={{ padding: '14px 16px' }}>
+                                <div className="d-flex align-items-center gap-2.5">
+                                  <div
+                                    className="rounded-circle bg-warning bg-opacity-10 text-warning fw-bold d-flex align-items-center justify-content-center border border-warning border-opacity-25"
+                                    style={{ width: 38, height: 38, fontSize: '0.9rem' }}
+                                  >
+                                    {caretaker.full_name.charAt(0)}
+                                  </div>
+                                  <div>
+                                    <strong className="text-dark d-block leading-tight">{caretaker.full_name}</strong>
+                                    <small className="text-muted extra-small">{caretaker.email}</small>
+                                  </div>
+                                </div>
+                              </td>
+                              <td style={{ padding: '14px 16px' }}>
+                                <span className="badge bg-secondary bg-opacity-10 text-secondary border px-2.5 py-1 rounded-pill font-mono extra-small fw-semibold">
+                                  {caretaker.employee_id}
+                                </span>
+                              </td>
+                              <td style={{ padding: '14px 16px' }} className="small text-muted">
+                                {caretaker.date_hired_formatted}
+                              </td>
+                              <td style={{ padding: '14px 16px' }} className="small text-dark fw-semibold">
+                                {caretaker.date_archived_formatted}
+                              </td>
+                              <td style={{ padding: '14px 16px' }}>
+                                <span className="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 px-2.5 py-1 rounded-pill extra-small fw-semibold">
+                                  {caretaker.archive_reason}
+                                </span>
+                              </td>
+                              <td style={{ padding: '14px 16px' }} className="text-end">
+                                <div className="d-flex align-items-center justify-content-end gap-2">
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-primary rounded-3 px-2.5 py-1 extra-small fw-semibold d-flex align-items-center gap-1"
+                                    onClick={() => openArchivedDetails(caretaker.id)}
+                                  >
+                                    <FaEye size={12} /> View Details
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-success rounded-3 px-2.5 py-1 extra-small fw-semibold d-flex align-items-center gap-1"
+                                    onClick={() => handleRestoreCaretaker(caretaker)}
+                                  >
+                                    <FaUserCheck size={12} /> Restore
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-danger rounded-3 p-1.5 extra-small"
+                                    title="Delete Permanently"
+                                    onClick={() => handleDeletePermanently(caretaker)}
+                                  >
+                                    <FaTrashAlt size={12} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* ABOUT SYSTEM SECTION */}
           {activeTab === 'about' && (
             <div className="settings-card bg-white">
@@ -1655,6 +1912,305 @@ export default function SettingsPage() {
           )}
         </div>
       </div>
+
+      {/* 📁 FULL ARCHIVED CARETAKER DETAILS MODAL */}
+      {(selectedArchivedDetails || loadingDetails) && (
+        <div
+          className="modal fade show d-block"
+          tabIndex="-1"
+          style={{ backgroundColor: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(4px)', zIndex: 1060 }}
+        >
+          <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+              {/* Modal Header */}
+              <div className="modal-header bg-dark text-white p-4 border-bottom border-secondary">
+                <div className="d-flex align-items-center gap-3">
+                  <div
+                    className="rounded-circle bg-warning text-dark fw-bold d-flex align-items-center justify-content-center shadow-sm"
+                    style={{ width: 52, height: 52, fontSize: '1.4rem' }}
+                  >
+                    {selectedArchivedDetails?.personal_info?.full_name?.charAt(0) || 'C'}
+                  </div>
+                  <div>
+                    <h5 className="modal-title fw-bold text-white mb-1 d-flex align-items-center gap-2">
+                      {selectedArchivedDetails?.personal_info?.full_name || 'Loading Caretaker Profile...'}
+                      <span className="badge bg-warning text-dark px-2.5 py-1 rounded-pill extra-small font-mono fw-bold">
+                        {selectedArchivedDetails?.personal_info?.employee_id || 'CT-001'}
+                      </span>
+                    </h5>
+                    <div className="d-flex align-items-center gap-2 extra-small text-slate-300">
+                      <span className="badge bg-danger bg-opacity-75 text-white rounded-pill px-2 py-0.5">
+                        {selectedArchivedDetails?.personal_info?.employment_status || 'Archived / Resigned'}
+                      </span>
+                      <span>• Date Archived: {selectedArchivedDetails?.personal_info?.date_archived}</span>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn-close btn-close-white"
+                  onClick={() => setSelectedArchivedDetails(null)}
+                />
+              </div>
+
+              {/* Modal Body */}
+              <div className="modal-body p-4 bg-light">
+                {loadingDetails ? (
+                  <div className="text-center py-5">
+                    <div className="spinner-border text-primary" role="status"></div>
+                    <p className="mt-2 text-muted">Retrieving archived profile logs & performance history...</p>
+                  </div>
+                ) : selectedArchivedDetails ? (
+                  <div className="d-flex flex-column gap-4">
+                    {/* 1. Personal Information Card */}
+                    <div className="card border-0 shadow-sm rounded-4 bg-white p-4">
+                      <h6 className="fw-bold text-primary mb-3 pb-2 border-bottom d-flex align-items-center gap-2">
+                        <FaUser /> Personal Information
+                      </h6>
+                      <div className="row g-3">
+                        <div className="col-12 col-sm-6 col-md-4">
+                          <small className="text-muted extra-small fw-bold text-uppercase d-block mb-1">Full Name</small>
+                          <strong className="text-dark fs-6">{selectedArchivedDetails.personal_info.full_name}</strong>
+                        </div>
+                        <div className="col-12 col-sm-6 col-md-4">
+                          <small className="text-muted extra-small fw-bold text-uppercase d-block mb-1">Contact Number</small>
+                          <span className="text-dark fw-semibold">{selectedArchivedDetails.personal_info.contact_number}</span>
+                        </div>
+                        <div className="col-12 col-sm-6 col-md-4">
+                          <small className="text-muted extra-small fw-bold text-uppercase d-block mb-1">Email Address</small>
+                          <span className="text-dark fw-semibold">{selectedArchivedDetails.personal_info.email}</span>
+                        </div>
+                        <div className="col-12 col-sm-6 col-md-4">
+                          <small className="text-muted extra-small fw-bold text-uppercase d-block mb-1">Home Address</small>
+                          <span className="text-dark">{selectedArchivedDetails.personal_info.address}</span>
+                        </div>
+                        <div className="col-12 col-sm-6 col-md-4">
+                          <small className="text-muted extra-small fw-bold text-uppercase d-block mb-1">Employee ID</small>
+                          <span className="badge bg-secondary bg-opacity-10 text-secondary border font-mono fw-bold">
+                            {selectedArchivedDetails.personal_info.employee_id}
+                          </span>
+                        </div>
+                        <div className="col-12 col-sm-6 col-md-4">
+                          <small className="text-muted extra-small fw-bold text-uppercase d-block mb-1">Date Hired</small>
+                          <span className="text-dark fw-semibold">{selectedArchivedDetails.personal_info.date_hired}</span>
+                        </div>
+                        <div className="col-12 col-sm-6 col-md-4">
+                          <small className="text-muted extra-small fw-bold text-uppercase d-block mb-1">Date Archived</small>
+                          <span className="text-dark fw-semibold">{selectedArchivedDetails.personal_info.date_archived}</span>
+                        </div>
+                        <div className="col-12 col-sm-6 col-md-4">
+                          <small className="text-muted extra-small fw-bold text-uppercase d-block mb-1">Employment Status</small>
+                          <span className="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 px-2.5 py-1 rounded-pill fw-semibold">
+                            {selectedArchivedDetails.personal_info.employment_status}
+                          </span>
+                        </div>
+                        <div className="col-12 col-sm-6 col-md-4">
+                          <small className="text-muted extra-small fw-bold text-uppercase d-block mb-1">Reason for Archiving</small>
+                          <span className="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-2.5 py-1 rounded-pill fw-bold">
+                            {selectedArchivedDetails.personal_info.archive_reason}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 2. Assigned Ponds Card */}
+                    <div className="card border-0 shadow-sm rounded-4 bg-white p-4">
+                      <h6 className="fw-bold text-primary mb-3 pb-2 border-bottom d-flex align-items-center gap-2">
+                        <FaWater /> Historically Assigned Ponds
+                      </h6>
+                      <div className="d-flex flex-wrap gap-2">
+                        {selectedArchivedDetails.assigned_ponds.map((p) => (
+                          <span key={p.id} className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-3 py-2 rounded-pill fs-6 fw-semibold d-flex align-items-center gap-1.5">
+                            <FaWater /> {p.pond_name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 3. Performance History Grid */}
+                    <div className="card border-0 shadow-sm rounded-4 bg-white p-4">
+                      <h6 className="fw-bold text-primary mb-3 pb-2 border-bottom d-flex align-items-center gap-2">
+                        <FaStar /> Performance History & Analytics
+                      </h6>
+                      <div className="row g-3">
+                        <div className="col-12 col-sm-6 col-md-3">
+                          <div className="p-3 rounded-4 bg-light border">
+                            <small className="text-muted extra-small fw-semibold d-block mb-1">Total Working Days</small>
+                            <h4 className="fw-extrabold text-dark mb-0">{selectedArchivedDetails.performance.total_working_days} Days</h4>
+                          </div>
+                        </div>
+                        <div className="col-12 col-sm-6 col-md-3">
+                          <div className="p-3 rounded-4 bg-light border">
+                            <small className="text-muted extra-small fw-semibold d-block mb-1">Total Feeding Records</small>
+                            <h4 className="fw-extrabold text-primary mb-0">{selectedArchivedDetails.performance.total_feeding_records} Logs</h4>
+                          </div>
+                        </div>
+                        <div className="col-12 col-sm-6 col-md-3">
+                          <div className="p-3 rounded-4 bg-light border">
+                            <small className="text-muted extra-small fw-semibold d-block mb-1">Total Disease Scans</small>
+                            <h4 className="fw-extrabold text-info mb-0">{selectedArchivedDetails.performance.total_disease_scans} Scans</h4>
+                          </div>
+                        </div>
+                        <div className="col-12 col-sm-6 col-md-3">
+                          <div className="p-3 rounded-4 bg-light border">
+                            <small className="text-muted extra-small fw-semibold d-block mb-1">Avg. Feeding Accuracy</small>
+                            <h4 className="fw-extrabold text-success mb-0">{selectedArchivedDetails.performance.avg_feeding_accuracy}</h4>
+                          </div>
+                        </div>
+                        <div className="col-12 col-sm-6 col-md-3">
+                          <div className="p-3 rounded-4 bg-light border">
+                            <small className="text-muted extra-small fw-semibold d-block mb-1">Successful Reports</small>
+                            <h4 className="fw-extrabold text-success mb-0">{selectedArchivedDetails.performance.successful_reports_submitted} Submitted</h4>
+                          </div>
+                        </div>
+                        <div className="col-12 col-sm-6 col-md-3">
+                          <div className="p-3 rounded-4 bg-light border">
+                            <small className="text-muted extra-small fw-semibold d-block mb-1">Missed Reports</small>
+                            <h4 className="fw-extrabold text-dark mb-0">{selectedArchivedDetails.performance.missed_reports}</h4>
+                          </div>
+                        </div>
+                        <div className="col-12 col-sm-6 col-md-3">
+                          <div className="p-3 rounded-4 bg-light border">
+                            <small className="text-muted extra-small fw-semibold d-block mb-1">Late Reports</small>
+                            <h4 className="fw-extrabold text-warning mb-0">{selectedArchivedDetails.performance.late_reports}</h4>
+                          </div>
+                        </div>
+                        <div className="col-12 col-sm-6 col-md-3">
+                          <div className="p-3 rounded-4 bg-light border">
+                            <small className="text-muted extra-small fw-semibold d-block mb-1">AI Detection Accuracy</small>
+                            <h4 className="fw-extrabold text-primary mb-0">{selectedArchivedDetails.performance.ai_detection_accuracy}</h4>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 4. Preserved Activity History Logs */}
+                    <div className="card border-0 shadow-sm rounded-4 bg-white p-4">
+                      <h6 className="fw-bold text-primary mb-3 pb-2 border-bottom d-flex align-items-center gap-2">
+                        <FaClipboardList /> Preserved Activity History & Logs
+                      </h6>
+                      <div className="row g-2 mb-3">
+                        <div className="col-auto">
+                          <span className="badge bg-light text-dark border px-3 py-2 rounded-pill small">
+                            <FaUtensils className="me-1 text-primary" /> Feeding Logs: <strong>{selectedArchivedDetails.activity_history.feeding_logs_count}</strong>
+                          </span>
+                        </div>
+                        <div className="col-auto">
+                          <span className="badge bg-light text-dark border px-3 py-2 rounded-pill small">
+                            <FaBug className="me-1 text-danger" /> Disease Scans: <strong>{selectedArchivedDetails.activity_history.disease_scans_count}</strong>
+                          </span>
+                        </div>
+                        <div className="col-auto">
+                          <span className="badge bg-light text-dark border px-3 py-2 rounded-pill small">
+                            <FaWater className="me-1 text-info" /> Water Quality Records: <strong>{selectedArchivedDetails.activity_history.water_quality_records_count}</strong>
+                          </span>
+                        </div>
+                        <div className="col-auto">
+                          <span className="badge bg-light text-dark border px-3 py-2 rounded-pill small">
+                            <FaFish className="me-1 text-success" /> Harvest Records: <strong>{selectedArchivedDetails.activity_history.harvest_records_count}</strong>
+                          </span>
+                        </div>
+                        <div className="col-auto">
+                          <span className="badge bg-light text-dark border px-3 py-2 rounded-pill small">
+                            <FaBell className="me-1 text-warning" /> Reports Submitted: <strong>{selectedArchivedDetails.activity_history.reports_submitted_count}</strong>
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Recent Preserved Reports List */}
+                      {selectedArchivedDetails.activity_history.recent_reports?.length > 0 && (
+                        <div className="mt-2">
+                          <small className="fw-bold text-muted text-uppercase extra-small mb-2 d-block">Submitted Problem Reports History</small>
+                          <div className="table-responsive border rounded-3">
+                            <table className="table table-sm align-middle mb-0">
+                              <thead className="table-light">
+                                <tr>
+                                  <th>Report Title</th>
+                                  <th>Pond</th>
+                                  <th>Type</th>
+                                  <th>Status</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {selectedArchivedDetails.activity_history.recent_reports.map((rep) => (
+                                  <tr key={rep.id}>
+                                    <td className="fw-semibold text-dark">{rep.title}</td>
+                                    <td>{rep.pond_name}</td>
+                                    <td>{rep.problem_type}</td>
+                                    <td>
+                                      <span className={`badge ${rep.status === 'Done' ? 'bg-success' : 'bg-warning text-dark'} rounded-pill extra-small`}>
+                                        {rep.status}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 5. Login History Card */}
+                    <div className="card border-0 shadow-sm rounded-4 bg-white p-4">
+                      <h6 className="fw-bold text-primary mb-3 pb-2 border-bottom d-flex align-items-center gap-2">
+                        <FaClock /> Login & Activity History
+                      </h6>
+                      <div className="row g-3">
+                        <div className="col-12 col-md-4">
+                          <small className="text-muted extra-small fw-semibold d-block mb-1">Last Login</small>
+                          <strong className="text-dark">{selectedArchivedDetails.login_history.last_login}</strong>
+                        </div>
+                        <div className="col-12 col-md-4">
+                          <small className="text-muted extra-small fw-semibold d-block mb-1">Last Active Session</small>
+                          <strong className="text-dark">{selectedArchivedDetails.login_history.last_active}</strong>
+                        </div>
+                        <div className="col-12 col-md-4">
+                          <small className="text-muted extra-small fw-semibold d-block mb-1">Total System Logins</small>
+                          <span className="badge bg-primary bg-opacity-10 text-primary px-3 py-1.5 rounded-pill fw-bold">
+                            {selectedArchivedDetails.login_history.total_logins} Logins
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              {/* Modal Footer Actions */}
+              <div className="modal-footer bg-white p-3 border-top d-flex align-items-center justify-content-between">
+                <div className="d-flex align-items-center gap-2">
+                  {selectedArchivedDetails && (
+                    <>
+                      <button
+                        type="button"
+                        className="btn btn-success px-3.5 py-2 rounded-3 d-flex align-items-center gap-2 fw-semibold"
+                        onClick={() => handleRestoreCaretaker(selectedArchivedDetails)}
+                      >
+                        <FaUserCheck /> Restore Caretaker Account
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-outline-danger px-3 py-2 rounded-3 d-flex align-items-center gap-2 fw-semibold"
+                        onClick={() => handleDeletePermanently(selectedArchivedDetails)}
+                      >
+                        <FaTrashAlt /> Delete Permanently
+                      </button>
+                    </>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-secondary px-4 py-2 rounded-3"
+                  onClick={() => setSelectedArchivedDetails(null)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -172,13 +172,17 @@ function savePrediction(PDO $conn, array $item): void {
 
 ensureHarvestTables($conn);
 
-$caretakerId = isset($_GET['caretaker_id']) ? (int)$_GET['caretaker_id'] : 0;
+$caretakerId = isset($_GET['caretaker_id']) && $_GET['caretaker_id'] !== 'all' ? (int)$_GET['caretaker_id'] : 0;
 if ($caretakerId <= 0 && isset($_GET['user_id'])) {
     $caretakerId = (int)$_GET['user_id'];
 }
+$pondId = isset($_GET['pond_id']) && $_GET['pond_id'] !== 'all' ? (int)$_GET['pond_id'] : 0;
 
 $pondColumns = $conn->query('SHOW COLUMNS FROM ponds')->fetchAll(PDO::FETCH_COLUMN);
 $stockingDateSelect = in_array('stocking_date', $pondColumns, true) ? 'p.stocking_date' : 'NULL';
+
+$pondsStmt = $conn->query("SELECT id, pond_name FROM ponds ORDER BY id ASC");
+$ponds = $pondsStmt->fetchAll(PDO::FETCH_ASSOC);
 
 $caretakerStmt = $conn->query("
     SELECT DISTINCT u.id, u.full_name
@@ -190,10 +194,14 @@ $caretakerStmt = $conn->query("
 $caretakers = $caretakerStmt->fetchAll(PDO::FETCH_ASSOC);
 
 $params = [];
-$caretakerFilterSql = '';
+$filterSql = '';
 if ($caretakerId > 0) {
-    $caretakerFilterSql = ' AND u.id = :caretaker_id';
+    $filterSql .= ' AND u.id = :caretaker_id';
     $params[':caretaker_id'] = $caretakerId;
+}
+if ($pondId > 0) {
+    $filterSql .= ' AND p.id = :pond_id';
+    $params[':pond_id'] = $pondId;
 }
 
 $feedStmt = $conn->prepare("
@@ -214,7 +222,7 @@ $feedStmt = $conn->prepare("
     FROM feeding_records fr
     JOIN users u ON fr.user_id = u.id AND u.role = 'caretaker'
     JOIN ponds p ON fr.pond_id = p.id
-    WHERE 1 = 1 {$caretakerFilterSql}
+    WHERE 1 = 1 {$filterSql}
     GROUP BY p.id
     ORDER BY p.id ASC
 ");
@@ -326,6 +334,8 @@ echo json_encode([
     'baseline_ratio' => BASELINE_RATIO,
     'disclaimer' => 'This is an operational estimate based on caretaker historical feeding data. Final harvest readiness must be confirmed by the farm administrator.',
     'selected_caretaker_id' => $caretakerId,
+    'selected_pond_id' => $pondId,
+    'ponds' => $ponds,
     'caretakers' => $caretakers,
     'summary' => $summary,
     'predictions' => $predictions,

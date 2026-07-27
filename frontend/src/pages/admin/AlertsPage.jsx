@@ -466,49 +466,49 @@ export default function AlertsPage() {
       <div className="row g-3 mb-4">
         {/* Critical Alerts */}
         <div className="col-12 col-sm-6 col-md-3">
-          <div className="metric-card p-3.5 h-100 d-flex flex-column justify-content-between border-start border-4 border-danger">
-            <div className="d-flex justify-content-between align-items-center mb-2">
+          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+            <div className="d-flex align-items-center justify-content-between mb-3">
               <span className="text-muted small fw-semibold">Critical Alerts</span>
-              <span className="badge bg-danger bg-opacity-10 text-danger rounded-pill">🔴 Action Needed</span>
+              <span className="badge bg-danger bg-opacity-10 text-danger rounded-pill extra-small fw-semibold">🔴 Action Needed</span>
             </div>
-            <h3 className="fw-bold text-danger mb-0">{summary.critical_alerts}</h3>
-            <small className="text-muted extra-small">Immediate Intervention</small>
+            <h3 className="fw-extrabold text-danger mb-2">{summary.critical_alerts}</h3>
+            <span className="text-muted extra-small">Immediate Intervention</span>
           </div>
         </div>
 
         {/* Warnings */}
         <div className="col-12 col-sm-6 col-md-3">
-          <div className="metric-card p-3.5 h-100 d-flex flex-column justify-content-between border-start border-4 border-warning">
-            <div className="d-flex justify-content-between align-items-center mb-2">
+          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+            <div className="d-flex align-items-center justify-content-between mb-3">
               <span className="text-muted small fw-semibold">Warnings</span>
-              <span className="badge bg-warning bg-opacity-10 text-warning rounded-pill">🟠 Watch List</span>
+              <span className="badge bg-warning bg-opacity-10 text-warning rounded-pill extra-small fw-semibold">🟠 Watch List</span>
             </div>
-            <h3 className="fw-bold text-warning mb-0">{summary.warnings}</h3>
-            <small className="text-muted extra-small">High & Medium Alerts</small>
+            <h3 className="fw-extrabold text-warning mb-2">{summary.warnings}</h3>
+            <span className="text-muted extra-small">High & Medium Alerts</span>
           </div>
         </div>
 
         {/* Resolved */}
         <div className="col-12 col-sm-6 col-md-3">
-          <div className="metric-card p-3.5 h-100 d-flex flex-column justify-content-between border-start border-4 border-success">
-            <div className="d-flex justify-content-between align-items-center mb-2">
+          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+            <div className="d-flex align-items-center justify-content-between mb-3">
               <span className="text-muted small fw-semibold">Resolved</span>
-              <span className="badge bg-success bg-opacity-10 text-success rounded-pill">✅ Closed</span>
+              <span className="badge bg-success bg-opacity-10 text-success rounded-pill extra-small fw-semibold">✅ Closed</span>
             </div>
-            <h3 className="fw-bold text-success mb-0">{summary.resolved}</h3>
-            <small className="text-muted extra-small">Addressed Issues</small>
+            <h3 className="fw-extrabold text-success mb-2">{summary.resolved}</h3>
+            <span className="text-muted extra-small">Addressed Issues</span>
           </div>
         </div>
 
         {/* Pending */}
         <div className="col-12 col-sm-6 col-md-3">
-          <div className="metric-card p-3.5 h-100 d-flex flex-column justify-content-between border-start border-4 border-info">
-            <div className="d-flex justify-content-between align-items-center mb-2">
+          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+            <div className="d-flex align-items-center justify-content-between mb-3">
               <span className="text-muted small fw-semibold">Pending Queue</span>
-              <span className="badge bg-info bg-opacity-10 text-info rounded-pill">⏳ Active Queue</span>
+              <span className="badge bg-info bg-opacity-10 text-info rounded-pill extra-small fw-semibold">⏳ Active Queue</span>
             </div>
-            <h3 className="fw-bold text-info mb-0">{summary.pending}</h3>
-            <small className="text-muted extra-small">Awaiting Caretaker Action</small>
+            <h3 className="fw-extrabold text-info mb-2">{summary.pending}</h3>
+            <span className="text-muted extra-small">Awaiting Caretaker Action</span>
           </div>
         </div>
       </div>
@@ -539,27 +539,27 @@ export default function AlertsPage() {
             <p className="small mb-0">All farm alerts match your clean criteria.</p>
           </div>
         ) : (
-          /* ELEGANT 3-COLUMN GRID PER ROW ACROSS DESKTOP */
+          /* RESPONSIVE SPACIOUS GRID ACROSS DESKTOP */
           <div className="row g-4">
             {filteredAlerts.map((alert) => {
               const catMeta = getCategoryMeta(alert.category);
               const isResolved = alert.status === 'Resolved';
 
               return (
-                <div key={alert.id} className="col-12 col-md-6 col-xl-4">
+                <div key={alert.id} className="col-12 col-md-6 col-lg-6 col-xxl-4">
                   <div
                     className={`card border shadow-sm rounded-4 p-4 h-100 d-flex flex-column justify-content-between transition-all hover-shadow bg-white ${
                       alert.severity === 'Critical' ? 'border-danger border-opacity-50' : ''
                     }`}
-                    style={{ minHeight: 310 }}
+                    style={{ minHeight: 320 }}
                   >
                     <div>
                       {/* Top Header Row: Severity Pill + Category Tag + Status Badge */}
-                      <div className="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom border-light">
-                        <div className="d-flex align-items-center gap-1.5">
+                      <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3 pb-2 border-bottom border-light">
+                        <div className="d-flex align-items-center gap-1.5 flex-wrap">
                           {getSeverityBadge(alert.severity)}
                         </div>
-                        <div className="d-flex align-items-center gap-1.5">
+                        <div className="d-flex align-items-center gap-1.5 flex-wrap ms-auto">
                           <span className={`badge border ${catMeta.badgeClass} px-2.5 py-1 rounded-pill extra-small font-mono fw-semibold`}>
                             {catMeta.icon} {alert.category}
                           </span>
@@ -568,32 +568,35 @@ export default function AlertsPage() {
                       </div>
 
                       {/* Alert Title & Pond Pill Row */}
-                      <div className="d-flex align-items-center justify-content-between mb-2">
-                        <h5 className="fw-bold text-dark mb-0 fs-6">{alert.title}</h5>
-                        <span className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2.5 py-1 rounded-pill extra-small fw-semibold">
+                      <div className="d-flex align-items-start justify-content-between gap-2 mb-2">
+                        <h5 className="fw-bold text-dark mb-0 fs-6 flex-grow-1" style={{ lineHeight: 1.3 }}>{alert.title}</h5>
+                        <span className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2.5 py-1 rounded-pill extra-small fw-semibold flex-shrink-0">
                           <FaWater className="me-1" size={10} /> {alert.affected_pond_name}
                         </span>
                       </div>
 
                       {/* Short Description */}
-                      <p className="extra-small text-muted mb-3" style={{ lineHeight: 1.45 }}>
+                      <p className="extra-small text-muted mb-3" style={{ lineHeight: 1.5 }}>
                         {alert.message}
                       </p>
 
-                      {/* Caretaker & Recommended Action Box (Generous Inner Breathing Room) */}
+                      {/* Caretaker & Recommended Action Box (Clean Un-overlapped Spacing) */}
                       <div className="p-3 rounded-4 bg-light bg-opacity-75 border mb-3">
-                        <div className="d-flex align-items-center justify-content-between extra-small text-muted mb-1.5 pb-1 border-bottom">
-                          <span className="d-flex align-items-center gap-1.5">
-                            <FaUser className="text-primary" size={11} /> Caretaker: <strong className="text-dark me-1">{alert.assigned_caretaker_name}</strong>
-                          </span>
-                          <span className="d-flex align-items-center gap-1 extra-small ms-2">
-                            <FaClock size={10} /> {alert.time_ago || 'Today'}
-                          </span>
+                        <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 extra-small text-muted mb-2 pb-2 border-bottom">
+                          <div className="d-flex align-items-center gap-1.5 flex-wrap">
+                            <FaUser className="text-primary flex-shrink-0" size={12} />
+                            <span>Caretaker:</span>
+                            <strong className="text-dark fw-bold">{alert.assigned_caretaker_name}</strong>
+                          </div>
+                          <div className="d-flex align-items-center gap-1 extra-small text-muted ms-auto">
+                            <FaClock size={11} className="text-secondary flex-shrink-0" />
+                            <span>{alert.time_ago || 'Today'}</span>
+                          </div>
                         </div>
 
                         {/* Action Protocol text */}
                         {alert.recommended_action && (
-                          <div className="extra-small text-dark fw-semibold d-flex align-items-start gap-1.5 pt-1" style={{ lineHeight: 1.35 }}>
+                          <div className="extra-small text-dark fw-semibold d-flex align-items-start gap-2 pt-1" style={{ lineHeight: 1.4 }}>
                             <FaLightbulb className="text-warning flex-shrink-0 mt-0.5" size={13} />
                             <span>{alert.recommended_action}</span>
                           </div>
@@ -601,13 +604,13 @@ export default function AlertsPage() {
                       </div>
                     </div>
 
-                    {/* Bottom Action Buttons Row */}
-                    <div className="pt-3 border-top">
-                      <div className="d-flex align-items-center justify-content-between gap-2">
+                    {/* Bottom Action Buttons Row (Un-squeezed Clean Actions) */}
+                    <div className="pt-3 border-top mt-auto">
+                      <div className="d-flex align-items-center justify-content-between gap-1.5 flex-wrap">
                         {/* 👁 View Details */}
                         <button
                           type="button"
-                          className="btn btn-sm btn-outline-primary px-2.5 py-1.5 rounded-3 d-flex align-items-center gap-1 extra-small fw-semibold flex-fill justify-content-center"
+                          className="btn btn-sm btn-outline-primary px-2 py-1.5 rounded-3 d-flex align-items-center justify-content-center gap-1 extra-small fw-semibold flex-grow-1"
                           onClick={() => setSelectedAlert(alert)}
                         >
                           <FaEye size={11} /> Details
@@ -616,7 +619,7 @@ export default function AlertsPage() {
                         {/* ✅ Resolve Button */}
                         <button
                           type="button"
-                          className={`btn btn-sm px-2.5 py-1.5 rounded-3 d-flex align-items-center gap-1 extra-small fw-semibold flex-fill justify-content-center ${
+                          className={`btn btn-sm px-2 py-1.5 rounded-3 d-flex align-items-center justify-content-center gap-1 extra-small fw-semibold flex-grow-1 ${
                             isResolved ? 'btn-light text-muted opacity-50 border' : 'btn-outline-success'
                           }`}
                           disabled={isResolved}
@@ -628,7 +631,7 @@ export default function AlertsPage() {
                         {/* 👤 Assign Follow-up */}
                         <button
                           type="button"
-                          className="btn btn-sm btn-outline-secondary px-2.5 py-1.5 rounded-3 d-flex align-items-center gap-1 extra-small fw-semibold flex-fill justify-content-center"
+                          className="btn btn-sm btn-outline-secondary px-2 py-1.5 rounded-3 d-flex align-items-center justify-content-center gap-1 extra-small fw-semibold flex-grow-1"
                           onClick={() => openAssignModal(alert)}
                         >
                           <FaUserCheck size={11} /> Assign
@@ -637,7 +640,8 @@ export default function AlertsPage() {
                         {/* 🗑 Delete Icon Button */}
                         <button
                           type="button"
-                          className="btn btn-sm btn-outline-danger p-1.5 rounded-3 flex-shrink-0"
+                          className="btn btn-sm btn-outline-danger p-1.5 rounded-3 flex-shrink-0 d-flex align-items-center justify-content-center"
+                          style={{ width: 32, height: 32 }}
                           title="Delete Alert"
                           onClick={() => handleDeleteAlert(alert)}
                         >

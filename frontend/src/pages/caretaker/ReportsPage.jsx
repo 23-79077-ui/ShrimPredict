@@ -28,13 +28,53 @@ const resolveMediaUrl = (url) => {
   return `http://localhost/shrim_predict_api/${cleanPath.replace(/^\/+/, '')}`;
 };
 
-const quickIssues = [
-  ['Pump Not Working', 'Equipment', 'High'],
-  ['Low Dissolved Oxygen', 'Water Quality', 'High'],
-  ['Needs Filter Replacement', 'Maintenance', 'Medium'],
-  ['Leaking Drainage Pipe', 'Structural', 'Medium'],
-  ['Dead Shrimp Observed', 'Disease / Sick Shrimp', 'Critical'],
-];
+const quickSuggestionsByProblemType = {
+  'Water Quality': [
+    'Low Dissolved Oxygen',
+    'High Ammonia Level',
+    'Turbid / Murky Water',
+    'Unstable pH Level',
+    'Algae Bloom Observed',
+  ],
+  'Equipment': [
+    'Pump Not Working',
+    'Aerator Motor Failure',
+    'Automatic Feeder Jammed',
+    'DO Sensor Malfunction',
+    'Power Generator Cut',
+  ],
+  'Structural': [
+    'Leaking Drainage Pipe',
+    'Pond Liner Tear',
+    'Dike Erosion / Collapse',
+    'Broken Net Fence',
+    'Gate Valve Stuck',
+  ],
+  'Disease / Sick Shrimp': [
+    'Dead Shrimp Observed',
+    'White Spot Disease Signs',
+    'Lethargic / Slow Swimming',
+    'Red Body Discoloration',
+    'Empty Stomach / Reduced Feeding',
+  ],
+  'Feed Issue': [
+    'Feed Moldy / Wet',
+    'Feed Supply Running Low',
+    'Uneaten Feed Floating',
+    'Incorrect Feed Pellets Delivered',
+  ],
+  'Maintenance': [
+    'Needs Filter Replacement',
+    'Sludge Accumulation',
+    'Pond Boundary Weeding Required',
+    'Aerator Belt Replacement',
+  ],
+  'Others': [
+    'Unexpected Odor From Water',
+    'Predator Birds Near Pond',
+    'General Inspection Requested',
+  ],
+};
 
 export default function ReportsPage() {
   const { user } = useAuth();
@@ -109,8 +149,18 @@ export default function ReportsPage() {
   }, [user]);
 
   useEffect(() => {
-    if (activeTab === 'history') loadMyReports();
-  }, [activeTab, loadMyReports]);
+    loadMyReports();
+    const handleUpdate = () => loadMyReports();
+    window.addEventListener('shrim-notification-updated', handleUpdate);
+    window.addEventListener('shrim-report-updated', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+
+    return () => {
+      window.removeEventListener('shrim-notification-updated', handleUpdate);
+      window.removeEventListener('shrim-report-updated', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+    };
+  }, [loadMyReports]);
 
   useEffect(() => {
     if (targetId && myReports.length > 0) {
@@ -163,12 +213,10 @@ export default function ReportsPage() {
     }
   };
 
-  const applyQuickIssue = (issue, category, defaultSeverity) => {
+  const applyQuickSuggestion = (issue) => {
     setForm((prev) => ({
       ...prev,
       specificIssue: issue,
-      problemType: category || prev.problemType,
-      severityLevel: defaultSeverity || prev.severityLevel,
     }));
   };
 
@@ -234,87 +282,121 @@ export default function ReportsPage() {
   const selectedPond = ponds.find((pond) => String(pond.id) === String(form.pondId));
   const pendingReports = myReports.filter((report) => report.status === 'Pending').length;
   const inProgressReports = myReports.filter((report) => report.status === 'In Progress').length;
-  const doneReports = myReports.filter((report) => report.status === 'Done').length;
+  const doneReports = myReports.filter((report) => report.status === 'Done' || report.status === 'Resolved').length;
   const severityBadges = { Low: 'bg-success text-white', Medium: 'bg-warning text-dark', High: 'bg-danger text-white', Critical: 'bg-danger text-white fw-bold' };
   const statusBadges = { Pending: 'bg-warning text-dark', 'In Progress': 'bg-info text-dark', Done: 'bg-success text-white', Dismissed: 'bg-secondary text-white' };
 
   return (
     <div className="caretaker-reports-page">
-      <section className="caretaker-dashboard-hero caretaker-reports-hero">
+      {/* Top Hero Banner (Matching Feeding History Design) */}
+      <section className="caretaker-dashboard-hero mb-4">
         <div>
-          <span className="caretaker-dashboard-kicker">Maintenance Reporting</span>
+          <span className="caretaker-dashboard-kicker">MAINTENANCE REPORTING</span>
           <h3>Pond Issue Reports</h3>
           <p>Send clear pond issues, equipment concerns, photos, and videos directly to the farm administrator.</p>
-          <div className="caretaker-hero-meta">
-            <span>{ponds.length} assigned pond(s)</span>
-            <span>{myReports.length} submitted report(s)</span>
-            <span>{selectedPond?.pond_name || 'Select a pond'}</span>
-          </div>
-        </div>
-        <div className="caretaker-report-tabs">
-          <button type="button" className={activeTab === 'submit' ? 'active' : ''} onClick={() => setActiveTab('submit')}>
-            <FaPaperPlane /> Submit
-          </button>
-          <button type="button" className={activeTab === 'history' ? 'active' : ''} onClick={() => setActiveTab('history')}>
-            <FaHistory /> History
-          </button>
         </div>
       </section>
 
+      {/* SUMMARY CARDS */}
       <div className="row g-3 mb-4">
-        <div className="col-sm-6 col-xl-3">
-          <div className="card caretaker-stat-card accent-blue h-100">
-            <div className="card-body">
-              <div className="caretaker-stat-top"><span>Assigned Ponds</span><span className="caretaker-stat-icon"><FaWater /></span></div>
-              <h3>{ponds.length}</h3>
-              <small className="text-muted">Available for reporting</small>
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+            <div className="d-flex align-items-center justify-content-between mb-3">
+              <span className="text-muted small fw-semibold">Assigned Ponds</span>
+              <div className="rounded-3 p-2.5 bg-primary bg-opacity-10 text-primary fs-5">
+                <FaWater />
+              </div>
             </div>
+            <h3 className="fw-extrabold text-dark mb-2">{ponds.length}</h3>
+            <span className="text-muted extra-small">Available for reporting</span>
           </div>
         </div>
-        <div className="col-sm-6 col-xl-3">
-          <div className="card caretaker-stat-card accent-amber h-100">
-            <div className="card-body">
-              <div className="caretaker-stat-top"><span>Pending</span><span className="caretaker-stat-icon"><FaClock /></span></div>
-              <h3>{pendingReports}</h3>
-              <small className="text-muted">Awaiting admin action</small>
+
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+            <div className="d-flex align-items-center justify-content-between mb-3">
+              <span className="text-muted small fw-semibold">Pending</span>
+              <div className="rounded-3 p-2.5 bg-warning bg-opacity-10 text-warning fs-5">
+                <FaClock />
+              </div>
             </div>
+            <h3 className="fw-extrabold text-warning mb-2">{pendingReports}</h3>
+            <span className="badge bg-warning bg-opacity-10 text-warning rounded-pill extra-small fw-semibold">Awaiting Admin Action</span>
           </div>
         </div>
-        <div className="col-sm-6 col-xl-3">
-          <div className="card caretaker-stat-card accent-cyan h-100">
-            <div className="card-body">
-              <div className="caretaker-stat-top"><span>In Progress</span><span className="caretaker-stat-icon"><FaTools /></span></div>
-              <h3>{inProgressReports}</h3>
-              <small className="text-muted">Being handled</small>
+
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+            <div className="d-flex align-items-center justify-content-between mb-3">
+              <span className="text-muted small fw-semibold">In Progress</span>
+              <div className="rounded-3 p-2.5 bg-info bg-opacity-10 text-info fs-5">
+                <FaTools />
+              </div>
             </div>
+            <h3 className="fw-extrabold text-info mb-2">{inProgressReports}</h3>
+            <span className="text-muted extra-small">Being Handled</span>
           </div>
         </div>
-        <div className="col-sm-6 col-xl-3">
-          <div className="card caretaker-stat-card accent-green h-100">
-            <div className="card-body">
-              <div className="caretaker-stat-top"><span>Resolved</span><span className="caretaker-stat-icon"><FaCheckCircle /></span></div>
-              <h3>{doneReports}</h3>
-              <small className="text-muted">Completed reports</small>
+
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+            <div className="d-flex align-items-center justify-content-between mb-3">
+              <span className="text-muted small fw-semibold">Resolved</span>
+              <div className="rounded-3 p-2.5 bg-success bg-opacity-10 text-success fs-5">
+                <FaCheckCircle />
+              </div>
             </div>
+            <h3 className="fw-extrabold text-success mb-2">{doneReports}</h3>
+            <span className="badge bg-success bg-opacity-10 text-success rounded-pill extra-small fw-semibold">Completed Reports</span>
           </div>
         </div>
       </div>
 
+      {/* 2 NAVIGATION TABS BELOW SUMMARY CARDS: Generate Report & Report History */}
+      <div className="d-flex align-items-center gap-2 mb-4 bg-white p-2 rounded-4 border shadow-xs">
+        <button
+          type="button"
+          className={`btn rounded-pill px-4 py-2.5 fw-bold d-flex align-items-center gap-2 transition-all ${
+            activeTab === 'submit' ? 'btn-primary shadow-sm' : 'btn-light text-muted border-0'
+          }`}
+          onClick={() => setActiveTab('submit')}
+        >
+          <FaPaperPlane /> Generate Report
+        </button>
+
+        <button
+          type="button"
+          className={`btn rounded-pill px-4 py-2.5 fw-bold d-flex align-items-center gap-2 transition-all ${
+            activeTab === 'history' ? 'btn-primary shadow-sm' : 'btn-light text-muted border-0'
+          }`}
+          onClick={() => setActiveTab('history')}
+        >
+          <FaHistory /> Report History
+          {myReports.length > 0 && (
+            <span className={`badge rounded-pill extra-small ms-1 ${activeTab === 'history' ? 'bg-white text-primary' : 'bg-secondary bg-opacity-25 text-dark'}`}>
+              {myReports.length}
+            </span>
+          )}
+        </button>
+      </div>
+
       {activeTab === 'submit' && (
-        <div className="card caretaker-panel-card">
-          <div className="card-body">
-            <div className="caretaker-panel-header">
+        <div className="card caretaker-panel-card border-0 shadow-sm rounded-4">
+          <div className="card-body p-4">
+            <div className="caretaker-panel-header d-flex align-items-center justify-content-between mb-4">
               <div>
-                <h5>Submit New Report</h5>
-                <small className="text-muted">Required fields are pond, severity, and detailed description.</small>
+                <h5 className="fw-bold mb-1">Submit New Report</h5>
+                <small className="text-muted">Fill in pond location, problem type, specific issue, and detailed description.</small>
               </div>
-              <div className="caretaker-history-total"><FaFileAlt /><span>Admin notification ready</span></div>
+              <div className="caretaker-history-total bg-primary bg-opacity-10 text-primary px-3 py-1.5 rounded-pill extra-small fw-semibold d-flex align-items-center gap-1.5">
+                <FaFileAlt /><span>Admin notification ready</span>
+              </div>
             </div>
 
             <form onSubmit={handleSubmit}>
-              <div className="caretaker-report-form-grid">
-                <div>
-                  <label className="form-label fw-semibold">Pond Number / Location</label>
+              <div className="row g-3 mb-3">
+                <div className="col-md-6">
+                  <label className="form-label fw-semibold text-dark">Pond Number / Location</label>
                   {loadingPonds ? (
                     <div className="caretaker-muted-box">Loading ponds...</div>
                   ) : ponds.length === 0 ? (
@@ -328,72 +410,69 @@ export default function ReportsPage() {
                   )}
                 </div>
 
-                <div>
-                  <label className="form-label fw-semibold">Logged Date & Time</label>
-                  <input type="text" className="form-control" value={new Date().toLocaleString()} disabled />
-                </div>
-
-                <div>
-                  <label className="form-label fw-semibold">Problem Type</label>
-                  <select className="form-select" value={form.problemType} onChange={(e) => setForm({ ...form, problemType: e.target.value })}>
-                    <option value="Water Quality">Water Quality</option>
-                    <option value="Equipment">Equipment</option>
-                    <option value="Structural">Structural</option>
-                    <option value="Disease / Sick Shrimp">Disease / Sick Shrimp</option>
-                    <option value="Feed Issue">Feed Issue</option>
-                    <option value="Maintenance">General Pond Maintenance</option>
-                    <option value="Others">Others</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="form-label fw-semibold">Severity Level</label>
-                  <div className="caretaker-severity-grid">
-                    {['Low', 'Medium', 'High', 'Critical'].map((level) => (
-                      <button
-                        key={level}
-                        type="button"
-                        className={form.severityLevel === level ? `active ${level.toLowerCase()}` : ''}
-                        onClick={() => setForm({ ...form, severityLevel: level })}
-                      >
-                        {level}
-                      </button>
-                    ))}
-                  </div>
+                <div className="col-md-6">
+                  <label className="form-label fw-semibold text-dark">Logged Date & Time</label>
+                  <input type="text" className="form-control bg-light" value={new Date().toLocaleString()} disabled />
                 </div>
               </div>
 
-              <div className="mt-3">
-                <label className="form-label fw-semibold">Specific Issue Title</label>
+              <div className="mb-3">
+                <label className="form-label fw-semibold text-dark">Problem Type</label>
+                <select className="form-select fw-semibold" value={form.problemType} onChange={(e) => setForm({ ...form, problemType: e.target.value })}>
+                  <option value="Water Quality">Water Quality</option>
+                  <option value="Equipment">Equipment</option>
+                  <option value="Structural">Structural</option>
+                  <option value="Disease / Sick Shrimp">Disease / Sick Shrimp</option>
+                  <option value="Feed Issue">Feed Issue</option>
+                  <option value="Maintenance">General Pond Maintenance</option>
+                  <option value="Others">Others</option>
+                </select>
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label fw-semibold text-dark">Specific Issue Title</label>
                 <input
                   type="text"
                   className="form-control"
-                  placeholder="Example: Pump not working"
+                  placeholder="Example: Pump not working or select from suggestions below"
                   value={form.specificIssue}
                   onChange={(e) => setForm({ ...form, specificIssue: e.target.value })}
                 />
-                <div className="caretaker-quick-tags">
-                  <span><FaTag /> Quick suggestions</span>
-                  {quickIssues.map(([issue, category, severity]) => (
-                    <button key={issue} type="button" onClick={() => applyQuickIssue(issue, category, severity)}>{issue}</button>
+                
+                {/* Dynamic Quick Suggestions based on Problem Type */}
+                <div className="caretaker-quick-tags mt-2 d-flex align-items-center flex-wrap gap-1.5">
+                  <span className="text-muted extra-small fw-bold me-1 d-flex align-items-center gap-1">
+                    <FaTag size={11} /> Quick suggestions for {form.problemType}:
+                  </span>
+                  {(quickSuggestionsByProblemType[form.problemType] || quickSuggestionsByProblemType['Equipment']).map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      type="button"
+                      className="btn btn-xs btn-outline-primary rounded-pill extra-small py-1 px-3 fw-semibold shadow-xs"
+                      onClick={() => applyQuickSuggestion(suggestion)}
+                    >
+                      {suggestion}
+                    </button>
                   ))}
                 </div>
               </div>
 
-              <div className="mt-3">
-                <label className="form-label fw-semibold">Detailed Description</label>
+              <div className="mb-3">
+                <label className="form-label fw-semibold text-dark">Detailed Description</label>
                 <textarea
                   className="form-control"
                   rows="4"
-                  placeholder="Describe what you observed in the pond."
+                  placeholder="Describe what you observed in the pond in detail."
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
                   required
                 />
               </div>
 
-              <div className="mt-3">
-                <label className="form-label fw-semibold">Suggested Action</label>
+              <div className="mb-3">
+                <label className="form-label fw-semibold text-dark d-flex align-items-center gap-1.5">
+                  Suggested Action <span className="badge bg-secondary bg-opacity-10 text-secondary extra-small fw-normal">(optional)</span>
+                </label>
                 <input
                   type="text"
                   className="form-control"
@@ -405,11 +484,11 @@ export default function ReportsPage() {
 
               <div className="caretaker-media-grid mt-3">
                 <div className="caretaker-media-box">
-                  <label><FaCamera /> Attach Photo</label>
+                  <label className="fw-semibold text-dark mb-1 d-block"><FaCamera className="me-1 text-primary" /> Attach Photo Evidence</label>
                   <input type="file" className="form-control" accept="image/*" onChange={handleImageChange} />
                   {uploadingImage && <div className="small text-primary mt-2"><FaSpinner className="fa-spin" /> Uploading image...</div>}
                   {imagePreview && (
-                    <div className="caretaker-media-preview">
+                    <div className="caretaker-media-preview mt-2">
                       <img src={imagePreview} alt="Preview" />
                       <button type="button" onClick={() => { setImageFile(null); setImagePreview(''); setForm((prev) => ({ ...prev, photoUrl: '' })); }} title="Remove photo">
                         <FaTrash />
@@ -419,11 +498,14 @@ export default function ReportsPage() {
                 </div>
 
                 <div className="caretaker-media-box">
-                  <label><FaVideo /> Attach Video</label>
+                  <label className="fw-semibold text-dark mb-1 d-flex align-items-center justify-content-between">
+                    <span><FaVideo className="me-1 text-danger" /> Attach Video</span>
+                    <span className="badge bg-secondary bg-opacity-10 text-secondary extra-small fw-normal">(optional)</span>
+                  </label>
                   <input type="file" className="form-control" accept="video/*" onChange={handleVideoChange} />
                   {uploadingVideo && <div className="small text-danger mt-2"><FaSpinner className="fa-spin" /> Uploading video...</div>}
                   {videoPreview && (
-                    <div className="caretaker-media-preview">
+                    <div className="caretaker-media-preview mt-2">
                       <video src={videoPreview} controls />
                       <button type="button" onClick={() => { setVideoFile(null); setVideoPreview(''); setForm((prev) => ({ ...prev, videoUrl: '' })); }} title="Remove video">
                         <FaTrash />
@@ -433,10 +515,12 @@ export default function ReportsPage() {
                 </div>
               </div>
 
-              <div className="caretaker-submit-strip">
-                <span>Reported by: <strong>{user?.full_name || 'Caretaker'}</strong></span>
-                <button type="submit" className="btn btn-primary" disabled={submitting || uploadingImage || uploadingVideo}>
-                  {submitting ? <><FaSpinner className="fa-spin" /> Submitting...</> : <><FaPaperPlane /> Submit Report to Admin</>}
+              <div className="caretaker-submit-strip d-flex align-items-center justify-content-between p-3 mt-4 bg-light rounded-4 border">
+                <span className="text-secondary small">
+                  Reported by: <strong className="text-dark fw-bold">{user?.full_name || 'Caretaker'}</strong>
+                </span>
+                <button type="submit" className="btn btn-primary rounded-pill px-4 py-2.5 fw-bold d-inline-flex align-items-center gap-2 shadow-sm" disabled={submitting || uploadingImage || uploadingVideo}>
+                  {submitting ? <><FaSpinner className="fa-spin" /> Submitting...</> : <><FaPaperPlane /> Submit Report</>}
                 </button>
               </div>
             </form>

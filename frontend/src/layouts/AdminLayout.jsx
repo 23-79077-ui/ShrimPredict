@@ -60,12 +60,14 @@ export default function AdminLayout() {
     year: 'numeric',
   });
 
-  const realTimeClock = currentTime.toLocaleTimeString('en-US', {
+  const clockDigits = currentTime.toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
     hour12: true,
-  });
+  }).replace(/\s*(AM|PM)$/i, '');
+
+  const clockAmPm = currentTime.getHours() >= 12 ? 'PM' : 'AM';
 
   const fetchUnreadNotifications = async () => {
     try {
@@ -211,23 +213,23 @@ export default function AdminLayout() {
       </aside>
 
       <main className="admin-main">
-        <div className="site-header admin-topbar d-flex flex-column flex-md-row justify-content-between align-items-start gap-3">
+        <div className="site-header admin-topbar caretaker-dashboard-hero mb-4">
           <div>
             <div className="admin-brand d-flex d-lg-none mb-3">
               <span className="brand-icon"><FaSeedling /></span>
               <span>ShrimPredict</span>
             </div>
-            <div className="eyebrow admin-eyebrow mb-2">Admin Console</div>
-            <h1 className="admin-page-title mb-1">{currentPage.label}</h1>
-            <p className="text-muted mb-0">{currentPage.description}</p>
+            <span className="caretaker-dashboard-kicker">ADMIN CONSOLE</span>
+            <h3 className="fw-bold mb-1 text-white">{currentPage.label}</h3>
+            <p className="mb-0 text-white-75 small">{currentPage.description}</p>
           </div>
           
           {/* 🌟 STEADY SPACIOUS SIDE-BY-SIDE DATE, CLOCK, AND BELL ICON BUTTON */}
           <div className="admin-actions d-flex align-items-center flex-wrap gap-2.5">
-            {/* 1. Date Card (Spacious 215px width - Ample 30px+ right padding buffer) */}
+            {/* 1. Date Card */}
             <div
               className="bg-white border border-secondary border-opacity-25 shadow-sm rounded-pill d-flex align-items-center text-dark"
-              style={{ width: 215, height: 44, padding: '0 1.25rem', gap: '0.75rem', boxShadow: '0 4px 14px rgba(11,44,95,0.06)', flexShrink: 0 }}
+              style={{ width: 215, height: 44, padding: '0 1.25rem', gap: '0.75rem', flexShrink: 0 }}
               title="Today's Date"
             >
               <div
@@ -241,10 +243,10 @@ export default function AdminLayout() {
               </span>
             </div>
 
-            {/* 2. Real-Time Ticking Clock Card (Spacious 175px width & Tabular Nums - Steady & No Wobbling!) */}
+            {/* 2. Real-Time Ticking Clock Card */}
             <div
-              className="bg-white border border-secondary border-opacity-25 shadow-sm rounded-pill d-flex align-items-center text-dark font-mono"
-              style={{ width: 175, height: 44, padding: '0 1.25rem', gap: '0.75rem', fontVariantNumeric: 'tabular-nums', boxShadow: '0 4px 14px rgba(11,44,95,0.06)', flexShrink: 0 }}
+              className="bg-white border border-secondary border-opacity-25 shadow-sm rounded-pill d-flex align-items-center text-dark"
+              style={{ width: 175, height: 44, padding: '0 1.15rem', gap: '0.65rem', flexShrink: 0 }}
               title="Real-Time System Clock"
             >
               <div
@@ -253,34 +255,51 @@ export default function AdminLayout() {
               >
                 <FaClock size={13} />
               </div>
-              <span
-                className="extra-small fw-bold text-dark text-nowrap"
-                style={{ fontSize: '0.85rem', fontVariantNumeric: 'tabular-nums', letterSpacing: '0.4px', display: 'inline-block', width: 96 }}
-              >
-                {realTimeClock}
-              </span>
+              <div className="d-flex align-items-center extra-small fw-bold text-dark text-nowrap" style={{ fontSize: '0.85rem' }}>
+                <span
+                  style={{
+                    display: 'inline-block',
+                    width: 68,
+                    fontVariantNumeric: 'tabular-nums',
+                    fontFeatureSettings: '"tnum"',
+                    letterSpacing: '0.2px'
+                  }}
+                >
+                  {clockDigits}
+                </span>
+                <span
+                  style={{
+                    display: 'inline-block',
+                    width: 24,
+                    textAlign: 'right',
+                    fontWeight: 800,
+                    color: '#0b2c5f'
+                  }}
+                >
+                  {clockAmPm}
+                </span>
+              </div>
             </div>
 
             {/* 3. Clean Notification Bell Icon Button */}
             <div className="position-relative" ref={bellRef}>
               <button
                 type="button"
-                className="btn btn-white border border-secondary border-opacity-25 shadow-sm rounded-circle d-flex align-items-center justify-content-center position-relative transition-all hover-shadow p-0"
-                style={{ width: 44, height: 44, boxShadow: '0 4px 14px rgba(11,44,95,0.06)' }}
+                className="btn bg-white border border-secondary border-opacity-25 shadow-sm rounded-circle d-flex align-items-center justify-content-center position-relative transition-all hover-shadow p-0"
+                style={{ width: 44, height: 44 }}
                 onClick={() => setShowNotifMenu(!showNotifMenu)}
                 title="Notifications"
               >
                 <div
-                  className="rounded-circle bg-warning bg-opacity-20 d-flex align-items-center justify-content-center"
+                  className="rounded-circle bg-warning text-dark d-flex align-items-center justify-content-center"
                   style={{ width: 32, height: 32 }}
                 >
-                  <FaBell className={unreadCount > 0 ? 'text-warning' : 'text-muted'} size={15} />
+                  <FaBell size={15} />
                 </div>
-
                 {unreadCount > 0 && (
                   <span
-                    className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-white shadow-xs d-flex align-items-center justify-content-center"
-                    style={{ fontSize: '0.7rem', padding: '0.2rem 0.45rem', transform: 'translate(-30%, -10%)' }}
+                    className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-white"
+                    style={{ fontSize: '0.65rem' }}
                   >
                     {unreadCount}
                   </span>

@@ -84,6 +84,7 @@ if ($method === 'GET') {
     $statusFilter = isset($_GET['status']) ? trim((string)$_GET['status']) : 'active';
     $dateFilter = isset($_GET['date']) ? trim((string)$_GET['date']) : '';
     $unreadOnly = isset($_GET['unread_only']) && ($_GET['unread_only'] === '1' || $_GET['unread_only'] === 'true');
+    $userId = isset($_GET['user_id']) ? (int)$_GET['user_id'] : 0;
 
     $where = [];
     $params = [];
@@ -99,9 +100,14 @@ if ($method === 'GET') {
         $where[] = 'is_read = 0';
     }
 
-    if ($dateFilter) {
-        $where[] = 'DATE(created_at) = :date_filter';
-        $params[':date_filter'] = $dateFilter;
+    if ($userId > 0) {
+        // Caretakers ONLY receive targeted notifications sent BY ADMIN for status updates on their reported issues
+        $where[] = 'user_id = :user_id';
+        $where[] = "action_type NOT IN ('feeding', 'maintenance', 'disease_scan')";
+        $params[':user_id'] = $userId;
+    } else {
+        // Admin receives all incoming reports, scans, feeding logs, and general alerts
+        $where[] = '(user_id IS NULL OR user_id = 0 OR action_type IN (\'maintenance\', \'disease_scan\', \'feeding\', \'general\'))';
     }
 
     $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
@@ -113,11 +119,21 @@ if ($method === 'GET') {
         $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Calculate summary counts
-        $unreadStmt = $conn->query("SELECT COUNT(*) FROM notifications WHERE is_read = 0 AND status = 'active'");
-        $totalUnread = (int)$unreadStmt->fetchColumn();
+        if ($userId > 0) {
+            $unreadStmt = $conn->prepare("SELECT COUNT(*) FROM notifications WHERE is_read = 0 AND status = 'active' AND user_id = :uid AND action_type NOT IN ('feeding', 'maintenance', 'disease_scan')");
+            $unreadStmt->execute([':uid' => $userId]);
+            $totalUnread = (int)$unreadStmt->fetchColumn();
 
-        $activeStmt = $conn->query("SELECT COUNT(*) FROM notifications WHERE status = 'active'");
-        $totalActive = (int)$activeStmt->fetchColumn();
+            $activeStmt = $conn->prepare("SELECT COUNT(*) FROM notifications WHERE status = 'active' AND user_id = :uid AND action_type NOT IN ('feeding', 'maintenance', 'disease_scan')");
+            $activeStmt->execute([':uid' => $userId]);
+            $totalActive = (int)$activeStmt->fetchColumn();
+        } else {
+            $unreadStmt = $conn->query("SELECT COUNT(*) FROM notifications WHERE is_read = 0 AND status = 'active' AND (user_id IS NULL OR user_id = 0 OR action_type IN ('maintenance', 'disease_scan', 'feeding', 'general'))");
+            $totalUnread = (int)$unreadStmt->fetchColumn();
+
+            $activeStmt = $conn->query("SELECT COUNT(*) FROM notifications WHERE status = 'active' AND (user_id IS NULL OR user_id = 0 OR action_type IN ('maintenance', 'disease_scan', 'feeding', 'general'))");
+            $totalActive = (int)$activeStmt->fetchColumn();
+        }
 
         $archivedStmt = $conn->query("SELECT COUNT(*) FROM notifications WHERE status = 'archived'");
         $totalArchived = (int)$archivedStmt->fetchColumn();

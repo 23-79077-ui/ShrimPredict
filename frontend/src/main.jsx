@@ -4,13 +4,28 @@ import App from './App';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './index.css';
 
-// Initialize Dark/Light theme from localStorage
-const savedTheme = localStorage.getItem('shrim_theme');
-if (savedTheme === 'dark') {
-  document.documentElement.setAttribute('data-theme', 'dark');
-} else {
-  document.documentElement.setAttribute('data-theme', 'light');
-}
+// Global helper to apply theme live
+export const applyAppTheme = (themeName) => {
+  const isDark = themeName === 'dark';
+  localStorage.setItem('shrim_theme', isDark ? 'dark' : 'light');
+  
+  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+  document.documentElement.setAttribute('data-bs-theme', isDark ? 'dark' : 'light');
+  
+  if (isDark) {
+    document.body.classList.add('dark-theme');
+    document.body.classList.remove('light-theme');
+  } else {
+    document.body.classList.add('light-theme');
+    document.body.classList.remove('dark-theme');
+  }
+
+  window.dispatchEvent(new CustomEvent('shrim-theme-changed', { detail: { theme: isDark ? 'dark' : 'light' } }));
+};
+
+// Initialize Dark/Light theme on startup
+const savedTheme = localStorage.getItem('shrim_theme') || 'light';
+applyAppTheme(savedTheme);
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

@@ -243,42 +243,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// GET: Fetch feeding records, optionally filter by pond_id or caretaker
-$pondFilter = isset($_GET['pond_id']) ? (int)$_GET['pond_id'] : 0;
+// GET: Fetch feeding records, optionally filter by pond_id, user_id, recorded_by_name, date, search
+$pondFilter = isset($_GET['pond_id']) && $_GET['pond_id'] !== 'all' ? (int)$_GET['pond_id'] : 0;
 $userId = isset($_GET['user_id']) ? (int)$_GET['user_id'] : 0;
 $recordedByName = isset($_GET['recorded_by_name']) ? trim((string)$_GET['recorded_by_name']) : '';
+$dateFilter = isset($_GET['date']) ? trim((string)$_GET['date']) : '';
+$searchFilter = isset($_GET['search']) ? trim((string)$_GET['search']) : '';
 
-if ($pondFilter) {
-    $stmt = $conn->prepare(
-        'SELECT fr.*, p.pond_name FROM feeding_records fr 
-         LEFT JOIN ponds p ON fr.pond_id = p.id 
-         WHERE fr.pond_id = :pond_id 
-         ORDER BY fr.record_date DESC, fr.created_at DESC'
-    );
-    $stmt->execute([':pond_id' => $pondFilter]);
-} elseif ($userId || $recordedByName) {
-    $query = 'SELECT fr.*, p.pond_name FROM feeding_records fr LEFT JOIN ponds p ON fr.pond_id = p.id WHERE 1=1';
-    $params = [];
-    if ($userId && $recordedByName) {
-        $query .= ' AND (fr.user_id = :user_id OR LOWER(fr.recorded_by_name) LIKE LOWER(CONCAT("%", :recorded_by_name, "%")))';
-        $params[':user_id'] = $userId;
-        $params[':recorded_by_name'] = $recordedByName;
-    } elseif ($userId) {
-        $query .= ' AND (fr.user_id = :user_id)';
-        $params[':user_id'] = $userId;
-    } elseif ($recordedByName) {
-        $query .= ' AND (LOWER(fr.recorded_by_name) LIKE LOWER(CONCAT("%", :recorded_by_name, "%")))';
-        $params[':recorded_by_name'] = $recordedByName;
-    }
-    $query .= ' ORDER BY fr.record_date DESC, fr.created_at DESC';
-    $stmt = $conn->prepare($query);
-    $stmt->execute($params);
-} else {
-    $stmt = $conn->query(
-        'SELECT fr.*, p.pond_name FROM feeding_records fr 
-         LEFT JOIN ponds p ON fr.pond_id = p.id 
-         ORDER BY fr.record_date DESC, fr.created_at DESC'
-    );
+$query = 'SELECT fr.*, p.pond_name FROM feeding_records fr LEFT JOIN ponds p ON fr.pond_id = p.id WHERE 1=1';
+$params = [];
+
+if ($pondFilter > 0) {
+    $query .= ' AND fr.pond_id = :pond_id';
+    $params[':pond_id'] = $pondFilter;
 }
 
+if ($userId > 0 && $recordedByName !== '') {
+    $query .= ' AND (fr.user_id = :user_id OR LOWER(fr.recorded_by_name) LIKE LOWER(CONCAT("%", :recorded_by_name, "%")))';
+    $params[':user_id'] = $userId;
+    $params[':recorded_by_name'] = $recordedByName;
+} elseif ($userId > 0) {
+    $query .= ' AND fr.user_id = :user_id';
+    $params[':user_id'] = $userId;
+} elseif ($recordedByName !== '') {
+    $query .= ' AND LOWER(fr.recorded_by_name) LIKE LOWER(CONCAT("%", :recorded_by_name, "%"))';
+    $params[':recorded_by_name'] = $recordedByName;
+}
+
+if ($dateFilter !== '') {
+    $query .= ' AND fr.record_date = :record_date';
+    $params[':record_date'] = $dateFilter;
+}
+
+if ($searchFilter !== '') {
+    $query .= ' AND (LOWER(p.pond_name) LIKE LOWER(CONCAT("%", :search, "%")) OR LOWER(fr.feed_type) LIKE LOWER(CONCAT("%", :search, "%")) OR LOWER(fr.vitamin_name) LIKE LOWER(CONCAT("%", :search, "%")) OR LOWER(fr.notes) LIKE LOWER(CONCAT("%", :search, "%")) OR LOWER(fr.recorded_by_name) LIKE LOWER(CONCAT("%", :search, "%")))';
+    $params[':search'] = $searchFilter;
+}
+
+$query .= ' ORDER BY fr.record_date DESC, fr.created_at DESC';
+$stmt = $conn->prepare($query);
+$stmt->execute($params);
+
 echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+
