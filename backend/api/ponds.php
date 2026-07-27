@@ -4,7 +4,7 @@ require_once __DIR__ . '/../utils/notifications_helper.php';
 
 header('Access-Control-Allow-Origin: *');
 header('Content-Type: application/json; charset=UTF-8');
-header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -46,18 +46,50 @@ function ensurePondMonitoringColumns($conn) {
     }
 }
 
+function tableExists($conn, $tableName) {
+    try {
+        $stmt = $conn->prepare('SHOW TABLES LIKE :table_name');
+        $stmt->execute([':table_name' => $tableName]);
+        return (bool)$stmt->fetchColumn();
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
+function columnExists($conn, $tableName, $columnName) {
+    try {
+        $stmt = $conn->prepare("SHOW COLUMNS FROM `{$tableName}` LIKE :column_name");
+        $stmt->execute([':column_name' => $columnName]);
+        return (bool)$stmt->fetch(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
+function countTableReferences($conn, $tableName, $columnName, $value) {
+    if (!tableExists($conn, $tableName) || !columnExists($conn, $tableName, $columnName)) {
+        return 0;
+    }
+
+    $stmt = $conn->prepare("SELECT COUNT(*) FROM `{$tableName}` WHERE `{$columnName}` = :value");
+    $stmt->execute([':value' => $value]);
+    return (int)$stmt->fetchColumn();
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     try {
         ensurePondMonitoringColumns($conn);
         $stmt = $conn->query('
             SELECT p.*, 
-                   COALESCE(GROUP_CONCAT(DISTINCT u_cp.full_name ORDER BY u_cp.full_name SEPARATOR ", "), u_legacy.full_name, p.assigned_caretaker_name) AS caretaker_name
+                   GROUP_CONCAT(DISTINCT u_cp.id ORDER BY u_cp.full_name SEPARATOR ",") AS caretaker_ids,
+                   COALESCE(GROUP_CONCAT(DISTINCT u_cp.full_name ORDER BY u_cp.full_name SEPARATOR ", "), u_legacy.full_name, p.assigned_caretaker_name) AS caretaker_name,
+                   COALESCE(SUBSTRING_INDEX(GROUP_CONCAT(DISTINCT u_cp.id ORDER BY u_cp.full_name SEPARATOR ","), ",", 1), u_legacy.id) AS caretaker_id
             FROM ponds p
             LEFT JOIN caretaker_ponds cp ON p.id = cp.pond_id
             LEFT JOIN users u_cp ON cp.user_id = u_cp.id
             LEFT JOIN users u_legacy ON p.id = u_legacy.pond_id
             GROUP BY p.id
-            ORDER BY p.id ASC
+            ORDER BY p.pond_name ASC
         ');
         $rawPonds = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -178,7 +210,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 'total_feed_kg' => $totalFeed,
                 'latest_feed_date' => $feedRow['latest_feed_date'] ?? null,
                 'latest_image' => $diseaseRow['image_path'] ?? (!empty($p['latest_image']) ? $p['latest_image'] : null),
-                'assigned_caretaker_name' => $p['caretaker_name']
+                'assigned_caretaker_name' => $p['caretaker_name'],
+                'assigned_caretaker_id' => is_numeric($p['caretaker_id'] ?? null) ? (int)$p['caretaker_id'] : null
             ];
         }
 
@@ -218,6 +251,136 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     }
 } else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = json_decode(file_get_contents('php://input'), true) ?: $_POST;
+    $action = isset($data['action']) ? trim((string)$data['action']) : 'create';
+
+    if ($action === 'update') {
+        ensurePondMonitoringColumns($conn);
+
+        $pondId = isset($data['id']) ? (int)$data['id'] : 0;
+        $pondName = trim((string)($data['pond_name'] ?? ''));
+        $location = trim((string)($data['location'] ?? ''));
+        $status = trim((string)($data['status'] ?? 'Healthy'));
+        $caretakerId = isset($data['assigned_caretaker_id']) && $data['assigned_caretaker_id'] !== ''
+            ? (int)$data['assigned_caretaker_id']
+            : null;
+
+        if ($pondId <= 0 || $pondName === '') {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Pond ID and pond name are required.']);
+            exit;
+        }
+
+        $validStatuses = ['Healthy', 'Warning', 'Critical'];
+        if (!in_array($status, $validStatuses, true)) {
+            $status = 'Healthy';
+        }
+
+        $caretakerName = null;
+        if ($caretakerId !== null) {
+            $userStmt = $conn->prepare('SELECT id, full_name FROM users WHERE id = :id AND LOWER(role) = "caretaker" AND status <> "Archived" LIMIT 1');
+            $userStmt->execute([':id' => $caretakerId]);
+            $caretaker = $userStmt->fetch(PDO::FETCH_ASSOC);
+            if (!$caretaker) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'Selected caretaker was not found.']);
+                exit;
+            }
+            $caretakerName = $caretaker['full_name'];
+        }
+
+        try {
+            $conn->beginTransaction();
+
+            $stmt = $conn->prepare('
+                UPDATE ponds
+                SET pond_name = :pond_name,
+                    location = :location,
+                    status = :status,
+                    assigned_caretaker_name = :assigned_caretaker_name
+                WHERE id = :id
+            ');
+            $stmt->execute([
+                ':pond_name' => $pondName,
+                ':location' => $location,
+                ':status' => $status,
+                ':assigned_caretaker_name' => $caretakerName,
+                ':id' => $pondId
+            ]);
+
+            $removePondAssignments = $conn->prepare('DELETE FROM caretaker_ponds WHERE pond_id = :pond_id');
+            $removePondAssignments->execute([':pond_id' => $pondId]);
+
+            $clearLegacy = $conn->prepare('UPDATE users SET pond_id = NULL WHERE pond_id = :pond_id');
+            $clearLegacy->execute([':pond_id' => $pondId]);
+
+            if ($caretakerId !== null) {
+                $assignStmt = $conn->prepare('INSERT INTO caretaker_ponds (user_id, pond_id) VALUES (:user_id, :pond_id)');
+                $assignStmt->execute([':user_id' => $caretakerId, ':pond_id' => $pondId]);
+
+                $legacyStmt = $conn->prepare('UPDATE users SET pond_id = :pond_id WHERE id = :user_id');
+                $legacyStmt->execute([':pond_id' => $pondId, ':user_id' => $caretakerId]);
+            }
+
+            $conn->commit();
+            echo json_encode(['success' => true, 'message' => 'Pond updated successfully']);
+        } catch (Throwable $e) {
+            if ($conn->inTransaction()) {
+                $conn->rollBack();
+            }
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Error updating pond: ' . $e->getMessage()]);
+        }
+        exit;
+    }
+
+    if ($action === 'delete') {
+        $pondId = isset($data['id']) ? (int)$data['id'] : 0;
+        if ($pondId <= 0) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Valid pond ID is required.']);
+            exit;
+        }
+
+        $pondStmt = $conn->prepare('SELECT id, pond_name FROM ponds WHERE id = :id LIMIT 1');
+        $pondStmt->execute([':id' => $pondId]);
+        $pond = $pondStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$pond) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'message' => 'Pond not found.']);
+            exit;
+        }
+
+        $pondName = $pond['pond_name'];
+        $references = [
+            'disease reports' => countTableReferences($conn, 'disease_reports', 'pond_name', $pondName),
+            'feeding records' => countTableReferences($conn, 'feeding_records', 'pond_id', $pondId),
+            'alerts' => countTableReferences($conn, 'alerts', 'affected_pond_name', $pondName) + countTableReferences($conn, 'alerts', 'pond_name', $pondName),
+            'harvest records' => countTableReferences($conn, 'harvest_predictions', 'pond_id', $pondId),
+            'maintenance reports' => countTableReferences($conn, 'maintenance_reports', 'pond_id', $pondId) + countTableReferences($conn, 'maintenance_reports', 'pond_name', $pondName),
+            'caretaker assignments' => countTableReferences($conn, 'caretaker_ponds', 'pond_id', $pondId) + countTableReferences($conn, 'users', 'pond_id', $pondId),
+        ];
+        $blocking = array_filter($references, fn($count) => $count > 0);
+
+        if (!empty($blocking)) {
+            http_response_code(409);
+            $parts = [];
+            foreach ($blocking as $label => $count) {
+                $parts[] = "{$count} {$label}";
+            }
+            echo json_encode([
+                'success' => false,
+                'message' => 'This pond cannot be deleted because it is referenced by ' . implode(', ', $parts) . '.'
+            ]);
+            exit;
+        }
+
+        $deleteStmt = $conn->prepare('DELETE FROM ponds WHERE id = :id');
+        $deleteStmt->execute([':id' => $pondId]);
+
+        echo json_encode(['success' => true, 'message' => 'Pond deleted successfully']);
+        exit;
+    }
+
     $providedName = trim((string)($data['pond_name'] ?? ''));
 
     if (empty($providedName) || $providedName === 'Pond' || preg_match('/^Pond\s*\d+$/i', $providedName)) {
@@ -236,14 +399,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     } else {
         $pondName = $providedName;
     }
-    $location = $data['location'] ?? '';
+    $location = trim((string)($data['location'] ?? ''));
     $temp = $data['temperature'] ?? 29.0;
     $ph = $data['ph_level'] ?? 7.5;
     $salinity = $data['salinity'] ?? 18.0;
     $do = $data['dissolved_oxygen'] ?? 6.5;
     $waterLevel = $data['water_level'] ?? 1.2;
     $status = $data['status'] ?? 'Healthy';
-    $caretakerName = $data['assigned_caretaker_name'] ?? ($data['recorded_by_name'] ?? 'Juan Dela Cruz');
+    $caretakerId = isset($data['assigned_caretaker_id']) && $data['assigned_caretaker_id'] !== ''
+        ? (int)$data['assigned_caretaker_id']
+        : null;
+    $caretakerName = null;
+    if ($caretakerId !== null) {
+        $userStmt = $conn->prepare('SELECT id, full_name FROM users WHERE id = :id AND LOWER(role) = "caretaker" AND status <> "Archived" LIMIT 1');
+        $userStmt->execute([':id' => $caretakerId]);
+        $caretaker = $userStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$caretaker) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Selected caretaker was not found.']);
+            exit;
+        }
+        $caretakerName = $caretaker['full_name'];
+    } else if (isset($data['assigned_caretaker_name']) && trim((string)$data['assigned_caretaker_name']) !== '') {
+        $caretakerName = trim((string)$data['assigned_caretaker_name']);
+    } else if (isset($data['recorded_by_name']) && trim((string)$data['recorded_by_name']) !== '') {
+        $caretakerName = trim((string)$data['recorded_by_name']);
+    }
     $areaSqm = $data['area_sqm'] ?? 500;
     $stockingDate = $data['stocking_date'] ?? date('Y-m-d');
     $growthPct = $data['growth_percentage'] ?? 80.0;
@@ -254,41 +435,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $feedToday = $data['feed_today_kg'] ?? 10.0;
     $totalFeed = $data['total_feed_kg'] ?? 300.0;
 
-    $stmt = $conn->prepare('
-        INSERT INTO ponds (
-            pond_name, location, temperature, ph_level, salinity, dissolved_oxygen, water_level, status,
-            area_sqm, stocking_date, growth_percentage, disease_detection, disease_confidence, harvest_readiness,
-            expected_harvest_date, feed_today_kg, total_feed_kg, assigned_caretaker_name, created_at
-        ) VALUES (
-            :pond_name, :location, :temperature, :ph_level, :salinity, :dissolved_oxygen, :water_level, :status,
-            :area_sqm, :stocking_date, :growth_percentage, :disease_detection, :disease_confidence, :harvest_readiness,
-            :expected_harvest_date, :feed_today_kg, :total_feed_kg, :assigned_caretaker_name, NOW()
-        )
-    ');
-    $stmt->execute([
-        ':pond_name' => $pondName,
-        ':location' => $location,
-        ':temperature' => $temp,
-        ':ph_level' => $ph,
-        ':salinity' => $salinity,
-        ':dissolved_oxygen' => $do,
-        ':water_level' => $waterLevel,
-        ':status' => $status,
-        ':area_sqm' => $areaSqm,
-        ':stocking_date' => $stockingDate,
-        ':growth_percentage' => $growthPct,
-        ':disease_detection' => $diseaseDetection,
-        ':disease_confidence' => $diseaseConf,
-        ':harvest_readiness' => $harvestReadiness,
-        ':expected_harvest_date' => $expectedHarvest,
-        ':feed_today_kg' => $feedToday,
-        ':total_feed_kg' => $totalFeed,
-        ':assigned_caretaker_name' => $caretakerName
-    ]);
-    $pondId = $conn->lastInsertId();
+    try {
+        $conn->beginTransaction();
 
-    $notifMsg = "{$caretakerName} updated pond status for {$pondName} (Status: {$status}, Growth: {$growthPct}%).";
-    createNotification($conn, 'Pond Status Logged', $notifMsg, $caretakerName, 'water_quality', $pondName);
+        $stmt = $conn->prepare('
+            INSERT INTO ponds (
+                pond_name, location, temperature, ph_level, salinity, dissolved_oxygen, water_level, status,
+                area_sqm, stocking_date, growth_percentage, disease_detection, disease_confidence, harvest_readiness,
+                expected_harvest_date, feed_today_kg, total_feed_kg, assigned_caretaker_name, created_at
+            ) VALUES (
+                :pond_name, :location, :temperature, :ph_level, :salinity, :dissolved_oxygen, :water_level, :status,
+                :area_sqm, :stocking_date, :growth_percentage, :disease_detection, :disease_confidence, :harvest_readiness,
+                :expected_harvest_date, :feed_today_kg, :total_feed_kg, :assigned_caretaker_name, NOW()
+            )
+        ');
+        $stmt->execute([
+            ':pond_name' => $pondName,
+            ':location' => $location,
+            ':temperature' => $temp,
+            ':ph_level' => $ph,
+            ':salinity' => $salinity,
+            ':dissolved_oxygen' => $do,
+            ':water_level' => $waterLevel,
+            ':status' => $status,
+            ':area_sqm' => $areaSqm,
+            ':stocking_date' => $stockingDate,
+            ':growth_percentage' => $growthPct,
+            ':disease_detection' => $diseaseDetection,
+            ':disease_confidence' => $diseaseConf,
+            ':harvest_readiness' => $harvestReadiness,
+            ':expected_harvest_date' => $expectedHarvest,
+            ':feed_today_kg' => $feedToday,
+            ':total_feed_kg' => $totalFeed,
+            ':assigned_caretaker_name' => $caretakerName
+        ]);
+        $pondId = (int)$conn->lastInsertId();
+
+        if ($caretakerId !== null) {
+            $assignStmt = $conn->prepare('INSERT INTO caretaker_ponds (user_id, pond_id) VALUES (:user_id, :pond_id)');
+            $assignStmt->execute([':user_id' => $caretakerId, ':pond_id' => $pondId]);
+
+            $legacyStmt = $conn->prepare('UPDATE users SET pond_id = :pond_id WHERE id = :user_id');
+            $legacyStmt->execute([':pond_id' => $pondId, ':user_id' => $caretakerId]);
+        }
+
+        $conn->commit();
+    } catch (Throwable $e) {
+        if ($conn->inTransaction()) {
+            $conn->rollBack();
+        }
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Error creating pond: ' . $e->getMessage()]);
+        exit;
+    }
+
+    $notifActor = $caretakerName ?: 'Admin';
+    $notifMsg = "{$notifActor} created {$pondName} (Status: {$status}, Growth: {$growthPct}%).";
+    createNotification($conn, 'Pond Status Logged', $notifMsg, $notifActor, 'water_quality', $pondName);
 
     echo json_encode(['success' => true, 'message' => 'Pond created successfully', 'id' => $pondId]);
 }

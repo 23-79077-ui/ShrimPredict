@@ -10,13 +10,16 @@ import {
   FaFileCsv,
   FaFilter,
   FaFlask,
+  FaEdit,
   FaLayerGroup,
   FaMapMarkerAlt,
+  FaPlus,
   FaRulerVertical,
   FaSearch,
   FaSync,
   FaThermometerHalf,
   FaTimesCircle,
+  FaTrash,
   FaUser,
   FaUtensils,
   FaVial,
@@ -99,6 +102,14 @@ export default function PondMonitoringPage() {
   const [diseaseFilter, setDiseaseFilter] = useState('All');
   const [caretakerFilter, setCaretakerFilter] = useState('All');
   const [showFilters, setShowFilters] = useState(true);
+  const [showAddPondModal, setShowAddPondModal] = useState(false);
+  const [editingPond, setEditingPond] = useState(null);
+  const [newPondName, setNewPondName] = useState('');
+  const [newPondLocation, setNewPondLocation] = useState('');
+  const [newPondStatus, setNewPondStatus] = useState('Healthy');
+  const [selectedCaretakerId, setSelectedCaretakerId] = useState('');
+  const [caretakers, setCaretakers] = useState([]);
+  const [savingPond, setSavingPond] = useState(false);
 
   const loadPondData = async () => {
     setLoading(true);
@@ -121,6 +132,22 @@ export default function PondMonitoringPage() {
 
   useEffect(() => {
     loadPondData();
+  }, []);
+
+  useEffect(() => {
+    const loadCaretakers = async () => {
+      try {
+        const res = await api.get('/users.php');
+        const users = Array.isArray(res.data?.users) ? res.data.users : [];
+        setCaretakers(users
+          .filter((user) => String(user.role || '').toLowerCase() === 'caretaker' && user.status !== 'Archived')
+          .sort((a, b) => String(a.full_name || '').localeCompare(String(b.full_name || ''))));
+      } catch (err) {
+        setCaretakers([]);
+      }
+    };
+
+    loadCaretakers();
   }, []);
 
   const uniqueCaretakers = useMemo(
@@ -201,6 +228,102 @@ export default function PondMonitoringPage() {
     setStatusFilter('All');
     setDiseaseFilter('All');
     setCaretakerFilter('All');
+  };
+
+  const resetPondForm = () => {
+    setEditingPond(null);
+    setNewPondName('');
+    setNewPondLocation('');
+    setNewPondStatus('Healthy');
+    setSelectedCaretakerId('');
+  };
+
+  const openAddPondModal = () => {
+    resetPondForm();
+    setShowAddPondModal(true);
+  };
+
+  const openEditPondModal = (pond) => {
+    const caretakerByName = caretakers.find((caretaker) => caretaker.full_name === pond.assigned_caretaker_name);
+    setEditingPond(pond);
+    setNewPondName(pond.pond_name || '');
+    setNewPondLocation(pond.location || '');
+    setNewPondStatus(pond.status || 'Healthy');
+    setSelectedCaretakerId(pond.assigned_caretaker_id ? String(pond.assigned_caretaker_id) : (caretakerByName ? String(caretakerByName.id) : ''));
+    setShowAddPondModal(true);
+  };
+
+  const handleSavePond = async (event) => {
+    event.preventDefault();
+    const pondName = newPondName.trim();
+
+    if (!pondName) {
+      Swal.fire({ icon: 'warning', title: 'Pond Name Required', text: 'Please enter a pond name.' });
+      return;
+    }
+
+    setSavingPond(true);
+    try {
+      const payload = {
+        pond_name: pondName,
+        location: newPondLocation.trim(),
+        status: newPondStatus,
+        assigned_caretaker_id: selectedCaretakerId,
+      };
+      if (editingPond) {
+        payload.action = 'update';
+        payload.id = editingPond.id;
+      }
+
+      const res = await api.post('/ponds.php', payload);
+      if (!res.data?.success) {
+        throw new Error(res.data?.message || `Unable to ${editingPond ? 'update' : 'create'} pond.`);
+      }
+
+      setShowAddPondModal(false);
+      resetPondForm();
+      await loadPondData();
+      Swal.fire({
+        icon: 'success',
+        title: editingPond ? 'Pond Updated' : 'Pond Added',
+        text: `${pondName} has been ${editingPond ? 'updated' : 'added'}.`,
+        timer: 1600,
+        showConfirmButton: false
+      });
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: `Unable to ${editingPond ? 'Update' : 'Add'} Pond`, text: err.response?.data?.message || err.message || 'Please try again.' });
+    } finally {
+      setSavingPond(false);
+    }
+  };
+
+  const handleDeletePond = async (pond) => {
+    const result = await Swal.fire({
+      icon: 'warning',
+      title: 'Delete Pond',
+      text: `Are you sure you want to delete ${pond.pond_name}?`,
+      showCancelButton: true,
+      confirmButtonText: 'Delete',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#dc3545',
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      const res = await api.post('/ponds.php', { action: 'delete', id: pond.id });
+      if (!res.data?.success) {
+        throw new Error(res.data?.message || 'Unable to delete pond.');
+      }
+
+      if (selectedPond?.id === pond.id) {
+        setSelectedPond(null);
+      }
+      await loadPondData();
+      Swal.fire({ icon: 'success', title: 'Pond Deleted', text: `${pond.pond_name} has been deleted.`, timer: 1600, showConfirmButton: false });
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'Delete Blocked', text: err.response?.data?.message || err.message || 'This pond could not be deleted.' });
+    }
   };
 
   return (
@@ -361,6 +484,12 @@ export default function PondMonitoringPage() {
                   </h5>
                   <p className="small text-muted mb-0">Showing {filteredPonds.length} of {ponds.length} database records.</p>
                 </div>
+                <button
+                  className="btn btn-primary d-flex align-items-center gap-2"
+                  onClick={openAddPondModal}
+                >
+                  <FaPlus /> Add Pond
+                </button>
               </div>
 
               {loading ? (
@@ -403,7 +532,7 @@ export default function PondMonitoringPage() {
                                 {pond.status || '-'}
                               </span>
                             </td>
-                            <td className="fw-medium text-dark">{valueOrDash(pond.assigned_caretaker_name)}</td>
+                            <td className="fw-medium text-dark">{pond.assigned_caretaker_name || 'Unassigned'}</td>
                             <td>
                               <small className="d-block text-secondary">Temp: <strong className="text-dark">{valueOrDash(pond.temperature, ' °C')}</strong></small>
                               <small className="d-block text-secondary">pH: <strong className="text-dark">{valueOrDash(pond.ph_level)}</strong></small>
@@ -423,12 +552,26 @@ export default function PondMonitoringPage() {
                               )}
                             </td>
                             <td className="pe-3 text-end">
-                              <button
-                                className="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 fw-bold shadow-xs"
-                                onClick={() => setSelectedPond(pond)}
-                              >
-                                Details
-                              </button>
+                              <div className="d-flex justify-content-end gap-2">
+                                <button
+                                  className="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 fw-bold shadow-xs"
+                                  onClick={() => setSelectedPond(pond)}
+                                >
+                                  Details
+                                </button>
+                                <button
+                                  className="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1 fw-bold shadow-xs"
+                                  onClick={() => openEditPondModal(pond)}
+                                >
+                                  <FaEdit className="me-1" /> Edit
+                                </button>
+                                <button
+                                  className="btn btn-sm btn-outline-danger rounded-pill px-3 py-1 fw-bold shadow-xs"
+                                  onClick={() => handleDeletePond(pond)}
+                                >
+                                  <FaTrash className="me-1" /> Delete
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -523,7 +666,7 @@ export default function PondMonitoringPage() {
                 <div>
                   <h4 className="fw-bold text-white mb-1">{selectedPond.pond_name}</h4>
                   <div className="small text-white text-opacity-75">
-                    {valueOrDash(selectedPond.location)} | Caretaker: {valueOrDash(selectedPond.assigned_caretaker_name)}
+                    {valueOrDash(selectedPond.location)} | Caretaker: {selectedPond.assigned_caretaker_name || 'Unassigned'}
                   </div>
                 </div>
                 <button type="button" className="btn-close btn-close-white" onClick={() => setSelectedPond(null)} />
@@ -569,6 +712,85 @@ export default function PondMonitoringPage() {
                 <button className="btn btn-secondary px-4" onClick={() => setSelectedPond(null)}>Close</button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showAddPondModal && (
+        <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(15, 23, 42, 0.55)', zIndex: 1060 }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <form className="modal-content border-0 shadow rounded-4 overflow-hidden" onSubmit={handleSavePond}>
+              <div className="modal-header bg-primary text-white border-0">
+                <h5 className="modal-title fw-bold text-white">{editingPond ? 'Edit Pond' : 'Add Pond'}</h5>
+                <button
+                  type="button"
+                  className="btn-close btn-close-white"
+                  onClick={() => {
+                    setShowAddPondModal(false);
+                    resetPondForm();
+                  }}
+                  disabled={savingPond}
+                />
+              </div>
+              <div className="modal-body p-4">
+                <label className="form-label fw-bold">Pond Name</label>
+                <input
+                  className="form-control"
+                  value={newPondName}
+                  onChange={(event) => setNewPondName(event.target.value)}
+                  placeholder="D1"
+                  autoFocus
+                  disabled={savingPond}
+                />
+                <label className="form-label fw-bold mt-3">Location</label>
+                <input
+                  className="form-control"
+                  value={newPondLocation}
+                  onChange={(event) => setNewPondLocation(event.target.value)}
+                  placeholder="Northern Bay"
+                  disabled={savingPond}
+                />
+                <label className="form-label fw-bold mt-3">Status</label>
+                <select
+                  className="form-select"
+                  value={newPondStatus}
+                  onChange={(event) => setNewPondStatus(event.target.value)}
+                  disabled={savingPond}
+                >
+                  <option value="Healthy">Healthy</option>
+                  <option value="Warning">Warning</option>
+                  <option value="Critical">Critical</option>
+                </select>
+                <label className="form-label fw-bold mt-3">Assigned Caretaker</label>
+                <select
+                  className="form-select"
+                  value={selectedCaretakerId}
+                  onChange={(event) => setSelectedCaretakerId(event.target.value)}
+                  disabled={savingPond}
+                >
+                  <option value="">Unassigned</option>
+                  {caretakers.map((caretaker) => (
+                    <option key={caretaker.id} value={caretaker.id}>{caretaker.full_name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="modal-footer bg-light border-0">
+                <button
+                  type="button"
+                  className="btn btn-secondary px-4"
+                  onClick={() => {
+                    setShowAddPondModal(false);
+                    resetPondForm();
+                  }}
+                  disabled={savingPond}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary px-4" disabled={savingPond}>
+                  {savingPond ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
