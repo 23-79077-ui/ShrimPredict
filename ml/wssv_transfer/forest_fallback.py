@@ -9,6 +9,7 @@ from scipy.ndimage import gaussian_filter
 
 
 FOREST_MODEL_PATH = Path("frontend/public/models/shrimp-disease/wssv-forest-model.json")
+LIGHTWEIGHT_MODEL_PATH = Path("frontend/public/models/shrimp-disease/wssv-lightweight-model.json")
 
 
 def _saturation(rgb: np.ndarray) -> np.ndarray:
@@ -75,6 +76,39 @@ def _features(image_path: Path, image_size: int, grid_size: int) -> np.ndarray:
     return np.asarray(values, dtype=np.float32)
 
 
+def _lightweight_features(image_path: Path) -> np.ndarray:
+    with Image.open(image_path) as image:
+        image = ImageOps.exif_transpose(image).convert("RGB").resize((192, 192))
+
+    arr = np.asarray(image, dtype=np.float32)
+    arr = arr[16:-16, 16:-16, :]
+    brightness = arr.mean(axis=2)
+    sat = _saturation(arr)
+    r, g, b = arr[:, :, 0], arr[:, :, 1], arr[:, :, 2]
+
+    white_spot = (brightness > 205) & (brightness < 245) & (sat < 0.18)
+    very_white = (brightness >= 245) & (sat < 0.12)
+    dark = brightness < 70
+    red = (r > 125) & (r > g * 1.12) & (r > b * 1.12)
+
+    return np.asarray(
+        [
+            white_spot.mean(),
+            very_white.mean(),
+            dark.mean(),
+            red.mean(),
+            brightness.mean() / 255.0,
+            sat.mean(),
+            brightness.std() / 255.0,
+        ],
+        dtype=np.float32,
+    )
+
+
+def _sigmoid(value: float) -> float:
+    return float(1.0 / (1.0 + np.exp(-value)))
+
+
 def _run_tree(tree: dict, features: np.ndarray) -> float:
     node = 0
     while tree["childrenLeft"][node] != -1:
@@ -117,11 +151,78 @@ def _recommendation(disease_name: str) -> str:
     return "No disease detected."
 
 
+def _result_from_probability(wssv_probability: float, threshold: float, metrics: dict | None, model_type: str, visual_evidence: dict | None = None) -> dict:
+    review_threshold = max(0.38, threshold - 0.22)
+
+    if wssv_probability >= threshold:
+        disease_name = "White Spot Syndrome Virus (WSSV)"
+        confidence = wssv_probability * 100
+    elif wssv_probability >= review_threshold:
+        disease_name = "Needs Review - Possible WSSV"
+        confidence = max(wssv_probability, 1 - wssv_probability) * 100
+    else:
+        disease_name = "Healthy"
+        confidence = (1 - wssv_probability) * 100
+
+    return {
+        "disease_name": disease_name,
+        "confidence_score": round(float(confidence), 2),
+        "risk_level": _risk_level(disease_name, confidence),
+        "recommendation": _recommendation(disease_name),
+        "probabilities": {
+            "Healthy": round(float((1 - wssv_probability) * 100), 2),
+            "White Spot Syndrome Virus (WSSV)": round(float(wssv_probability * 100), 2),
+        },
+        "model_type": model_type,
+        "model_metrics": metrics or {},
+        "visual_evidence": visual_evidence or {
+            "review_threshold": round(review_threshold, 4),
+            "positive_threshold": round(threshold, 4),
+        },
+    }
+
+
+def predict_with_lightweight(image_path: Path, model_path: Path = LIGHTWEIGHT_MODEL_PATH) -> dict:
+    if not model_path.exists():
+        raise FileNotFoundError(f"Lightweight fallback model not found: {model_path}")
+
+    model = json.loads(model_path.read_text(encoding="utf-8"))
+    features = _lightweight_features(image_path)
+    mean = np.asarray(model.get("mean", []), dtype=np.float32)
+    std = np.asarray(model.get("std", []), dtype=np.float32)
+    weights = np.asarray(model.get("weights", []), dtype=np.float32)
+
+    if len(features) != len(mean) or len(features) != len(std) or len(features) != len(weights):
+        raise ValueError("Lightweight model feature dimensions do not match the extractor.")
+
+    scaled = (features - mean) / np.where(std == 0, 1, std)
+    wssv_probability = _sigmoid(float(scaled @ weights + float(model.get("bias", 0))))
+    threshold = float(model.get("threshold", 0.6))
+
+    evidence = {
+        name: round(float(value), 4)
+        for name, value in zip(model.get("featureNames", []), features)
+    }
+    evidence["review_threshold"] = round(max(0.38, threshold - 0.22), 4)
+    evidence["positive_threshold"] = round(threshold, 4)
+
+    return _result_from_probability(
+        wssv_probability,
+        threshold,
+        model.get("metrics", {}),
+        "trained_lightweight_logistic_fallback",
+        evidence,
+    )
+
+
 def predict_with_forest(image_path: Path, model_path: Path = FOREST_MODEL_PATH) -> dict:
     if not model_path.exists():
         raise FileNotFoundError(f"Fallback model not found: {model_path}")
 
     model = json.loads(model_path.read_text(encoding="utf-8"))
+    if not model.get("trees"):
+        return predict_with_lightweight(image_path, model_path.with_name("wssv-lightweight-model.json"))
+
     image_size = int(model.get("imageSize", 96))
     grid_size = int(model.get("gridSize", 6))
 
@@ -167,28 +268,12 @@ def predict_with_forest(image_path: Path, model_path: Path = FOREST_MODEL_PATH) 
     else:
         wssv_probability = base_prob
 
-    if wssv_probability >= positive_threshold:
-        disease_name = "White Spot Syndrome Virus (WSSV)"
-        confidence = wssv_probability * 100
-    elif wssv_probability >= review_threshold:
-        disease_name = "Needs Review - Possible WSSV"
-        confidence = max(wssv_probability, 1 - wssv_probability) * 100
-    else:
-        disease_name = "Healthy"
-        confidence = (1 - wssv_probability) * 100
-
-    return {
-        "disease_name": disease_name,
-        "confidence_score": round(float(confidence), 2),
-        "risk_level": _risk_level(disease_name, confidence),
-        "recommendation": _recommendation(disease_name),
-        "probabilities": {
-            "Healthy": round(float((1 - wssv_probability) * 100), 2),
-            "White Spot Syndrome Virus (WSSV)": round(float(wssv_probability * 100), 2),
-        },
-        "model_type": "trained_random_forest_fallback",
-        "model_metrics": model.get("metrics", {}),
-        "visual_evidence": {
+    return _result_from_probability(
+        wssv_probability,
+        positive_threshold,
+        model.get("metrics", {}),
+        "trained_random_forest_fallback",
+        {
             "punctate_spot_ratio": round(punctate_spot_ratio, 4),
             "broad_shell_spot_ratio": round(broad_shell_spot_ratio, 4),
             "uniform_bright_ratio": round(uniform_bright_ratio, 4),
@@ -198,4 +283,4 @@ def predict_with_forest(image_path: Path, model_path: Path = FOREST_MODEL_PATH) 
             "review_threshold": round(review_threshold, 4),
             "positive_threshold": round(positive_threshold, 4),
         },
-    }
+    )

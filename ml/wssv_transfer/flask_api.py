@@ -203,8 +203,10 @@ def predict_endpoint():
         print(f"Probabilities Breakdown: {json.dumps(top_probabilities)}", file=sys.stderr)
         print("=" * 60, file=sys.stderr)
 
-        # Confidence Threshold: 90%
-        if top_confidence >= 90.0:
+        is_needs_review = "Needs Review" in str(top_disease) or top_status == "Uncertain"
+        is_diagnostic_result = top_status in {"Healthy", "Diseased"} and not is_needs_review
+
+        if is_diagnostic_result:
             final_output = {
                 "success": True,
                 "shrimp_detected": True,

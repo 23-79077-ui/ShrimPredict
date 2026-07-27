@@ -21,11 +21,37 @@ if (!$conn) {
     exit;
 }
 
+function ensurePondMonitoringColumns($conn) {
+    $columns = $conn->query('SHOW COLUMNS FROM ponds')->fetchAll(PDO::FETCH_COLUMN);
+    $needed = [
+        'area_sqm' => 'ALTER TABLE ponds ADD COLUMN area_sqm INT DEFAULT NULL',
+        'stocking_date' => 'ALTER TABLE ponds ADD COLUMN stocking_date DATE DEFAULT NULL',
+        'growth_percentage' => 'ALTER TABLE ponds ADD COLUMN growth_percentage DECIMAL(5,2) DEFAULT NULL',
+        'disease_detection' => 'ALTER TABLE ponds ADD COLUMN disease_detection VARCHAR(150) DEFAULT NULL',
+        'disease_confidence' => 'ALTER TABLE ponds ADD COLUMN disease_confidence DECIMAL(5,2) DEFAULT NULL',
+        'harvest_readiness' => 'ALTER TABLE ponds ADD COLUMN harvest_readiness DECIMAL(5,2) DEFAULT NULL',
+        'expected_harvest_date' => 'ALTER TABLE ponds ADD COLUMN expected_harvest_date DATE DEFAULT NULL',
+        'feed_today_kg' => 'ALTER TABLE ponds ADD COLUMN feed_today_kg DECIMAL(10,2) DEFAULT NULL',
+        'total_feed_kg' => 'ALTER TABLE ponds ADD COLUMN total_feed_kg DECIMAL(10,2) DEFAULT NULL',
+        'latest_image' => 'ALTER TABLE ponds ADD COLUMN latest_image VARCHAR(255) DEFAULT NULL',
+        'assigned_caretaker_name' => 'ALTER TABLE ponds ADD COLUMN assigned_caretaker_name VARCHAR(100) DEFAULT NULL',
+    ];
+
+    foreach ($needed as $column => $sql) {
+        if (!in_array($column, $columns, true)) {
+            try {
+                $conn->exec($sql);
+            } catch (Throwable $e) {}
+        }
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     try {
+        ensurePondMonitoringColumns($conn);
         $stmt = $conn->query('
             SELECT p.*, 
-                   COALESCE(u_cp.full_name, u_legacy.full_name, p.assigned_caretaker_name, "Juan Dela Cruz") AS caretaker_name
+                   COALESCE(GROUP_CONCAT(DISTINCT u_cp.full_name ORDER BY u_cp.full_name SEPARATOR ", "), u_legacy.full_name, p.assigned_caretaker_name) AS caretaker_name
             FROM ponds p
             LEFT JOIN caretaker_ponds cp ON p.id = cp.pond_id
             LEFT JOIN users u_cp ON cp.user_id = u_cp.id
@@ -34,6 +60,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             ORDER BY p.id ASC
         ');
         $rawPonds = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $feedStmt = $conn->query('
+            SELECT pond_id,
+                   COALESCE(SUM(CASE WHEN DATE(record_date) = CURDATE() THEN amount_kg ELSE 0 END), 0) AS feed_today_kg,
+                   COALESCE(SUM(amount_kg), 0) AS total_feed_kg,
+                   MAX(record_date) AS latest_feed_date
+            FROM feeding_records
+            GROUP BY pond_id
+        ');
+        $feedByPond = [];
+        foreach ($feedStmt->fetchAll(PDO::FETCH_ASSOC) as $feedRow) {
+            $feedByPond[(int)$feedRow['pond_id']] = $feedRow;
+        }
+
+        $diseaseStmt = $conn->query('
+            SELECT dr.*
+            FROM disease_reports dr
+            INNER JOIN (
+                SELECT pond_name, MAX(id) AS latest_id
+                FROM disease_reports
+                WHERE pond_name IS NOT NULL
+                  AND pond_name <> ""
+                  AND disease_name IS NOT NULL
+                  AND disease_name <> ""
+                  AND disease_name <> "Unknown Disease"
+                GROUP BY pond_name
+            ) latest ON latest.latest_id = dr.id
+        ');
+        $diseaseByPondName = [];
+        foreach ($diseaseStmt->fetchAll(PDO::FETCH_ASSOC) as $diseaseRow) {
+            $diseaseByPondName[strtolower(trim($diseaseRow['pond_name']))] = $diseaseRow;
+        }
 
         $now = new DateTime();
         $totalFeedSum = 0;
@@ -45,19 +103,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
         $ponds = [];
         foreach ($rawPonds as $p) {
-            $status = $p['status'] ?? 'Healthy';
+            $pondId = (int)$p['id'];
+            $feedRow = $feedByPond[$pondId] ?? null;
+            $diseaseRow = $diseaseByPondName[strtolower(trim((string)$p['pond_name']))] ?? null;
+
+            $disease = $diseaseRow['disease_name'] ?? ($p['disease_detection'] ?? null);
+            $diseaseConfidence = $diseaseRow && is_numeric($diseaseRow['confidence_score'])
+                ? (float)$diseaseRow['confidence_score']
+                : (is_numeric($p['disease_confidence'] ?? null) ? (float)$p['disease_confidence'] : 0.0);
+
+            $status = $p['status'] ?? null;
+            if (!$status) {
+                $tempVal = is_numeric($p['temperature'] ?? null) ? (float)$p['temperature'] : null;
+                $phVal = is_numeric($p['ph_level'] ?? null) ? (float)$p['ph_level'] : null;
+                $doVal = is_numeric($p['dissolved_oxygen'] ?? null) ? (float)$p['dissolved_oxygen'] : null;
+                $hasDisease = $disease && !in_array(strtolower($disease), ['healthy', 'none', 'no disease detected'], true);
+                if ($hasDisease || ($doVal !== null && $doVal < 5.0) || ($tempVal !== null && $tempVal >= 33.0)) {
+                    $status = 'Critical';
+                } else if (($phVal !== null && ($phVal < 7.2 || $phVal > 8.4)) || ($doVal !== null && $doVal < 5.8)) {
+                    $status = 'Warning';
+                } else {
+                    $status = 'Healthy';
+                }
+            }
             if ($status === 'Healthy') $healthyCount++;
             else if ($status === 'Warning') $warningCount++;
             else if ($status === 'Critical') $criticalCount++;
 
-            // Calculate age in days
-            $stockingDateStr = !empty($p['stocking_date']) ? $p['stocking_date'] : '2026-04-02';
-            $stockingDt = new DateTime($stockingDateStr);
-            $ageDays = $stockingDt->diff($now)->days;
-            $totalAgeSum += $ageDays;
+            $stockingDateStr = !empty($p['stocking_date']) ? $p['stocking_date'] : null;
+            $ageDays = null;
+            if ($stockingDateStr) {
+                $stockingDt = new DateTime($stockingDateStr);
+                $ageDays = $stockingDt->diff($now)->days;
+                $totalAgeSum += $ageDays;
+            }
 
-            // Readiness status
-            $readiness = floatval($p['harvest_readiness'] ?? 85.0);
+            $readiness = is_numeric($p['harvest_readiness'] ?? null) ? (float)$p['harvest_readiness'] : 0.0;
             $readinessCategory = 'Not Ready';
             if ($readiness >= 100) {
                 $readinessCategory = 'Ready to Harvest';
@@ -65,44 +146,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 $readinessCategory = 'Upcoming';
             }
 
-            // Disease alerts count
-            $disease = $p['disease_detection'] ?? 'Healthy';
-            if (strtolower($disease) !== 'healthy' && strtolower($disease) !== 'none') {
+            $diseaseNormalized = strtolower((string)($disease ?? ''));
+            if ($diseaseNormalized !== '' && $diseaseNormalized !== 'healthy' && $diseaseNormalized !== 'none') {
                 $diseaseAlertsCount++;
             }
 
-            $feedToday = floatval($p['feed_today_kg'] ?? 12.0);
+            $feedToday = $feedRow ? (float)$feedRow['feed_today_kg'] : (is_numeric($p['feed_today_kg'] ?? null) ? (float)$p['feed_today_kg'] : 0.0);
+            $totalFeed = $feedRow ? (float)$feedRow['total_feed_kg'] : (is_numeric($p['total_feed_kg'] ?? null) ? (float)$p['total_feed_kg'] : 0.0);
             $totalFeedSum += $feedToday;
 
             $ponds[] = [
-                'id' => (int)$p['id'],
+                'id' => $pondId,
                 'pond_name' => $p['pond_name'],
                 'location' => $p['location'],
-                'temperature' => floatval($p['temperature']),
-                'ph_level' => floatval($p['ph_level']),
-                'salinity' => floatval($p['salinity']),
-                'dissolved_oxygen' => floatval($p['dissolved_oxygen']),
-                'water_level' => floatval($p['water_level']),
+                'temperature' => is_numeric($p['temperature'] ?? null) ? (float)$p['temperature'] : null,
+                'ph_level' => is_numeric($p['ph_level'] ?? null) ? (float)$p['ph_level'] : null,
+                'salinity' => is_numeric($p['salinity'] ?? null) ? (float)$p['salinity'] : null,
+                'dissolved_oxygen' => is_numeric($p['dissolved_oxygen'] ?? null) ? (float)$p['dissolved_oxygen'] : null,
+                'water_level' => is_numeric($p['water_level'] ?? null) ? (float)$p['water_level'] : null,
                 'status' => $status,
-                'area_sqm' => (int)($p['area_sqm'] ?? 500),
+                'area_sqm' => is_numeric($p['area_sqm'] ?? null) ? (int)$p['area_sqm'] : null,
                 'stocking_date' => $stockingDateStr,
                 'current_age_days' => $ageDays,
-                'growth_percentage' => floatval($p['growth_percentage'] ?? 85.0),
+                'growth_percentage' => is_numeric($p['growth_percentage'] ?? null) ? (float)$p['growth_percentage'] : null,
                 'disease_detection' => $disease,
-                'disease_confidence' => floatval($p['disease_confidence'] ?? 0.0),
+                'disease_confidence' => $diseaseConfidence,
                 'harvest_readiness' => $readiness,
                 'harvest_readiness_status' => $readinessCategory,
-                'expected_harvest_date' => !empty($p['expected_harvest_date']) ? $p['expected_harvest_date'] : '2026-08-10',
+                'expected_harvest_date' => !empty($p['expected_harvest_date']) ? $p['expected_harvest_date'] : null,
                 'feed_today_kg' => $feedToday,
-                'total_feed_kg' => floatval($p['total_feed_kg'] ?? 450.0),
-                'latest_image' => !empty($p['latest_image']) ? $p['latest_image'] : 'uploads/sample.jpg',
+                'total_feed_kg' => $totalFeed,
+                'latest_feed_date' => $feedRow['latest_feed_date'] ?? null,
+                'latest_image' => $diseaseRow['image_path'] ?? (!empty($p['latest_image']) ? $p['latest_image'] : null),
                 'assigned_caretaker_name' => $p['caretaker_name']
             ];
         }
 
         $totalPonds = count($ponds);
         $avgFeedToday = $totalPonds > 0 ? round($totalFeedSum / $totalPonds, 1) : 0;
-        $avgPondAge = $totalPonds > 0 ? round($totalAgeSum / $totalPonds) : 0;
+        $agedPonds = count(array_filter($ponds, fn($pond) => $pond['current_age_days'] !== null));
+        $avgPondAge = $agedPonds > 0 ? round($totalAgeSum / $agedPonds) : 0;
 
         $healthyPct = $totalPonds > 0 ? round(($healthyCount / $totalPonds) * 100) : 0;
         $warningPct = $totalPonds > 0 ? round(($warningCount / $totalPonds) * 100) : 0;
