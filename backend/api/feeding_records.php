@@ -30,6 +30,12 @@ $ensureFeedingTable = function ($conn): void {
             product_code VARCHAR(20) DEFAULT NULL,
             has_vitamin TINYINT(1) DEFAULT 0,
             vitamin_name VARCHAR(100) DEFAULT NULL,
+            shrimp_weight_grams DECIMAL(8,2) DEFAULT NULL,
+            tray_count INT DEFAULT 4,
+            tray_feed_grams DECIMAL(10,2) DEFAULT NULL,
+            total_tray_feed_grams DECIMAL(10,2) DEFAULT NULL,
+            broadcast_feed_kg DECIMAL(10,3) DEFAULT NULL,
+            tray_monitoring_status VARCHAR(50) DEFAULT NULL,
             record_date DATE NOT NULL,
             notes TEXT,
             recorded_by_name VARCHAR(100) DEFAULT NULL,
@@ -53,6 +59,12 @@ $ensureFeedingTable = function ($conn): void {
         ['product_code', "ALTER TABLE feeding_records ADD COLUMN product_code VARCHAR(20) DEFAULT NULL"],
         ['has_vitamin', "ALTER TABLE feeding_records ADD COLUMN has_vitamin TINYINT(1) DEFAULT 0"],
         ['vitamin_name', "ALTER TABLE feeding_records ADD COLUMN vitamin_name VARCHAR(100) DEFAULT NULL"],
+        ['shrimp_weight_grams', "ALTER TABLE feeding_records ADD COLUMN shrimp_weight_grams DECIMAL(8,2) DEFAULT NULL"],
+        ['tray_count', "ALTER TABLE feeding_records ADD COLUMN tray_count INT DEFAULT 4"],
+        ['tray_feed_grams', "ALTER TABLE feeding_records ADD COLUMN tray_feed_grams DECIMAL(10,2) DEFAULT NULL"],
+        ['total_tray_feed_grams', "ALTER TABLE feeding_records ADD COLUMN total_tray_feed_grams DECIMAL(10,2) DEFAULT NULL"],
+        ['broadcast_feed_kg', "ALTER TABLE feeding_records ADD COLUMN broadcast_feed_kg DECIMAL(10,3) DEFAULT NULL"],
+        ['tray_monitoring_status', "ALTER TABLE feeding_records ADD COLUMN tray_monitoring_status VARCHAR(50) DEFAULT NULL"],
         ['record_date', "ALTER TABLE feeding_records ADD COLUMN record_date DATE NOT NULL DEFAULT (CURRENT_DATE)"],
         ['recorded_by_name', "ALTER TABLE feeding_records ADD COLUMN recorded_by_name VARCHAR(100) DEFAULT NULL"],
         ['user_id', "ALTER TABLE feeding_records ADD COLUMN user_id INT DEFAULT NULL"],
@@ -102,6 +114,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $notes = isset($data['notes']) ? trim((string)$data['notes']) : '';
     $recordedByName = isset($data['recorded_by_name']) ? trim((string)$data['recorded_by_name']) : (isset($data['recorded_by']) ? trim((string)$data['recorded_by']) : '');
     $userId = isset($data['user_id']) ? (int)$data['user_id'] : 0;
+    $shrimpWeightGrams = isset($data['shrimp_weight_grams']) && is_numeric($data['shrimp_weight_grams']) ? (float)$data['shrimp_weight_grams'] : null;
+    $trayCount = isset($data['tray_count']) && is_numeric($data['tray_count']) ? max(1, (int)$data['tray_count']) : 4;
+    $trayFeedGrams = isset($data['tray_feed_grams']) && is_numeric($data['tray_feed_grams']) ? (float)$data['tray_feed_grams'] : null;
+    $totalTrayFeedGrams = isset($data['total_tray_feed_grams']) && is_numeric($data['total_tray_feed_grams']) ? (float)$data['total_tray_feed_grams'] : null;
+    $broadcastFeedKg = isset($data['broadcast_feed_kg']) && is_numeric($data['broadcast_feed_kg']) ? (float)$data['broadcast_feed_kg'] : null;
+    $trayMonitoringStatus = isset($data['tray_monitoring_status']) ? trim((string)$data['tray_monitoring_status']) : '';
 
     if (!$pondId || !$amountKg || !$feedingTime || !$productCode) {
         http_response_code(400);
@@ -151,6 +169,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $hasUserId = in_array('user_id', $columns, true);
     $hasCreatedAt = in_array('created_at', $columns, true);
     $hasVitaminName = in_array('vitamin_name', $columns, true);
+    $hasShrimpWeightGrams = in_array('shrimp_weight_grams', $columns, true);
+    $hasTrayCount = in_array('tray_count', $columns, true);
+    $hasTrayFeedGrams = in_array('tray_feed_grams', $columns, true);
+    $hasTotalTrayFeedGrams = in_array('total_tray_feed_grams', $columns, true);
+    $hasBroadcastFeedKg = in_array('broadcast_feed_kg', $columns, true);
+    $hasTrayMonitoringStatus = in_array('tray_monitoring_status', $columns, true);
 
     $insertFields = ['pond_id', 'amount_kg', 'feed_type', 'feeding_time', 'product_code', 'has_vitamin', 'record_date', 'notes'];
     $placeholders = [':pond_id', ':amount_kg', ':feed_type', ':feeding_time', ':product_code', ':has_vitamin', ':record_date', ':notes'];
@@ -169,6 +193,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $insertFields[] = 'vitamin_name';
         $placeholders[] = ':vitamin_name';
         $params[':vitamin_name'] = $vitaminName;
+    }
+
+    if ($hasShrimpWeightGrams) {
+        $insertFields[] = 'shrimp_weight_grams';
+        $placeholders[] = ':shrimp_weight_grams';
+        $params[':shrimp_weight_grams'] = $shrimpWeightGrams;
+    }
+
+    if ($hasTrayCount) {
+        $insertFields[] = 'tray_count';
+        $placeholders[] = ':tray_count';
+        $params[':tray_count'] = $trayCount;
+    }
+
+    if ($hasTrayFeedGrams) {
+        $insertFields[] = 'tray_feed_grams';
+        $placeholders[] = ':tray_feed_grams';
+        $params[':tray_feed_grams'] = $trayFeedGrams;
+    }
+
+    if ($hasTotalTrayFeedGrams) {
+        $insertFields[] = 'total_tray_feed_grams';
+        $placeholders[] = ':total_tray_feed_grams';
+        $params[':total_tray_feed_grams'] = $totalTrayFeedGrams;
+    }
+
+    if ($hasBroadcastFeedKg) {
+        $insertFields[] = 'broadcast_feed_kg';
+        $placeholders[] = ':broadcast_feed_kg';
+        $params[':broadcast_feed_kg'] = $broadcastFeedKg;
+    }
+
+    if ($hasTrayMonitoringStatus) {
+        $insertFields[] = 'tray_monitoring_status';
+        $placeholders[] = ':tray_monitoring_status';
+        $params[':tray_monitoring_status'] = $trayMonitoringStatus;
     }
 
     if ($hasRecordedByName) {
