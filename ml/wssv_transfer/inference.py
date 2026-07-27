@@ -10,13 +10,17 @@ from PIL import Image, ImageOps
 
 
 DEFAULT_MODEL_DIR = Path("ml/artifacts/wssv_transfer/efficientnetb0")
+_MODEL_CACHE: dict[str, tf.keras.Model] = {}
+_LABEL_CACHE: dict[str, list[str]] = {}
 
 
 def load_image(path: Path, image_size: int) -> np.ndarray:
     with Image.open(path) as image:
         image = ImageOps.exif_transpose(image).convert("RGB")
         image = image.resize((image_size, image_size), Image.Resampling.BILINEAR)
-    return np.expand_dims(np.asarray(image, dtype=np.float32), axis=0)
+    image_array = np.asarray(image, dtype=np.float32)
+    image_array = tf.keras.applications.efficientnet.preprocess_input(image_array)
+    return np.expand_dims(image_array, axis=0)
 
 
 def risk_level(disease_name: str, confidence: float) -> str:
@@ -46,8 +50,14 @@ def predict(model_dir: Path, image_path: Path, image_size: int = 224) -> dict:
     labels_path = model_dir / "labels.json"
     if not model_path.exists():
         raise FileNotFoundError(f"Model not found: {model_path}")
-    labels = json.loads(labels_path.read_text(encoding="utf-8"))
-    model = tf.keras.models.load_model(model_path)
+    cache_key = str(model_path.resolve())
+    labels_key = str(labels_path.resolve())
+    if labels_key not in _LABEL_CACHE:
+        _LABEL_CACHE[labels_key] = json.loads(labels_path.read_text(encoding="utf-8"))
+    if cache_key not in _MODEL_CACHE:
+        _MODEL_CACHE[cache_key] = tf.keras.models.load_model(model_path)
+    labels = _LABEL_CACHE[labels_key]
+    model = _MODEL_CACHE[cache_key]
     probabilities = model.predict(load_image(image_path, image_size), verbose=0)[0]
     index = int(np.argmax(probabilities))
     confidence = float(probabilities[index] * 100)

@@ -10,6 +10,7 @@ REPO_ROOT = SCRIPT_DIR.parents[1]
 PREDICTOR_SCRIPT = SCRIPT_DIR / "desktop_shrimp_predictor.js"
 MODEL_DIR = SCRIPT_DIR.parent / "artifacts" / "desktop_shrimp"
 NODE_MODULE_DIRS = [
+    Path("C:/Users/HP/Desktop/Shrimp/Shrimp/server/node_modules"),
     SCRIPT_DIR / "node_modules",
     REPO_ROOT / "node_modules",
     REPO_ROOT / "frontend" / "node_modules",
@@ -37,7 +38,7 @@ def predict_desktop_shrimp(image_path: Path) -> dict:
         raise FileNotFoundError(f"Desktop/Shrimp model or predictor script not found at {MODEL_DIR}")
 
     cmd = ["node", str(PREDICTOR_SCRIPT), str(image_path)]
-    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=20, check=False)
 
     if result.returncode != 0:
         err_msg = result.stderr.strip() or result.stdout.strip() or "Failed to run Desktop/Shrimp model predictor."
