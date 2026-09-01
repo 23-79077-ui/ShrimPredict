@@ -1,13 +1,17 @@
 from __future__ import annotations
 
+import io
 import json
 import os
 import sys
 import tempfile
 from pathlib import Path
 
+import cv2
+import numpy as np
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from PIL import Image
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parents[1]
@@ -29,8 +33,185 @@ BLACK_GILL_REVIEW_CONFIDENCE = float(os.getenv("SHRIMP_BLACK_GILL_REVIEW_CONFIDE
 BLACK_GILL_TRIGGER_CONFIDENCE = float(os.getenv("SHRIMP_BLACK_GILL_TRIGGER_CONFIDENCE", "86"))
 BLACK_GILL_ACCEPT_CONFIDENCE = float(os.getenv("SHRIMP_BLACK_GILL_ACCEPT_CONFIDENCE", "60"))
 
+UNIFIED_MODEL_DIR = REPO_ROOT / "ml" / "artifacts"
+_unified_model = None
+_unified_labels = None
+_unified_available = False
+
+
+def _decode_image(image_bytes):
+    np_arr = np.frombuffer(image_bytes, np.uint8)
+    return cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+
+
+def _skin_mask(image):
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    lower_skin = np.array([0, 20, 70], dtype=np.uint8)
+    upper_skin = np.array([20, 255, 255], dtype=np.uint8)
+    return cv2.inRange(hsv, lower_skin, upper_skin)
+
+
+def _has_human_face(image_bytes):
+    image = _decode_image(image_bytes)
+    if image is None:
+        return False
+
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    cascades = [
+        cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml"),
+        cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_profileface.xml"),
+    ]
+
+    for cascade in cascades:
+        if cascade.empty():
+            continue
+        faces = cascade.detectMultiScale(
+            gray,
+            scaleFactor=1.1,
+            minNeighbors=5,
+            minSize=(30, 30),
+        )
+        if len(faces) > 0:
+            return True
+
+    return False
+
+
+def _has_human_skin_tone(image_bytes, min_skin_ratio=0.12):
+    image = _decode_image(image_bytes)
+    if image is None:
+        return False
+
+    mask = _skin_mask(image)
+    skin_pixels = np.sum(mask > 0)
+    total_pixels = image.shape[0] * image.shape[1]
+    skin_ratio = skin_pixels / total_pixels if total_pixels else 0
+    return skin_ratio >= min_skin_ratio
+
+
+def is_human(image_bytes):
+    return _has_human_face(image_bytes) or _has_human_skin_tone(image_bytes)
+
+
+def is_human_face(image_bytes):
+    return is_human(image_bytes)
+
+
+def is_blue_background(image_bytes, min_blue_ratio=0.25):
+    """Reject scans that do not have a sufficiently blue background."""
+    image = _decode_image(image_bytes)
+    if image is None:
+        return False
+
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    lower_blue = np.array([90, 50, 50], dtype=np.uint8)
+    upper_blue = np.array([135, 255, 255], dtype=np.uint8)
+    mask = cv2.inRange(hsv, lower_blue, upper_blue)
+
+    blue_pixels = np.sum(mask > 0)
+    total_pixels = image.shape[0] * image.shape[1]
+    blue_ratio = blue_pixels / total_pixels if total_pixels else 0
+    return blue_ratio >= min_blue_ratio
+
+
+def _reject_invalid_scan(message: str):
+    return jsonify({
+        "success": False,
+        "shrimp_detected": False,
+        "error": message,
+    }), 400
+
+
+def _run_image_guardrails(image_bytes):
+    if not is_blue_background(image_bytes):
+        return _reject_invalid_scan("Invalid background. Place the shrimp on a solid matte blue surface.")
+    if is_human(image_bytes):
+        return _reject_invalid_scan("Human detected. Please capture only the shrimp.")
+    return None
+
+
+def _try_load_unified_model():
+    """Attempt to load the unified Keras model. Fails silently if TF is broken or model is missing."""
+    global _unified_model, _unified_labels, _unified_available
+
+    model_path = UNIFIED_MODEL_DIR / "efficientnet_v2_disease.keras"
+    if not model_path.exists():
+        model_path = UNIFIED_MODEL_DIR / "unified_model" / "unified_disease_model.keras"
+
+    labels_path = UNIFIED_MODEL_DIR / "efficientnet_v2_disease_labels.json"
+    if not labels_path.exists():
+        labels_path = UNIFIED_MODEL_DIR / "labels.json"
+    if not labels_path.exists():
+        labels_path = UNIFIED_MODEL_DIR / "wssv_transfer" / "efficientnetb0" / "labels.json"
+
+    if not model_path.exists() or not labels_path.exists():
+        print("[UNIFIED] Model or labels file not found, skipping loading.", file=sys.stderr)
+        return
+
+    try:
+        import tensorflow as tf
+
+        _unified_model = tf.keras.models.load_model(str(model_path))
+        with open(labels_path, "r", encoding="utf-8") as f:
+            _unified_labels = json.load(f)
+        _unified_available = True
+        print(f"[UNIFIED] Loaded model {model_path.name} with labels: {_unified_labels}", file=sys.stderr)
+    except Exception as exc:
+        print(f"[UNIFIED] Could not load model: {exc}", file=sys.stderr)
+
+
+_try_load_unified_model()
+
 app = Flask(__name__)
 CORS(app)
+
+def _predict_unified(image_path: Path) -> dict:
+    """Run prediction using the unified Keras model."""
+    import tensorflow as tf
+    from PIL import Image
+    import numpy as np
+
+    with Image.open(image_path) as img:
+        img = img.convert("RGB").resize((224, 224))
+    img_array = tf.keras.preprocessing.image.img_to_array(img)
+    img_array = tf.expand_dims(img_array, 0)
+
+    predictions = _unified_model.predict(img_array, verbose=0)
+    score = predictions[0]
+    top_idx = int(np.argmax(score))
+    top_class = _unified_labels[top_idx]
+    confidence = float(score[top_idx]) * 100
+    probabilities = {_unified_labels[i]: round(float(score[i]) * 100, 2) for i in range(len(_unified_labels))}
+
+    if "healthy" in top_class.lower():
+        status = "Healthy"
+        risk = "Low"
+        recommendation = "Maintain current feeding and water quality."
+        description = f"Healthy shrimp detected with {confidence:.1f}% confidence."
+    elif "white_spot" in top_class.lower() or "wssv" in top_class.lower():
+        status = "Diseased"
+        risk = "High"
+        recommendation = "Increase water quality checks and isolate affected pond immediately."
+        description = f"White Spot Syndrome Virus (WSSV) detected with {confidence:.1f}% confidence."
+    else:
+        status = "Diseased"
+        risk = "Medium"
+        recommendation = "Adjust water parameters and monitor shrimp behavior closely."
+        description = f"Black Gill Disease detected with {confidence:.1f}% confidence."
+
+    return {
+        "prediction": top_class.replace("_", " "),
+        "disease_name": top_class.replace("_", " "),
+        "confidence": round(confidence, 2),
+        "confidence_score": round(confidence, 2),
+        "status": status,
+        "risk_level": risk,
+        "model_used": "Unified 3-Class EfficientNetB0",
+        "description": description,
+        "recommendation": recommendation,
+        "probabilities": probabilities,
+    }
+# --- End unified model section ---
 
 
 def _confidence(result: dict) -> float:
@@ -122,10 +303,16 @@ def _choose_final_result(
     desktop_result: dict | None,
     black_gill_result: dict | None,
     forest_result: dict | None,
+    unified_result: dict | None = None,
 ) -> tuple[dict, bool, str]:
     desktop = _normalized_result(dict(desktop_result)) if _valid_prediction(desktop_result) else None
     black_gill = _normalized_result(dict(black_gill_result)) if _valid_prediction(black_gill_result) else None
     forest = _normalized_result(dict(forest_result)) if _valid_prediction(forest_result) else None
+    unified = _normalized_result(dict(unified_result)) if _valid_prediction(unified_result) else None
+
+    # If unified model produced a high-confidence result, prefer it
+    if unified and _confidence(unified) >= MIN_FINAL_CONFIDENCE:
+        return unified, False, "Unified 3-class EfficientNetB0 model selected as primary classifier."
 
     if _is_black_gill(black_gill) and _confidence(black_gill) >= BLACK_GILL_ACCEPT_CONFIDENCE:
         return black_gill, _confidence(black_gill) < MIN_FINAL_CONFIDENCE, "Black Gill specialist detected Black Gill above accept threshold."
@@ -141,6 +328,9 @@ def _choose_final_result(
             }
         force_uncertain = _confidence(winner) < (MIN_HEALTHY_CONFIDENCE if _is_healthy(winner) else MIN_FINAL_CONFIDENCE)
         return winner, force_uncertain, "Desktop three-class model selected as primary classifier."
+
+    if unified:
+        return unified, _confidence(unified) < MIN_FINAL_CONFIDENCE, "Unified model used as fallback."
 
     if forest:
         return forest, _is_uncertain(forest) or _confidence(forest) < MIN_FINAL_CONFIDENCE, "Forest used only because no valid Desktop prediction was available."
@@ -158,7 +348,6 @@ def _choose_final_result(
         "model_used": "No Valid Disease Model",
     }, True, "No model returned a valid diagnostic prediction."
 
-
 @app.get("/health")
 def health():
     keras_ready = (MODEL_DIR / "best_model.keras").exists() and (MODEL_DIR / "labels.json").exists()
@@ -166,13 +355,14 @@ def health():
     desktop_ready = is_desktop_model_ready()
     return jsonify({
         "success": True,
-        "model_ready": forest_ready or desktop_ready,
+        "model_ready": forest_ready or desktop_ready or _unified_available,
         "shrimp_detector_ready": True,
         "quality_validator_ready": True,
         "keras_ready": keras_ready,
         "forest_fallback_ready": forest_ready,
         "desktop_shrimp_model_ready": desktop_ready,
         "black_gill_specialist_ready": True,
+        "unified_model_ready": _unified_available,
         "confidence_thresholds": {
             "minimum_final_confidence": MIN_FINAL_CONFIDENCE,
             "minimum_healthy_confidence": MIN_HEALTHY_CONFIDENCE,
@@ -187,9 +377,14 @@ def health():
 
 
 @app.post("/predict")
+@app.post("/scan")
+@app.post("/pipeline")
+@app.post("/api/pipeline")
+@app.post("/api/process")
+@app.post("/api/scan")
 def predict_endpoint():
     if "image" not in request.files:
-        return jsonify({"success": False, "message": "No image uploaded."}), 400
+        return jsonify({"success": False, "shrimp_detected": False, "message": "No image uploaded."}), 400
 
     uploaded = request.files["image"]
     suffix = Path(uploaded.filename or "scan.jpg").suffix or ".jpg"
@@ -198,6 +393,11 @@ def predict_endpoint():
         uploaded.save(temp_file)
 
     try:
+        image_bytes = uploaded.read()
+        guardrail_response = _run_image_guardrails(image_bytes)
+        if guardrail_response is not None:
+            return guardrail_response
+
         # ==========================================
         # STAGE 1: Shrimp Detection Model (Shrimp vs. Not Shrimp)
         # ==========================================
@@ -247,7 +447,7 @@ def predict_endpoint():
         forest_ready = FOREST_MODEL_PATH.exists()
         desktop_ready = is_desktop_model_ready()
 
-        if not forest_ready and not desktop_ready:
+        if not forest_ready and not desktop_ready and not _unified_available:
             missing_models = []
             desktop_model_dir = str(Path(__file__).parent.parent / "artifacts" / "desktop_shrimp")
             missing_models.append({
@@ -287,6 +487,17 @@ def predict_endpoint():
         desktop_res = None
         forest_res = None
         black_gill_res = None
+        unified_res = None
+
+        # 0. Unified 3-Class EfficientNetB0 (preferred if available)
+        if _unified_available:
+            try:
+                unified_res = _predict_unified(temp_path)
+                unified_res = _normalized_result(unified_res)
+                model_results.append(unified_res)
+            except Exception as e:
+                print(f"Unified model prediction error: {e}", file=sys.stderr)
+                model_results.append(_model_error("Unified 3-Class EfficientNetB0", e))
 
         # 1. Desktop/Shrimp Trained Model (primary three-class disease classifier)
         if desktop_ready:
@@ -335,7 +546,7 @@ def predict_endpoint():
                 print(f"Black Gill specialist prediction error: {e}", file=sys.stderr)
                 model_results.append(_model_error("Black Gill Specialist Model", e))
 
-        winner, force_uncertain, selection_reason = _choose_final_result(desktop_res, black_gill_res, forest_res)
+        winner, force_uncertain, selection_reason = _choose_final_result(desktop_res, black_gill_res, forest_res, unified_res)
 
         top_confidence = round(float(winner.get("confidence_score", winner.get("confidence", 0))), 2)
         top_disease = winner.get("prediction", winner.get("disease_name", "Unknown"))
@@ -359,6 +570,10 @@ def predict_endpoint():
             "black_gill_prediction": black_gill_res.get("prediction") if black_gill_res else None,
             "black_gill_confidence": round(_confidence(black_gill_res), 2) if black_gill_res else 0,
             "black_gill_ran": bool(black_gill_res),
+            "unified_prediction": unified_res.get("prediction") if unified_res else None,
+            "unified_confidence": round(_confidence(unified_res), 2) if unified_res else 0,
+            "unified_ran": bool(unified_res),
+            "unified_available": _unified_available,
             "final_selected_prediction": top_disease,
             "final_selected_confidence": top_confidence,
             "selection_reason": selection_reason,
@@ -368,6 +583,7 @@ def predict_endpoint():
         # Debug Logging
         print("=" * 60, file=sys.stderr)
         print(f"[AI PIPELINE DEBUG LOG]", file=sys.stderr)
+        print(f"Unified Prediction: {pipeline_debug['unified_prediction']} ({pipeline_debug['unified_confidence']}%)", file=sys.stderr)
         print(f"Desktop Prediction: {pipeline_debug['desktop_prediction']} ({pipeline_debug['desktop_confidence']}%)", file=sys.stderr)
         print(f"Forest Prediction: {pipeline_debug['forest_prediction']} ({pipeline_debug['forest_confidence']}%)", file=sys.stderr)
         print(f"Black Gill Prediction: {pipeline_debug['black_gill_prediction']} ({pipeline_debug['black_gill_confidence']}%)", file=sys.stderr)
