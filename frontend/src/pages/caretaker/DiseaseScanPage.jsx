@@ -22,6 +22,44 @@ export default function DiseaseScanPage() {
 
   const [historySearch, setHistorySearch] = useState('');
   const [historyStatusFilter, setHistoryStatusFilter] = useState('all');
+  const [previewCount, setPreviewCount] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+
+  const refreshShrimpPreview = useCallback(async (file) => {
+    if (!file) {
+      setPreviewCount(null);
+      return;
+    }
+
+    try {
+      setPreviewLoading(true);
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const response = await api.post('/shrimp_count.php', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      const detected = Boolean(response?.data?.shrimp_detected || response?.data?.valid_shrimp_present || response?.data?.status === 'success');
+      const parsedCount = Number(response?.data?.shrimp_count);
+      const count = detected ? Math.max(1, Number.isFinite(parsedCount) ? parsedCount : 1) : 0;
+      setPreviewCount({
+        count,
+        detected,
+        status: detected ? 'Ready for Scan' : 'No shrimp detected',
+        message: response?.data?.message || 'Preview result unavailable.',
+      });
+    } catch (error) {
+      setPreviewCount({
+        count: 0,
+        detected: false,
+        status: 'Preview unavailable',
+        message: error?.response?.data?.message || 'Unable to count shrimp in this image.',
+      });
+    } finally {
+      setPreviewLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     const fetchPonds = async () => {
@@ -117,13 +155,44 @@ export default function DiseaseScanPage() {
     setImage(URL.createObjectURL(file));
     setImageSource('Uploaded image');
     setResult(null);
+    refreshShrimpPreview(file);
   };
+
+  const handleDroppedImage = useCallback(async (file) => {
+    if (!file) return;
+    setImageFile(file);
+    setImage(URL.createObjectURL(file));
+    setImageSource('Dropped image');
+    setResult(null);
+    await refreshShrimpPreview(file);
+  }, [refreshShrimpPreview]);
+
+  const handleDrop = useCallback(async (event) => {
+    event.preventDefault();
+    const file = event.dataTransfer?.files?.[0];
+    if (file) {
+      await handleDroppedImage(file);
+    }
+  }, [handleDroppedImage]);
+
+  const handleDragOver = useCallback((event) => {
+    event.preventDefault();
+  }, []);
+
+  useEffect(() => {
+    if (!imageFile) {
+      setPreviewCount(null);
+      return;
+    }
+    refreshShrimpPreview(imageFile);
+  }, [imageFile, refreshShrimpPreview]);
 
   const clearSelectedImage = () => {
     setImage(null);
     setImageFile(null);
     setImageSource('');
     setResult(null);
+    setPreviewCount(null);
   };
 
   const dataUrlToFile = async (dataUrl) => {
@@ -332,6 +401,8 @@ export default function DiseaseScanPage() {
               <div
                 className="disease-camera-frame border border-secondary border-opacity-25 rounded-4 overflow-hidden mb-3 position-relative bg-dark d-flex align-items-center justify-content-center"
                 style={{ minHeight: 320, maxHeight: 420 }}
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
               >
                 {image ? (
                   <div className="w-100 h-100 position-relative d-flex align-items-center justify-content-center bg-black">
@@ -339,6 +410,14 @@ export default function DiseaseScanPage() {
                     <div className="position-absolute top-0 start-0 end-0 p-3 bg-dark bg-opacity-50 text-white d-flex align-items-center">
                       <span className="extra-small fw-bold d-flex align-items-center gap-1.5">
                         <FaImage className="text-success" /> {imageSource || 'Selected Image'}
+                      </span>
+                    </div>
+                    <div className="position-absolute bottom-0 start-0 end-0 p-3 bg-dark bg-opacity-60 text-white d-flex justify-content-between align-items-center gap-2">
+                      <span className="small fw-semibold">
+                        {previewLoading ? 'Counting shrimp…' : 'Detected Shrimp'}
+                      </span>
+                      <span className={`badge ${previewCount?.detected ? 'bg-success' : 'bg-warning text-dark'}`}>
+                        {previewLoading ? 'Checking…' : (previewCount?.status || 'No shrimp detected')}
                       </span>
                     </div>
                   </div>

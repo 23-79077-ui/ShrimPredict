@@ -21,7 +21,7 @@ if str(SCRIPT_DIR) not in sys.path:
 from black_gill_specialist import predict_black_gill
 from desktop_shrimp import is_desktop_model_ready, predict_desktop_shrimp
 from quality_validator import validate_image_quality
-from shrimp_detector import detect_shrimp
+from shrimp_detector import count_shrimp_in_image, detect_shrimp
 
 MODEL_DIR = Path(os.getenv("SHRIMP_WSSV_MODEL_DIR", REPO_ROOT / "ml" / "artifacts" / "wssv_transfer" / "efficientnetb0"))
 IMAGE_SIZE = int(os.getenv("SHRIMP_WSSV_IMAGE_SIZE", "224"))
@@ -40,8 +40,21 @@ _unified_available = False
 
 
 def _decode_image(image_bytes):
-    np_arr = np.frombuffer(image_bytes, np.uint8)
-    return cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+    if image_bytes is None or len(image_bytes) == 0:
+        return None
+
+    try:
+        np_arr = np.frombuffer(image_bytes, np.uint8)
+    except ValueError:
+        return None
+
+    if np_arr.size == 0:
+        return None
+
+    image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+    if image is None or image.size == 0:
+        return None
+    return image
 
 
 def _skin_mask(image):
@@ -123,8 +136,9 @@ def _reject_invalid_scan(message: str):
 
 
 def _run_image_guardrails(image_bytes):
-    if not is_blue_background(image_bytes):
-        return _reject_invalid_scan("Invalid background. Place the shrimp on a solid matte blue surface.")
+    # Background check intentionally disabled: users may scan shrimp images taken
+    # under different lighting/background conditions while still keeping the rest of
+    # the quality and content validation in place.
     if is_human(image_bytes):
         return _reject_invalid_scan("Human detected. Please capture only the shrimp.")
     return None
@@ -376,6 +390,40 @@ def health():
     })
 
 
+@app.post("/count")
+@app.post("/detect-preview")
+def count_preview_endpoint():
+    uploaded = request.files.get("image") or request.files.get("file")
+    if not uploaded:
+        return jsonify({"success": False, "shrimp_detected": False, "shrimp_count": 0, "valid_shrimp_present": False, "message": "No image uploaded."}), 400
+
+    suffix = Path(uploaded.filename or "preview.jpg").suffix or ".jpg"
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+        temp_path = Path(temp_file.name)
+        uploaded.save(temp_file)
+
+    try:
+        result = count_shrimp_in_image(temp_path)
+        response = {
+            "success": True,
+            "status": "success" if result.get("shrimp_detected", False) else "no_shrimp",
+            "shrimp_detected": result.get("shrimp_detected", False),
+            "shrimp_count": int(result.get("shrimp_count", 0)),
+            "valid_shrimp_present": bool(result.get("valid_shrimp_present", False)),
+            "status": result.get("status", "No shrimp detected"),
+            "message": result.get("message", "No shrimp were detected in the uploaded photo."),
+            "confidence": result.get("confidence", 0.0),
+        }
+        return jsonify(response)
+    except Exception as exc:
+        return jsonify({"success": False, "shrimp_detected": False, "shrimp_count": 0, "valid_shrimp_present": False, "message": str(exc)}), 500
+    finally:
+        try:
+            temp_path.unlink(missing_ok=True)
+        except Exception:
+            pass
+
+
 @app.post("/predict")
 @app.post("/scan")
 @app.post("/pipeline")
@@ -383,20 +431,19 @@ def health():
 @app.post("/api/process")
 @app.post("/api/scan")
 def predict_endpoint():
-    if "image" not in request.files:
+    # Support both 'image' and 'file' payload keys
+    uploaded = request.files.get("image") or request.files.get("file")
+    if not uploaded:
         return jsonify({"success": False, "shrimp_detected": False, "message": "No image uploaded."}), 400
 
-    uploaded = request.files["image"]
     suffix = Path(uploaded.filename or "scan.jpg").suffix or ".jpg"
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
         temp_path = Path(temp_file.name)
         uploaded.save(temp_file)
 
     try:
-        image_bytes = uploaded.read()
-        guardrail_response = _run_image_guardrails(image_bytes)
-        if guardrail_response is not None:
-            return guardrail_response
+        # Read the saved bytes from disk rather than the exhausted upload stream
+        image_bytes = temp_path.read_bytes()
 
         # ==========================================
         # STAGE 1: Shrimp Detection Model (Shrimp vs. Not Shrimp)

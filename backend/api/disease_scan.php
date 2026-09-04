@@ -15,6 +15,45 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+function callShrimpCountApi($imagePath) {
+    $aiUrl = getenv('SHRIMP_AI_COUNT_URL') ?: 'http://127.0.0.1:5001/count';
+
+    if (!function_exists('curl_init')) {
+        return ['success' => false, 'message' => 'PHP cURL is required to call the shrimp preview API.'];
+    }
+
+    $curl = curl_init($aiUrl);
+    $file = new CURLFile(
+        $imagePath,
+        mime_content_type($imagePath) ?: 'image/jpeg',
+        basename($imagePath)
+    );
+
+    curl_setopt_array($curl, [
+        CURLOPT_POST => true,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 60,
+        CURLOPT_POSTFIELDS => ['image' => $file],
+    ]);
+
+    $response = curl_exec($curl);
+    $curlError = curl_error($curl);
+    $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+    curl_close($curl);
+
+    if ($response === false || $httpCode >= 400) {
+        $decoded = $response ? json_decode($response, true) : null;
+        return [
+            'success' => false,
+            'message' => $decoded['message'] ?? ($curlError ?: 'Shrimp count preview is unavailable.'),
+            'http_code' => $httpCode,
+        ];
+    }
+
+    $decoded = json_decode($response, true);
+    return $decoded ?: ['success' => false, 'message' => 'Invalid shrimp count response.'];
+}
+
 if (!isset($_FILES['image']) || !is_uploaded_file($_FILES['image']['tmp_name'])) {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'Please upload or capture a shrimp image.']);
@@ -73,6 +112,14 @@ $safeName = preg_replace('/[^A-Za-z0-9_.-]/', '_', basename($_FILES['image']['na
 $targetName = time() . '_' . bin2hex(random_bytes(4)) . '_' . $safeName;
 $targetPath = $uploadDir . $targetName;
 $imagePath = 'uploads/disease_scans/' . $targetName;
+
+$previewResult = callShrimpCountApi($_FILES['image']['tmp_name']);
+
+if (!$previewResult['success']) {
+    // Allow scan flow to continue even if preview detection is slightly unavailable,
+    // but include the preview error in the response for the UI to display.
+    $previewResult['warning'] = $previewResult['message'];
+}
 
 if (!move_uploaded_file($_FILES['image']['tmp_name'], $targetPath)) {
     http_response_code(500);
@@ -161,6 +208,7 @@ createNotification($conn, 'Disease Scan Submitted', $notifMsg, $caretakerName, '
 echo json_encode([
     'success' => true,
     'message' => 'Disease scan completed and saved.',
+    'preview' => $previewResult,
     'prediction' => $prediction,
     'report' => [
         'id' => $reportId,
