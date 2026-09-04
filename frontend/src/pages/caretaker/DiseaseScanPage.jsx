@@ -469,10 +469,12 @@ export default function DiseaseScanPage() {
                   </button>
                 </div>
                 <button
-                  className="btn btn-primary rounded-pill px-4 py-1.5 fw-bold text-nowrap d-inline-flex align-items-center justify-content-center gap-1.5 shadow-xs flex-shrink-0"
+                  className={`btn btn-primary rounded-pill px-4 py-1.5 fw-bold text-nowrap d-inline-flex align-items-center justify-content-center gap-1.5 shadow-xs flex-shrink-0 ${
+                    (!image || previewLoading || !previewCount?.detected) ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
                   style={{ height: 38, minWidth: 95, fontSize: '0.8rem' }}
                   onClick={handleScan}
-                  disabled={!image || scanning}
+                  disabled={!image || scanning || previewLoading || !previewCount?.detected}
                 >
                   {scanning ? <FaSpinner className="disease-spin" size={13} /> : <FaQrcode size={13} />}
                   {scanning ? 'Scanning...' : 'Scan'}
