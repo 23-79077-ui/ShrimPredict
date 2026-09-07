@@ -11,11 +11,10 @@ import {
   FaUserCog,
   FaEye,
   FaEyeSlash,
-  FaCheckCircle,
-  FaWater,
-  FaMicroscope,
-  FaChartLine,
   FaRobot,
+  FaCheck,
+  FaLaptop,
+  FaMobileAlt,
 } from 'react-icons/fa';
 
 export default function LoginPage() {
@@ -78,73 +77,109 @@ export default function LoginPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="card border-0 shadow-lg rounded-4 overflow-hidden max-w-1000 w-100"
-        style={{ maxWidth: '1020px' }}
+        className="card border-0 shadow-lg rounded-4 overflow-hidden w-100"
+        style={{ maxWidth: '1100px' }}
       >
         <div className="row g-0">
-          {/* Hero Left Panel (Deep Navy Ocean Theme matching Landing Page) */}
+          {/* Left Panel: Deep Ocean & Shrimp Coral Aesthetic */}
           <div
-            className="col-lg-6 p-4 p-md-5 d-flex flex-column justify-content-between text-white"
-            style={{ background: 'linear-gradient(135deg, #0B2C5F 0%, #10356C 50%, #143F74 100%)' }}
+            className="col-lg-6 p-4 p-md-5 d-flex flex-column justify-content-between text-white position-relative overflow-hidden"
+            style={{
+              background: 'radial-gradient(circle at 85% 15%, rgba(255, 107, 53, 0.22) 0%, transparent 45%), radial-gradient(circle at 15% 85%, rgba(6, 182, 212, 0.18) 0%, transparent 45%), linear-gradient(135deg, #071733 0%, #0b2c5f 55%, #0e3d7d 100%)',
+            }}
           >
-            <div>
+            <div className="position-relative z-1">
               {/* Back to Home Button */}
               <Link
                 to="/"
-                className="btn btn-sm btn-outline-light rounded-pill px-3 py-2 d-inline-flex align-items-center gap-2 fw-semibold mb-4 text-white text-decoration-none"
+                className="btn btn-sm rounded-pill px-3 py-2 d-inline-flex align-items-center gap-2 fw-semibold mb-4 text-white text-decoration-none border-white-30"
+                style={{ backgroundColor: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(10px)' }}
               >
                 <FaArrowLeft /> Back to Home
               </Link>
 
-              {/* Brand Logo */}
-              <div className="d-flex align-items-center gap-2 mb-3">
-                <span className="bg-primary text-white rounded-3 px-2 py-1 fw-bold fs-5 border border-light">SP</span>
-                <span className="fs-4 fw-bold text-white">ShrimPredict</span>
+              <div className="text-center mb-3">
+                {/* Centered Large Intense Glowing Logo */}
+                <div className="mb-2 d-flex justify-content-center">
+                  <img
+                    src="/shrimp_predict_logo.png"
+                    alt="ShrimPredict Official Logo"
+                    style={{
+                      height: '170px',
+                      width: 'auto',
+                      objectFit: 'contain',
+                    }}
+                    className="logo-glow-intense"
+                  />
+                </div>
               </div>
 
-              <span className="badge bg-warning text-dark px-3 py-2 rounded-pill fw-bold text-uppercase mb-3 d-inline-flex align-items-center gap-2">
-                <FaRobot /> AI Aquaculture SaaS
-              </span>
-
-              <h2 className="display-6 fw-extrabold text-white mb-3">
-                Smart Farm Control & Disease Intelligence
+              {/* THESIS TITLE */}
+              <h2 className="display-6 fw-extrabold text-white mb-4 lh-sm fs-4 text-center">
+                <span className="text-gradient-shrimp">ShrimPredict:</span> Shrimp Feed Monitoring and Disease Detection System{' '}
+                <span className="d-block fs-6 fw-bold text-gradient-cyan mt-1">
+                  Utilizing Image Processing
+                </span>
               </h2>
 
-              <p className="text-white-80 leading-relaxed mb-4">
-                Sign in to manage pond parameters, run caretaker WSSV disease scans, and view real-time aquaculture analytics.
-              </p>
-
-              {/* Feature Benchmarks */}
-              <div className="d-flex flex-column gap-3 mb-4">
-                <div className="d-flex align-items-start gap-3 p-2 rounded-3" style={{ background: 'rgba(255, 255, 255, 0.08)' }}>
-                  <div className="p-2 rounded-3 bg-white text-primary fs-5 mt-1"><FaMicroscope /></div>
-                  <div>
-                    <h6 className="fw-bold text-white mb-1">99.45% WSSV Accuracy</h6>
-                    <span className="text-white-75 small">Trained on 1,802 real shrimp dataset images</span>
-                  </div>
+              {/* ROLE-BASED CAPABILITIES */}
+              <div className="mb-2">
+                <div className="extra-small fw-bold text-uppercase tracking-wider text-shrimp-orange mb-3 d-flex align-items-center gap-2">
+                  <span className="p-1 rounded-circle bg-shrimp-soft"></span> Role-Based System Capabilities
                 </div>
 
-                <div className="d-flex align-items-start gap-3 p-2 rounded-3" style={{ background: 'rgba(255, 255, 255, 0.08)' }}>
-                  <div className="p-2 rounded-3 bg-white text-primary fs-5 mt-1"><FaWater /></div>
-                  <div>
-                    <h6 className="fw-bold text-white mb-1">Real-time Pond Health</h6>
-                    <span className="text-white-75 small">Track pH, temp, and daily mortality logs</span>
+                {/* For Farm Owners */}
+                <div className="p-3 rounded-3 border border-white-10 mb-3" style={{ background: 'rgba(255, 255, 255, 0.06)', backdropFilter: 'blur(12px)' }}>
+                  <div className="d-flex align-items-center gap-2 mb-2">
+                    <div className="p-1.5 rounded-2 bg-primary bg-opacity-20 text-info fs-6">
+                      <FaLaptop />
+                    </div>
+                    <h6 className="fw-bold text-white mb-0 extra-small">For Farm Owners (Web Portal)</h6>
                   </div>
+                  <ul className="list-unstyled mb-0 tiny text-white-80">
+                    <li className="d-flex align-items-start gap-2 mb-1">
+                      <FaCheck className="text-shrimp-orange mt-1 flex-shrink-0" style={{ fontSize: '10px' }} />
+                      <span>Centralized dashboard covering both nursery and grow-out ponds.</span>
+                    </li>
+                    <li className="d-flex align-items-start gap-2 mb-1">
+                      <FaCheck className="text-shrimp-orange mt-1 flex-shrink-0" style={{ fontSize: '10px' }} />
+                      <span>Predictive analytics for harvest planning and feeding deviation calculations.</span>
+                    </li>
+                    <li className="d-flex align-items-start gap-2">
+                      <FaCheck className="text-shrimp-orange mt-1 flex-shrink-0" style={{ fontSize: '10px' }} />
+                      <span>Caretaker credential management and farm-wide biosecurity control.</span>
+                    </li>
+                  </ul>
                 </div>
 
-                <div className="d-flex align-items-start gap-3 p-2 rounded-3" style={{ background: 'rgba(255, 255, 255, 0.08)' }}>
-                  <div className="p-2 rounded-3 bg-white text-primary fs-5 mt-1"><FaChartLine /></div>
-                  <div>
-                    <h6 className="fw-bold text-white mb-1">Automated Alerting</h6>
-                    <span className="text-white-75 small">Instant notifications for caretaker disease reports</span>
+                {/* For Pond Caretakers */}
+                <div className="p-3 rounded-3 border border-white-10" style={{ background: 'rgba(255, 255, 255, 0.06)', backdropFilter: 'blur(12px)' }}>
+                  <div className="d-flex align-items-center gap-2 mb-2">
+                    <div className="p-1.5 rounded-2 bg-warning bg-opacity-20 text-warning fs-6">
+                      <FaMobileAlt />
+                    </div>
+                    <h6 className="fw-bold text-white mb-0 extra-small">For Pond Caretakers (Mobile View)</h6>
                   </div>
+                  <ul className="list-unstyled mb-0 tiny text-white-80">
+                    <li className="d-flex align-items-start gap-2 mb-1">
+                      <FaCheck className="text-success mt-1 flex-shrink-0" style={{ fontSize: '10px' }} />
+                      <span>Sunlight-readable, step-by-step camera diagnostic scanner.</span>
+                    </li>
+                    <li className="d-flex align-items-start gap-2 mb-1">
+                      <FaCheck className="text-success mt-1 flex-shrink-0" style={{ fontSize: '10px' }} />
+                      <span>Quick-entry forms for daily feed logs and water quality documentation.</span>
+                    </li>
+                    <li className="d-flex align-items-start gap-2">
+                      <FaCheck className="text-success mt-1 flex-shrink-0" style={{ fontSize: '10px' }} />
+                      <span>Immediate task updates, scheduled feeding reminders, and alerts.</span>
+                    </li>
+                  </ul>
                 </div>
               </div>
             </div>
-
           </div>
 
-          {/* Form Right Panel */}
+          {/* Right Panel: Sign In Form */}
           <div className="col-lg-6 p-4 p-md-5 bg-white d-flex flex-column justify-content-center">
             {/* Mobile Return to Home Link */}
             <div className="d-lg-none mb-3">
@@ -157,7 +192,7 @@ export default function LoginPage() {
             <div className="d-flex p-1 bg-light rounded-3 border mb-4">
               <button
                 type="button"
-                className={`btn flex-fill rounded-3 py-2 fw-bold d-flex align-items-center justify-content-center gap-2 transition-all ${
+                className={`btn flex-fill rounded-3 py-2.5 fw-bold d-flex align-items-center justify-content-center gap-2 transition-all ${
                   activeTab === 'admin' ? 'btn-primary shadow-sm text-white' : 'btn-link text-secondary text-decoration-none'
                 }`}
                 onClick={() => handleTabChange('admin')}
@@ -166,7 +201,7 @@ export default function LoginPage() {
               </button>
               <button
                 type="button"
-                className={`btn flex-fill rounded-3 py-2 fw-bold d-flex align-items-center justify-content-center gap-2 transition-all ${
+                className={`btn flex-fill rounded-3 py-2.5 fw-bold d-flex align-items-center justify-content-center gap-2 transition-all ${
                   activeTab === 'caretaker' ? 'btn-primary shadow-sm text-white' : 'btn-link text-secondary text-decoration-none'
                 }`}
                 onClick={() => handleTabChange('caretaker')}
@@ -175,20 +210,20 @@ export default function LoginPage() {
               </button>
             </div>
 
-            <div className="mb-4">
-              <h3 className="fw-bold text-dark mb-1">
-                {activeTab === 'admin' ? 'System Admin Sign In' : 'Pond Caretaker Sign In'}
+            <div className="mb-4 text-center">
+              <h3 className="fw-bold text-dark mb-1 fs-4">
+                {activeTab === 'admin' ? 'Farm Owner & Admin Portal' : 'Pond Caretaker Mobile Portal'}
               </h3>
-              <p className="text-muted small">
+              <p className="text-muted small mb-0">
                 {activeTab === 'admin'
-                  ? 'Access master pond controls, disease logs, and farm reports.'
-                  : 'Submit camera disease scans and monitor assigned pond parameters.'}
+                  ? 'Sign in to access pond management dashboards, harvest forecasts, and biosecurity settings.'
+                  : 'Sign in to record daily feeding logs, water parameters, and run camera disease scans.'}
               </p>
             </div>
 
             <form onSubmit={handleSubmit}>
               <div className="mb-3">
-                <label className="form-label text-muted small fw-semibold">Email Address</label>
+                <label className="form-label text-muted small fw-semibold mb-1">Email Address</label>
                 <div className="input-group">
                   <span className="input-group-text bg-light text-muted border-end-0 rounded-start-3">
                     <FaEnvelope />
@@ -205,7 +240,7 @@ export default function LoginPage() {
               </div>
 
               <div className="mb-4">
-                <label className="form-label text-muted small fw-semibold">Password</label>
+                <label className="form-label text-muted small fw-semibold mb-1">Password</label>
                 <div className="input-group">
                   <span className="input-group-text bg-light text-muted border-end-0 rounded-start-3">
                     <FaLock />
@@ -239,13 +274,13 @@ export default function LoginPage() {
                     Authenticating...
                   </>
                 ) : (
-                  `Sign In as ${activeTab === 'admin' ? 'Admin' : 'Caretaker'}`
+                  `Sign In as ${activeTab === 'admin' ? 'Farm Owner / Admin' : 'Pond Caretaker'}`
                 )}
               </button>
 
               {/* Demo Auto-Fill Helper */}
               <div className="text-center">
-                <span className="text-muted tiny">Want to test quickly?</span>{' '}
+                <span className="text-muted tiny">Testing system functions?</span>{' '}
                 <button
                   type="button"
                   onClick={() => handleTabChange(activeTab)}

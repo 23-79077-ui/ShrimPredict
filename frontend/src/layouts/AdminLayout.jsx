@@ -178,9 +178,9 @@ export default function AdminLayout() {
   return (
     <div className="app-shell admin-shell">
       <aside className="layout-aside d-none d-lg-flex flex-column">
-        <div className="admin-brand mb-4">
-          <span className="brand-icon"><FaSeedling /></span>
-          <span>ShrimPredict</span>
+        <div className="admin-brand mb-4 d-flex align-items-center gap-2">
+          <img src="/shrimp_predict_logo.png" alt="ShrimPredict Logo" style={{ height: '40px', width: 'auto', objectFit: 'contain' }} className="logo-glow-orange" />
+          <span className="fw-extrabold text-white">ShrimPredict</span>
         </div>
         <div className="admin-profile mb-4">
           <div className="admin-avatar">{(user?.full_name || 'Admin').slice(0, 2).toUpperCase()}</div>
@@ -213,11 +213,12 @@ export default function AdminLayout() {
       </aside>
 
       <main className="admin-main">
-        <div className="site-header admin-topbar caretaker-dashboard-hero mb-4">
+        <div className="admin-topbar-wrapper">
+          <div className="site-header admin-topbar caretaker-dashboard-hero">
           <div className="flex-grow-1 me-3" style={{ minWidth: 0 }}>
-            <div className="admin-brand d-flex d-lg-none mb-3">
-              <span className="brand-icon"><FaSeedling /></span>
-              <span>ShrimPredict</span>
+            <div className="admin-brand d-flex d-lg-none align-items-center gap-2 mb-3">
+              <img src="/shrimp_predict_logo.png" alt="ShrimPredict Logo" style={{ height: '36px', width: 'auto', objectFit: 'contain' }} className="logo-glow-orange" />
+              <span className="fw-extrabold text-white">ShrimPredict</span>
             </div>
             <span className="caretaker-dashboard-kicker">ADMIN CONSOLE</span>
             <h3 className="fw-bold mb-1 text-white text-truncate">{currentPage.label}</h3>
@@ -396,9 +397,10 @@ export default function AdminLayout() {
               )}
             </div>
           </div>
+          </div>
         </div>
 
-        <div className="admin-content">
+        <div className="admin-content-scroll">
           <Outlet />
         </div>
       </main>

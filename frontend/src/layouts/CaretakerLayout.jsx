@@ -200,9 +200,9 @@ export default function CaretakerLayout() {
     <div className="app-shell caretaker-shell d-flex">
       {/* DESKTOP SIDEBAR */}
       <aside className="dashboard-sidebar d-none d-lg-flex flex-column">
-        <div className="brand mb-5">
-          <span className="brand-icon"><FaSeedling /></span>
-          ShrimPredict
+        <div className="brand mb-5 d-flex align-items-center gap-2">
+          <img src="/shrimp_predict_logo.png" alt="ShrimPredict Logo" style={{ height: '40px', width: 'auto', objectFit: 'contain' }} className="logo-glow-orange" />
+          <span className="fw-extrabold text-white">ShrimPredict</span>
         </div>
         <div className="mb-5 text-white-75">
           <div className="fw-semibold">{user?.full_name || 'Caretaker'}</div>
@@ -241,9 +241,9 @@ export default function CaretakerLayout() {
       {menuOpen && <button type="button" className="caretaker-mobile-backdrop d-lg-none" aria-label="Close menu" onClick={closeMenu} />}
       <aside className={`caretaker-mobile-menu d-lg-none ${menuOpen ? 'open' : ''}`}>
         <div className="d-flex align-items-center justify-content-between mb-4">
-          <div className="brand mb-0">
-            <span className="brand-icon"><FaSeedling /></span>
-            ShrimPredict
+          <div className="brand mb-0 d-flex align-items-center gap-2">
+            <img src="/shrimp_predict_logo.png" alt="ShrimPredict Logo" style={{ height: '36px', width: 'auto', objectFit: 'contain' }} className="logo-glow-orange" />
+            <span className="fw-extrabold text-white">ShrimPredict</span>
           </div>
           <button type="button" className="btn btn-sm btn-light rounded-circle" aria-label="Close menu" onClick={closeMenu}>
             <FaTimes />
@@ -284,9 +284,10 @@ export default function CaretakerLayout() {
       </aside>
 
       {/* MAIN CONTENT AREA */}
-      <main className="dashboard-main flex-grow-1 p-3 p-md-4">
-        {/* TOP HERO HEADER BANNER (EXACT SAME DESIGN AS ADMIN HEADER) */}
-        <div className="site-header caretaker-topbar caretaker-dashboard-hero mb-4">
+      <main className="dashboard-main flex-grow-1">
+        <div className="caretaker-topbar-wrapper">
+          {/* TOP HERO HEADER BANNER (EXACT SAME DESIGN AS ADMIN HEADER) */}
+          <div className="site-header caretaker-topbar caretaker-dashboard-hero">
           <div className="flex-grow-1 me-3" style={{ minWidth: 0 }}>
             <div className="d-flex align-items-center gap-2 d-lg-none mb-3">
               <button
@@ -475,9 +476,10 @@ export default function CaretakerLayout() {
               )}
             </div>
           </div>
+          </div>
         </div>
 
-        <div>
+        <div className="dashboard-content-scroll">
           <Outlet />
         </div>
       </main>
