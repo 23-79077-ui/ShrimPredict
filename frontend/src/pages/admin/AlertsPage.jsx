@@ -466,49 +466,49 @@ export default function AlertsPage() {
       <div className="row g-3 mb-4">
         {/* Critical Alerts */}
         <div className="col-12 col-sm-6 col-md-3">
-          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+          <div className="card stat-card-red shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
             <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold">Critical Alerts</span>
+              <span className="text-muted small fw-semibold pt-0.5">Critical Alerts</span>
               <span className="badge bg-danger bg-opacity-10 text-danger rounded-pill extra-small fw-semibold">🔴 Action Needed</span>
             </div>
             <h3 className="fw-extrabold text-danger mb-2">{summary.critical_alerts}</h3>
-            <span className="text-muted extra-small">Immediate Intervention</span>
+            <span className="text-muted extra-small d-block pb-0.5">Immediate Intervention</span>
           </div>
         </div>
 
         {/* Warnings */}
         <div className="col-12 col-sm-6 col-md-3">
-          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+          <div className="card stat-card-orange shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
             <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold">Warnings</span>
+              <span className="text-muted small fw-semibold pt-0.5">Warnings</span>
               <span className="badge bg-warning bg-opacity-10 text-warning rounded-pill extra-small fw-semibold">🟠 Watch List</span>
             </div>
             <h3 className="fw-extrabold text-warning mb-2">{summary.warnings}</h3>
-            <span className="text-muted extra-small">High & Medium Alerts</span>
+            <span className="text-muted extra-small d-block pb-0.5">High & Medium Alerts</span>
           </div>
         </div>
 
         {/* Resolved */}
         <div className="col-12 col-sm-6 col-md-3">
-          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+          <div className="card stat-card-green shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
             <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold">Resolved</span>
+              <span className="text-muted small fw-semibold pt-0.5">Resolved</span>
               <span className="badge bg-success bg-opacity-10 text-success rounded-pill extra-small fw-semibold">✅ Closed</span>
             </div>
             <h3 className="fw-extrabold text-success mb-2">{summary.resolved}</h3>
-            <span className="text-muted extra-small">Addressed Issues</span>
+            <span className="text-muted extra-small d-block pb-0.5">Addressed Issues</span>
           </div>
         </div>
 
         {/* Pending */}
         <div className="col-12 col-sm-6 col-md-3">
-          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+          <div className="card stat-card-cyan shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
             <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold">Pending Queue</span>
+              <span className="text-muted small fw-semibold pt-0.5">Pending Queue</span>
               <span className="badge bg-info bg-opacity-10 text-info rounded-pill extra-small fw-semibold">⏳ Active Queue</span>
             </div>
             <h3 className="fw-extrabold text-info mb-2">{summary.pending}</h3>
-            <span className="text-muted extra-small">Awaiting Caretaker Action</span>
+            <span className="text-muted extra-small d-block pb-0.5">Awaiting Caretaker Action</span>
           </div>
         </div>
       </div>

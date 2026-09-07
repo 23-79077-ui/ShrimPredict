@@ -258,20 +258,20 @@ export default function CaretakerSettingsPage() {
       <div className="row g-4">
         {/* LEFT SETTINGS MENU SIDEBAR */}
         <div className="col-12 col-md-5 col-lg-4 col-xl-3">
-          <div className="card border-0 shadow-sm rounded-4 bg-white overflow-hidden sticky-top" style={{ top: 20 }}>
+          <div className="settings-card bg-white overflow-hidden sticky-top" style={{ top: 20 }}>
             {/* Header */}
-            <div className="px-3.5 py-3 border-bottom bg-light bg-opacity-50 d-flex align-items-center justify-content-between">
-              <span className="fw-extrabold text-dark extra-small text-uppercase tracking-wider d-flex align-items-center gap-2">
-                <FaSlidersH className="text-primary" /> Settings Menu
+            <div className="px-3.5 py-3 border-bottom d-flex align-items-center justify-content-between">
+              <span className="fw-extrabold extra-small text-uppercase tracking-wider d-flex align-items-center gap-2">
+                <FaSlidersH className="text-warning" /> Settings Menu
               </span>
-              <span className="badge bg-primary bg-opacity-10 text-primary rounded-pill px-2.5 py-1 extra-small fw-bold">
+              <span className="badge bg-warning bg-opacity-10 text-warning rounded-pill px-2.5 py-1 extra-small fw-bold">
                 {navTabs.length} Tabs
               </span>
             </div>
 
             {/* Search Bar */}
-            <div className="p-3 border-bottom bg-white">
-              <div className="input-group input-group-sm rounded-pill border border-secondary border-opacity-25 overflow-hidden px-2.5 bg-light">
+            <div className="p-3 border-bottom">
+              <div className="input-group input-group-sm rounded-pill border border-warning border-opacity-25 overflow-hidden px-2.5">
                 <span className="input-group-text bg-transparent border-0 text-muted p-0 me-2 d-flex align-items-center">
                   <FaSearch size={12} />
                 </span>
@@ -286,27 +286,27 @@ export default function CaretakerSettingsPage() {
             </div>
 
             {/* Navigation Items */}
-            <div className="p-2">
+            <div className="p-2 nav flex-column gap-1">
               {filteredTabs.map((tab) => {
                 const isActive = activeTab === tab.id;
                 return (
                   <button
                     key={tab.id}
                     type="button"
-                    className={`btn w-100 text-start d-flex align-items-center px-2.5 py-2 rounded-3 mb-1 border-0 transition-all ${
+                    className={`settings-nav-item btn w-100 text-start d-flex align-items-center px-3 py-2.5 rounded-3 border-0 transition-all ${
                       isActive
-                        ? 'bg-primary text-white shadow-sm fw-bold'
-                        : 'text-dark bg-white hover-bg-light'
+                        ? 'active shadow-sm fw-bold'
+                        : 'text-dark'
                     }`}
                     onClick={() => setActiveTab(tab.id)}
                   >
                     <span
                       className={`d-inline-flex align-items-center justify-content-center me-2.5 flex-shrink-0 rounded-2 ${
                         isActive
-                          ? 'bg-white text-primary shadow-xs'
-                          : 'bg-primary bg-opacity-10 text-primary'
+                          ? 'text-warning'
+                          : 'text-muted'
                       }`}
-                      style={{ width: 32, height: 32 }}
+                      style={{ width: 28, height: 28 }}
                     >
                       {tab.icon}
                     </span>
@@ -322,7 +322,7 @@ export default function CaretakerSettingsPage() {
 
         {/* RIGHT MAIN CONTENT AREA */}
         <div className="col-12 col-md-7 col-lg-8 col-xl-9">
-          <div className="card border-0 shadow-sm rounded-4 bg-white p-4">
+          <div className="settings-card bg-white p-4">
             
             {/* HEADER BANNER */}
             <div className="d-flex align-items-center justify-content-between flex-wrap gap-3 pb-3 mb-4 border-bottom">

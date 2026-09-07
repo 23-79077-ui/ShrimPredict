@@ -487,18 +487,14 @@ export default function FeedingPage() {
       <div className="row g-3 mb-4">
         {/* Card 1: Cumulative Feed */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div
-            className="card border border-primary border-opacity-25 shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden transition-all hover-shadow"
-            style={{ background: 'linear-gradient(180deg, rgba(13, 110, 253, 0.03) 0%, #ffffff 100%)' }}
-          >
-            <div className="position-absolute top-0 start-0 end-0 bg-primary" style={{ height: 4 }} />
+          <div className="card stat-card-cyan shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
             <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold">Total Cumulative Feed</span>
-              <div className="rounded-3 p-2.5 bg-primary bg-opacity-10 text-primary">
-                <FaSeedling size={22} />
+              <span className="text-muted small fw-semibold pt-0.5">Total Cumulative Feed</span>
+              <div className="rounded-3 p-2.5 bg-primary bg-opacity-10 text-primary fs-5">
+                <FaSeedling />
               </div>
             </div>
-            <h3 className="fw-extrabold text-dark mb-2">{metrics.totalKg} <small className="fs-6 text-muted fw-normal">kg</small></h3>
+            <h3 className="fw-extrabold mb-2">{metrics.totalKg} <small className="fs-6 text-muted fw-normal">kg</small></h3>
             <span className="badge bg-success bg-opacity-10 text-success rounded-pill extra-small fw-semibold">
               <FaCheckCircle className="me-1" /> All Ponds Combined
             </span>
@@ -507,55 +503,43 @@ export default function FeedingPage() {
 
         {/* Card 2: Weekly Feed */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div
-            className="card border border-success border-opacity-25 shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden transition-all hover-shadow"
-            style={{ background: 'linear-gradient(180deg, rgba(25, 135, 84, 0.03) 0%, #ffffff 100%)' }}
-          >
-            <div className="position-absolute top-0 start-0 end-0 bg-success" style={{ height: 4 }} />
+          <div className="card stat-card-green shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
             <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold">Weekly Consumption</span>
-              <div className="rounded-3 p-2.5 bg-success bg-opacity-10 text-success">
-                <FaCalendarWeek size={22} />
+              <span className="text-muted small fw-semibold pt-0.5">Weekly Consumption</span>
+              <div className="rounded-3 p-2.5 bg-success bg-opacity-10 text-success fs-5">
+                <FaCalendarWeek />
               </div>
             </div>
-            <h3 className="fw-extrabold text-dark mb-2">{metrics.weeklyKg} <small className="fs-6 text-muted fw-normal">kg</small></h3>
-            <span className="text-muted extra-small">Last 7 Days Activity</span>
+            <h3 className="fw-extrabold mb-2">{metrics.weeklyKg} <small className="fs-6 text-muted fw-normal">kg</small></h3>
+            <span className="text-muted extra-small d-block pb-0.5">Last 7 Days Activity</span>
           </div>
         </div>
 
         {/* Card 3: Feed Cost */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div
-            className="card border border-warning border-opacity-50 shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden transition-all hover-shadow"
-            style={{ background: 'linear-gradient(180deg, rgba(255, 193, 7, 0.03) 0%, #ffffff 100%)' }}
-          >
-            <div className="position-absolute top-0 start-0 end-0 bg-warning" style={{ height: 4 }} />
+          <div className="card stat-card-orange shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
             <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold">Estimated Feed Cost</span>
-              <div className="rounded-3 p-2.5 bg-warning bg-opacity-10 text-warning">
-                <FaCoins size={22} />
+              <span className="text-muted small fw-semibold pt-0.5">Estimated Feed Cost</span>
+              <div className="rounded-3 p-2.5 bg-warning bg-opacity-10 text-warning fs-5">
+                <FaCoins />
               </div>
             </div>
-            <h3 className="fw-extrabold text-dark mb-2">{metrics.estimatedCost}</h3>
-            <span className="text-muted extra-small">Avg ₱35.00 / kg feed</span>
+            <h3 className="fw-extrabold mb-2">{metrics.estimatedCost}</h3>
+            <span className="text-muted extra-small d-block pb-0.5">Avg ₱35.00 / kg feed</span>
           </div>
         </div>
 
         {/* Card 4: Average Feed */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div
-            className="card border border-info border-opacity-25 shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden transition-all hover-shadow"
-            style={{ background: 'linear-gradient(180deg, rgba(13, 202, 240, 0.03) 0%, #ffffff 100%)' }}
-          >
-            <div className="position-absolute top-0 start-0 end-0 bg-info" style={{ height: 4 }} />
+          <div className="card stat-card-purple shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
             <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold">Average Rate</span>
-              <div className="rounded-3 p-2.5 bg-info bg-opacity-10 text-info">
-                <FaChartLine size={22} />
+              <span className="text-muted small fw-semibold pt-0.5">Average Rate</span>
+              <div className="rounded-3 p-2.5 bg-info bg-opacity-10 text-info fs-5">
+                <FaChartLine />
               </div>
             </div>
-            <h3 className="fw-extrabold text-dark mb-2">{metrics.avgDailyKg}</h3>
-            <span className="text-muted extra-small">Per Active Pond / Day</span>
+            <h3 className="fw-extrabold mb-2">{metrics.avgDailyKg}</h3>
+            <span className="text-muted extra-small d-block pb-0.5">Per Active Pond / Day</span>
           </div>
         </div>
       </div>

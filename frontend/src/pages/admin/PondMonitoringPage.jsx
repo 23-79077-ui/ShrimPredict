@@ -65,16 +65,21 @@ function isDiseaseAlert(value) {
 }
 
 function MetricCard({ title, value, detail, icon, tone = 'primary' }) {
+  const cardGlowClass = 
+    tone === 'success' ? 'stat-card-green' :
+    tone === 'danger' ? 'stat-card-red' :
+    tone === 'warning' ? 'stat-card-orange' :
+    tone === 'info' ? 'stat-card-purple' :
+    'stat-card-cyan';
+
   return (
-    <div className={`metric-card p-3 h-100 border-start border-4 border-${tone}`}>
-      <div className="d-flex align-items-start justify-content-between gap-3">
-        <div>
-          <p className="small text-muted fw-semibold mb-1">{title}</p>
-          <h3 className={`fw-bold text-${tone === 'warning' ? 'dark' : tone} mb-1`}>{value}</h3>
-          <small className="text-muted">{detail}</small>
-        </div>
-        <div className={`metric-icon bg-${tone} bg-opacity-10 text-${tone}`}>{icon}</div>
+    <div className={`card ${cardGlowClass} shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden`}>
+      <div className="d-flex align-items-center justify-content-between mb-3">
+        <span className="text-muted small fw-semibold pt-0.5">{title}</span>
+        <div className={`rounded-3 p-2 bg-${tone} bg-opacity-10 text-${tone} fs-6`}>{icon}</div>
       </div>
+      <h3 className="fw-extrabold mb-2">{value}</h3>
+      <span className="text-muted extra-small d-block pb-0.5">{detail}</span>
     </div>
   );
 }
@@ -391,82 +396,83 @@ export default function PondMonitoringPage() {
         </div>
       )}
 
+      {/* 6 TOP METRIC CARDS WITH FULL GLOWING BACKGROUND & BORDER SYSTEM (MATCHING PICTURE 2) */}
       <div className="row g-3 mb-4">
         {/* Total Ponds */}
         <div className="col-12 col-sm-6 col-md-4 col-xl-2">
-          <div className="metric-card p-3.5 h-100 d-flex flex-column justify-content-between">
-            <div className="d-flex justify-content-between align-items-center mb-1">
-              <span className="text-muted small fw-semibold">Total Ponds</span>
-              <div className="p-2 rounded-circle bg-primary bg-opacity-10 text-primary">
-                <FaLayerGroup size={14} />
+          <div className="card stat-card-cyan shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
+            <div className="d-flex align-items-center justify-content-between mb-3">
+              <span className="text-muted small fw-semibold pt-0.5">Total Ponds</span>
+              <div className="rounded-3 p-2 bg-primary bg-opacity-10 text-primary fs-6">
+                <FaLayerGroup />
               </div>
             </div>
-            <h3 className="fw-bold text-dark mb-0">{summary.total_ponds}</h3>
-            <small className="text-muted extra-small">Monitored Ponds</small>
+            <h3 className="fw-extrabold mb-2">{summary.total_ponds}</h3>
+            <span className="text-muted extra-small d-block pb-0.5">Monitored Ponds</span>
           </div>
         </div>
 
         {/* Healthy Ponds */}
         <div className="col-12 col-sm-6 col-md-4 col-xl-2">
-          <div className="metric-card p-3.5 h-100 d-flex flex-column justify-content-between border-start border-4 border-success">
-            <div className="d-flex justify-content-between align-items-center mb-1">
-              <span className="text-muted small fw-semibold">Healthy Ponds</span>
-              <span className="badge bg-success bg-opacity-10 text-success rounded-pill">🟢 Safe</span>
+          <div className="card stat-card-green shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
+            <div className="d-flex align-items-center justify-content-between mb-3">
+              <span className="text-muted small fw-semibold pt-0.5">Healthy Ponds</span>
+              <span className="badge bg-success bg-opacity-20 text-success rounded-pill px-2.5 py-1 fw-bold">🟢 Safe</span>
             </div>
-            <h3 className="fw-bold text-success mb-0">{summary.healthy_ponds}</h3>
-            <small className="text-muted extra-small">Optimal Water</small>
+            <h3 className="fw-extrabold text-success mb-2">{summary.healthy_ponds}</h3>
+            <span className="text-muted extra-small d-block pb-0.5">Optimal Water</span>
           </div>
         </div>
 
         {/* Warning Ponds */}
         <div className="col-12 col-sm-6 col-md-4 col-xl-2">
-          <div className="metric-card p-3.5 h-100 d-flex flex-column justify-content-between border-start border-4 border-warning">
-            <div className="d-flex justify-content-between align-items-center mb-1">
-              <span className="text-muted small fw-semibold">Warning</span>
-              <span className="badge bg-warning bg-opacity-10 text-warning rounded-pill">🟡 Watch</span>
+          <div className="card stat-card-orange shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
+            <div className="d-flex align-items-center justify-content-between mb-3">
+              <span className="text-muted small fw-semibold pt-0.5">Warning</span>
+              <span className="badge bg-warning bg-opacity-20 text-warning rounded-pill px-2.5 py-1 fw-bold">🟡 Watch</span>
             </div>
-            <h3 className="fw-bold text-warning mb-0">{summary.warning_ponds}</h3>
-            <small className="text-muted extra-small">Sub-optimal Water</small>
+            <h3 className="fw-extrabold text-warning mb-2">{summary.warning_ponds}</h3>
+            <span className="text-muted extra-small d-block pb-0.5">Sub-optimal Water</span>
           </div>
         </div>
 
         {/* Critical Ponds */}
         <div className="col-12 col-sm-6 col-md-4 col-xl-2">
-          <div className="metric-card p-3.5 h-100 d-flex flex-column justify-content-between border-start border-4 border-danger">
-            <div className="d-flex justify-content-between align-items-center mb-1">
-              <span className="text-muted small fw-semibold">Critical</span>
-              <span className="badge bg-danger bg-opacity-10 text-danger rounded-pill">🔴 Alert</span>
+          <div className="card stat-card-red shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
+            <div className="d-flex align-items-center justify-content-between mb-3">
+              <span className="text-muted small fw-semibold pt-0.5">Critical</span>
+              <span className="badge bg-danger bg-opacity-20 text-danger rounded-pill px-2.5 py-1 fw-bold">🔴 Alert</span>
             </div>
-            <h3 className="fw-bold text-danger mb-0">{summary.critical_ponds}</h3>
-            <small className="text-muted extra-small">Action Required</small>
+            <h3 className="fw-extrabold text-danger mb-2">{summary.critical_ponds}</h3>
+            <span className="text-muted extra-small d-block pb-0.5">Action Required</span>
           </div>
         </div>
 
         {/* Avg Feed Today */}
         <div className="col-12 col-sm-6 col-md-4 col-xl-2">
-          <div className="metric-card p-3.5 h-100 d-flex flex-column justify-content-between">
-            <div className="d-flex justify-content-between align-items-center mb-1">
-              <span className="text-muted small fw-semibold">Avg Feed Today</span>
-              <div className="p-2 rounded-circle bg-info bg-opacity-10 text-info">
-                <FaUtensils size={14} />
+          <div className="card stat-card-purple shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
+            <div className="d-flex align-items-center justify-content-between mb-3">
+              <span className="text-muted small fw-semibold pt-0.5">Avg Feed Today</span>
+              <div className="rounded-3 p-2 bg-info bg-opacity-10 text-info fs-6">
+                <FaUtensils />
               </div>
             </div>
-            <h3 className="fw-bold text-dark mb-0">{summary.average_feed_today} <span className="fs-6 text-muted font-normal">kg</span></h3>
-            <small className="text-muted extra-small">Daily Consumption</small>
+            <h3 className="fw-extrabold mb-2">{summary.average_feed_today} <small className="fs-6 text-muted fw-normal">kg</small></h3>
+            <span className="text-muted extra-small d-block pb-0.5">Daily Consumption</span>
           </div>
         </div>
 
         {/* Avg Pond Age */}
         <div className="col-12 col-sm-6 col-md-4 col-xl-2">
-          <div className="metric-card p-3.5 h-100 d-flex flex-column justify-content-between">
-            <div className="d-flex justify-content-between align-items-center mb-1">
-              <span className="text-muted small fw-semibold">Avg Pond Age</span>
-              <div className="p-2 rounded-circle bg-secondary bg-opacity-10 text-secondary">
-                <FaCalendarAlt size={14} />
+          <div className="card stat-card-cyan shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
+            <div className="d-flex align-items-center justify-content-between mb-3">
+              <span className="text-muted small fw-semibold pt-0.5">Avg Pond Age</span>
+              <div className="rounded-3 p-2 bg-primary bg-opacity-10 text-primary fs-6">
+                <FaCalendarAlt />
               </div>
             </div>
-            <h3 className="fw-bold text-dark mb-0">{summary.average_pond_age} <span className="fs-6 text-muted font-normal">Days</span></h3>
-            <small className="text-muted extra-small">Culture Days (DOC)</small>
+            <h3 className="fw-extrabold mb-2">{summary.average_pond_age} <small className="fs-6 text-muted fw-normal">Days</small></h3>
+            <span className="text-muted extra-small d-block pb-0.5">Culture Days (DOC)</span>
           </div>
         </div>
       </div>

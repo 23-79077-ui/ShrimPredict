@@ -1769,26 +1769,26 @@ button {
 [data-theme="dark"] {
   --primary: #3b82f6;
   --secondary: #ff9500;
-  --background: #0f172a;
-  --surface: #1e293b;
-  --surface-soft: #334155;
+  --background: #090e1a;
+  --surface: #111827;
+  --surface-soft: #1f2937;
   --accent: #1e293b;
   --text: #f8fafc;
   --muted: #94a3b8;
-  --border: rgba(255, 255, 255, 0.12);
-  --shadow: 0 28px 70px rgba(0,0,0,0.5);
+  --border: rgba(255, 255, 255, 0.1);
+  --shadow: 0 28px 70px rgba(0,0,0,0.6);
   color-scheme: dark;
 }
 
 [data-theme="dark"] body {
-  background: #0f172a !important;
+  background: #090e1a !important;
   color: #f8fafc !important;
 }
 
 [data-theme="dark"] .app-shell,
 [data-theme="dark"] .admin-shell,
 [data-theme="dark"] .admin-main {
-  background-color: #0f172a !important;
+  background-color: #090e1a !important;
   color: #f8fafc !important;
 }
 
@@ -1800,21 +1800,21 @@ button {
 [data-theme="dark"] .info-card,
 [data-theme="dark"] .admin-compact-card,
 [data-theme="dark"] .bg-white {
-  background-color: #1e293b !important;
+  background-color: #111827 !important;
   color: #f8fafc !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 [data-theme="dark"] .site-header,
 [data-theme="dark"] .admin-topbar {
-  background-color: #1e293b !important;
-  border-bottom-color: rgba(255, 255, 255, 0.12) !important;
+  background-color: #111827 !important;
+  border-bottom-color: rgba(255, 255, 255, 0.1) !important;
   color: #f8fafc !important;
 }
 
 [data-theme="dark"] .layout-aside {
   background-color: #0b1329 !important;
-  border-right-color: rgba(255, 255, 255, 0.1) !important;
+  border-right-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 [data-theme="dark"] .text-dark,
@@ -1835,22 +1835,22 @@ button {
 [data-theme="dark"] .table-light,
 [data-theme="dark"] .table th,
 [data-theme="dark"] .table td {
-  background-color: #1e293b !important;
+  background-color: #111827 !important;
   color: #f8fafc !important;
-  border-color: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 [data-theme="dark"] .form-select,
 [data-theme="dark"] .form-control {
-  background-color: #0f172a !important;
+  background-color: #0d1527 !important;
   color: #f8fafc !important;
-  border-color: rgba(255, 255, 255, 0.2) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
 }
 
 [data-theme="dark"] .dropdown-menu {
-  background-color: #1e293b !important;
+  background-color: #111827 !important;
   border-color: rgba(255, 255, 255, 0.15) !important;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6) !important;
 }
 
 [data-theme="dark"] .dropdown-item {
@@ -1858,18 +1858,155 @@ button {
 }
 
 [data-theme="dark"] .dropdown-item:hover {
-  background-color: #334155 !important;
+  background-color: #1f2937 !important;
 }
 
 [data-theme="dark"] .bg-light {
-  background-color: #334155 !important;
+  background-color: #1f2937 !important;
   color: #f8fafc !important;
 }
 
 [data-theme="dark"] .list-group-item {
-  background-color: #1e293b !important;
+  background-color: #111827 !important;
   color: #f8fafc !important;
   border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* ==========================================================================
+   SYSTEM-WIDE VIBRANT GLOW SUMMARY CARD SYSTEM
+   ========================================================================== */
+
+/* Universal Stat Card Base Spacing & Rounded Borders */
+.stat-card-total-ponds,
+.stat-card-healthy-ponds,
+.stat-card-disease-alerts,
+.stat-card-feeding-logs,
+.stat-card-upcoming-harvest,
+.stat-card-cyan,
+.stat-card-green,
+.stat-card-red,
+.stat-card-orange,
+.stat-card-purple,
+.stat-card-glow,
+.card.border-primary,
+.card.border-success,
+.card.border-danger,
+.card.border-warning,
+.card.border-info {
+  padding: 1.65rem 1.75rem !important;
+  border-radius: 1.25rem !important;
+  transition: all 0.25s ease-in-out !important;
+}
+
+/* 1. BLUE / CYAN (Total Ponds / Primary Metrics) */
+[data-theme="dark"] .stat-card-total-ponds,
+[data-theme="dark"] .stat-card-cyan,
+[data-theme="dark"] .stat-card-glow-primary,
+[data-theme="dark"] .card.border-primary {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.25) 0%, rgba(17, 24, 39, 0.96) 100%) !important;
+  border: 1.5px solid rgba(56, 189, 248, 0.7) !important;
+  box-shadow: 0 0 24px rgba(56, 189, 248, 0.28), inset 0 0 16px rgba(56, 189, 248, 0.12) !important;
+}
+
+[data-theme="light"] .stat-card-total-ponds,
+[data-theme="light"] .stat-card-cyan,
+[data-theme="light"] .stat-card-glow-primary,
+[data-theme="light"] .card.border-primary {
+  background: #ffffff !important;
+  border: 1.5px solid rgba(56, 189, 248, 0.65) !important;
+  box-shadow: 0 6px 20px rgba(56, 189, 248, 0.14) !important;
+}
+
+/* 2. NEON GREEN (Healthy Ponds / Success Metrics) */
+[data-theme="dark"] .stat-card-healthy-ponds,
+[data-theme="dark"] .stat-card-green,
+[data-theme="dark"] .stat-card-glow-success,
+[data-theme="dark"] .card.border-success {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.25) 0%, rgba(17, 24, 39, 0.96) 100%) !important;
+  border: 1.5px solid rgba(34, 197, 94, 0.75) !important;
+  box-shadow: 0 0 24px rgba(34, 197, 94, 0.32), inset 0 0 16px rgba(34, 197, 94, 0.14) !important;
+}
+
+[data-theme="light"] .stat-card-healthy-ponds,
+[data-theme="light"] .stat-card-green,
+[data-theme="light"] .stat-card-glow-success,
+[data-theme="light"] .card.border-success {
+  background: #ffffff !important;
+  border: 1.5px solid rgba(34, 197, 94, 0.65) !important;
+  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.14) !important;
+}
+
+/* 3. CRIMSON RED (Disease Alerts / Danger Metrics) */
+[data-theme="dark"] .stat-card-disease-alerts,
+[data-theme="dark"] .stat-card-red,
+[data-theme="dark"] .stat-card-glow-danger,
+[data-theme="dark"] .card.border-danger {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.28) 0%, rgba(17, 24, 39, 0.96) 100%) !important;
+  border: 1.5px solid rgba(239, 68, 68, 0.78) !important;
+  box-shadow: 0 0 24px rgba(239, 68, 68, 0.35), inset 0 0 16px rgba(239, 68, 68, 0.14) !important;
+}
+
+[data-theme="light"] .stat-card-disease-alerts,
+[data-theme="light"] .stat-card-red,
+[data-theme="light"] .stat-card-glow-danger,
+[data-theme="light"] .card.border-danger {
+  background: #ffffff !important;
+  border: 1.5px solid rgba(239, 68, 68, 0.65) !important;
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.14) !important;
+}
+
+/* 4. GOLDEN AMBER / ORANGE (Upcoming Harvest / Warning Metrics) */
+[data-theme="dark"] .stat-card-upcoming-harvest,
+[data-theme="dark"] .stat-card-orange,
+[data-theme="dark"] .stat-card-glow-warning,
+[data-theme="dark"] .card.border-warning {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(17, 24, 39, 0.96) 100%) !important;
+  border: 1.5px solid rgba(245, 158, 11, 0.75) !important;
+  box-shadow: 0 0 24px rgba(245, 158, 11, 0.32), inset 0 0 16px rgba(245, 158, 11, 0.14) !important;
+}
+
+[data-theme="light"] .stat-card-upcoming-harvest,
+[data-theme="light"] .stat-card-orange,
+[data-theme="light"] .stat-card-glow-warning,
+[data-theme="light"] .card.border-warning {
+  background: #ffffff !important;
+  border: 1.5px solid rgba(245, 158, 11, 0.65) !important;
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.14) !important;
+}
+
+/* 5. SLATE / PURPLE (Feeding Logs / Info Metrics) */
+[data-theme="dark"] .stat-card-feeding-logs,
+[data-theme="dark"] .stat-card-purple,
+[data-theme="dark"] .stat-card-glow-info,
+[data-theme="dark"] .card.border-info {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.25) 0%, rgba(17, 24, 39, 0.96) 100%) !important;
+  border: 1.5px solid rgba(168, 85, 247, 0.75) !important;
+  box-shadow: 0 0 24px rgba(168, 85, 247, 0.32), inset 0 0 16px rgba(168, 85, 247, 0.14) !important;
+}
+
+[data-theme="light"] .stat-card-feeding-logs,
+[data-theme="light"] .stat-card-purple,
+[data-theme="light"] .stat-card-glow-info,
+[data-theme="light"] .card.border-info {
+  background: #ffffff !important;
+  border: 1.5px solid rgba(168, 85, 247, 0.65) !important;
+  box-shadow: 0 6px 20px rgba(168, 85, 247, 0.14) !important;
+}
+
+/* PDF Export Golden Capsule Button */
+.btn-gold-export {
+  background: linear-gradient(135deg, #d97706 0%, #f59e0b 50%, #b45309 100%) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  border: 1px solid rgba(251, 191, 36, 0.6) !important;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3) !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+.btn-gold-export:hover {
+  background: linear-gradient(135deg, #b45309 0%, #d97706 50%, #78350f 100%) !important;
+  box-shadow: 0 6px 18px rgba(245, 158, 11, 0.45) !important;
+  transform: translateY(-1px);
 }
 
 /* Custom Theme Switch */
@@ -1883,229 +2020,180 @@ button {
 }
 
 /* ==========================================================================
-   PREMIUM ADMIN SETTINGS & PREFERENCES STYLING SYSTEM
+   PREMIUM ADMIN SETTINGS & PREFERENCES STYLING SYSTEM (GLOWING CARDS & SPACING)
    ========================================================================== */
 
-/* Settings Header Glassmorphism Card */
-.settings-header-card {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(245, 248, 255, 0.9) 100%);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(11, 44, 95, 0.08);
-  box-shadow: 0 20px 45px rgba(11, 44, 95, 0.06);
-  transition: all 0.3s ease;
-}
-
-[data-theme="dark"] .settings-header-card {
-  background: linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.9) 100%) !important;
-  border-color: rgba(255, 255, 255, 0.1) !important;
-  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.3) !important;
-}
-
-/* Header Icon Container */
-.settings-icon-badge {
-  background: linear-gradient(135deg, #0B2C5F 0%, #1E40AF 100%);
-  color: #ffffff;
-  box-shadow: 0 10px 22px rgba(11, 44, 95, 0.25);
-  transition: transform 0.3s ease;
-}
-
-.settings-icon-badge:hover {
-  transform: rotate(12deg) scale(1.08);
-}
-
-/* Premium Search Bar */
-.settings-search-input {
-  background: #ffffff;
-  border: 1.5px solid rgba(11, 44, 95, 0.12);
-  box-shadow: 0 4px 14px rgba(11, 44, 95, 0.04);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  font-size: 0.93rem;
-}
-
-.settings-search-input:focus {
-  background: #ffffff;
-  border-color: var(--primary, #0B2C5F);
-  box-shadow: 0 0 0 4px rgba(11, 44, 95, 0.12), 0 8px 20px rgba(11, 44, 95, 0.08);
-  outline: none;
-}
-
-[data-theme="dark"] .settings-search-input {
-  background: #0f172a !important;
-  border-color: rgba(255, 255, 255, 0.15) !important;
-  color: #f8fafc !important;
-}
-
-[data-theme="dark"] .settings-search-input:focus {
-  border-color: #3b82f6 !important;
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2), 0 8px 20px rgba(0, 0, 0, 0.4) !important;
-}
-
-/* Settings Sidebar Nav Links */
-.settings-nav-item {
-  position: relative;
-  background: transparent;
-  border: 1px solid transparent;
-  transition: all 0.25s ease;
-  border-radius: 14px;
-}
-
-.settings-nav-item:hover {
-  background: rgba(11, 44, 95, 0.04);
-  transform: translateX(4px);
-}
-
-.settings-nav-item.active {
-  background: linear-gradient(135deg, #0B2C5F 0%, #1E40AF 100%) !important;
-  color: #ffffff !important;
-  box-shadow: 0 10px 25px rgba(11, 44, 95, 0.22);
-}
-
-.settings-nav-item.active .settings-nav-icon {
-  background: rgba(255, 255, 255, 0.2) !important;
-  color: #ffffff !important;
-}
-
-.settings-nav-icon {
-  background: rgba(11, 44, 95, 0.06);
-  color: var(--primary, #0B2C5F);
-  transition: all 0.25s ease;
-}
-
-[data-theme="dark"] .settings-nav-item:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-[data-theme="dark"] .settings-nav-item.active {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
-  box-shadow: 0 10px 25px rgba(37, 99, 235, 0.35);
-}
-
-/* Settings Content Card */
+/* Settings Main Container Cards */
 .settings-card {
-  border: 1px solid rgba(11, 44, 95, 0.08);
-  box-shadow: 0 16px 40px rgba(11, 44, 95, 0.05);
-  border-radius: 20px;
+  border-radius: 1.25rem !important;
   overflow: hidden;
-  transition: all 0.3s ease;
+  transition: all 0.3s ease !important;
 }
 
 [data-theme="dark"] .settings-card {
-  border-color: rgba(255, 255, 255, 0.1) !important;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3) !important;
+  background: linear-gradient(135deg, rgba(17, 24, 39, 0.96) 0%, rgba(15, 23, 42, 0.98) 100%) !important;
+  border: 1.5px solid rgba(245, 158, 11, 0.45) !important;
+  box-shadow: 0 0 28px rgba(245, 158, 11, 0.22), inset 0 0 16px rgba(245, 158, 11, 0.05) !important;
+  color: #f8fafc !important;
 }
 
-/* Section Header Accents */
+[data-theme="light"] .settings-card {
+  background: #ffffff !important;
+  border: 1.5px solid rgba(11, 44, 95, 0.12) !important;
+  box-shadow: 0 10px 30px rgba(11, 44, 95, 0.06) !important;
+  color: #0f172a !important;
+}
+
+/* Settings Card Header */
 .settings-card-header {
-  border-bottom: 1px solid rgba(11, 44, 95, 0.08);
-  background: linear-gradient(180deg, rgba(248, 251, 255, 0.8) 0%, rgba(255, 255, 255, 0) 100%);
+  padding: 1.25rem 1.6rem !important;
+  border-bottom: 1.5px solid rgba(11, 44, 95, 0.08);
 }
 
 [data-theme="dark"] .settings-card-header {
-  border-bottom-color: rgba(255, 255, 255, 0.08) !important;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(0, 0, 0, 0) 100%) !important;
+  border-bottom-color: rgba(245, 158, 11, 0.3) !important;
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.08) 0%, rgba(17, 24, 39, 0) 100%) !important;
 }
 
-/* Custom Switch Toggle styling */
-.settings-switch .form-check-input {
-  width: 3.2em !important;
-  height: 1.7em !important;
-  cursor: pointer;
-  background-color: #cbd5e1;
-  border-color: #cbd5e1;
-  transition: all 0.3s ease;
+/* Settings Sidebar Nav Item Links */
+.settings-nav-item {
+  position: relative;
+  border: 1.5px solid transparent !important;
+  border-radius: 0.9rem !important;
+  padding: 0.85rem 1.15rem !important;
+  transition: all 0.25s ease !important;
 }
 
-.settings-switch .form-check-input:checked {
-  background-color: #0B2C5F !important;
-  border-color: #0B2C5F !important;
-  box-shadow: 0 4px 12px rgba(11, 44, 95, 0.3);
+.settings-nav-item:hover {
+  transform: translateX(3px);
 }
 
-[data-theme="dark"] .settings-switch .form-check-input {
-  background-color: #475569;
-  border-color: #475569;
+[data-theme="dark"] .settings-nav-item {
+  color: #94a3b8 !important;
 }
 
-[data-theme="dark"] .settings-switch .form-check-input:checked {
-  background-color: #3b82f6 !important;
-  border-color: #3b82f6 !important;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+[data-theme="dark"] .settings-nav-item:hover {
+  background: rgba(245, 158, 11, 0.1) !important;
+  color: #fbbf24 !important;
+  border-color: rgba(245, 158, 11, 0.3) !important;
 }
 
-/* Profile Avatar Halo */
-.avatar-halo {
-  box-shadow: 0 0 0 5px rgba(11, 44, 95, 0.1), 0 14px 30px rgba(11, 44, 95, 0.15);
-  transition: transform 0.3s ease;
+[data-theme="dark"] .settings-nav-item.active {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.22) 0%, rgba(217, 119, 6, 0.12) 100%) !important;
+  border-color: #f59e0b !important;
+  color: #fbbf24 !important;
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.28), inset 0 0 12px rgba(245, 158, 11, 0.12) !important;
 }
 
-.avatar-halo:hover {
-  transform: scale(1.04);
+[data-theme="light"] .settings-nav-item {
+  color: #475569 !important;
 }
 
-/* Harvest Guidance Banner */
-.harvest-rule-box {
-  background: linear-gradient(135deg, rgba(255, 122, 0, 0.07) 0%, rgba(255, 193, 7, 0.12) 100%);
-  border: 1px solid rgba(255, 122, 0, 0.2);
-  border-radius: 16px;
+[data-theme="light"] .settings-nav-item:hover {
+  background: rgba(11, 44, 95, 0.05) !important;
+  color: #0b2c5f !important;
 }
 
-[data-theme="dark"] .harvest-rule-box {
-  background: linear-gradient(135deg, rgba(255, 122, 0, 0.15) 0%, rgba(255, 193, 7, 0.1) 100%) !important;
-  border-color: rgba(255, 122, 0, 0.3) !important;
+[data-theme="light"] .settings-nav-item.active {
+  background: linear-gradient(135deg, rgba(11, 44, 95, 0.1) 0%, rgba(13, 110, 253, 0.05) 100%) !important;
+  border-color: #0b2c5f !important;
+  color: #0b2c5f !important;
+  font-weight: 700 !important;
 }
 
-/* Button Animations */
-.btn-settings-primary {
-  background: linear-gradient(135deg, #0B2C5F 0%, #1E40AF 100%);
-  border: none;
-  color: #ffffff;
-  box-shadow: 0 8px 20px rgba(11, 44, 95, 0.22);
-  transition: all 0.25s ease;
+/* Inner Profile Banner Box */
+.settings-banner-box {
+  border-radius: 1.25rem !important;
+  padding: 1.5rem 1.75rem !important;
+  transition: all 0.3s ease !important;
 }
 
-.btn-settings-primary:hover {
-  background: linear-gradient(135deg, #09234c 0%, #183593 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 12px 26px rgba(11, 44, 95, 0.3);
-  color: #ffffff;
+[data-theme="dark"] .settings-banner-box {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.12) 0%, rgba(245, 158, 11, 0.12) 50%, rgba(15, 23, 42, 0.95) 100%) !important;
+  border: 1.5px solid rgba(245, 158, 11, 0.6) !important;
+  box-shadow: 0 0 25px rgba(245, 158, 11, 0.2) !important;
 }
 
-.btn-settings-primary:active {
-  transform: translateY(0);
+[data-theme="light"] .settings-banner-box {
+  background: linear-gradient(135deg, #f0f7ff 0%, #e6f0fa 100%) !important;
+  border: 1.5px solid rgba(11, 44, 95, 0.15) !important;
+  box-shadow: 0 6px 20px rgba(11, 44, 95, 0.05) !important;
 }
 
-[data-theme="dark"] .btn-settings-primary {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35);
+/* Glowing Halo Ring for Avatar */
+.avatar-halo-gold {
+  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.4), 0 0 24px rgba(245, 158, 11, 0.65) !important;
 }
 
-[data-theme="dark"] .btn-settings-primary:hover {
-  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+/* Detail Info Cards inside Settings (Name, Email, Phone, Position, Last Login) */
+.settings-info-card {
+  border-radius: 1.15rem !important;
+  padding: 1.25rem 1.5rem !important;
+  transition: all 0.3s ease !important;
 }
 
-/* Setting Group Row Cards */
+[data-theme="dark"] .settings-info-card {
+  background: rgba(15, 23, 42, 0.85) !important;
+  border: 1.5px solid rgba(245, 158, 11, 0.5) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), inset 0 0 14px rgba(245, 158, 11, 0.05) !important;
+  color: #f8fafc !important;
+}
+
+[data-theme="light"] .settings-info-card {
+  background: #f8fafc !important;
+  border: 1.5px solid rgba(11, 44, 95, 0.14) !important;
+  box-shadow: 0 4px 14px rgba(11, 44, 95, 0.04) !important;
+  color: #0f172a !important;
+}
+
+/* Setting Group Row Cards (Option Switches & Settings Rows) */
 .setting-row-card {
-  background: #f8fafc;
-  border: 1px solid rgba(11, 44, 95, 0.08);
-  border-radius: 14px;
-  transition: all 0.25s ease;
-}
-
-.setting-row-card:hover {
-  background: #ffffff;
-  border-color: rgba(11, 44, 95, 0.16);
-  box-shadow: 0 6px 18px rgba(11, 44, 95, 0.05);
+  border-radius: 1.15rem !important;
+  padding: 1.25rem 1.5rem !important;
+  transition: all 0.3s ease !important;
 }
 
 [data-theme="dark"] .setting-row-card {
-  background: #0f172a !important;
-  border-color: rgba(255, 255, 255, 0.08) !important;
+  background: rgba(15, 23, 42, 0.85) !important;
+  border: 1.5px solid rgba(245, 158, 11, 0.4) !important;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35) !important;
 }
 
-[data-theme="dark"] .setting-row-card:hover {
-  background: #1e293b !important;
-  border-color: rgba(255, 255, 255, 0.18) !important;
+[data-theme="light"] .setting-row-card {
+  background: #f8fafc !important;
+  border: 1.5px solid rgba(11, 44, 95, 0.12) !important;
+  box-shadow: 0 4px 14px rgba(11, 44, 95, 0.04) !important;
+}
+
+/* Golden Glowing Action Buttons */
+.btn-gold-glow {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  border: 1.5px solid rgba(251, 191, 36, 0.6) !important;
+  box-shadow: 0 4px 18px rgba(245, 158, 11, 0.45) !important;
+  transition: all 0.25s ease !important;
+}
+
+.btn-gold-glow:hover {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%) !important;
+  transform: translateY(-1.5px) !important;
+  box-shadow: 0 6px 22px rgba(245, 158, 11, 0.65) !important;
+  color: #ffffff !important;
+}
+
+/* Dark Mode Form Inputs within Settings */
+[data-theme="dark"] .settings-card input.form-control,
+[data-theme="dark"] .settings-card select.form-select {
+  background: rgba(15, 23, 42, 0.9) !important;
+  border: 1.5px solid rgba(245, 158, 11, 0.4) !important;
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .settings-card input.form-control:focus,
+[data-theme="dark"] .settings-card select.form-select:focus {
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.25) !important;
 }
 
 .disease-camera-frame {
@@ -4249,6 +4337,130 @@ body.dark-theme .table {
 .logo-glow-subtle:hover {
   filter: drop-shadow(0 0 12px rgba(255, 122, 0, 0.5));
   transform: scale(1.03);
+}
+
+/* ==========================================================================
+   PREMIUM SWEETALERT2 MODAL STYLING SYSTEM (HIGH CONTRAST & THEME ADAPTIVE)
+   ========================================================================== */
+
+/* Fix SweetAlert Modal Popup Contrast in both themes */
+.swal2-container {
+  z-index: 10050 !important;
+}
+
+.shrim-swal-popup,
+.swal2-popup {
+  border-radius: 1.5rem !important;
+  font-family: inherit !important;
+  padding: 1.75rem 2rem !important;
+  transition: all 0.3s ease !important;
+}
+
+[data-theme="dark"] .swal2-popup,
+[data-theme="dark"] .shrim-swal-popup {
+  background: linear-gradient(135deg, rgba(17, 24, 39, 0.98) 0%, rgba(15, 23, 42, 0.98) 100%) !important;
+  border: 1.5px solid rgba(245, 158, 11, 0.5) !important;
+  box-shadow: 0 0 35px rgba(245, 158, 11, 0.25), 0 25px 60px rgba(0, 0, 0, 0.6) !important;
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .swal2-title,
+[data-theme="dark"] .shrim-swal-title {
+  color: #fbbf24 !important;
+  font-weight: 800 !important;
+  font-size: 1.4rem !important;
+}
+
+[data-theme="dark"] .swal2-html-container {
+  color: #e2e8f0 !important;
+}
+
+[data-theme="light"] .swal2-popup,
+[data-theme="light"] .shrim-swal-popup {
+  background: #ffffff !important;
+  border: 1.5px solid rgba(11, 44, 95, 0.15) !important;
+  box-shadow: 0 20px 50px rgba(11, 44, 95, 0.15) !important;
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .swal2-title,
+[data-theme="light"] .shrim-swal-title {
+  color: #0b2c5f !important;
+  font-weight: 800 !important;
+  font-size: 1.4rem !important;
+}
+
+[data-theme="light"] .swal2-html-container {
+  color: #334155 !important;
+}
+
+/* Feeding Tray Monitoring Box Cards (High Contrast & Clear Typography) */
+.tray-info-box {
+  border-radius: 1rem !important;
+  padding: 1.1rem 1.35rem !important;
+  margin-bottom: 0.9rem !important;
+  transition: all 0.25s ease !important;
+}
+
+[data-theme="dark"] .tray-info-box.previous-info {
+  background: rgba(14, 165, 233, 0.15) !important;
+  border: 1.5px solid rgba(56, 189, 248, 0.45) !important;
+  color: #e0f2fe !important;
+}
+
+[data-theme="light"] .tray-info-box.previous-info {
+  background: #eff6ff !important;
+  border: 1.5px solid #93c5fd !important;
+  color: #1e3a8a !important;
+}
+
+.tray-option-card {
+  display: block;
+  border-radius: 1rem !important;
+  padding: 1.1rem 1.35rem !important;
+  margin-bottom: 0.85rem !important;
+  cursor: pointer !important;
+  transition: all 0.25s ease !important;
+}
+
+.tray-option-card:hover {
+  transform: translateY(-1.5px) !important;
+}
+
+[data-theme="dark"] .tray-option-card.consumed-all {
+  background: rgba(34, 197, 94, 0.16) !important;
+  border: 1.5px solid rgba(34, 197, 94, 0.55) !important;
+  color: #f0fdf4 !important;
+}
+
+[data-theme="light"] .tray-option-card.consumed-all {
+  background: #f0fdf4 !important;
+  border: 1.5px solid #86efac !important;
+  color: #14532d !important;
+}
+
+[data-theme="dark"] .tray-option-card.consumed-some {
+  background: rgba(245, 158, 11, 0.16) !important;
+  border: 1.5px solid rgba(245, 158, 11, 0.55) !important;
+  color: #fff7ed !important;
+}
+
+[data-theme="light"] .tray-option-card.consumed-some {
+  background: #fff7ed !important;
+  border: 1.5px solid #fdba74 !important;
+  color: #7c2d12 !important;
+}
+
+[data-theme="dark"] .tray-option-card.consumed-many {
+  background: rgba(239, 68, 68, 0.16) !important;
+  border: 1.5px solid rgba(239, 68, 68, 0.55) !important;
+  color: #fef2f2 !important;
+}
+
+[data-theme="light"] .tray-option-card.consumed-many {
+  background: #fef2f2 !important;
+  border: 1.5px solid #fca5a5 !important;
+  color: #7f1d1d !important;
 }
 
 

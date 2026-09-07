@@ -428,71 +428,55 @@ export default function UsersPage() {
       <div className="row g-3 mb-4">
         {/* Total Users */}
         <div className="col-12 col-sm-6 col-md-3">
-          <div
-            className="card border border-primary border-opacity-25 shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden transition-all hover-shadow"
-            style={{ background: 'linear-gradient(180deg, rgba(13, 110, 253, 0.03) 0%, #ffffff 100%)' }}
-          >
-            <div className="position-absolute top-0 start-0 end-0 bg-primary" style={{ height: 4 }} />
+          <div className="card stat-card-cyan shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
             <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold">Total Users</span>
+              <span className="text-muted small fw-semibold pt-0.5">Total Users</span>
               <div className="rounded-3 p-2.5 bg-primary bg-opacity-10 text-primary fs-5">
                 <FaUsers />
               </div>
             </div>
-            <h3 className="fw-extrabold text-dark mb-2">{summary.total_users}</h3>
-            <span className="text-muted extra-small">Registered Accounts</span>
+            <h3 className="fw-extrabold mb-2">{summary.total_users}</h3>
+            <span className="text-muted extra-small d-block pb-0.5">Registered Accounts</span>
           </div>
         </div>
 
         {/* Admins */}
         <div className="col-12 col-sm-6 col-md-3">
-          <div
-            className="card border border-info border-opacity-25 shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden transition-all hover-shadow"
-            style={{ background: 'linear-gradient(180deg, rgba(13, 202, 240, 0.03) 0%, #ffffff 100%)' }}
-          >
-            <div className="position-absolute top-0 start-0 end-0 bg-info" style={{ height: 4 }} />
+          <div className="card stat-card-purple shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
             <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold">Admins</span>
+              <span className="text-muted small fw-semibold pt-0.5">Admins</span>
               <div className="rounded-3 p-2.5 bg-info bg-opacity-10 text-info fs-5">
                 <FaUserShield />
               </div>
             </div>
-            <h3 className="fw-extrabold text-dark mb-2">{summary.admin_count}</h3>
-            <span className="text-muted extra-small">System Administrators</span>
+            <h3 className="fw-extrabold mb-2">{summary.admin_count}</h3>
+            <span className="text-muted extra-small d-block pb-0.5">System Administrators</span>
           </div>
         </div>
 
         {/* Caretakers */}
         <div className="col-12 col-sm-6 col-md-3">
-          <div
-            className="card border border-warning border-opacity-50 shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden transition-all hover-shadow"
-            style={{ background: 'linear-gradient(180deg, rgba(255, 193, 7, 0.03) 0%, #ffffff 100%)' }}
-          >
-            <div className="position-absolute top-0 start-0 end-0 bg-warning" style={{ height: 4 }} />
+          <div className="card stat-card-orange shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
             <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold">Caretakers</span>
+              <span className="text-muted small fw-semibold pt-0.5">Caretakers</span>
               <div className="rounded-3 p-2.5 bg-warning bg-opacity-10 text-warning fs-5">
                 <FaUserTie />
               </div>
             </div>
-            <h3 className="fw-extrabold text-dark mb-2">{summary.caretaker_count}</h3>
-            <span className="text-muted extra-small">Field Farm Caretakers</span>
+            <h3 className="fw-extrabold mb-2">{summary.caretaker_count}</h3>
+            <span className="text-muted extra-small d-block pb-0.5">Field Farm Caretakers</span>
           </div>
         </div>
 
         {/* Active Users */}
         <div className="col-12 col-sm-6 col-md-3">
-          <div
-            className="card border border-success border-opacity-25 shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden transition-all hover-shadow"
-            style={{ background: 'linear-gradient(180deg, rgba(25, 135, 84, 0.03) 0%, #ffffff 100%)' }}
-          >
-            <div className="position-absolute top-0 start-0 end-0 bg-success" style={{ height: 4 }} />
+          <div className="card stat-card-green shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
             <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold">Active Accounts</span>
+              <span className="text-muted small fw-semibold pt-0.5">Active Accounts</span>
               <span className="badge bg-success bg-opacity-10 text-success rounded-pill extra-small fw-semibold">🟢 Active</span>
             </div>
             <h3 className="fw-extrabold text-success mb-2">{summary.active_count}</h3>
-            <span className="text-muted extra-small">Operational Status</span>
+            <span className="text-muted extra-small d-block pb-0.5">Operational Status</span>
           </div>
         </div>
       </div>

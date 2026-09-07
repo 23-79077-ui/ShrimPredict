@@ -810,7 +810,7 @@ export default function SettingsPage() {
 
               <div className="card-body p-4 p-md-4">
                 {/* Profile Picture Header Banner */}
-                <div className="d-flex flex-column flex-sm-row align-items-center gap-4 p-4 p-md-4.5 rounded-4 bg-light border border-slate-200 mb-4.5">
+                <div className="settings-banner-box d-flex flex-column flex-sm-row align-items-center gap-4 mb-4.5">
                   <div className="position-relative flex-shrink-0">
                     {profile.avatar_path && (
                       <img
@@ -821,12 +821,12 @@ export default function SettingsPage() {
                           const fallback = e.target.parentElement.querySelector('.avatar-initial-fallback');
                           if (fallback) fallback.style.display = 'flex';
                         }}
-                        className="avatar-halo rounded-circle object-fit-cover border border-3 border-white shadow-md"
+                        className="avatar-halo avatar-halo-gold rounded-circle object-fit-cover border border-3 border-warning shadow-md"
                         style={{ width: 96, height: 96 }}
                       />
                     )}
                     <div
-                      className="avatar-initial-fallback avatar-halo rounded-circle text-white align-items-center justify-content-center border border-3 border-white fw-bold fs-2 shadow-md"
+                      className="avatar-initial-fallback avatar-halo avatar-halo-gold rounded-circle text-white align-items-center justify-content-center border border-3 border-warning fw-bold fs-2 shadow-md"
                       style={{
                         width: 96,
                         height: 96,
@@ -839,7 +839,7 @@ export default function SettingsPage() {
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="btn btn-primary btn-sm rounded-circle position-absolute bottom-0 end-0 p-2 border border-2 border-white shadow"
+                      className="btn btn-warning btn-sm rounded-circle position-absolute bottom-0 end-0 p-2 border border-2 border-white shadow text-dark fw-bold"
                       title="Upload Photo"
                     >
                       <FaCamera size={13} />
@@ -854,12 +854,12 @@ export default function SettingsPage() {
                   </div>
                   <div className="text-center text-sm-start flex-grow-1">
                     <div className="d-flex flex-wrap align-items-center justify-content-center justify-content-sm-start gap-2 mb-1.5">
-                      <h5 className="fw-bold mb-0 text-dark fs-5">{profile.full_name}</h5>
-                      <span className="badge bg-primary bg-opacity-10 text-primary px-3 py-1.5 rounded-pill fw-semibold">
+                      <h5 className="fw-bold mb-0 fs-5">{profile.full_name}</h5>
+                      <span className="badge bg-info bg-opacity-10 text-info px-3 py-1.5 rounded-pill fw-semibold">
                         {profile.position}
                       </span>
                     </div>
-                    <p className="text-secondary mb-2 small fw-medium">{profile.email}</p>
+                    <p className="text-muted mb-2 small fw-medium">{profile.email}</p>
                     <small className="text-muted d-block extra-small">
                       Allowed formats: JPG, PNG or GIF. Click the camera icon on the avatar to change photo.
                     </small>
@@ -873,7 +873,7 @@ export default function SettingsPage() {
                       className="d-flex align-items-center justify-content-between border-top border-slate-200"
                       style={{ marginTop: 28, marginBottom: 28, paddingTop: 20 }}
                     >
-                      <h6 className="fw-bold text-dark mb-0 d-flex align-items-center gap-2 fs-6">
+                      <h6 className="fw-bold mb-0 d-flex align-items-center gap-2 fs-6">
                         <FaCheckCircle className="text-success" size={16} /> Account Profile Details Overview
                       </h6>
                       <span className="badge bg-light text-muted border px-3 py-1.5 extra-small fw-semibold">
@@ -884,56 +884,56 @@ export default function SettingsPage() {
                     <div className="row g-4">
                       {/* Full Name Card */}
                       <div className="col-12 col-md-6">
-                        <div className="p-4 px-4.5 rounded-4 bg-light border border-slate-200 transition-all hover-shadow-xs">
-                          <div className="text-muted extra-small fw-bold text-uppercase mb-2.5 d-flex align-items-center gap-2">
-                            <FaUser className="text-primary flex-shrink-0" size={13} />
+                        <div className="settings-info-card transition-all hover-shadow-xs">
+                          <div className="text-warning extra-small fw-bold text-uppercase mb-2.5 d-flex align-items-center gap-2">
+                            <FaUser className="text-warning flex-shrink-0" size={13} />
                             <span className="tracking-wider ms-1">System Administrator (Full Name)</span>
                           </div>
-                          <div className="fw-bold text-dark fs-6 pt-1">{profile.full_name}</div>
+                          <div className="fw-extrabold fs-6 pt-1">{profile.full_name}</div>
                         </div>
                       </div>
 
                       {/* Email Address Card */}
                       <div className="col-12 col-md-6">
-                        <div className="p-4 px-4.5 rounded-4 bg-light border border-slate-200 transition-all hover-shadow-xs">
-                          <div className="text-muted extra-small fw-bold text-uppercase mb-2.5 d-flex align-items-center gap-2">
-                            <FaEnvelope className="text-primary flex-shrink-0" size={13} />
+                        <div className="settings-info-card transition-all hover-shadow-xs">
+                          <div className="text-warning extra-small fw-bold text-uppercase mb-2.5 d-flex align-items-center gap-2">
+                            <FaEnvelope className="text-warning flex-shrink-0" size={13} />
                             <span className="tracking-wider ms-1">Email Address</span>
                           </div>
-                          <div className="fw-bold text-dark fs-6 pt-1">{profile.email}</div>
+                          <div className="fw-extrabold fs-6 pt-1">{profile.email}</div>
                         </div>
                       </div>
 
                       {/* Phone Number Card */}
                       <div className="col-12 col-md-6">
-                        <div className="p-4 px-4.5 rounded-4 bg-light border border-slate-200 transition-all hover-shadow-xs">
-                          <div className="text-muted extra-small fw-bold text-uppercase mb-2.5 d-flex align-items-center gap-2">
-                            <FaPhone className="text-primary flex-shrink-0" size={13} />
+                        <div className="settings-info-card transition-all hover-shadow-xs">
+                          <div className="text-warning extra-small fw-bold text-uppercase mb-2.5 d-flex align-items-center gap-2">
+                            <FaPhone className="text-warning flex-shrink-0" size={13} />
                             <span className="tracking-wider ms-1">Contact Phone Number</span>
                           </div>
-                          <div className="fw-bold text-dark fs-6 pt-1">{profile.phone || '09123456789'}</div>
+                          <div className="fw-extrabold fs-6 pt-1">{profile.phone || '09123456789'}</div>
                         </div>
                       </div>
 
                       {/* Position / Role Card */}
                       <div className="col-12 col-md-6">
-                        <div className="p-4 px-4.5 rounded-4 bg-light border border-slate-200 transition-all hover-shadow-xs">
-                          <div className="text-muted extra-small fw-bold text-uppercase mb-2.5 d-flex align-items-center gap-2">
-                            <FaUserShield className="text-primary flex-shrink-0" size={13} />
+                        <div className="settings-info-card transition-all hover-shadow-xs">
+                          <div className="text-warning extra-small fw-bold text-uppercase mb-2.5 d-flex align-items-center gap-2">
+                            <FaUserShield className="text-warning flex-shrink-0" size={13} />
                             <span className="tracking-wider ms-1">Position / System Role</span>
                           </div>
-                          <div className="fw-bold text-dark fs-6 pt-1">{profile.position}</div>
+                          <div className="fw-extrabold fs-6 pt-1">{profile.position}</div>
                         </div>
                       </div>
 
                       {/* Last Login Card */}
                       <div className="col-12">
-                        <div className="p-4 px-4.5 rounded-4 bg-light border border-slate-200 transition-all hover-shadow-xs">
-                          <div className="text-muted extra-small fw-bold text-uppercase mb-2.5 d-flex align-items-center gap-2">
-                            <FaClock className="text-primary flex-shrink-0" size={13} />
+                        <div className="settings-info-card transition-all hover-shadow-xs">
+                          <div className="text-warning extra-small fw-bold text-uppercase mb-2.5 d-flex align-items-center gap-2">
+                            <FaClock className="text-warning flex-shrink-0" size={13} />
                             <span className="tracking-wider ms-1">Last Login Timestamp</span>
                           </div>
-                          <div className="fw-bold text-dark fs-6 pt-1">{profile.last_login}</div>
+                          <div className="fw-extrabold fs-6 pt-1">{profile.last_login}</div>
                         </div>
                       </div>
                     </div>
@@ -946,7 +946,7 @@ export default function SettingsPage() {
                       </div>
                       <button
                         type="button"
-                        className="btn btn-primary px-4 py-2.5 rounded-3 d-flex align-items-center gap-2 shadow-sm fw-semibold ms-auto"
+                        className="btn btn-gold-glow px-4.5 py-2.5 rounded-3 d-flex align-items-center gap-2 shadow-sm fw-bold ms-auto"
                         onClick={handleStartEditProfile}
                       >
                         <FaEdit size={15} /> Edit Profile

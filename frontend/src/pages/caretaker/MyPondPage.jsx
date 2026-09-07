@@ -251,38 +251,53 @@ export default function MyPondPage() {
     const previousTime = previousFeedingLogForSelectedSlot?.feeding_time || 'previous feeding';
     const nextAmount = previousAmount > 0 ? previousAmount + 2 : 0;
     const { value, isConfirmed } = await Swal.fire({
-      title: 'Feeding tray monitoring',
+      title: '🍽 Feeding Tray Monitoring',
+      customClass: {
+        popup: 'shrim-swal-popup',
+        title: 'shrim-swal-title',
+        confirmButton: 'btn btn-gold-glow px-4 py-2.5 rounded-3 fw-bold me-2 shadow-sm',
+        cancelButton: 'btn btn-secondary px-4 py-2.5 rounded-3 fw-semibold',
+      },
+      buttonsStyling: false,
       html: `
-        <div style="text-align:left; color:#334155;">
-          <div style="border:1px solid #dbeafe; background:#eff6ff; border-radius:12px; padding:12px 14px; margin-bottom:14px;">
-            <div style="font-size:12px; font-weight:700; color:#1d4ed8; text-transform:uppercase;">Previous feeding</div>
-            <div style="font-size:15px; margin-top:4px;">
-              <strong>${previousTime}</strong> was <strong>${formatKg(previousAmount)} kg</strong>.
-              Choose the tray result before logging <strong>${currentForm.feedingTime}</strong>.
+        <div style="text-align:left;">
+          <div class="tray-info-box previous-info mb-3">
+            <div style="font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:0.5px;" class="mb-1">
+              PREVIOUS FEEDING LOG
+            </div>
+            <div style="font-size:14.5px; line-height:1.5;">
+              <strong style="color:inherit">${previousTime}</strong> was <strong style="color:inherit">${formatKg(previousAmount)} kg</strong>.
+              Choose the tray result before logging <strong style="color:inherit">${currentForm.feedingTime}</strong>.
             </div>
           </div>
 
-          <label style="display:block; border:1px solid #bbf7d0; background:#f0fdf4; border-radius:12px; padding:12px 14px; margin-bottom:10px; cursor:pointer;">
-            <input type="radio" name="tray-monitoring-choice" value="all_consumed" checked style="margin-right:8px;">
-            <strong style="color:#15803d;">All 4 trays consumed</strong>
-            <span style="display:block; margin-left:24px; font-size:13px; color:#475569;">
-              Add 2 kg. Next feed becomes <strong>${formatKg(nextAmount)} kg</strong>.
+          <label class="tray-option-card consumed-all">
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <input type="radio" name="tray-monitoring-choice" value="all_consumed" checked style="accent-color:#16a34a; width:18px; height:18px;" />
+              <strong style="font-size:15px; color:inherit">All 4 trays consumed</strong>
+            </div>
+            <span style="display:block; margin-left:26px; font-size:13px; opacity:0.9; color:inherit">
+              Add 2 kg. Next feed becomes <strong style="color:inherit">${formatKg(nextAmount)} kg</strong>.
             </span>
           </label>
 
-          <label style="display:block; border:1px solid #fed7aa; background:#fff7ed; border-radius:12px; padding:12px 14px; margin-bottom:10px; cursor:pointer;">
-            <input type="radio" name="tray-monitoring-choice" value="partial_leftover" style="margin-right:8px;">
-            <strong style="color:#c2410c;">Some trays were not consumed</strong>
-            <span style="display:block; margin-left:24px; font-size:13px; color:#475569;">
-              Maintain the previous feed at <strong>${formatKg(previousAmount)} kg</strong>.
+          <label class="tray-option-card consumed-some">
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <input type="radio" name="tray-monitoring-choice" value="partial_leftover" style="accent-color:#ea580c; width:18px; height:18px;" />
+              <strong style="font-size:15px; color:inherit">Some trays were not consumed</strong>
+            </div>
+            <span style="display:block; margin-left:26px; font-size:13px; opacity:0.9; color:inherit">
+              Maintain the previous feed at <strong style="color:inherit">${formatKg(previousAmount)} kg</strong>.
             </span>
           </label>
 
-          <label style="display:block; border:1px solid #fecaca; background:#fef2f2; border-radius:12px; padding:12px 14px; cursor:pointer;">
-            <input type="radio" name="tray-monitoring-choice" value="heavy_leftover" style="margin-right:8px;">
-            <strong style="color:#b91c1c;">Many trays were not consumed</strong>
-            <span style="display:block; margin-left:24px; font-size:13px; color:#475569;">
-              Maintain the previous feed at <strong>${formatKg(previousAmount)} kg</strong>.
+          <label class="tray-option-card consumed-many">
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <input type="radio" name="tray-monitoring-choice" value="heavy_leftover" style="accent-color:#dc2626; width:18px; height:18px;" />
+              <strong style="font-size:15px; color:inherit">Many trays were not consumed</strong>
+            </div>
+            <span style="display:block; margin-left:26px; font-size:13px; opacity:0.9; color:inherit">
+              Maintain the previous feed at <strong style="color:inherit">${formatKg(previousAmount)} kg</strong>.
             </span>
           </label>
         </div>

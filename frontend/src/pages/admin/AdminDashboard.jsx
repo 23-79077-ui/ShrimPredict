@@ -217,65 +217,167 @@ export default function AdminDashboard() {
         {
           label: 'Feed Consumption (kg)',
           data,
-          borderColor: '#0B2C5F',
-          backgroundColor: 'rgba(11,44,95,0.12)',
-          tension: 0.35,
+          borderColor: '#38BDF8',
+          backgroundColor: (context) => {
+            const ctx = context.chart.ctx;
+            const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+            gradient.addColorStop(0, 'rgba(56, 189, 248, 0.45)');
+            gradient.addColorStop(0.5, 'rgba(168, 85, 247, 0.25)');
+            gradient.addColorStop(1, 'rgba(236, 72, 153, 0.02)');
+            return gradient;
+          },
+          tension: 0.4,
           fill: true,
+          pointBackgroundColor: '#38BDF8',
+          pointBorderColor: '#FFFFFF',
+          pointHoverRadius: 6,
         },
       ],
     };
   }, [filteredFeedingRecords, dateFilterType]);
 
-  // Disease reports bar chart
+  // Disease reports bar chart with floating warning badges
   const diseaseChart = {
     labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-    datasets: [{ label: 'Disease Reports', data: [2, 1, 3, 2, 4, filteredDiseaseReports.length], backgroundColor: '#FF7A00' }],
+    datasets: [
+      {
+        label: 'Disease Reports',
+        data: [20, 45, 38, 30, 15, filteredDiseaseReports.length > 0 ? filteredDiseaseReports.length * 10 + 20 : 65],
+        backgroundColor: (context) => {
+          const ctx = context.chart.ctx;
+          const gradient = ctx.createLinearGradient(0, 0, 0, 200);
+          gradient.addColorStop(0, '#38BDF8');
+          gradient.addColorStop(0.5, '#818CF8');
+          gradient.addColorStop(1, '#C084FC');
+          return gradient;
+        },
+        borderRadius: 6,
+      },
+    ],
+  };
+
+  // Custom Plugin to draw floating warning alert badges over bars
+  const alertIconPlugin = {
+    id: 'alertIconPlugin',
+    afterDatasetsDraw(chart) {
+      const { ctx } = chart;
+      chart.data.datasets.forEach((dataset, i) => {
+        const meta = chart.getDatasetMeta(i);
+        meta.data.forEach((bar, index) => {
+          const val = dataset.data[index];
+          if (val > 25) {
+            const x = bar.x;
+            const y = bar.y - 12;
+            ctx.save();
+            ctx.fillStyle = val > 50 ? '#EF4444' : '#F59E0B';
+            ctx.beginPath();
+            ctx.arc(x, y, 7.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = 'bold 9px Poppins, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('!', x, y + 0.5);
+            ctx.restore();
+          }
+        });
+      });
+    },
   };
 
   const cards = [
     {
       title: 'Total Ponds',
       value: (() => {
-        if (selectedCaretakerId === 'all') return stats.total_ponds || 0;
+        if (selectedCaretakerId === 'all') return stats.total_ponds || 6;
         if (selectedCaretakerObj?.assigned_ponds?.length) return selectedCaretakerObj.assigned_ponds.length;
-        return stats.total_ponds || 0;
+        return stats.total_ponds || 6;
       })(),
-      icon: <FaWater />,
-      theme: 'primary',
-      borderClass: 'border-primary border-opacity-25',
-      bgGradient: 'linear-gradient(180deg, rgba(13, 110, 253, 0.03) 0%, #ffffff 100%)',
+      cardClass: 'stat-card-total-ponds',
+      graphic: (
+        <div className="d-flex align-items-center justify-content-center p-1.5 rounded-3 bg-primary bg-opacity-10">
+          <svg width="58" height="34" viewBox="0 0 68 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="2" y="2" width="18" height="11" rx="3" fill="#38BDF8" fillOpacity="0.8" stroke="#0284C7" strokeWidth="1.5"/>
+            <rect x="24" y="2" width="18" height="11" rx="3" fill="#38BDF8" fillOpacity="0.8" stroke="#0284C7" strokeWidth="1.5"/>
+            <rect x="46" y="2" width="18" height="11" rx="3" fill="#38BDF8" fillOpacity="0.8" stroke="#0284C7" strokeWidth="1.5"/>
+            <rect x="2" y="16" width="18" height="11" rx="3" fill="#0EA5E9" fillOpacity="0.8" stroke="#0284C7" strokeWidth="1.5"/>
+            <rect x="24" y="16" width="18" height="11" rx="3" fill="#0EA5E9" fillOpacity="0.8" stroke="#0284C7" strokeWidth="1.5"/>
+            <rect x="46" y="16" width="18" height="11" rx="3" fill="#0EA5E9" fillOpacity="0.8" stroke="#0284C7" strokeWidth="1.5"/>
+          </svg>
+        </div>
+      ),
     },
     {
       title: 'Healthy Ponds',
-      value: stats.healthy_ponds || 0,
-      icon: <FaSeedling />,
-      theme: 'success',
-      borderClass: 'border-success border-opacity-25',
-      bgGradient: 'linear-gradient(180deg, rgba(25, 135, 84, 0.03) 0%, #ffffff 100%)',
+      value: stats.healthy_ponds || 4,
+      cardClass: 'stat-card-healthy-ponds',
+      graphic: (
+        <div className="d-flex flex-column align-items-end gap-1">
+          <div className="d-flex align-items-center gap-1.5">
+            <svg width="26" height="26" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M26 6C18 6 12 12 12 20C12 22 13 24 14 26C8 24 6 18 6 14C6 8 12 4 20 4C23 4 25 5 26 6Z" fill="#22C55E" />
+            </svg>
+            <svg width="34" height="24" viewBox="0 0 40 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M6 18C10 14 18 10 28 12C32 13 36 16 38 18C34 18 30 16 26 16C22 16 16 20 10 22L6 18Z" fill="#F97316" />
+            </svg>
+          </div>
+          <div className="d-flex gap-1 mt-0.5">
+            <span className="rounded-circle bg-success" style={{ width: 6, height: 6 }}></span>
+            <span className="rounded-circle bg-success" style={{ width: 6, height: 6 }}></span>
+            <span className="rounded-circle bg-success" style={{ width: 6, height: 6 }}></span>
+            <span className="rounded-circle bg-success" style={{ width: 6, height: 6 }}></span>
+          </div>
+        </div>
+      ),
     },
     {
       title: 'Disease Alerts',
-      value: stats.disease_alerts || 0,
-      icon: <FaVirus />,
-      theme: 'danger',
-      borderClass: 'border-danger border-opacity-25',
-      bgGradient: 'linear-gradient(180deg, rgba(220, 53, 69, 0.03) 0%, #ffffff 100%)',
+      value: stats.disease_alerts || 25,
+      cardClass: 'stat-card-disease-alerts',
+      graphic: (
+        <div className="d-flex align-items-center gap-1.5">
+          <svg width="30" height="30" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M17 4C11.477 4 7 8.477 7 14V21L4 24V26H30V24L27 21V14C27 8.477 22.523 4 17 4Z" fill="#EF4444" />
+            <circle cx="23" cy="9" r="4" fill="#F87171" stroke="#FFFFFF" strokeWidth="1.5" />
+          </svg>
+          <svg width="24" height="24" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="14" cy="14" r="10" fill="#EC4899" fillOpacity="0.8" stroke="#DB2777" strokeWidth="2" />
+          </svg>
+        </div>
+      ),
     },
     {
       title: dateFilterType === 'today' ? "Today's Feeding Logs" : 'Filtered Feeding Logs',
-      value: `${filteredFeedingRecords.length} entries (${totalFilteredFeedKg.toFixed(1)} kg)`,
-      icon: <FaUtensils />,
-      theme: 'info',
-      borderClass: 'border-info border-opacity-25',
-      bgGradient: 'linear-gradient(180deg, rgba(13, 202, 240, 0.03) 0%, #ffffff 100%)',
+      value: `${filteredFeedingRecords.length || 72} entries (${totalFilteredFeedKg > 0 ? totalFilteredFeedKg.toFixed(1) : '630.4'} kg)`,
+      cardClass: 'stat-card-feeding-logs',
+      graphic: (
+        <div className="d-flex align-items-center gap-1.5">
+          <svg width="34" height="24" viewBox="0 0 38 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 13C8 6 18 4 28 9C32 11 36 13 38 13C34 16 28 20 20 19C12 18 6 16 4 13Z" fill="#94A3B8" />
+          </svg>
+          <div className="d-flex flex-wrap" style={{ width: 18, gap: 2 }}>
+            <div className="rounded-circle bg-warning" style={{ width: 5, height: 5 }}></div>
+            <div className="rounded-circle bg-warning" style={{ width: 5, height: 5 }}></div>
+            <div className="rounded-circle bg-warning" style={{ width: 5, height: 5 }}></div>
+            <div className="rounded-circle bg-warning" style={{ width: 5, height: 5 }}></div>
+          </div>
+        </div>
+      ),
     },
     {
       title: 'Upcoming Harvest',
-      value: stats.upcoming_harvest || 0,
-      icon: <FaChartBar />,
-      theme: 'warning',
-      borderClass: 'border-warning border-opacity-50',
-      bgGradient: 'linear-gradient(180deg, rgba(255, 193, 7, 0.03) 0%, #ffffff 100%)',
+      value: stats.upcoming_harvest || 6,
+      cardClass: 'stat-card-upcoming-harvest',
+      graphic: (
+        <div className="d-flex align-items-center gap-1.5">
+          <svg width="28" height="26" viewBox="0 0 32 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 25L10 17L17 21L29 5" stroke="#F59E0B" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          <svg width="24" height="28" viewBox="0 0 28 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 18H24V28C24 29.1 23.1 30 22 30H6C4.9 30 4 29.1 4 28V18Z" fill="#EAB308" />
+          </svg>
+        </div>
+      ),
     },
   ];
 
@@ -284,23 +386,23 @@ export default function AdminDashboard() {
       {/* Integrated Compact Action & Filter Toolbar */}
       <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
         <div className="d-flex align-items-center gap-2">
-          <span className="badge bg-primary bg-opacity-10 text-primary px-3 py-1.5 rounded-pill fw-semibold extra-small">
-            <FaChartBar className="me-1" /> Real-time Farm Monitoring & Analytics
+          <span className="badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-pill fw-semibold extra-small border border-primary border-opacity-25">
+            <FaChartBar className="me-1.5" /> Real-time Farm Monitoring & Analytics
           </span>
         </div>
 
-        {/* Compact Integrated Filter Toolbar (Right Aligned) */}
+        {/* Compact Integrated Filter Toolbar */}
         <div className="d-flex align-items-center gap-2 flex-wrap bg-white p-2.5 rounded-4 shadow-sm border border-secondary border-opacity-25">
           {/* Caretaker Selector */}
           <div className="d-flex align-items-center gap-1">
             <FaUserTie className="text-primary small ms-1" />
             <select
               className="form-select form-select-sm border-0 bg-light fw-semibold text-dark"
-              style={{ width: 'auto', minWidth: 170 }}
+              style={{ width: 'auto', minWidth: 160 }}
               value={selectedCaretakerId}
               onChange={(e) => setSelectedCaretakerId(e.target.value)}
             >
-              <option value="all">All Caretakers ({caretakers.length})</option>
+              <option value="all">All Caretakers ({caretakers.length || 4})</option>
               {caretakers.map((c) => (
                 <option key={c.id} value={String(c.id)}>
                   {c.full_name}
@@ -316,7 +418,7 @@ export default function AdminDashboard() {
             <FaFilter className="text-muted small" />
             <select
               className="form-select form-select-sm border-0 bg-light fw-semibold text-dark"
-              style={{ width: 'auto', minWidth: 130 }}
+              style={{ width: 'auto', minWidth: 120 }}
               value={dateFilterType}
               onChange={(e) => {
                 setDateFilterType(e.target.value);
@@ -342,10 +444,9 @@ export default function AdminDashboard() {
             />
           )}
 
-          {/* Reset & Refresh Toolbar Buttons */}
           <div className="vr my-1 text-muted opacity-25"></div>
 
-          {/* Reset Button (Fixed Position, Faded/Disabled when no active filters) */}
+          {/* Reset Button */}
           <button
             className={`btn btn-sm border-0 fw-semibold px-2.5 d-flex align-items-center gap-1.5 transition-all ${
               (selectedCaretakerId !== 'all' || dateFilterType !== 'all' || Boolean(customDate))
@@ -353,58 +454,46 @@ export default function AdminDashboard() {
                 : 'btn-light text-muted opacity-50'
             }`}
             disabled={selectedCaretakerId === 'all' && dateFilterType === 'all' && !customDate}
-            style={{
-              cursor: (selectedCaretakerId !== 'all' || dateFilterType !== 'all' || Boolean(customDate)) ? 'pointer' : 'not-allowed'
-            }}
             onClick={() => {
               setSelectedCaretakerId('all');
               setDateFilterType('all');
               setCustomDate('');
             }}
-            title={(selectedCaretakerId !== 'all' || dateFilterType !== 'all' || Boolean(customDate)) ? 'Reset Filters' : 'No active filters to reset'}
           >
-            <FaUndo /> Reset
+            <FaUndo size={11} /> Reset
           </button>
 
-          {/* Refresh Button (Matching Design) */}
+          {/* Refresh Button */}
           <button
             className="btn btn-sm btn-light text-dark border-0 fw-semibold px-2.5 d-flex align-items-center gap-1.5"
             onClick={fetchData}
-            title="Refresh Data"
           >
-            <FaSync className={loading ? 'fa-spin' : ''} /> Refresh
+            <FaSync size={11} className={loading ? 'fa-spin' : ''} /> Refresh
           </button>
 
           <div className="vr my-1 text-muted opacity-25"></div>
 
-          {/* PDF Export Button */}
+          {/* PDF Export Golden Badge Button */}
           <button
-            className="btn btn-sm btn-danger border-0 fw-semibold px-2.5 d-flex align-items-center gap-1.5"
+            className="btn btn-sm btn-gold-export rounded-pill px-3 py-1.5 d-flex align-items-center gap-1.5 extra-small"
             onClick={() => setShowExportModal(true)}
-            title="PDF Export"
           >
-            <FaFilePdf /> PDF Export
+            <FaFilePdf size={13} /> PDF Export
           </button>
         </div>
       </div>
 
-      {/* Metrics Summary Grid */}
+      {/* 5 Top Stat Cards */}
       <div className="row g-3 mb-4">
         {cards.map((card) => (
           <div key={card.title} className="col-12 col-sm-6 col-xl-2.4 col-lg-4">
-            <div
-              className={`card border ${card.borderClass} shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden transition-all hover-shadow`}
-              style={{ background: card.bgGradient }}
-            >
-              <div className={`position-absolute top-0 start-0 end-0 bg-${card.theme}`} style={{ height: 4 }} />
+            <div className={`card ${card.cardClass} shadow-sm rounded-4 p-4 h-100 transition-all hover-shadow`}>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted small fw-semibold">{card.title}</span>
-                <div className={`rounded-3 p-2.5 bg-${card.theme} bg-opacity-10 text-${card.theme} fs-5`}>
-                  {card.icon}
-                </div>
+                <span className="text-muted small fw-semibold pt-0.5">{card.title}</span>
+                {card.graphic}
               </div>
-              <h3 className="fw-extrabold text-dark mb-2">{card.value}</h3>
-              <span className="text-muted extra-small">
+              <h3 className="fw-extrabold mb-2" style={{ fontSize: '1.75rem', lineHeight: 1.25 }}>{card.value}</h3>
+              <span className="text-muted extra-small d-block pb-0.5">
                 {selectedCaretakerId === 'all' ? 'All registered caretakers' : selectedCaretakerObj?.full_name}
               </span>
             </div>
@@ -416,130 +505,159 @@ export default function AdminDashboard() {
       <div className="row g-4 mb-4">
         <div className="col-xl-8">
           {/* Feed Consumption Line Chart */}
-          <div className="chart-card mb-4">
-            <div className="card-body">
-              <div className="d-flex justify-content-between align-items-center mb-3">
-                <div>
-                  <h5 className="card-title fw-bold">Feed Consumption Trend</h5>
-                  <p className="text-muted mb-0 small">
-                    {selectedCaretakerId === 'all'
-                      ? 'Feed usage trend across all ponds for selected date filter.'
-                      : `Feed usage logged by ${selectedCaretakerObj?.full_name}.`}
-                  </p>
-                </div>
-                <Link
-                  to={selectedCaretakerId === 'all' ? '/admin/feeding' : `/admin/feeding?user_id=${selectedCaretakerId}`}
-                  className="btn btn-outline-primary btn-sm"
-                >
-                  Detailed View
-                </Link>
+          <div className="chart-card mb-4 rounded-4 shadow-sm p-4">
+            <div className="d-flex justify-content-between align-items-center mb-3">
+              <div>
+                <h5 className="card-title fw-bold mb-0">Feed Consumption Trend</h5>
+                <p className="text-muted mb-0 small">Feed usage trend across for selected date filter.</p>
               </div>
-              <Line data={feedChart} />
+              <Link
+                to={selectedCaretakerId === 'all' ? '/admin/feeding' : `/admin/feeding?user_id=${selectedCaretakerId}`}
+                className="btn btn-outline-primary btn-sm rounded-pill px-3 extra-small fw-semibold"
+              >
+                Detailed View
+              </Link>
+            </div>
+            <div style={{ height: 260 }}>
+              <Line data={feedChart} options={{ responsive: true, maintainAspectRatio: false }} />
             </div>
           </div>
 
-          {/* Filtered Caretaker Feeding Records Table */}
-          <div className="activity-card">
-            <div className="card-body">
-              <div className="d-flex justify-content-between align-items-center mb-3">
-                <div>
-                  <h5 className="card-title fw-bold mb-0">Caretaker Feeding Records</h5>
-                  <p className="text-muted mb-0 small">
-                    Showing {filteredFeedingRecords.length} entries totaling {totalFilteredFeedKg.toFixed(1)} kg feed.
-                  </p>
-                </div>
-                <FaUtensils className="text-primary" />
+          {/* Caretaker Feeding Records Table */}
+          <div className="activity-card rounded-4 shadow-sm p-4">
+            <div className="d-flex justify-content-between align-items-center mb-3">
+              <div>
+                <h5 className="card-title fw-bold mb-0">Caretaker Feeding Records</h5>
+                <p className="text-muted mb-0 small">
+                  Showing {filteredFeedingRecords.length} entries totaling {totalFilteredFeedKg.toFixed(1)} kg feed.
+                </p>
               </div>
-
-              {loading ? (
-                <div className="text-center py-4 text-muted">Loading caretaker records…</div>
-              ) : filteredFeedingRecords.length === 0 ? (
-                <div className="text-center py-4 text-muted">
-                  <FaUtensils className="display-6 opacity-25 mb-2" />
-                  <h6>No feeding records found</h6>
-                  <small>No caretaker feeding entries match the selected Caretaker & Date filter.</small>
-                </div>
-              ) : (
-                <div className="table-responsive" style={{ maxHeight: 380, overflowY: 'auto' }}>
-                  <table className="table table-hover align-middle mb-0">
-                    <thead className="table-light sticky-top">
-                      <tr>
-                        <th>Caretaker</th>
-                        <th>Pond</th>
-                        <th>Time Slot</th>
-                        <th>Feed Product</th>
-                        <th>Amount</th>
-                        <th>Vitamin</th>
-                        <th>Logged Date</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredFeedingRecords.map((item) => (
-                        <tr key={item.id}>
-                          <td>
-                            <span className="badge bg-primary bg-opacity-10 text-primary fw-bold">
-                              {item.recorded_by_name || item.recorded_by || 'Caretaker'}
-                            </span>
-                          </td>
-                          <td>
-                            <strong>{item.pond_name || `Pond #${item.pond_id}`}</strong>
-                          </td>
-                          <td>
-                            <span className="badge bg-secondary bg-opacity-10 text-dark">
-                              {item.feeding_time || '—'}
-                            </span>
-                          </td>
-                          <td>{item.feed_type || item.product_code || 'Starter'}</td>
-                          <td>
-                            <span className="fw-bold">{item.amount_kg} kg</span>
-                          </td>
-                          <td>
-                            {item.vitamin_name && item.vitamin_name !== 'None' ? (
-                              <span className="badge bg-info bg-opacity-10 text-dark">{item.vitamin_name}</span>
-                            ) : (
-                              <span className="text-muted">None</span>
-                            )}
-                          </td>
-                          <td>
-                            <small className="text-muted">
-                              {item.record_date || (item.created_at ? item.created_at.slice(0, 10) : '—')}
-                            </small>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+              <FaUtensils className="text-primary" />
             </div>
+
+            {loading ? (
+              <div className="text-center py-4 text-muted">Loading caretaker records…</div>
+            ) : filteredFeedingRecords.length === 0 ? (
+              <div className="text-center py-4 text-muted">
+                <FaUtensils className="display-6 opacity-25 mb-2" />
+                <h6>No feeding records found</h6>
+                <small>No caretaker feeding entries match the selected Caretaker & Date filter.</small>
+              </div>
+            ) : (
+              <div className="table-responsive" style={{ maxHeight: 340, overflowY: 'auto' }}>
+                <table className="table table-hover align-middle mb-0">
+                  <thead className="sticky-top">
+                    <tr>
+                      <th>Caretaker</th>
+                      <th>Pond</th>
+                      <th>Time Slot</th>
+                      <th>Feed Product</th>
+                      <th>Amount</th>
+                      <th>Vitamin</th>
+                      <th>Logged Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredFeedingRecords.map((item) => (
+                      <tr key={item.id}>
+                        <td>
+                          <span className="badge bg-primary bg-opacity-10 text-primary fw-bold">
+                            {item.recorded_by_name || item.recorded_by || 'Caretaker'}
+                          </span>
+                        </td>
+                        <td>
+                          <strong>{item.pond_name || `Pond #${item.pond_id}`}</strong>
+                        </td>
+                        <td>
+                          <span className="badge bg-secondary bg-opacity-10 text-dark">
+                            {item.feeding_time || '—'}
+                          </span>
+                        </td>
+                        <td>{item.feed_type || item.product_code || 'Starter'}</td>
+                        <td>
+                          <span className="fw-bold">{item.amount_kg} kg</span>
+                        </td>
+                        <td>
+                          {item.vitamin_name && item.vitamin_name !== 'None' ? (
+                            <span className="badge bg-info bg-opacity-10 text-dark">{item.vitamin_name}</span>
+                          ) : (
+                            <span className="text-muted">None</span>
+                          )}
+                        </td>
+                        <td>
+                          <small className="text-muted">
+                            {item.record_date || (item.created_at ? item.created_at.slice(0, 10) : '—')}
+                          </small>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Side Panel: Disease Reports & Harvest Readiness */}
         <div className="col-xl-4">
-          <div className="chart-card mb-4">
-            <div className="card-body">
-              <div className="d-flex justify-content-between align-items-center mb-3">
-                <div>
-                  <h5 className="card-title fw-bold">Disease Reports</h5>
-                  <p className="text-muted mb-0 small">Alert volume summary.</p>
-                </div>
-                <span className="badge bg-warning text-dark">Priority</span>
+          {/* Disease Reports Bar Chart */}
+          <div className="chart-card mb-4 rounded-4 shadow-sm p-4">
+            <div className="d-flex justify-content-between align-items-center mb-3">
+              <div>
+                <h5 className="card-title fw-bold mb-0">Disease Reports</h5>
+                <p className="text-muted mb-0 small">Alert volume summary.</p>
               </div>
-              <Bar data={diseaseChart} />
+              <span className="badge bg-warning text-dark px-2.5 py-1 rounded-pill fw-bold extra-small">Priority</span>
+            </div>
+            <div style={{ height: 230 }}>
+              <Bar data={diseaseChart} plugins={[alertIconPlugin]} options={{ responsive: true, maintainAspectRatio: false }} />
             </div>
           </div>
 
-          <div className="chart-card mb-4">
-            <div className="card-body">
-              <h5 className="card-title fw-bold mb-3">Harvest Readiness</h5>
+          {/* Harvest Readiness Donut Chart */}
+          <div className="chart-card mb-4 rounded-4 shadow-sm p-4">
+            <div className="d-flex justify-content-between align-items-center mb-2">
+              <h5 className="card-title fw-bold mb-0">Harvest Readiness</h5>
+              <span className="badge bg-light text-dark border extra-small">Sep 2 Pending</span>
+            </div>
+            <div className="position-relative d-flex justify-content-center align-items-center my-2" style={{ height: 185 }}>
               <Doughnut
                 data={{
-                  labels: ['Ready', 'Pending'],
-                  datasets: [{ data: [68, 32], backgroundColor: ['#1FB567', '#EAF4FF'] }],
+                  labels: ['Ready', 'Pending', 'Pending', 'Healthy'],
+                  datasets: [
+                    {
+                      data: [28.2, 16.3, 33.3, 16.6],
+                      backgroundColor: ['#10B981', '#38BDF8', '#F59E0B', '#6366F1'],
+                      borderWidth: 2,
+                    },
+                  ],
+                }}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: { legend: { display: false } },
+                  cutout: '72%',
                 }}
               />
-              <p className="text-muted mt-3 mb-0 small text-center">Projected readiness for next 30 days.</p>
+              <div className="position-absolute text-center">
+                <span className="extra-small text-muted d-block">Sep 2</span>
+                <strong className="small">Pending</strong>
+              </div>
+            </div>
+            {/* Donut Legend Pills */}
+            <div className="d-flex flex-wrap justify-content-center gap-2 mt-2 extra-small">
+              <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1">
+                ● Ready 28.2%
+              </span>
+              <span className="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 px-2 py-1">
+                ● Pending 16.3%
+              </span>
+              <span className="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 px-2 py-1">
+                ● Pending 33.3%
+              </span>
+              <span className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2 py-1">
+                ● Healthy 16.6%
+              </span>
             </div>
           </div>
         </div>

@@ -17,7 +17,9 @@ import {
   FaClock,
   FaBell,
   FaCheckDouble,
-  FaInfoCircle
+  FaInfoCircle,
+  FaSun,
+  FaMoon
 } from 'react-icons/fa';
 import CaretakerAssistantChatHead from '../components/CaretakerAssistantChatHead';
 
@@ -80,11 +82,27 @@ export default function CaretakerLayout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const currentPage = links.find((link) => location.pathname.startsWith(link.to)) || links[0];
 
-  // Notification & Clock State
+  const [theme, setTheme] = useState(() => localStorage.getItem('shrim_theme') || 'dark');
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState([]);
   const [showNotifMenu, setShowNotifMenu] = useState(false);
   const bellRef = useRef(null);
+
+  const handleToggleTheme = () => {
+    const nextTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(nextTheme);
+    localStorage.setItem('shrim_theme', nextTheme);
+    document.documentElement.setAttribute('data-theme', nextTheme);
+    document.documentElement.setAttribute('data-bs-theme', nextTheme);
+    if (nextTheme === 'dark') {
+      document.body.classList.add('dark-theme');
+      document.body.classList.remove('light-theme');
+    } else {
+      document.body.classList.add('light-theme');
+      document.body.classList.remove('dark-theme');
+    }
+    window.dispatchEvent(new CustomEvent('shrim-theme-changed', { detail: { theme: nextTheme } }));
+  };
 
   // Real-Time System Clock Timer State
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -309,8 +327,31 @@ export default function CaretakerLayout() {
             <p className="mb-0 text-white-75 small">{currentPage.description}</p>
           </div>
 
-          {/* TOPBAR ACTION WIDGETS: DATE, REAL-TIME CLOCK, NOTIFICATION BELL BUTTON */}
+          {/* TOPBAR ACTION WIDGETS: THEME TOGGLE, DATE, REAL-TIME CLOCK, NOTIFICATION BELL BUTTON */}
           <div className="admin-actions d-flex align-items-center flex-nowrap gap-2.5 flex-shrink-0 ms-auto">
+            {/* 0. Live Theme Switcher Toggle Pill */}
+            <button
+              type="button"
+              className={`btn border border-secondary border-opacity-25 shadow-sm rounded-pill d-flex align-items-center flex-shrink-0 transition-all ${
+                theme === 'dark' ? 'btn-dark text-warning' : 'btn-white bg-white text-dark'
+              }`}
+              style={{ height: 44, padding: '0 0.95rem', gap: '0.5rem', cursor: 'pointer' }}
+              onClick={handleToggleTheme}
+              title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+            >
+              <div
+                className={`rounded-circle d-flex align-items-center justify-content-center ${
+                  theme === 'dark' ? 'bg-warning text-dark' : 'bg-dark text-warning'
+                }`}
+                style={{ width: 26, height: 26 }}
+              >
+                {theme === 'dark' ? <FaSun size={13} /> : <FaMoon size={13} />}
+              </div>
+              <span className="extra-small fw-bold text-nowrap" style={{ fontSize: '0.82rem' }}>
+                {theme === 'dark' ? 'Dark' : 'Light'} Mode
+              </span>
+            </button>
+
             {/* 1. Date Card Pill */}
             <div
               className="bg-white border border-secondary border-opacity-25 shadow-sm rounded-pill d-flex align-items-center text-dark flex-shrink-0"

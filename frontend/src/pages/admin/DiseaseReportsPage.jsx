@@ -229,22 +229,22 @@ export default function DiseaseReportsPage() {
       {/* KPI METRICS */}
       <div className="row g-3 mb-4">
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+          <div className="card stat-card-cyan shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
             <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold">Total Scans</span>
+              <span className="text-muted small fw-semibold pt-0.5">Total Scans</span>
               <div className="rounded-3 p-2.5 bg-primary bg-opacity-10 text-primary fs-5">
                 <FaChartBar />
               </div>
             </div>
-            <h3 className="fw-extrabold text-dark mb-2">{summary.total}</h3>
-            <span className="text-muted extra-small">Recorded Scan Logs</span>
+            <h3 className="fw-extrabold mb-2">{summary.total}</h3>
+            <span className="text-muted extra-small d-block pb-0.5">Recorded Scan Logs</span>
           </div>
         </div>
 
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+          <div className="card stat-card-red shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
             <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold">High Risk</span>
+              <span className="text-muted small fw-semibold pt-0.5">High Risk</span>
               <div className="rounded-3 p-2.5 bg-danger bg-opacity-10 text-danger fs-5">
                 <FaExclamationTriangle />
               </div>
@@ -255,28 +255,28 @@ export default function DiseaseReportsPage() {
         </div>
 
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+          <div className="card stat-card-green shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
             <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold">Avg Confidence</span>
+              <span className="text-muted small fw-semibold pt-0.5">Avg Confidence</span>
               <div className="rounded-3 p-2.5 bg-success bg-opacity-10 text-success fs-5">
                 <FaShieldVirus />
               </div>
             </div>
-            <h3 className="fw-extrabold text-dark mb-2">{summary.avgConfidence.toFixed(1)}%</h3>
-            <span className="text-muted extra-small">Model Detection Accuracy</span>
+            <h3 className="fw-extrabold mb-2">{summary.avgConfidence.toFixed(1)}%</h3>
+            <span className="text-muted extra-small d-block pb-0.5">Model Detection Accuracy</span>
           </div>
         </div>
 
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 position-relative overflow-hidden">
+          <div className="card stat-card-orange shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
             <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold">Pond Filter</span>
+              <span className="text-muted small fw-semibold pt-0.5">Pond Filter</span>
               <div className="rounded-3 p-2.5 bg-info bg-opacity-10 text-info fs-5">
                 <FaWater />
               </div>
             </div>
-            <h3 className="fw-extrabold text-dark mb-2">{pondFilter === 'all' ? 'All Ponds' : pondFilter}</h3>
-            <span className="text-muted extra-small">Active Filter Context</span>
+            <h3 className="fw-extrabold mb-2">{pondFilter === 'all' ? 'All Ponds' : pondFilter}</h3>
+            <span className="text-muted extra-small d-block pb-0.5">Active Filter Context</span>
           </div>
         </div>
       </div>

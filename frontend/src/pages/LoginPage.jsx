@@ -11,10 +11,10 @@ import {
   FaUserCog,
   FaEye,
   FaEyeSlash,
-  FaRobot,
   FaCheck,
   FaLaptop,
   FaMobileAlt,
+  FaAt,
 } from 'react-icons/fa';
 
 export default function LoginPage() {
@@ -72,227 +72,338 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="login-page-wrapper min-vh-100 d-flex align-items-center justify-content-center py-5 px-3 bg-light">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="card border-0 shadow-lg rounded-4 overflow-hidden w-100"
-        style={{ maxWidth: '1100px' }}
-      >
-        <div className="row g-0">
-          {/* Left Panel: Deep Ocean & Shrimp Coral Aesthetic */}
-          <div
-            className="col-lg-6 p-4 p-md-5 d-flex flex-column justify-content-between text-white position-relative overflow-hidden"
+    <div
+      className="min-vh-100 w-100 d-flex align-items-center justify-content-center py-4 py-md-5 px-3 position-relative overflow-hidden"
+      style={{
+        backgroundColor: '#040710',
+        backgroundImage: `
+          radial-gradient(circle at 15% 20%, rgba(14, 165, 233, 0.16) 0%, transparent 50%),
+          radial-gradient(circle at 85% 50%, rgba(14, 165, 233, 0.08) 0%, transparent 50%),
+          linear-gradient(90deg, #0A1326 0%, #0A1326 50%, #040710 50%, #040710 100%)
+        `,
+        fontFamily: "'Poppins', sans-serif",
+      }}
+    >
+      <div className="container-fluid" style={{ maxWidth: '1180px' }}>
+        {/* Back to Home Pill Button (Top Left) */}
+        <div className="mb-4">
+          <Link
+            to="/"
+            className="btn rounded-pill px-3.5 py-2 d-inline-flex align-items-center gap-2 fw-medium text-white text-decoration-none transition-all"
             style={{
-              background: 'radial-gradient(circle at 85% 15%, rgba(255, 107, 53, 0.22) 0%, transparent 45%), radial-gradient(circle at 15% 85%, rgba(6, 182, 212, 0.18) 0%, transparent 45%), linear-gradient(135deg, #071733 0%, #0b2c5f 55%, #0e3d7d 100%)',
+              backgroundColor: 'rgba(255, 255, 255, 0.08)',
+              border: '1px solid rgba(255, 255, 255, 0.16)',
+              backdropFilter: 'blur(12px)',
+              fontSize: '0.88rem',
             }}
           >
-            <div className="position-relative z-1">
-              {/* Back to Home Button */}
-              <Link
-                to="/"
-                className="btn btn-sm rounded-pill px-3 py-2 d-inline-flex align-items-center gap-2 fw-semibold mb-4 text-white text-decoration-none border-white-30"
-                style={{ backgroundColor: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(10px)' }}
-              >
-                <FaArrowLeft /> Back to Home
-              </Link>
+            <FaArrowLeft size={13} /> Back to Home
+          </Link>
+        </div>
 
-              <div className="text-center mb-3">
-                {/* Centered Large Intense Glowing Logo */}
-                <div className="mb-2 d-flex justify-content-center">
-                  <img
-                    src="/shrimp_predict_logo.png"
-                    alt="ShrimPredict Official Logo"
-                    style={{
-                      height: '170px',
-                      width: 'auto',
-                      objectFit: 'contain',
-                    }}
-                    className="logo-glow-intense"
-                  />
-                </div>
+        <div className="row g-4 lg-g-5 align-items-center">
+          {/* 🌟 LEFT PANEL: BRANDING & ROLE CAPABILITIES */}
+          <div className="col-lg-6 pe-lg-4 text-white">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              {/* Center Logo with Soft Back Glow */}
+              <div className="d-flex justify-content-center align-items-center w-100 mb-3.5">
+                <img
+                  src="/shrimp_predict_logo.png"
+                  alt="ShrimPredict Official Logo"
+                  className="mx-auto d-block"
+                  style={{
+                    height: '165px',
+                    width: 'auto',
+                    objectFit: 'contain',
+                    filter: 'drop-shadow(0 0 25px rgba(14, 165, 233, 0.45))',
+                  }}
+                />
               </div>
 
-              {/* THESIS TITLE */}
-              <h2 className="display-6 fw-extrabold text-white mb-4 lh-sm fs-4 text-center">
-                <span className="text-gradient-shrimp">ShrimPredict:</span> Shrimp Feed Monitoring and Disease Detection System{' '}
-                <span className="d-block fs-6 fw-bold text-gradient-cyan mt-1">
+              {/* Title & Subtitle */}
+              <div className="text-center mb-4">
+                <h1 className="fw-bold mb-2 lh-sm text-white" style={{ fontSize: 'clamp(1.4rem, 2.2vw, 2.0rem)' }}>
+                  <span style={{ color: '#FF7B38' }}>ShrimpPredict:</span> Shrimp Feed Monitoring and Disease Detection System
+                </h1>
+                <p className="fw-semibold mb-0" style={{ color: '#38BDF8', fontSize: '1.05rem', letterSpacing: '0.2px' }}>
                   Utilizing Image Processing
-                </span>
-              </h2>
+                </p>
+              </div>
 
-              {/* ROLE-BASED CAPABILITIES */}
-              <div className="mb-2">
-                <div className="extra-small fw-bold text-uppercase tracking-wider text-shrimp-orange mb-3 d-flex align-items-center gap-2">
-                  <span className="p-1 rounded-circle bg-shrimp-soft"></span> Role-Based System Capabilities
+              {/* ROLE-BASED SYSTEM CAPABILITIES BADGE */}
+              <div className="mb-3">
+                <div className="extra-small fw-bold text-uppercase tracking-wider mb-3 d-flex align-items-center gap-2" style={{ color: '#94A3B8', letterSpacing: '1px' }}>
+                  <span className="p-1 rounded-circle" style={{ backgroundColor: '#38BDF8' }}></span> ROLE-BASED SYSTEM CAPABILITIES
                 </div>
 
-                {/* For Farm Owners */}
-                <div className="p-3 rounded-3 border border-white-10 mb-3" style={{ background: 'rgba(255, 255, 255, 0.06)', backdropFilter: 'blur(12px)' }}>
-                  <div className="d-flex align-items-center gap-2 mb-2">
-                    <div className="p-1.5 rounded-2 bg-primary bg-opacity-20 text-info fs-6">
-                      <FaLaptop />
+                {/* Card 1: For Farm Owners */}
+                <div
+                  className="p-3.5 p-md-4 rounded-4 mb-3 position-relative overflow-hidden transition-all"
+                  style={{
+                    backgroundColor: 'rgba(15, 23, 42, 0.70)',
+                    border: '1.5px solid rgba(56, 189, 248, 0.45)',
+                    backdropFilter: 'blur(16px)',
+                    boxShadow: '0 8px 30px rgba(0, 0, 0, 0.3)',
+                  }}
+                >
+                  <div className="d-flex align-items-center gap-2.5 mb-2.5">
+                    <div className="p-2 rounded-3 text-info d-flex align-items-center justify-content-center" style={{ backgroundColor: 'rgba(56, 189, 248, 0.15)', width: 34, height: 34 }}>
+                      <FaLaptop size={16} />
                     </div>
-                    <h6 className="fw-bold text-white mb-0 extra-small">For Farm Owners (Web Portal)</h6>
+                    <h6 className="fw-bold text-white mb-0" style={{ fontSize: '0.96rem' }}>
+                      For Farm Owners (Web Portal)
+                    </h6>
                   </div>
-                  <ul className="list-unstyled mb-0 tiny text-white-80">
-                    <li className="d-flex align-items-start gap-2 mb-1">
-                      <FaCheck className="text-shrimp-orange mt-1 flex-shrink-0" style={{ fontSize: '10px' }} />
-                      <span>Centralized dashboard covering both nursery and grow-out ponds.</span>
+                  <ul className="list-unstyled mb-0" style={{ color: '#CBD5E1', fontSize: '0.875rem' }}>
+                    <li className="d-flex align-items-start gap-2 mb-1.5">
+                      <FaCheck className="mt-1 flex-shrink-0" style={{ color: '#38BDF8', fontSize: '12px' }} />
+                      <span>Centralized dashboard covering nursery and grow-out ponds.</span>
                     </li>
-                    <li className="d-flex align-items-start gap-2 mb-1">
-                      <FaCheck className="text-shrimp-orange mt-1 flex-shrink-0" style={{ fontSize: '10px' }} />
-                      <span>Predictive analytics for harvest planning and feeding deviation calculations.</span>
+                    <li className="d-flex align-items-start gap-2 mb-1.5">
+                      <FaCheck className="mt-1 flex-shrink-0" style={{ color: '#38BDF8', fontSize: '12px' }} />
+                      <span>Predictive analytics for harvest planning and feeding deviation.</span>
                     </li>
                     <li className="d-flex align-items-start gap-2">
-                      <FaCheck className="text-shrimp-orange mt-1 flex-shrink-0" style={{ fontSize: '10px' }} />
+                      <FaCheck className="mt-1 flex-shrink-0" style={{ color: '#38BDF8', fontSize: '12px' }} />
                       <span>Caretaker credential management and farm-wide biosecurity control.</span>
                     </li>
                   </ul>
                 </div>
 
-                {/* For Pond Caretakers */}
-                <div className="p-3 rounded-3 border border-white-10" style={{ background: 'rgba(255, 255, 255, 0.06)', backdropFilter: 'blur(12px)' }}>
-                  <div className="d-flex align-items-center gap-2 mb-2">
-                    <div className="p-1.5 rounded-2 bg-warning bg-opacity-20 text-warning fs-6">
-                      <FaMobileAlt />
+                {/* Card 2: For Pond Caretakers */}
+                <div
+                  className="p-3.5 p-md-4 rounded-4 position-relative overflow-hidden transition-all"
+                  style={{
+                    backgroundColor: 'rgba(15, 23, 42, 0.70)',
+                    border: '1.5px solid rgba(245, 158, 11, 0.45)',
+                    backdropFilter: 'blur(16px)',
+                    boxShadow: '0 8px 30px rgba(0, 0, 0, 0.3)',
+                  }}
+                >
+                  <div className="d-flex align-items-center gap-2.5 mb-2.5">
+                    <div className="p-2 rounded-3 text-warning d-flex align-items-center justify-content-center" style={{ backgroundColor: 'rgba(245, 158, 11, 0.15)', width: 34, height: 34 }}>
+                      <FaMobileAlt size={16} />
                     </div>
-                    <h6 className="fw-bold text-white mb-0 extra-small">For Pond Caretakers (Mobile View)</h6>
+                    <h6 className="fw-bold text-white mb-0" style={{ fontSize: '0.96rem' }}>
+                      For Pond Caretakers (Mobile View)
+                    </h6>
                   </div>
-                  <ul className="list-unstyled mb-0 tiny text-white-80">
-                    <li className="d-flex align-items-start gap-2 mb-1">
-                      <FaCheck className="text-success mt-1 flex-shrink-0" style={{ fontSize: '10px' }} />
+                  <ul className="list-unstyled mb-0" style={{ color: '#CBD5E1', fontSize: '0.875rem' }}>
+                    <li className="d-flex align-items-start gap-2 mb-1.5">
+                      <FaCheck className="mt-1 flex-shrink-0" style={{ color: '#F59E0B', fontSize: '12px' }} />
                       <span>Sunlight-readable, step-by-step camera diagnostic scanner.</span>
                     </li>
-                    <li className="d-flex align-items-start gap-2 mb-1">
-                      <FaCheck className="text-success mt-1 flex-shrink-0" style={{ fontSize: '10px' }} />
-                      <span>Quick-entry forms for daily feed logs and water quality documentation.</span>
+                    <li className="d-flex align-items-start gap-2 mb-1.5">
+                      <FaCheck className="mt-1 flex-shrink-0" style={{ color: '#F59E0B', fontSize: '12px' }} />
+                      <span>Quick-entry forms for daily feed logs and water quality.</span>
                     </li>
                     <li className="d-flex align-items-start gap-2">
-                      <FaCheck className="text-success mt-1 flex-shrink-0" style={{ fontSize: '10px' }} />
+                      <FaCheck className="mt-1 flex-shrink-0" style={{ color: '#F59E0B', fontSize: '12px' }} />
                       <span>Immediate task updates, scheduled feeding reminders, and alerts.</span>
                     </li>
                   </ul>
                 </div>
               </div>
-            </div>
+            </motion.div>
           </div>
 
-          {/* Right Panel: Sign In Form */}
-          <div className="col-lg-6 p-4 p-md-5 bg-white d-flex flex-column justify-content-center">
-            {/* Mobile Return to Home Link */}
-            <div className="d-lg-none mb-3">
-              <Link to="/" className="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1 d-inline-flex align-items-center gap-2 small">
-                <FaArrowLeft /> Back to Home
-              </Link>
-            </div>
-
-            {/* Role Tab Switcher */}
-            <div className="d-flex p-1 bg-light rounded-3 border mb-4">
-              <button
-                type="button"
-                className={`btn flex-fill rounded-3 py-2.5 fw-bold d-flex align-items-center justify-content-center gap-2 transition-all ${
-                  activeTab === 'admin' ? 'btn-primary shadow-sm text-white' : 'btn-link text-secondary text-decoration-none'
-                }`}
-                onClick={() => handleTabChange('admin')}
+          {/* ⚡ RIGHT PANEL: GLOWING LOGIN FORM CARD */}
+          <div className="col-lg-6 ps-lg-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="mx-auto"
+              style={{ maxWidth: '500px' }}
+            >
+              <div
+                className="p-4 p-md-5 rounded-4 position-relative overflow-hidden"
+                style={{
+                  backgroundColor: '#0F172A',
+                  border: '1.5px solid #0EA5E9',
+                  boxShadow: '0 0 35px rgba(14, 165, 233, 0.45), 0 15px 50px rgba(0, 0, 0, 0.6)',
+                  borderRadius: '24px',
+                }}
               >
-                <FaUserShield /> Admin Access
-              </button>
-              <button
-                type="button"
-                className={`btn flex-fill rounded-3 py-2.5 fw-bold d-flex align-items-center justify-content-center gap-2 transition-all ${
-                  activeTab === 'caretaker' ? 'btn-primary shadow-sm text-white' : 'btn-link text-secondary text-decoration-none'
-                }`}
-                onClick={() => handleTabChange('caretaker')}
-              >
-                <FaUserCog /> Caretaker Access
-              </button>
-            </div>
-
-            <div className="mb-4 text-center">
-              <h3 className="fw-bold text-dark mb-1 fs-4">
-                {activeTab === 'admin' ? 'Farm Owner & Admin Portal' : 'Pond Caretaker Mobile Portal'}
-              </h3>
-              <p className="text-muted small mb-0">
-                {activeTab === 'admin'
-                  ? 'Sign in to access pond management dashboards, harvest forecasts, and biosecurity settings.'
-                  : 'Sign in to record daily feeding logs, water parameters, and run camera disease scans.'}
-              </p>
-            </div>
-
-            <form onSubmit={handleSubmit}>
-              <div className="mb-3">
-                <label className="form-label text-muted small fw-semibold mb-1">Email Address</label>
-                <div className="input-group">
-                  <span className="input-group-text bg-light text-muted border-end-0 rounded-start-3">
-                    <FaEnvelope />
-                  </span>
-                  <input
-                    type="email"
-                    className="form-control border-start-0 rounded-end-3 py-2"
-                    placeholder="name@shrimpredict.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="mb-4">
-                <label className="form-label text-muted small fw-semibold mb-1">Password</label>
-                <div className="input-group">
-                  <span className="input-group-text bg-light text-muted border-end-0 rounded-start-3">
-                    <FaLock />
-                  </span>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    className="form-control border-start-0 border-end-0 py-2"
-                    placeholder="Enter password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
+                {/* 🎛️ ROLE TOGGLE PILL SWITCHER BAR */}
+                <div
+                  className="p-1 rounded-pill d-flex mb-4"
+                  style={{
+                    backgroundColor: '#1E293B',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                  }}
+                >
                   <button
                     type="button"
-                    className="input-group-text bg-light text-muted border-start-0 rounded-end-3"
-                    onClick={() => setShowPassword(!showPassword)}
+                    className={`btn flex-fill rounded-pill py-2.5 px-3 fw-bold d-flex align-items-center justify-content-center gap-2 transition-all ${
+                      activeTab === 'admin'
+                        ? 'text-white shadow-sm'
+                        : 'text-secondary border-0'
+                    }`}
+                    style={{
+                      backgroundColor: activeTab === 'admin' ? '#0EA5E9' : 'transparent',
+                      color: activeTab === 'admin' ? '#FFFFFF' : '#94A3B8',
+                      fontSize: '0.88rem',
+                    }}
+                    onClick={() => handleTabChange('admin')}
                   >
-                    {showPassword ? <FaEyeSlash /> : <FaEye />}
+                    <FaUserShield size={14} /> Admin Access
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn flex-fill rounded-pill py-2.5 px-3 fw-bold d-flex align-items-center justify-content-center gap-2 transition-all ${
+                      activeTab === 'caretaker'
+                        ? 'text-white shadow-sm'
+                        : 'text-secondary border-0'
+                    }`}
+                    style={{
+                      backgroundColor: activeTab === 'caretaker' ? '#0EA5E9' : 'transparent',
+                      color: activeTab === 'caretaker' ? '#FFFFFF' : '#94A3B8',
+                      fontSize: '0.88rem',
+                    }}
+                    onClick={() => handleTabChange('caretaker')}
+                  >
+                    <FaUserCog size={14} /> Caretaker Access
                   </button>
                 </div>
-              </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="btn btn-primary btn-lg w-100 py-3 rounded-3 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2 mb-3"
-              >
-                {loading ? (
-                  <>
-                    <span className="spinner-border spinner-border-sm" role="status"></span>
-                    Authenticating...
-                  </>
-                ) : (
-                  `Sign In as ${activeTab === 'admin' ? 'Farm Owner / Admin' : 'Pond Caretaker'}`
-                )}
-              </button>
+                {/* FORM TITLE & SUBTITLE */}
+                <div className="text-center mb-4">
+                  <h3 className="fw-bold text-white mb-2" style={{ fontSize: '1.45rem' }}>
+                    {activeTab === 'admin' ? 'Farm Owner & Admin Portal' : 'Pond Caretaker Portal'}
+                  </h3>
+                  <p className="mb-0" style={{ color: '#94A3B8', fontSize: '0.875rem', lineHeight: '1.5' }}>
+                    {activeTab === 'admin'
+                      ? 'Sign in to access pond management dashboards, harvest forecasts, and biosecurity settings.'
+                      : 'Sign in to log daily feed records, perform AI disease scans, and view pond status.'}
+                  </p>
+                </div>
 
-              {/* Demo Auto-Fill Helper */}
-              <div className="text-center">
-                <span className="text-muted tiny">Testing system functions?</span>{' '}
-                <button
-                  type="button"
-                  onClick={() => handleTabChange(activeTab)}
-                  className="btn btn-link p-0 tiny fw-semibold text-primary text-decoration-none"
-                >
-                  Auto-fill demo credentials
-                </button>
+                {/* LOGIN FORM */}
+                <form onSubmit={handleSubmit}>
+                  {/* Email / Username Field */}
+                  <div className="mb-3">
+                    <label className="form-label small fw-semibold mb-1.5" style={{ color: '#CBD5E1' }}>
+                      {activeTab === 'admin' ? 'Email Address' : 'Caretaker Username / Email'}
+                    </label>
+                    <div className="input-group">
+                      <span
+                        className="input-group-text border-end-0 rounded-start-3"
+                        style={{
+                          backgroundColor: '#1E293B',
+                          borderColor: '#334155',
+                          color: '#94A3B8',
+                        }}
+                      >
+                        <FaAt size={14} />
+                      </span>
+                      <input
+                        type="email"
+                        className="form-control border-start-0 rounded-end-3 py-2.5 text-white"
+                        style={{
+                          backgroundColor: '#1E293B',
+                          borderColor: '#334155',
+                          fontSize: '0.9rem',
+                        }}
+                        placeholder={activeTab === 'admin' ? 'admin@shrimpredict.com' : 'caretaker@shrimpredict.com'}
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* Password Field */}
+                  <div className="mb-4">
+                    <label className="form-label small fw-semibold mb-1.5" style={{ color: '#CBD5E1' }}>
+                      Password
+                    </label>
+                    <div className="input-group">
+                      <span
+                        className="input-group-text border-end-0 rounded-start-3"
+                        style={{
+                          backgroundColor: '#1E293B',
+                          borderColor: '#334155',
+                          color: '#94A3B8',
+                        }}
+                      >
+                        <FaLock size={13} />
+                      </span>
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        className="form-control border-start-0 border-end-0 py-2.5 text-white"
+                        style={{
+                          backgroundColor: '#1E293B',
+                          borderColor: '#334155',
+                          fontSize: '0.9rem',
+                        }}
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                      />
+                      <button
+                        type="button"
+                        className="input-group-text border-start-0 rounded-end-3"
+                        style={{
+                          backgroundColor: '#1E293B',
+                          borderColor: '#334155',
+                          color: '#94A3B8',
+                        }}
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? <FaEyeSlash size={14} /> : <FaEye size={14} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* SIGN IN BUTTON */}
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="btn w-100 py-3 rounded-3 fw-bold text-white shadow-lg d-flex align-items-center justify-content-center gap-2 mb-3.5"
+                    style={{
+                      backgroundColor: '#0EA5E9',
+                      border: 'none',
+                      fontSize: '1rem',
+                      borderRadius: '12px',
+                      boxShadow: '0 4px 20px rgba(14, 165, 233, 0.45)',
+                      transition: 'all 0.25s ease',
+                    }}
+                  >
+                    {loading ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm" role="status"></span>
+                        Authenticating...
+                      </>
+                    ) : (
+                      `Sign In as ${activeTab === 'admin' ? 'Farm Owner / Admin' : 'Caretaker'}`
+                    )}
+                  </button>
+
+                  {/* DEMO AUTO-FILL CREDENTIALS LINK */}
+                  <div className="text-center">
+                    <span style={{ color: '#94A3B8', fontSize: '0.83rem' }}>Testing system functions?</span>{' '}
+                    <button
+                      type="button"
+                      onClick={() => handleTabChange(activeTab)}
+                      className="btn btn-link p-0 fw-semibold text-decoration-none ms-1"
+                      style={{ color: '#38BDF8', fontSize: '0.83rem' }}
+                    >
+                      Auto-fill demo credentials
+                    </button>
+                  </div>
+                </form>
               </div>
-            </form>
+            </motion.div>
           </div>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }
+

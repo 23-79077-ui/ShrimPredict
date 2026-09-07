@@ -292,30 +292,22 @@ export default function ReportsPage() {
       {/* SUMMARY CARDS */}
       <div className="row g-3 mb-4">
         <div className="col-12 col-sm-6 col-xl-3">
-          <div
-            className="card border border-primary border-opacity-25 shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden transition-all hover-shadow"
-            style={{ background: 'linear-gradient(180deg, rgba(13, 110, 253, 0.03) 0%, #ffffff 100%)' }}
-          >
-            <div className="position-absolute top-0 start-0 end-0 bg-primary" style={{ height: 4 }} />
+          <div className="card stat-card-cyan shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
             <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold">Assigned Ponds</span>
+              <span className="text-muted small fw-semibold pt-0.5">Assigned Ponds</span>
               <div className="rounded-3 p-2.5 bg-primary bg-opacity-10 text-primary fs-5">
                 <FaWater />
               </div>
             </div>
-            <h3 className="fw-extrabold text-dark mb-2">{ponds.length}</h3>
-            <span className="text-muted extra-small">Available for reporting</span>
+            <h3 className="fw-extrabold mb-2">{ponds.length}</h3>
+            <span className="text-muted extra-small d-block pb-0.5">Available for reporting</span>
           </div>
         </div>
 
         <div className="col-12 col-sm-6 col-xl-3">
-          <div
-            className="card border border-warning border-opacity-50 shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden transition-all hover-shadow"
-            style={{ background: 'linear-gradient(180deg, rgba(255, 193, 7, 0.03) 0%, #ffffff 100%)' }}
-          >
-            <div className="position-absolute top-0 start-0 end-0 bg-warning" style={{ height: 4 }} />
+          <div className="card stat-card-orange shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
             <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold">Pending</span>
+              <span className="text-muted small fw-semibold pt-0.5">Pending</span>
               <div className="rounded-3 p-2.5 bg-warning bg-opacity-10 text-warning fs-5">
                 <FaClock />
               </div>
@@ -326,30 +318,22 @@ export default function ReportsPage() {
         </div>
 
         <div className="col-12 col-sm-6 col-xl-3">
-          <div
-            className="card border border-info border-opacity-25 shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden transition-all hover-shadow"
-            style={{ background: 'linear-gradient(180deg, rgba(13, 202, 240, 0.03) 0%, #ffffff 100%)' }}
-          >
-            <div className="position-absolute top-0 start-0 end-0 bg-info" style={{ height: 4 }} />
+          <div className="card stat-card-purple shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
             <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold">In Progress</span>
+              <span className="text-muted small fw-semibold pt-0.5">In Progress</span>
               <div className="rounded-3 p-2.5 bg-info bg-opacity-10 text-info fs-5">
                 <FaTools />
               </div>
             </div>
             <h3 className="fw-extrabold text-info mb-2">{inProgressReports}</h3>
-            <span className="text-muted extra-small">Being Handled</span>
+            <span className="text-muted extra-small d-block pb-0.5">Being Handled</span>
           </div>
         </div>
 
         <div className="col-12 col-sm-6 col-xl-3">
-          <div
-            className="card border border-success border-opacity-25 shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden transition-all hover-shadow"
-            style={{ background: 'linear-gradient(180deg, rgba(25, 135, 84, 0.03) 0%, #ffffff 100%)' }}
-          >
-            <div className="position-absolute top-0 start-0 end-0 bg-success" style={{ height: 4 }} />
+          <div className="card stat-card-green shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
             <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold">Resolved</span>
+              <span className="text-muted small fw-semibold pt-0.5">Resolved</span>
               <div className="rounded-3 p-2.5 bg-success bg-opacity-10 text-success fs-5">
                 <FaCheckCircle />
               </div>
