@@ -256,6 +256,19 @@ def _is_black_gill(result: dict | None) -> bool:
     return "black gill disease" in text and "no black gill" not in text
 
 
+def _is_primary_diagnosis(result: dict | None) -> bool:
+    if not result:
+        return False
+    label = str(result.get('prediction') or result.get('disease_name') or '').strip().lower()
+    return label in {
+        "healthy",
+        "healthy shrimp",
+        "white spot syndrome virus",
+        "white spot syndrome virus (wssv)",
+        "wssv",
+    }
+
+
 def _model_error(model_used: str, error: Exception) -> dict:
     return {
         "model_used": model_used,
@@ -362,6 +375,55 @@ def _choose_final_result(
         "model_used": "No Valid Disease Model",
     }, True, "No model returned a valid diagnostic prediction."
 
+
+def _choose_primary_result(
+    desktop_result: dict | None,
+    forest_result: dict | None,
+    unified_result: dict | None,
+    black_gill_result: dict | None = None,
+):
+    """Select only Healthy or WSSV results for the initial scan."""
+    if (
+        _is_black_gill(black_gill_result)
+        and _confidence(black_gill_result) >= BLACK_GILL_ACCEPT_CONFIDENCE
+    ):
+        return {
+            "prediction": None,
+            "disease_name": None,
+            "confidence": _confidence(black_gill_result),
+            "confidence_score": _confidence(black_gill_result),
+            "status": "Uncertain",
+            "risk_level": "Medium",
+            "model_used": "Primary Healthy/WSSV Models",
+            "description": "The primary model suggested Healthy, but the Black Gill safety check found possible Black Gill Disease.",
+            "recommendation": "Enable additional detection to confirm the secondary disease assessment.",
+        }, True, "Black Gill safety check blocked the Healthy primary result."
+
+    candidates = [
+        _normalized_result(dict(result))
+        for result in (unified_result, desktop_result, forest_result)
+        if _valid_prediction(result) and _is_primary_diagnosis(result)
+    ]
+
+    if not candidates:
+        return {
+            "prediction": None,
+            "disease_name": None,
+            "confidence": 0,
+            "confidence_score": 0,
+            "status": "Uncertain",
+            "risk_level": "Medium",
+            "model_used": "Primary Healthy/WSSV Models",
+            "description": "Unable to confidently classify the image as Healthy or White Spot Syndrome Virus.",
+            "recommendation": "Enable additional detection for secondary disease screening.",
+        }, True, "No Healthy or WSSV prediction was available."
+
+    candidates.sort(key=_confidence, reverse=True)
+    winner = candidates[0]
+    threshold = MIN_HEALTHY_CONFIDENCE if _is_healthy(winner) else MIN_FINAL_CONFIDENCE
+    force_uncertain = _confidence(winner) < threshold
+    return winner, force_uncertain, "Primary Healthy/WSSV model selected."
+
 @app.get("/health")
 def health():
     keras_ready = (MODEL_DIR / "best_model.keras").exists() and (MODEL_DIR / "labels.json").exists()
@@ -435,6 +497,8 @@ def predict_endpoint():
     uploaded = request.files.get("image") or request.files.get("file")
     if not uploaded:
         return jsonify({"success": False, "shrimp_detected": False, "message": "No image uploaded."}), 400
+
+    enable_additional = request.form.get("enable_additional", "false").lower() in {"1", "true", "yes", "on"}
 
     suffix = Path(uploaded.filename or "scan.jpg").suffix or ".jpg"
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
@@ -578,7 +642,7 @@ def predict_endpoint():
         if not model_results or not any(_valid_prediction(item) for item in model_results):
             return jsonify({"success": False, "message": "Failed to generate prediction from available models."}), 500
 
-        should_run_black_gill = (
+        should_run_black_gill = enable_additional and (
             not desktop_valid
             or _is_healthy(desktop_res)
             or _is_wssv(desktop_res)
@@ -593,10 +657,26 @@ def predict_endpoint():
                 print(f"Black Gill specialist prediction error: {e}", file=sys.stderr)
                 model_results.append(_model_error("Black Gill Specialist Model", e))
 
-        winner, force_uncertain, selection_reason = _choose_final_result(desktop_res, black_gill_res, forest_res, unified_res)
+        if enable_additional:
+            winner, force_uncertain, selection_reason = _choose_final_result(desktop_res, black_gill_res, forest_res, unified_res)
+        else:
+            primary_black_gill_res = None
+            if desktop_valid and _is_healthy(desktop_res):
+                try:
+                    primary_black_gill_res = _normalized_result(predict_black_gill(temp_path))
+                    model_results.append(primary_black_gill_res)
+                except Exception as e:
+                    print(f"Black Gill safety check error: {e}", file=sys.stderr)
+            winner, force_uncertain, selection_reason = _choose_primary_result(
+                desktop_res,
+                forest_res,
+                unified_res,
+                primary_black_gill_res,
+            )
+            black_gill_res = primary_black_gill_res
 
         top_confidence = round(float(winner.get("confidence_score", winner.get("confidence", 0))), 2)
-        top_disease = winner.get("prediction", winner.get("disease_name", "Unknown"))
+        top_disease = winner.get("prediction") or winner.get("disease_name") or "Unknown"
         top_status = winner.get("status", "Diseased" if "Healthy" not in top_disease else "Healthy")
         top_model_used = winner.get("model_used", "Desktop/Shrimp Trained Model")
         top_risk = winner.get("risk_level", "Low" if top_status == "Healthy" else "High")
@@ -617,6 +697,7 @@ def predict_endpoint():
             "black_gill_prediction": black_gill_res.get("prediction") if black_gill_res else None,
             "black_gill_confidence": round(_confidence(black_gill_res), 2) if black_gill_res else 0,
             "black_gill_ran": bool(black_gill_res),
+            "enable_additional": enable_additional,
             "unified_prediction": unified_res.get("prediction") if unified_res else None,
             "unified_confidence": round(_confidence(unified_res), 2) if unified_res else 0,
             "unified_ran": bool(unified_res),
@@ -671,6 +752,7 @@ def predict_endpoint():
                 "stage1_details": stage1_res,
                 "stage2_details": stage2_res,
                 "all_evaluations": model_results,
+                "can_run_additional": False,
             }
         else:
             final_output = {
@@ -694,6 +776,7 @@ def predict_endpoint():
                 "stage1_details": stage1_res,
                 "stage2_details": stage2_res,
                 "all_evaluations": model_results,
+                "can_run_additional": not enable_additional,
             }
 
         return jsonify(final_output)

@@ -4,6 +4,15 @@ import Swal from 'sweetalert2';
 import { useAuth } from '../../context/AuthContext';
 import api, { safeArray } from '../../services/api';
 
+function isPrimaryDiagnosisLabel(value) {
+  const label = String(value || '').trim().toLowerCase();
+  return label === 'healthy'
+    || label === 'healthy shrimp'
+    || label === 'white spot syndrome virus'
+    || label === 'white spot syndrome virus (wssv)'
+    || label === 'wssv';
+}
+
 export default function DiseaseScanPage() {
   const { user } = useAuth();
   const videoRef = useRef(null);
@@ -15,6 +24,8 @@ export default function DiseaseScanPage() {
   const [history, setHistory] = useState([]);
   const [streaming, setStreaming] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [additionalScanEnabled, setAdditionalScanEnabled] = useState(false);
+  const [showAdditionalPrompt, setShowAdditionalPrompt] = useState(false);
   const [showDebug, setShowDebug] = useState(false);
 
   const [assignedPonds, setAssignedPonds] = useState([]);
@@ -40,7 +51,9 @@ export default function DiseaseScanPage() {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      const detected = Boolean(response?.data?.shrimp_detected || response?.data?.valid_shrimp_present || response?.data?.status === 'success');
+      const detected = [response?.data?.shrimp_detected, response?.data?.valid_shrimp_present]
+        .some((value) => value === true || value === 1 || value === '1' || value === 'true')
+        || response?.data?.status === 'success';
       const parsedCount = Number(response?.data?.shrimp_count);
       const count = detected ? Math.max(1, Number.isFinite(parsedCount) ? parsedCount : 1) : 0;
       setPreviewCount({
@@ -145,6 +158,8 @@ export default function DiseaseScanPage() {
     setImageFile(null);
     setImageSource('Captured photo');
     setResult(null);
+    setAdditionalScanEnabled(false);
+    setShowAdditionalPrompt(false);
   };
 
   const handleImageUpload = (event) => {
@@ -155,7 +170,8 @@ export default function DiseaseScanPage() {
     setImage(URL.createObjectURL(file));
     setImageSource('Uploaded image');
     setResult(null);
-    refreshShrimpPreview(file);
+    setAdditionalScanEnabled(false);
+    setShowAdditionalPrompt(false);
   };
 
   const handleDroppedImage = useCallback(async (file) => {
@@ -164,7 +180,8 @@ export default function DiseaseScanPage() {
     setImage(URL.createObjectURL(file));
     setImageSource('Dropped image');
     setResult(null);
-    await refreshShrimpPreview(file);
+    setAdditionalScanEnabled(false);
+    setShowAdditionalPrompt(false);
   }, [refreshShrimpPreview]);
 
   const handleDrop = useCallback(async (event) => {
@@ -179,6 +196,8 @@ export default function DiseaseScanPage() {
     event.preventDefault();
   }, []);
 
+  const scanReady = Boolean(image && !scanning && !previewLoading && (previewCount?.detected || !imageFile));
+
   useEffect(() => {
     if (!imageFile) {
       setPreviewCount(null);
@@ -192,6 +211,8 @@ export default function DiseaseScanPage() {
     setImageFile(null);
     setImageSource('');
     setResult(null);
+    setAdditionalScanEnabled(false);
+    setShowAdditionalPrompt(false);
     setPreviewCount(null);
   };
 
@@ -201,7 +222,7 @@ export default function DiseaseScanPage() {
     return new File([blob], `caretaker-wssv-scan-${Date.now()}.png`, { type: blob.type || 'image/png' });
   };
 
-  const handleScan = async () => {
+  const handleScan = async (enableAdditional = false) => {
     if (!image) {
       Swal.fire({ icon: 'warning', title: 'No shrimp image selected' });
       return;
@@ -216,6 +237,7 @@ export default function DiseaseScanPage() {
       if (user?.id) formData.append('user_id', user.id);
       formData.append('caretaker_name', user?.full_name || 'Caretaker');
       formData.append('pond_name', selectedPond || user?.assigned_ponds?.[0]?.pond_name || 'Assigned Pond');
+      formData.append('enable_additional', enableAdditional ? 'true' : 'false');
       formData.append('image', imageFile || await dataUrlToFile(image));
 
       const response = await api.post('/disease_scan.php', formData, {
@@ -227,7 +249,12 @@ export default function DiseaseScanPage() {
         throw new Error(response.data?.message || 'AI model did not return a prediction. Check the Flask model API.');
       }
 
+      const predictionName = String(prediction.prediction || prediction.disease_name || '').trim().toLowerCase();
+      const isPrimaryDiagnosis = isPrimaryDiagnosisLabel(predictionName);
+
       setResult(prediction);
+      setAdditionalScanEnabled(enableAdditional);
+      setShowAdditionalPrompt(!enableAdditional && !isPrimaryDiagnosis);
       await loadHistory();
 
       // Handle Stage 1 Failure (No Shrimp Detected)
@@ -251,7 +278,7 @@ export default function DiseaseScanPage() {
       }
 
       // Handle Stage 4 Confidence Threshold (< 90% Confidence)
-      if (prediction.status === 'Uncertain' || !prediction.prediction) {
+      if (prediction.status === 'Uncertain' || !prediction.prediction || (!enableAdditional && !isPrimaryDiagnosis)) {
         Swal.fire({
           icon: 'info',
           title: 'Uncertain Prediction (< 90% Confidence)',
@@ -280,6 +307,16 @@ export default function DiseaseScanPage() {
     } finally {
       setScanning(false);
     }
+  };
+
+  const handleAdditionalDetection = () => {
+    if (result?.prediction || result?.disease_name) {
+      setAdditionalScanEnabled(true);
+      setShowAdditionalPrompt(false);
+      return;
+    }
+
+    handleScan(true);
   };
 
   const exportPdf = () => {
@@ -332,6 +369,9 @@ export default function DiseaseScanPage() {
   const descriptionText = result?.description || result?.message || '';
   const recommendations = String(result?.recommendation || '').split(/\n|;|-/).map((item) => item.trim()).filter(Boolean);
   const probabilities = result?.probabilities || {};
+  const resultName = String(result?.prediction || result?.disease_name || '').trim().toLowerCase();
+  const isPrimaryResult = isPrimaryDiagnosisLabel(resultName);
+  const shouldShowAdditionalPrompt = Boolean(result && !additionalScanEnabled && (showAdditionalPrompt || !isPrimaryResult));
 
   const getStatusBadgeClass = (status) => {
     if (status === 'Healthy') return 'badge-success';
@@ -470,15 +510,51 @@ export default function DiseaseScanPage() {
                 </div>
                 <button
                   className={`btn btn-primary rounded-pill px-4 py-1.5 fw-bold text-nowrap d-inline-flex align-items-center justify-content-center gap-1.5 shadow-xs flex-shrink-0 ${
-                    (!image || previewLoading || !previewCount?.detected) ? 'opacity-50 cursor-not-allowed' : ''
+                    (!scanReady) ? 'opacity-50 cursor-not-allowed' : ''
                   }`}
                   style={{ height: 38, minWidth: 95, fontSize: '0.8rem' }}
-                  onClick={handleScan}
-                  disabled={!image || scanning || previewLoading || !previewCount?.detected}
+                  onClick={() => handleScan(false)}
+                  disabled={!scanReady}
                 >
                   {scanning ? <FaSpinner className="disease-spin" size={13} /> : <FaQrcode size={13} />}
                   {scanning ? 'Scanning...' : 'Scan'}
                 </button>
+              </div>
+
+              {/* Literature Benchmark Accordion */}
+              <div className="alert alert-light border mt-4 p-0 shadow-sm" style={{ fontSize: '0.9rem', borderRadius: '8px' }}>
+                <details>
+                  <summary className="fw-bold p-3 text-dark" style={{ cursor: 'pointer', listStyle: 'none' }}>
+                    <i className="bi bi-caret-right-fill me-2 text-primary"></i>
+                    View Model Accuracy Literature & Research Baselines
+                  </summary>
+                  <div className="p-3 pt-0 border-top">
+                    <p className="mb-2 text-muted">Current AI detection baselines established by scientific literature:</p>
+                    <ul className="mb-0 text-dark">
+                      <li className="mb-2">
+                        <strong>Advanced CNN (LeNet) Precision:</strong> Up to 96.1% Precision for <i>Penaeus vannamei</i> disease classification.
+                        <a href="https://doi.org/10.1016/j.aquaeng.2022.102296" target="_blank" rel="noopener noreferrer" className="ms-1 text-primary text-decoration-none">
+                          (Read Study)
+                        </a>
+                      </li>
+                      <li className="mb-2">
+                        <strong>Deep Learning (YOLOv8):</strong> 92.0% mean Average Precision (mAP) for healthy vs. diseased classification.
+                        <a href="https://scholar.google.com/scholar?q=Video-Based+Disease+Detection+in+Vannamei+Shrimp+Using+YOLOv8" target="_blank" rel="noopener noreferrer" className="ms-1 text-primary text-decoration-none">
+                          (Search Scholar)
+                        </a>
+                      </li>
+                      <li className="mb-0">
+                        <strong>WSSV Specific Detection (ANN/DL):</strong> 90.0% Accuracy Rate.
+                        <a href="https://scholar.google.com/scholar?q=Shrimp+disease+detection+using+deep+learning+techniques" target="_blank" rel="noopener noreferrer" className="ms-1 text-primary text-decoration-none">
+                          (Search Scholar)
+                        </a>
+                      </li>
+                    </ul>
+                    <p className="mt-3 mb-0" style={{ fontSize: '0.8rem', color: '#6c757d' }}>
+                      *Our system utilizes an EfficientNet/CNN transfer learning pipeline targeted to perform within or above these literature baselines.
+                    </p>
+                  </div>
+                </details>
               </div>
             </div>
           </div>
@@ -492,8 +568,22 @@ export default function DiseaseScanPage() {
           >
             <div className="position-absolute top-0 start-0 end-0 bg-info" style={{ height: 4 }} />
             <div className="card-body p-4">
-              <h5 className="fw-bold mb-3 text-dark">Pipeline Assessment Result</h5>
-              {!result && (
+              {shouldShowAdditionalPrompt ? (
+                <div className="alert alert-warning border-warning d-flex flex-column gap-3 rounded-3 mb-0">
+                  <strong>No WSSV detected neither Shrimp is Healthy enable additional disease detection features?</strong>
+                  <button
+                    type="button"
+                    className="btn btn-warning fw-bold align-self-start"
+                    onClick={handleAdditionalDetection}
+                    disabled={scanning}
+                  >
+                    {scanning ? 'Scanning...' : 'Yes'}
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <h5 className="fw-bold mb-3 text-dark">Pipeline Assessment Result</h5>
+                  {!result && (
                 <div className="disease-empty-result">
                   {scanning ? (
                     <div className="text-center py-4">
@@ -507,9 +597,9 @@ export default function DiseaseScanPage() {
                     </div>
                   )}
                 </div>
-              )}
+                  )}
 
-              {result && (
+                  {result && (
                 <div>
                   {/* Stage Status Badges */}
                   <div className="d-flex align-items-center gap-2 flex-wrap mb-3">
@@ -613,6 +703,8 @@ export default function DiseaseScanPage() {
                     </div>
                   )}
                 </div>
+                  )}
+                </>
               )}
             </div>
           </div>

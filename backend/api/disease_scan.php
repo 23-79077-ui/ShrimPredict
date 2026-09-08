@@ -69,6 +69,7 @@ if (!function_exists('curl_init')) {
 }
 
 $curl = curl_init($aiUrl);
+$enableAdditional = filter_var($_POST['enable_additional'] ?? false, FILTER_VALIDATE_BOOLEAN);
 $file = new CURLFile(
     $_FILES['image']['tmp_name'],
     $_FILES['image']['type'] ?: 'image/jpeg',
@@ -79,7 +80,10 @@ curl_setopt_array($curl, [
     CURLOPT_POST => true,
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_TIMEOUT => 120,
-    CURLOPT_POSTFIELDS => ['image' => $file],
+    CURLOPT_POSTFIELDS => [
+        'image' => $file,
+        'enable_additional' => $enableAdditional ? 'true' : 'false',
+    ],
 ]);
 
 $aiResponse = curl_exec($curl);
