@@ -23,7 +23,11 @@ import {
   FaPhone,
   FaWater,
   FaCalendarAlt,
-  FaClock
+  FaClock,
+  FaLock,
+  FaKey,
+  FaShieldAlt,
+  FaSync
 } from 'react-icons/fa';
 import api, { safeArray } from '../../services/api';
 import Swal from 'sweetalert2';
@@ -41,15 +45,15 @@ function toTitleCase(str) {
 // Avatar Gradient Color Palette Generator
 function getAvatarBg(user) {
   if (user.role === 'admin') {
-    return 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)';
+    return 'linear-gradient(135deg, #071733 0%, #0B2C5F 100%)';
   }
   const id = Number(user.id) || 1;
   const gradients = [
-    'linear-gradient(135deg, #047857 0%, #10b981 100%)',
-    'linear-gradient(135deg, #6d28d9 0%, #8b5cf6 100%)',
-    'linear-gradient(135deg, #b45309 0%, #f59e0b 100%)',
-    'linear-gradient(135deg, #0369a1 0%, #0ea5e9 100%)',
-    'linear-gradient(135deg, #be185d 0%, #f43f5e 100%)'
+    'linear-gradient(135deg, #0284C7 0%, #38BDF8 100%)',
+    'linear-gradient(135deg, #16A34A 0%, #4ADE80 100%)',
+    'linear-gradient(135deg, #FF7A00 0%, #FBBF24 100%)',
+    'linear-gradient(135deg, #0B2C5F 0%, #0284C7 100%)',
+    'linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)'
   ];
   return gradients[id % gradients.length];
 }
@@ -235,7 +239,12 @@ export default function UsersPage() {
         selected.splice(index, 1);
       } else {
         if (selected.length >= 3) {
-          Swal.fire({ icon: 'warning', title: 'Limit Reached', text: 'Maximum of 3 ponds per caretaker only.' });
+          Swal.fire({
+            icon: 'warning',
+            title: 'Quota Reached',
+            text: 'Maximum quota of 3 active production ponds per caretaker.',
+            confirmButtonColor: '#0B2C5F'
+          });
           return prev;
         }
         selected.push(pondId);
@@ -279,11 +288,11 @@ export default function UsersPage() {
 
     if (!editingUser) {
       if (formData.password !== formData.confirm_password) {
-        Swal.fire({ icon: 'error', title: 'Password Mismatch', text: 'Passwords do not match.' });
+        Swal.fire({ icon: 'error', title: 'Password Mismatch', text: 'Passwords do not match. Please verify.', confirmButtonColor: '#0B2C5F' });
         return;
       }
       if (formData.password.length < 6) {
-        Swal.fire({ icon: 'error', title: 'Weak Password', text: 'Password must be at least 6 characters.' });
+        Swal.fire({ icon: 'error', title: 'Weak Password', text: 'Password must be at least 6 characters.', confirmButtonColor: '#0B2C5F' });
         return;
       }
     }
@@ -302,7 +311,13 @@ export default function UsersPage() {
         });
 
         if (res.data && res.data.success) {
-          Swal.fire({ icon: 'success', title: 'User Updated', text: 'Caretaker account details updated successfully.', timer: 1800, showConfirmButton: false });
+          Swal.fire({
+            icon: 'success',
+            title: 'Caretaker Updated',
+            text: 'Account details and basin assignments updated successfully.',
+            timer: 1800,
+            showConfirmButton: false
+          });
           setEditingUser(null);
           loadUsers();
         } else {
@@ -328,7 +343,13 @@ export default function UsersPage() {
             });
           }
 
-          Swal.fire({ icon: 'success', title: 'Caretaker Created', text: 'New caretaker account registered successfully.', timer: 1800, showConfirmButton: false });
+          Swal.fire({
+            icon: 'success',
+            title: 'Caretaker Registered',
+            text: 'New caretaker credentials and pond assignments saved successfully.',
+            timer: 1800,
+            showConfirmButton: false
+          });
           setShowCreateModal(false);
           loadUsers();
         } else {
@@ -336,7 +357,12 @@ export default function UsersPage() {
         }
       }
     } catch (err) {
-      Swal.fire({ icon: 'error', title: 'Error', text: err.response?.data?.message || err.message || 'Operation failed.' });
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: err.response?.data?.message || err.message || 'Operation failed.',
+        confirmButtonColor: '#0B2C5F'
+      });
     }
   };
 
@@ -352,8 +378,8 @@ export default function UsersPage() {
       text: 'This action will permanently delete the caretaker account and revoke assigned pond permissions.',
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: '#e04848',
-      cancelButtonColor: '#627591',
+      confirmButtonColor: '#E11D48',
+      cancelButtonColor: '#64748B',
       confirmButtonText: 'Yes, Delete Account'
     }).then(async (result) => {
       if (result.isConfirmed) {
@@ -381,21 +407,23 @@ export default function UsersPage() {
     Swal.fire({
       title: `Archive Caretaker`,
       html: `
-        <p class="text-muted small mb-3">Archive <strong>${toTitleCase(userToArchive.full_name)}</strong> to the Archived Caretakers repository.</p>
-        <label class="form-label fw-bold small text-start d-block mb-1">Reason for Archiving:</label>
-        <select id="archive-reason-select" class="form-select mb-2">
-          <option value="Resigned">Resigned</option>
-          <option value="Career Transition">Career Transition</option>
-          <option value="Health Reason">Health Reason</option>
-          <option value="On Leave">On Leave</option>
-          <option value="Terminated">Terminated</option>
-          <option value="Other">Other</option>
-        </select>
+        <div style="text-align: left; font-family: 'Poppins', sans-serif;">
+          <p style="color: #64748B; font-size: 0.85rem; margin-bottom: 12px;">Archive <strong>${toTitleCase(userToArchive.full_name)}</strong> to the historical caretaker repository in Settings.</p>
+          <label style="font-weight: 700; font-size: 0.8rem; display: block; margin-bottom: 6px; color: #1E293B;">Reason for Archiving:</label>
+          <select id="archive-reason-select" class="form-select rounded-3 py-2" style="font-size: 0.85rem;">
+            <option value="Resigned">Resigned</option>
+            <option value="Career Transition">Career Transition</option>
+            <option value="Health Reason">Health Reason</option>
+            <option value="On Leave">On Leave</option>
+            <option value="Terminated">Terminated</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
       `,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonText: 'Yes, Archive Caretaker',
-      confirmButtonColor: '#f59e0b',
+      confirmButtonColor: '#FF7A00',
       cancelButtonText: 'Cancel',
       preConfirm: () => {
         const reasonSelect = document.getElementById('archive-reason-select');
@@ -423,154 +451,292 @@ export default function UsersPage() {
   };
 
   return (
-    <div className="pb-5">
-      {/* Summary Cards */}
+    <div className="users-page-container pb-5" style={{ fontFamily: "'Poppins', sans-serif" }}>
+      {/* 🌟 1. HERO INTELLIGENCE & CONTROL BANNER */}
+      <div className="user-hero-banner d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div className="d-flex align-items-center gap-3">
+          <div
+            className="rounded-circle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0"
+            style={{
+              width: 52,
+              height: 52,
+              background: 'linear-gradient(135deg, #0B2C5F 0%, #0284C7 100%)',
+              color: '#FFFFFF',
+              fontSize: '1.35rem'
+            }}
+          >
+            <FaUsers />
+          </div>
+          <div>
+            <div className="d-flex align-items-center gap-2 flex-wrap">
+              <h4 className="fw-extrabold text-dark mb-0 tracking-tight" style={{ letterSpacing: '-0.02em' }}>
+                Team & Caretaker Operations
+              </h4>
+              <span className="tag-green-safe d-inline-flex align-items-center gap-1">
+                <span className="rounded-circle" style={{ width: 6, height: 6, background: '#16A34A' }}></span>
+                Role-Based Access Active
+              </span>
+            </div>
+            <p className="text-muted mb-0 small" style={{ fontSize: '0.84rem' }}>
+              Manage farm supervisor credentials, assign active production basins, and audit caretaker telemetry records.
+            </p>
+          </div>
+        </div>
+
+        {/* Action Controls: Refresh, Export & Create */}
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            className="btn btn-sm rounded-pill bg-white border text-dark fw-semibold px-3 py-2 d-flex align-items-center gap-1.5 shadow-xs"
+            style={{ fontSize: '0.82rem', height: 40 }}
+            onClick={loadUsers}
+          >
+            <FaSync size={12} className={loading ? 'fa-spin text-primary' : 'text-primary'} /> Refresh
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-sm rounded-pill bg-white border text-dark fw-semibold px-3 py-2 d-flex align-items-center gap-1.5 shadow-xs"
+            style={{ fontSize: '0.82rem', height: 40 }}
+            onClick={handleExportCSV}
+          >
+            <FaFileCsv size={13} style={{ color: '#16A34A' }} /> Export CSV
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-sm rounded-pill px-4 py-2 d-flex align-items-center gap-2 fw-bold text-white shadow-xs"
+            style={{
+              height: 40,
+              fontSize: '0.82rem',
+              background: 'linear-gradient(135deg, #0B2C5F 0%, #0284C7 100%)',
+              border: 'none'
+            }}
+            onClick={openCreateModal}
+          >
+            <FaPlus size={12} /> Register Caretaker
+          </button>
+        </div>
+      </div>
+
+      {/* 🌟 2. 4 MODERN ENTERPRISE TELEMETRY KPI CARDS */}
       <div className="row g-3 mb-4">
-        {/* Total Users */}
+        {/* Card 1: Total Users */}
         <div className="col-12 col-sm-6 col-md-3">
-          <div className="card stat-card-cyan shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
-            <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold pt-0.5">Total Users</span>
-              <div className="rounded-3 p-2.5 bg-primary bg-opacity-10 text-primary fs-5">
-                <FaUsers />
+          <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
+            <div>
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <span className="text-muted extra-small text-uppercase fw-bold tracking-wider">Total Directory</span>
+                <div
+                  className="feeding-kpi-icon-wrap"
+                  style={{ background: 'rgba(2, 132, 199, 0.12)', color: '#0284C7' }}
+                >
+                  <FaUsers />
+                </div>
+              </div>
+              <h2 className="fw-extrabold mb-1 text-dark" style={{ letterSpacing: '-0.03em' }}>
+                {summary.total_users}
+              </h2>
+            </div>
+            <div>
+              <div className="feeding-progress-track my-2">
+                <div
+                  className="feeding-progress-bar"
+                  style={{ width: '100%', background: 'linear-gradient(90deg, #0284C7, #38BDF8)' }}
+                ></div>
+              </div>
+              <div className="d-flex justify-content-between align-items-center">
+                <span className="tag-cyan-active">Active Directory</span>
+                <span className="text-muted extra-small">All Roles</span>
               </div>
             </div>
-            <h3 className="fw-extrabold mb-2">{summary.total_users}</h3>
-            <span className="text-muted extra-small d-block pb-0.5">Registered Accounts</span>
           </div>
         </div>
 
-        {/* Admins */}
+        {/* Card 2: Admins */}
         <div className="col-12 col-sm-6 col-md-3">
-          <div className="card stat-card-purple shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
-            <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold pt-0.5">Admins</span>
-              <div className="rounded-3 p-2.5 bg-info bg-opacity-10 text-info fs-5">
-                <FaUserShield />
+          <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
+            <div>
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <span className="text-muted extra-small text-uppercase fw-bold tracking-wider">System Admins</span>
+                <div
+                  className="feeding-kpi-icon-wrap"
+                  style={{ background: 'rgba(11, 44, 95, 0.10)', color: '#0B2C5F' }}
+                >
+                  <FaUserShield />
+                </div>
+              </div>
+              <h2 className="fw-extrabold mb-1 text-dark" style={{ letterSpacing: '-0.03em' }}>
+                {summary.admin_count}
+              </h2>
+            </div>
+            <div>
+              <div className="feeding-progress-track my-2">
+                <div
+                  className="feeding-progress-bar"
+                  style={{ width: '40%', background: 'linear-gradient(90deg, #0B2C5F, #0284C7)' }}
+                ></div>
+              </div>
+              <div className="d-flex justify-content-between align-items-center">
+                <span className="tag-cyan-active" style={{ background: '#F8FAFC', color: '#0B2C5F', borderColor: '#CBD5E1' }}>Full Authority</span>
+                <span className="text-muted extra-small">Root Access</span>
               </div>
             </div>
-            <h3 className="fw-extrabold mb-2">{summary.admin_count}</h3>
-            <span className="text-muted extra-small d-block pb-0.5">System Administrators</span>
           </div>
         </div>
 
-        {/* Caretakers */}
+        {/* Card 3: Caretakers */}
         <div className="col-12 col-sm-6 col-md-3">
-          <div className="card stat-card-orange shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
-            <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold pt-0.5">Caretakers</span>
-              <div className="rounded-3 p-2.5 bg-warning bg-opacity-10 text-warning fs-5">
-                <FaUserTie />
+          <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
+            <div>
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <span className="text-muted extra-small text-uppercase fw-bold tracking-wider">Field Caretakers</span>
+                <div
+                  className="feeding-kpi-icon-wrap"
+                  style={{ background: 'rgba(255, 122, 0, 0.12)', color: '#FF7A00' }}
+                >
+                  <FaUserTie />
+                </div>
+              </div>
+              <h2 className="fw-extrabold mb-1 text-dark" style={{ letterSpacing: '-0.03em' }}>
+                {summary.caretaker_count}
+              </h2>
+            </div>
+            <div>
+              <div className="feeding-progress-track my-2">
+                <div
+                  className="feeding-progress-bar"
+                  style={{ width: '80%', background: 'linear-gradient(90deg, #FF7A00, #FBBF24)' }}
+                ></div>
+              </div>
+              <div className="d-flex justify-content-between align-items-center">
+                <span className="tag-orange-maintenance">Field Operations</span>
+                <span className="text-muted extra-small">Basin Supervisors</span>
               </div>
             </div>
-            <h3 className="fw-extrabold mb-2">{summary.caretaker_count}</h3>
-            <span className="text-muted extra-small d-block pb-0.5">Field Farm Caretakers</span>
           </div>
         </div>
 
-        {/* Active Users */}
+        {/* Card 4: Active Accounts */}
         <div className="col-12 col-sm-6 col-md-3">
-          <div className="card stat-card-green shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
-            <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold pt-0.5">Active Accounts</span>
-              <span className="badge bg-success bg-opacity-10 text-success rounded-pill extra-small fw-semibold">🟢 Active</span>
+          <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
+            <div>
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <span className="text-muted extra-small text-uppercase fw-bold tracking-wider">Operational Health</span>
+                <div
+                  className="feeding-kpi-icon-wrap"
+                  style={{ background: 'rgba(22, 163, 74, 0.12)', color: '#16A34A' }}
+                >
+                  <FaCheckCircle />
+                </div>
+              </div>
+              <h2 className="fw-extrabold mb-1 text-success" style={{ letterSpacing: '-0.03em' }}>
+                {summary.active_count}
+              </h2>
             </div>
-            <h3 className="fw-extrabold text-success mb-2">{summary.active_count}</h3>
-            <span className="text-muted extra-small d-block pb-0.5">Operational Status</span>
+            <div>
+              <div className="feeding-progress-track my-2">
+                <div
+                  className="feeding-progress-bar"
+                  style={{ width: '100%', background: 'linear-gradient(90deg, #16A34A, #4ADE80)' }}
+                ></div>
+              </div>
+              <div className="d-flex justify-content-between align-items-center">
+                <span className="tag-green-safe">100% Operational</span>
+                <span className="text-muted extra-small">Zero Locked</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* 🛠 UNIFIED FILTER & ACTION TOOLBAR */}
-      <div className="card border-0 shadow-sm rounded-4 bg-white p-4 mb-4">
+      {/* 🌟 3. UNIFIED SEARCH, FILTER & SORT CONTROL STRIP */}
+      <div className="asymmetric-card p-4 mb-4">
         <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-3 pb-3 border-bottom">
           {/* Quick Search */}
-          <div className="position-relative flex-grow-1" style={{ maxWidth: 450 }}>
-            <FaSearch className="position-absolute top-50 translate-middle-y text-primary" style={{ left: 16 }} size={14} />
+          <div className="position-relative flex-grow-1" style={{ maxWidth: 420 }}>
             <input
               type="text"
-              className="form-control ps-5 pe-4 py-2.5 rounded-pill shadow-xs"
-              placeholder="Search User Name, Email, or Phone..."
+              className="form-control form-control-sm rounded-pill ps-4 pe-4"
+              style={{ fontSize: '0.82rem', height: 38, background: '#F8FAFC', border: '1px solid #E2E8F0' }}
+              placeholder="Search user name, email, or phone..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ fontSize: '0.92rem' }}
+            />
+            <FaSearch
+              size={12}
+              className="position-absolute text-muted"
+              style={{ left: 14, top: '50%', transform: 'translateY(-50%)' }}
             />
             {searchQuery && (
               <button
-                className="btn btn-sm btn-link position-absolute top-50 translate-middle-y text-muted text-decoration-none"
-                style={{ right: 12 }}
+                type="button"
+                className="btn btn-link p-0 position-absolute text-muted"
+                style={{ right: 12, top: '50%', transform: 'translateY(-50%)', textDecoration: 'none' }}
                 onClick={() => setSearchQuery('')}
               >
-                ✕
+                <FaTimes size={11} />
               </button>
             )}
           </div>
 
-          {/* Action Buttons */}
-          <div className="d-flex align-items-center gap-2">
+          {/* Pill Role Quick Filters */}
+          <div className="d-flex align-items-center gap-1.5 flex-wrap">
             <button
               type="button"
-              className="btn btn-outline-success px-3.5 py-2 rounded-3 d-flex align-items-center gap-2 fw-semibold shadow-xs"
-              onClick={handleExportCSV}
+              className={`pill-filter-btn ${roleFilter === 'All' ? 'active' : ''}`}
+              onClick={() => setRoleFilter('All')}
             >
-              <FaFileCsv size={16} /> Export CSV
+              All Personnel ({users.length})
             </button>
-
             <button
               type="button"
-              className="btn btn-settings-primary px-3.5 py-2 rounded-3 d-flex align-items-center gap-2 fw-bold shadow-sm"
-              onClick={openCreateModal}
+              className={`pill-filter-btn ${roleFilter === 'admin' ? 'active' : ''}`}
+              onClick={() => setRoleFilter('admin')}
             >
-              <FaPlus size={13} /> Create Caretaker
+              Admins ({summary.admin_count})
+            </button>
+            <button
+              type="button"
+              className={`pill-filter-btn ${roleFilter === 'caretaker' ? 'active' : ''}`}
+              onClick={() => setRoleFilter('caretaker')}
+            >
+              Caretakers ({summary.caretaker_count})
             </button>
           </div>
         </div>
 
-        {/* Filter Dropdowns Grid */}
+        {/* Dropdown Filters Grid */}
         <div className="row g-3">
-          {/* Filter 1: Role */}
-          <div className="col-12 col-sm-6 col-md-3">
-            <label className="form-label extra-small fw-bold text-muted text-uppercase mb-1.5 tracking-wider">
-              Role Filter
-            </label>
-            <select
-              className="form-select rounded-3 py-2 shadow-xs"
-              value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
-            >
-              <option value="All">All Roles</option>
-              <option value="admin">Admin</option>
-              <option value="caretaker">Caretaker</option>
-            </select>
-          </div>
-
-          {/* Filter 2: Status */}
-          <div className="col-12 col-sm-6 col-md-3">
-            <label className="form-label extra-small fw-bold text-muted text-uppercase mb-1.5 tracking-wider">
+          {/* Filter 1: Status */}
+          <div className="col-12 col-sm-6 col-md-4">
+            <label className="form-label extra-small fw-bold text-muted text-uppercase mb-1 tracking-wider">
               Status Filter
             </label>
             <select
-              className="form-select rounded-3 py-2 shadow-xs"
+              className="form-select form-select-sm rounded-pill"
+              style={{ fontSize: '0.82rem', height: 36, background: '#F8FAFC', border: '1px solid #E2E8F0' }}
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
               <option value="All">All Statuses</option>
-              <option value="Active">Active 🟢</option>
-              <option value="Inactive">Inactive 🔴</option>
+              <option value="Active">🟢 Active</option>
+              <option value="Inactive">🔴 Inactive</option>
             </select>
           </div>
 
-          {/* Filter 3: Assigned Pond */}
-          <div className="col-12 col-sm-6 col-md-3">
-            <label className="form-label extra-small fw-bold text-muted text-uppercase mb-1.5 tracking-wider">
-              Assigned Pond
+          {/* Filter 2: Assigned Pond */}
+          <div className="col-12 col-sm-6 col-md-4">
+            <label className="form-label extra-small fw-bold text-muted text-uppercase mb-1 tracking-wider">
+              Assigned Basin
             </label>
             <select
-              className="form-select rounded-3 py-2 shadow-xs"
+              className="form-select form-select-sm rounded-pill"
+              style={{ fontSize: '0.82rem', height: 36, background: '#F8FAFC', border: '1px solid #E2E8F0' }}
               value={pondFilter}
               onChange={(e) => setPondFilter(e.target.value)}
             >
-              <option value="All">All Assigned Ponds</option>
+              <option value="All">All Assigned Basins</option>
               {ponds.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.pond_name}
@@ -579,55 +745,57 @@ export default function UsersPage() {
             </select>
           </div>
 
-          {/* Filter 4: Sort By */}
-          <div className="col-12 col-sm-6 col-md-3">
-            <label className="form-label extra-small fw-bold text-muted text-uppercase mb-1.5 tracking-wider">
-              Sort By
+          {/* Filter 3: Sort By */}
+          <div className="col-12 col-sm-6 col-md-4">
+            <label className="form-label extra-small fw-bold text-muted text-uppercase mb-1 tracking-wider">
+              Sort Order
             </label>
             <select
-              className="form-select rounded-3 py-2 shadow-xs"
+              className="form-select form-select-sm rounded-pill"
+              style={{ fontSize: '0.82rem', height: 36, background: '#F8FAFC', border: '1px solid #E2E8F0' }}
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
             >
-              <option value="newest">Newest First</option>
+              <option value="newest">Newest First ⬇</option>
               <option value="name">Name (A - Z)</option>
-              <option value="role">Role</option>
+              <option value="role">Role Classification</option>
             </select>
           </div>
         </div>
       </div>
 
-      {/* 📋 USERS TABLE CARD */}
-      <div className="card border-0 shadow-sm rounded-4 bg-white p-4">
+      {/* 🌟 4. USERS TABLE MATRIX */}
+      <div className="asymmetric-card p-4">
         <div className="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
           <div>
-            <h5 className="fw-bold text-dark mb-0">System Users List</h5>
-            <small className="text-muted">Manage administrator and caretaker accounts.</small>
+            <h5 className="fw-extrabold text-dark mb-0 tracking-tight">System Personnel Directory</h5>
+            <p className="text-muted small mb-0" style={{ fontSize: '0.82rem' }}>
+              Authorized administrator profiles and operational field farm caretakers.
+            </p>
           </div>
-          <span className="badge bg-primary bg-opacity-10 text-primary px-3 py-1.5 rounded-pill fw-semibold">
+          <span className="tag-cyan-active">
             Showing {sortedUsers.length} of {users.length} Users
           </span>
         </div>
 
-        <div className="table-responsive">
+        <div className="table-responsive rounded-4 border" style={{ maxHeight: '560px', overflowY: 'auto' }}>
           {loading ? (
             <div className="text-center py-5 text-muted">
-              <div className="spinner-border text-primary" role="status"></div>
-              <p className="mt-2">Loading System Accounts...</p>
+              <FaSync className="fa-spin text-primary me-2" /> Loading System Personnel Directory...
             </div>
           ) : sortedUsers.length === 0 ? (
-            <div className="text-center py-5 text-muted">No user accounts found matching filter criteria.</div>
+            <div className="text-center py-5 text-muted">No personnel records found matching filter criteria.</div>
           ) : (
-            <table className="table align-middle mb-0" style={{ borderCollapse: 'separate', borderSpacing: '0 6px' }}>
-              <thead className="table-light">
-                <tr>
-                  <th style={{ minWidth: 220, padding: '12px 16px' }}>User Name</th>
-                  <th style={{ minWidth: 200, padding: '12px 16px' }}>Email Address</th>
-                  <th style={{ minWidth: 130, padding: '12px 16px' }}>Phone Number</th>
-                  <th style={{ minWidth: 120, padding: '12px 16px' }}>Role</th>
-                  <th style={{ minWidth: 110, padding: '12px 16px' }}>Status</th>
-                  <th style={{ minWidth: 220, padding: '12px 16px' }}>Assigned Ponds</th>
-                  <th style={{ minWidth: 120, padding: '12px 16px' }} className="text-center">Actions</th>
+            <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.85rem' }}>
+              <thead style={{ position: 'sticky', top: 0, zIndex: 5, background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                <tr className="text-muted extra-small text-uppercase fw-bold">
+                  <th className="border-0 ps-3 py-3" style={{ minWidth: 220 }}>User Profile</th>
+                  <th className="border-0 py-3" style={{ minWidth: 190 }}>Contact Email</th>
+                  <th className="border-0 py-3" style={{ minWidth: 140 }}>Mobile Number</th>
+                  <th className="border-0 py-3" style={{ minWidth: 120 }}>Access Role</th>
+                  <th className="border-0 py-3" style={{ minWidth: 110 }}>Status</th>
+                  <th className="border-0 py-3" style={{ minWidth: 200 }}>Assigned Basins</th>
+                  <th className="border-0 pe-3 py-3 text-end" style={{ minWidth: 140 }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -636,123 +804,149 @@ export default function UsersPage() {
                   const roleSubtitle = user.role === 'admin' ? 'System Administrator' : 'Pond Caretaker';
 
                   return (
-                    <tr key={user.id} className="bg-white border-bottom shadow-xs">
-                      {/* Name Clickable to open Profile (WITH GENEROUS SPACING BETWEEN AVATAR AND NAME!) */}
-                      <td style={{ padding: '14px 16px' }}>
+                    <tr key={user.id} className="border-bottom">
+                      {/* Name & Avatar */}
+                      <td className="ps-3 py-3">
                         <div
-                          className="d-flex align-items-center gap-3 cursor-pointer"
+                          className="d-flex align-items-center gap-2.5 cursor-pointer"
                           style={{ cursor: 'pointer' }}
                           onClick={() => setViewingUser(user)}
                         >
                           <div
-                            className="rounded-circle text-white d-flex align-items-center justify-content-center fw-bold shadow-xs flex-shrink-0 me-2"
+                            className="rounded-circle text-white d-flex align-items-center justify-content-center fw-bold shadow-xs flex-shrink-0"
                             style={{
-                              width: 44,
-                              height: 44,
-                              fontSize: '1.05rem',
+                              width: 42,
+                              height: 42,
+                              fontSize: '1rem',
                               background: getAvatarBg(user)
                             }}
                           >
                             {formattedName ? formattedName.charAt(0).toUpperCase() : 'U'}
                           </div>
                           <div>
-                            <strong className="d-block text-dark text-primary-hover">{formattedName}</strong>
-                            <small className="text-muted extra-small">{roleSubtitle}</small>
+                            <strong className="d-block text-dark">{formattedName}</strong>
+                            <span className="text-muted extra-small">{roleSubtitle}</span>
                           </div>
                         </div>
                       </td>
 
-                      <td style={{ padding: '14px 16px', color: '#475569' }}>{user.email}</td>
-
-                      <td style={{ padding: '14px 16px', color: '#475569' }}>{user.phone || '09123456789'}</td>
-
-                      <td style={{ padding: '14px 16px' }}>
-                        <span
-                          className={`badge ${
-                            user.role === 'admin'
-                              ? 'bg-primary bg-opacity-10 text-primary'
-                              : 'bg-secondary bg-opacity-10 text-secondary'
-                          } px-2.5 py-1.5 rounded-pill fw-semibold`}
-                        >
-                          {user.role === 'admin' ? '🛡 Admin' : '👨‍🌾 Caretaker'}
+                      <td className="py-3 text-secondary">
+                        <span className="d-flex align-items-center gap-1.5">
+                          <FaEnvelope size={11} className="text-muted" /> {user.email}
                         </span>
                       </td>
 
-                      <td style={{ padding: '14px 16px' }}>
+                      <td className="py-3 text-secondary">
+                        <span className="d-flex align-items-center gap-1.5">
+                          <FaPhone size={11} className="text-muted" /> {user.phone || '09123456789'}
+                        </span>
+                      </td>
+
+                      <td className="py-3">
                         <span
-                          className={`badge ${
+                          className="badge rounded-pill fw-bold px-2.5 py-1"
+                          style={
+                            user.role === 'admin'
+                              ? { background: 'rgba(11, 44, 95, 0.08)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.2)' }
+                              : { background: '#F0F9FF', color: '#0284C7', border: '1px solid #BAE6FD' }
+                          }
+                        >
+                          {user.role === 'admin' ? (
+                            <>
+                              <FaUserShield className="me-1" size={11} /> Admin
+                            </>
+                          ) : (
+                            <>
+                              <FaUserTie className="me-1" size={11} /> Caretaker
+                            </>
+                          )}
+                        </span>
+                      </td>
+
+                      <td className="py-3">
+                        <span
+                          className="badge rounded-pill px-2.5 py-1 fw-bold extra-small"
+                          style={
                             user.status === 'Active'
-                              ? 'bg-success bg-opacity-10 text-success'
-                              : 'bg-danger bg-opacity-10 text-danger'
-                          } px-2.5 py-1.5 rounded-pill fw-semibold`}
+                              ? { background: '#ECFDF5', color: '#16A34A', border: '1px solid #BBF7D0' }
+                              : { background: '#FFF1F2', color: '#E11D48', border: '1px solid #FECDD3' }
+                          }
                         >
                           {user.status === 'Active' ? '🟢 Active' : '🔴 Inactive'}
                         </span>
                       </td>
 
-                      {/* ASSIGNED PONDS DISPLAY WITH SLEEK PILL BADGES */}
-                      <td style={{ padding: '14px 16px' }}>
+                      {/* ASSIGNED PONDS */}
+                      <td className="py-3">
                         {user.assigned_ponds && user.assigned_ponds.length > 0 ? (
                           <div className="d-flex flex-wrap gap-1">
                             {user.assigned_ponds.map((p) => (
                               <span
                                 key={p.id}
-                                className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2.5 py-1 rounded-pill fw-semibold"
+                                className="badge rounded-pill fw-bold px-2.5 py-1"
+                                style={{ background: '#F0F9FF', color: '#0284C7', border: '1px solid #BAE6FD', fontSize: '0.75rem' }}
                               >
-                                <FaWater className="me-1 text-primary" size={11} /> {p.pond_name}
+                                <FaWater className="me-1" size={10} /> {p.pond_name}
                               </span>
                             ))}
                           </div>
                         ) : user.pond_name ? (
-                          <span className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2.5 py-1 rounded-pill fw-semibold">
-                            <FaWater className="me-1 text-primary" size={11} /> {user.pond_name}
+                          <span
+                            className="badge rounded-pill fw-bold px-2.5 py-1"
+                            style={{ background: '#F0F9FF', color: '#0284C7', border: '1px solid #BAE6FD', fontSize: '0.75rem' }}
+                          >
+                            <FaWater className="me-1" size={10} /> {user.pond_name}
                           </span>
                         ) : (
-                          <span className="text-muted small italic">— None Assigned</span>
+                          <span className="text-muted extra-small italic">— Unassigned</span>
                         )}
                       </td>
 
-                      {/* 👁 View / ✏ Edit / 🗑 Delete Actions */}
-                      <td style={{ padding: '14px 16px' }}>
-                        <div className="d-flex align-items-center justify-content-center gap-2">
-                          {/* 👁 View Button */}
+                      {/* Action Buttons */}
+                      <td className="pe-3 py-3 text-end">
+                        <div className="d-flex align-items-center justify-content-end gap-1.5">
+                          {/* View Profile */}
                           <button
                             type="button"
-                            className="btn btn-sm btn-outline-primary p-2 rounded-3"
-                            title="👁 View User Profile & Performance"
+                            className="btn btn-sm rounded-circle d-inline-flex align-items-center justify-content-center p-0 shadow-xs"
+                            style={{ width: 34, height: 34, background: '#F0F9FF', color: '#0284C7', border: '1px solid #BAE6FD' }}
+                            title="Inspect Profile & Telemetry Performance"
                             onClick={() => setViewingUser(user)}
                           >
-                            <FaEye size={14} />
+                            <FaEye size={13} />
                           </button>
 
-                          {/* ✏ Edit Button */}
+                          {/* Edit Caretaker */}
                           <button
                             type="button"
-                            className="btn btn-sm btn-outline-secondary p-2 rounded-3"
-                            title="✏ Edit User & Pond Assignments"
+                            className="btn btn-sm rounded-circle d-inline-flex align-items-center justify-content-center p-0 shadow-xs"
+                            style={{ width: 34, height: 34, background: '#F8FAFC', color: '#475569', border: '1px solid #E2E8F0' }}
+                            title="Edit User Credentials & Basin Assignments"
                             onClick={() => openEditModal(user)}
                           >
-                            <FaEdit size={14} />
+                            <FaEdit size={13} />
                           </button>
 
-                          {/* 🗑 Delete & 📁 Archive Buttons */}
+                          {/* Delete & Archive Buttons */}
                           {user.role !== 'admin' && (
                             <>
                               <button
                                 type="button"
-                                className="btn btn-sm btn-outline-warning p-2 rounded-3"
-                                title="📁 Archive Caretaker (Resigned / Inactive)"
+                                className="btn btn-sm rounded-circle d-inline-flex align-items-center justify-content-center p-0 shadow-xs"
+                                style={{ width: 34, height: 34, background: '#FFF7ED', color: '#EA580C', border: '1px solid #FFEDD5' }}
+                                title="Archive Caretaker (Resigned / Inactive)"
                                 onClick={() => handleArchiveCaretaker(user)}
                               >
-                                <FaCalendarCheck size={14} />
+                                <FaCalendarCheck size={12} />
                               </button>
                               <button
                                 type="button"
-                                className="btn btn-sm btn-outline-danger p-2 rounded-3"
-                                title="🗑 Delete Caretaker Account"
+                                className="btn btn-sm rounded-circle d-inline-flex align-items-center justify-content-center p-0 shadow-xs"
+                                style={{ width: 34, height: 34, background: '#FFF1F2', color: '#E11D48', border: '1px solid #FECDD3' }}
+                                title="Delete Caretaker Account"
                                 onClick={() => handleDeleteUser(user)}
                               >
-                                <FaTrashAlt size={14} />
+                                <FaTrashAlt size={12} />
                               </button>
                             </>
                           )}
@@ -767,385 +961,194 @@ export default function UsersPage() {
         </div>
       </div>
 
-      {/* 👤 USER PROFILE & CARETAKER PERFORMANCE MODAL */}
-      {viewingUser && (
+      {/* 🌟 5. RADICAL REDESIGN: CREATE & EDIT CARETAKER MODAL */}
+      {(showCreateModal || editingUser) && (
         <div
           className="modal fade show d-block"
           tabIndex="-1"
-          style={{ backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', zIndex: 1060 }}
+          style={{ backgroundColor: 'rgba(7, 23, 51, 0.65)', backdropFilter: 'blur(8px)', zIndex: 1060 }}
         >
           <div className="modal-dialog modal-dialog-centered modal-lg">
             <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-              {/* Modal Header */}
-              <div className="modal-header p-4 bg-primary text-white border-0">
+              {/* Modal Header with Luxury Navy Gradient & Shrimp Orange Emblem */}
+              <div className="caretaker-modal-header d-flex justify-content-between align-items-center">
                 <div className="d-flex align-items-center gap-3">
                   <div
-                    className="rounded-circle text-white d-flex align-items-center justify-content-center shadow fw-bold fs-3"
-                    style={{ width: 64, height: 64, background: getAvatarBg(viewingUser) }}
+                    className="rounded-circle d-flex align-items-center justify-content-center shadow-sm"
+                    style={{
+                      width: 48,
+                      height: 48,
+                      background: 'rgba(255, 122, 0, 0.18)',
+                      color: '#FF7A00',
+                      fontSize: '1.25rem',
+                      border: '1px solid rgba(255, 122, 0, 0.35)'
+                    }}
                   >
-                    {viewingUser.full_name ? viewingUser.full_name.charAt(0).toUpperCase() : 'U'}
+                    {editingUser ? <FaEdit /> : <FaUserTie />}
                   </div>
                   <div>
-                    <h3 className="fw-bold mb-1 d-flex align-items-center gap-2">
-                      {toTitleCase(viewingUser.full_name)}
-                      <span className="badge bg-success text-white fs-6 font-normal px-3 py-1 rounded-pill">
-                        🟢 {viewingUser.status || 'Active'}
-                      </span>
-                    </h3>
-                    <p className="mb-0 opacity-90 small">
-                      Role: <strong>{viewingUser.role === 'admin' ? 'System Administrator' : 'Pond Caretaker'}</strong>
+                    <h5 className="fw-extrabold text-white mb-0 tracking-tight" style={{ fontSize: '1.2rem' }}>
+                      {editingUser ? 'Update Caretaker Credentials' : 'Register New Caretaker'}
+                    </h5>
+                    <p className="text-white text-opacity-75 mb-0 small" style={{ fontSize: '0.8rem' }}>
+                      Assign field basin permissions and configure mobile telemetry credentials.
                     </p>
                   </div>
                 </div>
                 <button
                   type="button"
-                  className="btn-close btn-close-white"
-                  onClick={() => setViewingUser(null)}
-                ></button>
-              </div>
-
-              {/* Modal Body */}
-              <div className="modal-body p-4 bg-white">
-                {/* Basic Info Grid */}
-                <h6 className="fw-bold text-dark mb-3">User Profile Details</h6>
-                <div className="row g-3 mb-4">
-                  <div className="col-12 col-md-6 col-lg-4">
-                    <div className="p-3 rounded-3 bg-light border">
-                      <small className="text-muted text-uppercase extra-small fw-bold d-block mb-1">Email Address</small>
-                      <strong className="fs-6 text-dark d-flex align-items-center gap-1.5">
-                        <FaEnvelope className="text-primary" /> {viewingUser.email}
-                      </strong>
-                    </div>
-                  </div>
-
-                  <div className="col-12 col-md-6 col-lg-4">
-                    <div className="p-3 rounded-3 bg-light border">
-                      <small className="text-muted text-uppercase extra-small fw-bold d-block mb-1">Phone Number</small>
-                      <strong className="fs-6 text-dark d-flex align-items-center gap-1.5">
-                        <FaPhone className="text-primary" /> {viewingUser.phone || '09123456789'}
-                      </strong>
-                    </div>
-                  </div>
-
-                  <div className="col-12 col-md-6 col-lg-4">
-                    <div className="p-3 rounded-3 bg-light border">
-                      <small className="text-muted text-uppercase extra-small fw-bold d-block mb-1">Assigned Ponds</small>
-                      <div className="d-flex flex-wrap gap-1 mt-1">
-                        {viewingUser.assigned_ponds && viewingUser.assigned_ponds.length > 0 ? (
-                          viewingUser.assigned_ponds.map((p) => (
-                            <span key={p.id} className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2.5 py-1 rounded-pill">
-                              <FaWater className="me-1" size={11} /> {p.pond_name}
-                            </span>
-                          ))
-                        ) : viewingUser.pond_name ? (
-                          <span className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2.5 py-1 rounded-pill">
-                            <FaWater className="me-1" size={11} /> {viewingUser.pond_name}
-                          </span>
-                        ) : (
-                          <span className="text-muted small">None Assigned</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="col-12 col-md-6 col-lg-6">
-                    <div className="p-3 rounded-3 bg-light border">
-                      <small className="text-muted text-uppercase extra-small fw-bold d-block mb-1">Date Created</small>
-                      <strong className="fs-6 text-dark d-flex align-items-center gap-1.5">
-                        <FaCalendarAlt className="text-secondary" /> {viewingUser.date_created || 'April 2026'}
-                      </strong>
-                    </div>
-                  </div>
-
-                  <div className="col-12 col-md-6 col-lg-6">
-                    <div className="p-3 rounded-3 bg-light border">
-                      <small className="text-muted text-uppercase extra-small fw-bold d-block mb-1">Last Login</small>
-                      <strong className="fs-6 text-dark d-flex align-items-center gap-1.5">
-                        <FaClock className="text-success" /> {viewingUser.last_login || 'Today'}
-                      </strong>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 🌟 CARETAKER PERFORMANCE SECTION (PERFECTLY ALIGNED EQUAL HEIGHT METRIC CARDS!) */}
-                {viewingUser.performance ? (
-                  <div className="p-4 rounded-4 bg-light border border-primary border-opacity-25 mb-2">
-                    <div className="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
-                      <h5 className="fw-bold text-primary mb-0 d-flex align-items-center gap-2">
-                        <FaChartLine /> Caretaker Performance
-                      </h5>
-                      <span className="text-warning fs-5">
-                        <FaStar /> <FaStar /> <FaStar /> <FaStar /> <FaStar />
-                      </span>
-                    </div>
-
-                    {/* Perfectly Aligned 6 Equal-Height Metric Cards */}
-                    <div className="row g-3 mb-4 text-center align-items-stretch">
-                      {/* Card 1: Feeding Logs */}
-                      <div className="col-6 col-md-4 col-lg-2">
-                        <div className="card p-3 rounded-4 bg-white border shadow-xs h-100 d-flex flex-column justify-content-between">
-                          <small className="text-muted extra-small fw-bold text-uppercase d-flex align-items-center justify-content-center" style={{ minHeight: 34, lineHeight: 1.2 }}>
-                            Submitted Feeding Logs
-                          </small>
-                          <strong className="fs-4 text-primary d-block mt-2">{viewingUser.performance.submitted_feeding_logs}</strong>
-                        </div>
-                      </div>
-
-                      {/* Card 2: Disease Reports */}
-                      <div className="col-6 col-md-4 col-lg-2">
-                        <div className="card p-3 rounded-4 bg-white border shadow-xs h-100 d-flex flex-column justify-content-between">
-                          <small className="text-muted extra-small fw-bold text-uppercase d-flex align-items-center justify-content-center" style={{ minHeight: 34, lineHeight: 1.2 }}>
-                            Disease Reports
-                          </small>
-                          <strong className="fs-4 text-dark d-block mt-2">{viewingUser.performance.disease_reports_submitted}</strong>
-                        </div>
-                      </div>
-
-                      {/* Card 3: Images Uploaded */}
-                      <div className="col-6 col-md-4 col-lg-2">
-                        <div className="card p-3 rounded-4 bg-white border shadow-xs h-100 d-flex flex-column justify-content-between">
-                          <small className="text-muted extra-small fw-bold text-uppercase d-flex align-items-center justify-content-center" style={{ minHeight: 34, lineHeight: 1.2 }}>
-                            Images Uploaded
-                          </small>
-                          <strong className="fs-4 text-dark d-block mt-2">{viewingUser.performance.shrimp_images_uploaded}</strong>
-                        </div>
-                      </div>
-
-                      {/* Card 4: Last Activity */}
-                      <div className="col-6 col-md-4 col-lg-2">
-                        <div className="card p-3 rounded-4 bg-white border shadow-xs h-100 d-flex flex-column justify-content-between">
-                          <small className="text-muted extra-small fw-bold text-uppercase d-flex align-items-center justify-content-center" style={{ minHeight: 34, lineHeight: 1.2 }}>
-                            Last Activity
-                          </small>
-                          <strong className="fs-6 text-dark d-block mt-2 fw-bold">{viewingUser.performance.last_activity}</strong>
-                        </div>
-                      </div>
-
-                      {/* Card 5: Attendance */}
-                      <div className="col-6 col-md-4 col-lg-2">
-                        <div className="card p-3 rounded-4 bg-white border border-success shadow-xs h-100 d-flex flex-column justify-content-between">
-                          <small className="text-muted extra-small fw-bold text-uppercase d-flex align-items-center justify-content-center" style={{ minHeight: 34, lineHeight: 1.2 }}>
-                            Attendance
-                          </small>
-                          <strong className="fs-4 text-success d-block mt-2">{viewingUser.performance.attendance_pct}%</strong>
-                        </div>
-                      </div>
-
-                      {/* Card 6: Performance Score */}
-                      <div className="col-6 col-md-4 col-lg-2">
-                        <div className="card p-3 rounded-4 bg-white border border-primary shadow-xs h-100 d-flex flex-column justify-content-between">
-                          <small className="text-muted extra-small fw-bold text-uppercase d-flex align-items-center justify-content-center" style={{ minHeight: 34, lineHeight: 1.2 }}>
-                            Performance Score
-                          </small>
-                          <strong className="fs-4 text-primary d-block mt-2">{viewingUser.performance.performance_score}%</strong>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Performance Breakdown Progress Bars */}
-                    <h6 className="fw-bold text-dark mb-3">Performance Breakdown</h6>
-                    <div className="d-flex flex-column gap-3">
-                      {/* Task Completion */}
-                      <div>
-                        <div className="d-flex justify-content-between align-items-center small fw-bold text-dark mb-1">
-                          <span>Task Completion</span>
-                          <span className="text-primary">{viewingUser.performance.breakdown.task_completion}%</span>
-                        </div>
-                        <div className="progress" style={{ height: 12, borderRadius: 6 }}>
-                          <div
-                            className="progress-bar bg-primary progress-bar-striped progress-bar-animated"
-                            style={{ width: `${viewingUser.performance.breakdown.task_completion}%` }}
-                          ></div>
-                        </div>
-                      </div>
-
-                      {/* Feeding Logs */}
-                      <div>
-                        <div className="d-flex justify-content-between align-items-center small fw-bold text-dark mb-1">
-                          <span>Feeding Logs</span>
-                          <span className="text-info">{viewingUser.performance.breakdown.feeding_logs}%</span>
-                        </div>
-                        <div className="progress" style={{ height: 12, borderRadius: 6 }}>
-                          <div
-                            className="progress-bar bg-info progress-bar-striped progress-bar-animated"
-                            style={{ width: `${viewingUser.performance.breakdown.feeding_logs}%` }}
-                          ></div>
-                        </div>
-                      </div>
-
-                      {/* Image Upload */}
-                      <div>
-                        <div className="d-flex justify-content-between align-items-center small fw-bold text-dark mb-1">
-                          <span>Image Upload</span>
-                          <span className="text-success">{viewingUser.performance.breakdown.image_upload}%</span>
-                        </div>
-                        <div className="progress" style={{ height: 12, borderRadius: 6 }}>
-                          <div
-                            className="progress-bar bg-success progress-bar-striped progress-bar-animated"
-                            style={{ width: `${viewingUser.performance.breakdown.image_upload}%` }}
-                          ></div>
-                        </div>
-                      </div>
-
-                      {/* Attendance */}
-                      <div>
-                        <div className="d-flex justify-content-between align-items-center small fw-bold text-dark mb-1">
-                          <span>Attendance</span>
-                          <span className="text-warning">{viewingUser.performance.breakdown.attendance}%</span>
-                        </div>
-                        <div className="progress" style={{ height: 12, borderRadius: 6 }}>
-                          <div
-                            className="progress-bar bg-warning progress-bar-striped progress-bar-animated"
-                            style={{ width: `${viewingUser.performance.breakdown.attendance}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-3 rounded-3 bg-light text-center text-muted small">
-                    System Administrator Account (Performance tracking active for Caretaker roles).
-                  </div>
-                )}
-              </div>
-
-              {/* Modal Footer */}
-              <div className="modal-footer p-3 bg-light border-top d-flex justify-content-between">
-                <div>
-                  {viewingUser.role === 'caretaker' && (
-                    <button
-                      type="button"
-                      className="btn btn-outline-primary btn-sm rounded-3"
-                      onClick={() => {
-                        const userToEdit = viewingUser;
-                        setViewingUser(null);
-                        openEditModal(userToEdit);
-                      }}
-                    >
-                      <FaEdit className="me-1" /> Edit Account
-                    </button>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  className="btn btn-secondary px-4 rounded-3"
-                  onClick={() => setViewingUser(null)}
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ➕ CREATE / ✏ EDIT CARETAKER MODAL */}
-      {(showCreateModal || editingUser) && (
-        <div
-          className="modal fade show d-block"
-          tabIndex="-1"
-          style={{ backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', zIndex: 1060 }}
-        >
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-              <div className="modal-header p-4 bg-primary text-white border-0">
-                <h4 className="fw-bold mb-0">
-                  {editingUser ? 'Edit Caretaker Account' : 'Create Caretaker Account'}
-                </h4>
-                <button
-                  type="button"
-                  className="btn-close btn-close-white"
+                  className="btn btn-sm rounded-circle d-flex align-items-center justify-content-center text-white p-0"
+                  style={{ width: 34, height: 34, background: 'rgba(255, 255, 255, 0.12)', border: 'none' }}
                   onClick={() => {
                     setShowCreateModal(false);
                     setEditingUser(null);
                   }}
-                ></button>
+                >
+                  ✕
+                </button>
               </div>
 
               <form onSubmit={handleSaveUser}>
                 <div className="modal-body p-4 bg-white">
-                  <div className="mb-3">
-                    <label className="form-label fw-semibold">Full Name</label>
-                    <input
-                      type="text"
-                      className="form-control py-2 rounded-3"
-                      value={formData.full_name}
-                      onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                      required
-                    />
-                  </div>
+                  {/* Section 1: Personal & Contact Information */}
+                  <div className="mb-4">
+                    <span className="extra-small text-muted text-uppercase fw-bold tracking-wider d-block mb-2">
+                      1. Personal & Contact Details
+                    </span>
 
-                  <div className="mb-3">
-                    <label className="form-label fw-semibold">Email Address</label>
-                    <input
-                      type="email"
-                      className="form-control py-2 rounded-3"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      required
-                    />
-                  </div>
-
-                  <div className="mb-3">
-                    <label className="form-label fw-semibold">Phone Number</label>
-                    <input
-                      type="text"
-                      className="form-control py-2 rounded-3"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    />
-                  </div>
-
-                  {!editingUser && (
-                    <>
-                      <div className="mb-3">
-                        <label className="form-label fw-semibold">Password</label>
-                        <input
-                          type="password"
-                          className="form-control py-2 rounded-3"
-                          value={formData.password}
-                          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                          required
-                          minLength={6}
-                        />
+                    <div className="row g-3">
+                      {/* Full Name */}
+                      <div className="col-12 col-md-6">
+                        <label className="form-label small fw-bold text-dark mb-1">Full Name</label>
+                        <div className="input-icon-group">
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder="e.g. Juan Dela Cruz"
+                            value={formData.full_name}
+                            onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                            required
+                          />
+                          <FaUser className="input-icon" />
+                        </div>
                       </div>
 
-                      <div className="mb-3">
-                        <label className="form-label fw-semibold">Confirm Password</label>
-                        <input
-                          type="password"
-                          className="form-control py-2 rounded-3"
-                          value={formData.confirm_password}
-                          onChange={(e) => setFormData({ ...formData, confirm_password: e.target.value })}
-                          required
-                          minLength={6}
-                        />
+                      {/* Phone Number */}
+                      <div className="col-12 col-md-6">
+                        <label className="form-label small fw-bold text-dark mb-1">Mobile Contact</label>
+                        <div className="input-icon-group">
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder="e.g. 09123456789"
+                            value={formData.phone}
+                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                          />
+                          <FaPhone className="input-icon" />
+                        </div>
                       </div>
-                    </>
-                  )}
 
-                  {editingUser && (
-                    <div className="mb-3">
-                      <label className="form-label fw-semibold">Account Status</label>
-                      <select
-                        className="form-select py-2 rounded-3"
-                        value={formData.status}
-                        onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                      >
-                        <option value="Active">Active 🟢</option>
-                        <option value="Inactive">Inactive 🔴</option>
-                      </select>
+                      {/* Email Address */}
+                      <div className="col-12">
+                        <label className="form-label small fw-bold text-dark mb-1">Email Address</label>
+                        <div className="input-icon-group">
+                          <input
+                            type="email"
+                            className="form-control"
+                            placeholder="caretaker@shrimpredict.com"
+                            value={formData.email}
+                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                            required
+                          />
+                          <FaEnvelope className="input-icon" />
+                        </div>
+                      </div>
                     </div>
-                  )}
+                  </div>
 
-                  {/* Assign Ponds Grid */}
-                  <div className="mb-3">
-                    <label className="form-label fw-bold d-flex justify-content-between align-items-center">
-                      <span>Assign Ponds</span>
-                      <small className="text-muted fw-normal">Selected: {formData.selected_ponds.length}/3 max</small>
-                    </label>
+                  {/* Section 2: Security Credentials / Status */}
+                  <div className="mb-4 pt-3 border-top">
+                    <span className="extra-small text-muted text-uppercase fw-bold tracking-wider d-block mb-2">
+                      2. Security & Account Status
+                    </span>
 
-                    <div className="row g-2">
+                    {!editingUser ? (
+                      <div className="row g-3">
+                        <div className="col-12 col-md-6">
+                          <label className="form-label small fw-bold text-dark mb-1">Password</label>
+                          <div className="input-icon-group">
+                            <input
+                              type="password"
+                              className="form-control"
+                              placeholder="Minimum 6 characters"
+                              value={formData.password}
+                              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                              required
+                              minLength={6}
+                            />
+                            <FaLock className="input-icon" />
+                          </div>
+                        </div>
+
+                        <div className="col-12 col-md-6">
+                          <label className="form-label small fw-bold text-dark mb-1">Confirm Password</label>
+                          <div className="input-icon-group">
+                            <input
+                              type="password"
+                              className="form-control"
+                              placeholder="Repeat password"
+                              value={formData.confirm_password}
+                              onChange={(e) => setFormData({ ...formData, confirm_password: e.target.value })}
+                              required
+                              minLength={6}
+                            />
+                            <FaKey className="input-icon" />
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="row g-3">
+                        <div className="col-12 col-md-6">
+                          <label className="form-label small fw-bold text-dark mb-1">Account Operational Status</label>
+                          <select
+                            className="form-select form-control"
+                            value={formData.status}
+                            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                            style={{ borderRadius: 12, height: 42, fontSize: '0.88rem' }}
+                          >
+                            <option value="Active">Active Operational 🟢</option>
+                            <option value="Inactive">Inactive Suspended 🔴</option>
+                          </select>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Section 3: Basin Fleet Permissions (Visual Interactive Pond Cards) */}
+                  <div className="pt-3 border-top">
+                    <div className="d-flex justify-content-between align-items-center mb-2">
+                      <div>
+                        <span className="extra-small text-muted text-uppercase fw-bold tracking-wider d-block">
+                          3. Basin Fleet Assignments
+                        </span>
+                        <p className="text-muted extra-small mb-0">
+                          Select up to 3 active production basins this caretaker will monitor daily.
+                        </p>
+                      </div>
+                      <span
+                        className="badge rounded-pill fw-bold"
+                        style={{
+                          background: formData.selected_ponds.length === 3 ? '#FFF7ED' : '#F0F9FF',
+                          color: formData.selected_ponds.length === 3 ? '#EA580C' : '#0284C7',
+                          border: formData.selected_ponds.length === 3 ? '1px solid #FFEDD5' : '1px solid #BAE6FD',
+                          fontSize: '0.78rem'
+                        }}
+                      >
+                        Selected: {formData.selected_ponds.length} / 3 Max
+                      </span>
+                    </div>
+
+                    <div className="row g-2.5 mt-1">
                       {ponds.map((pond, idx) => {
                         const { isAssignedToOther, assignedUserName } = getAssignedInfo(pond);
                         const isChecked = formData.selected_ponds.includes(pond.id);
@@ -1157,28 +1160,47 @@ export default function UsersPage() {
                         const displayName = pond.pond_name && !/^Pond\s+\d+$/i.test(pond.pond_name) ? pond.pond_name : defaultPondCode;
 
                         return (
-                          <div key={pond.id} className="col-4">
+                          <div key={pond.id} className="col-12 col-sm-6 col-md-4">
                             <div
-                              className={`p-2 rounded-3 border text-center transition-all ${
-                                isChecked
-                                  ? 'bg-primary bg-opacity-10 border-primary text-primary fw-bold'
-                                  : isAssignedToOther
-                                  ? 'bg-light text-muted opacity-50'
-                                  : 'bg-white text-dark hover-bg-light'
-                              }`}
-                              style={{ cursor: isAssignedToOther ? 'not-allowed' : 'pointer', fontSize: '0.85rem' }}
+                              className={`pond-select-card ${isChecked ? 'selected' : ''} ${isAssignedToOther ? 'disabled' : ''}`}
                               onClick={() => !isAssignedToOther && handlePondToggle(pond.id)}
-                              title={isAssignedToOther ? `Assigned to ${assignedUserName}` : ''}
+                              title={isAssignedToOther ? `Assigned to ${assignedUserName}` : 'Click to assign pond'}
                             >
-                              <div className="form-check form-check-inline m-0">
-                                <input
-                                  type="checkbox"
-                                  className="form-check-input me-1.5"
-                                  checked={isChecked}
-                                  disabled={isAssignedToOther}
-                                  onChange={() => {}}
-                                />
-                                <span>{displayName}</span>
+                              <div className="d-flex align-items-center justify-content-between">
+                                <div className="d-flex align-items-center gap-2">
+                                  <div
+                                    className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                                    style={{
+                                      width: 32,
+                                      height: 32,
+                                      background: isChecked ? '#0284C7' : isAssignedToOther ? '#E2E8F0' : 'rgba(2, 132, 199, 0.1)',
+                                      color: isChecked ? '#FFFFFF' : isAssignedToOther ? '#94A3B8' : '#0284C7'
+                                    }}
+                                  >
+                                    <FaWater size={13} />
+                                  </div>
+                                  <div>
+                                    <strong className="d-block text-dark" style={{ fontSize: '0.85rem' }}>
+                                      {displayName}
+                                    </strong>
+                                    <span className="extra-small text-muted" style={{ fontSize: '0.72rem' }}>
+                                      {isAssignedToOther ? `Assigned: ${assignedUserName}` : 'Active Basin'}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div>
+                                  {isAssignedToOther ? (
+                                    <FaLock size={12} className="text-muted opacity-50" />
+                                  ) : isChecked ? (
+                                    <FaCheckCircle size={16} style={{ color: '#0284C7' }} />
+                                  ) : (
+                                    <div
+                                      className="rounded-circle border"
+                                      style={{ width: 16, height: 16, borderColor: '#CBD5E1' }}
+                                    ></div>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -1188,10 +1210,11 @@ export default function UsersPage() {
                   </div>
                 </div>
 
-                <div className="modal-footer p-3 bg-light border-top">
+                {/* Modal Footer */}
+                <div className="modal-footer p-3 bg-light border-top d-flex justify-content-between">
                   <button
                     type="button"
-                    className="btn btn-outline-secondary rounded-3"
+                    className="btn btn-sm rounded-pill px-3 py-2 text-secondary fw-semibold border bg-white"
                     onClick={() => {
                       setShowCreateModal(false);
                       setEditingUser(null);
@@ -1199,11 +1222,235 @@ export default function UsersPage() {
                   >
                     Cancel
                   </button>
-                  <button type="submit" className="btn btn-primary px-4 rounded-3 shadow-sm">
-                    {editingUser ? 'Save Changes' : 'Create Account'}
+
+                  <button
+                    type="submit"
+                    className="btn btn-sm rounded-pill px-4 py-2 d-flex align-items-center gap-2 fw-bold text-white shadow-sm"
+                    style={{
+                      background: 'linear-gradient(135deg, #0B2C5F 0%, #0284C7 100%)',
+                      border: 'none',
+                      fontSize: '0.85rem'
+                    }}
+                  >
+                    <FaCheckCircle size={13} />
+                    {editingUser ? 'Save Changes' : 'Register Caretaker'}
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🌟 6. USER PROFILE & PERFORMANCE MODAL */}
+      {viewingUser && (
+        <div
+          className="modal fade show d-block"
+          tabIndex="-1"
+          style={{ backgroundColor: 'rgba(7, 23, 51, 0.65)', backdropFilter: 'blur(8px)', zIndex: 1060 }}
+        >
+          <div className="modal-dialog modal-dialog-centered modal-lg">
+            <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+              {/* Modal Header */}
+              <div className="caretaker-modal-header d-flex justify-content-between align-items-center">
+                <div className="d-flex align-items-center gap-3">
+                  <div
+                    className="rounded-circle text-white d-flex align-items-center justify-content-center shadow fw-bold fs-4 flex-shrink-0"
+                    style={{ width: 56, height: 56, background: getAvatarBg(viewingUser) }}
+                  >
+                    {viewingUser.full_name ? viewingUser.full_name.charAt(0).toUpperCase() : 'U'}
+                  </div>
+                  <div>
+                    <div className="d-flex align-items-center gap-2">
+                      <h4 className="fw-extrabold text-white mb-0 tracking-tight" style={{ letterSpacing: '-0.02em' }}>
+                        {toTitleCase(viewingUser.full_name)}
+                      </h4>
+                      <span
+                        className="badge rounded-pill fw-bold extra-small"
+                        style={{ background: '#ECFDF5', color: '#16A34A', border: '1px solid #BBF7D0' }}
+                      >
+                        🟢 {viewingUser.status || 'Active'}
+                      </span>
+                    </div>
+                    <p className="text-white text-opacity-75 mb-0 small" style={{ fontSize: '0.82rem' }}>
+                      Role: <strong>{viewingUser.role === 'admin' ? 'System Administrator' : 'Pond Caretaker'}</strong>
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-sm rounded-circle d-flex align-items-center justify-content-center text-white p-0"
+                  style={{ width: 34, height: 34, background: 'rgba(255, 255, 255, 0.12)', border: 'none' }}
+                  onClick={() => setViewingUser(null)}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="modal-body p-4 bg-white">
+                {/* Basic Info Chips */}
+                <h6 className="fw-extrabold text-dark mb-3">User Profile Details</h6>
+                <div className="row g-2.5 mb-4">
+                  <div className="col-12 col-md-4">
+                    <div className="p-3 rounded-3 bg-light border">
+                      <span className="extra-small text-muted text-uppercase fw-bold d-block mb-1">Email Address</span>
+                      <strong className="text-dark small d-flex align-items-center gap-1.5" style={{ wordBreak: 'break-all' }}>
+                        <FaEnvelope className="text-primary flex-shrink-0" /> {viewingUser.email}
+                      </strong>
+                    </div>
+                  </div>
+
+                  <div className="col-12 col-md-4">
+                    <div className="p-3 rounded-3 bg-light border">
+                      <span className="extra-small text-muted text-uppercase fw-bold d-block mb-1">Mobile Contact</span>
+                      <strong className="text-dark small d-flex align-items-center gap-1.5">
+                        <FaPhone className="text-primary flex-shrink-0" /> {viewingUser.phone || '09123456789'}
+                      </strong>
+                    </div>
+                  </div>
+
+                  <div className="col-12 col-md-4">
+                    <div className="p-3 rounded-3 bg-light border">
+                      <span className="extra-small text-muted text-uppercase fw-bold d-block mb-1">Assigned Basins</span>
+                      <div className="d-flex flex-wrap gap-1 mt-1">
+                        {viewingUser.assigned_ponds && viewingUser.assigned_ponds.length > 0 ? (
+                          viewingUser.assigned_ponds.map((p) => (
+                            <span key={p.id} className="badge rounded-pill fw-bold" style={{ background: '#F0F9FF', color: '#0284C7', border: '1px solid #BAE6FD', fontSize: '0.72rem' }}>
+                              <FaWater className="me-1" size={10} /> {p.pond_name}
+                            </span>
+                          ))
+                        ) : viewingUser.pond_name ? (
+                          <span className="badge rounded-pill fw-bold" style={{ background: '#F0F9FF', color: '#0284C7', border: '1px solid #BAE6FD', fontSize: '0.72rem' }}>
+                            <FaWater className="me-1" size={10} /> {viewingUser.pond_name}
+                          </span>
+                        ) : (
+                          <span className="text-muted extra-small">None Assigned</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Caretaker Performance Section */}
+                {viewingUser.performance ? (
+                  <div className="p-4 rounded-4 bg-light border border-primary border-opacity-25 mb-2">
+                    <div className="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
+                      <h6 className="fw-extrabold text-primary mb-0 d-flex align-items-center gap-2">
+                        <FaChartLine /> Caretaker Telemetry & Performance
+                      </h6>
+                      <span className="text-warning fs-6">
+                        <FaStar /> <FaStar /> <FaStar /> <FaStar /> <FaStar />
+                      </span>
+                    </div>
+
+                    {/* Perfectly Aligned Equal Height Metric Cards */}
+                    <div className="row g-2.5 mb-3 text-center align-items-stretch">
+                      <div className="col-6 col-md-2">
+                        <div className="p-2.5 rounded-3 bg-white border h-100 d-flex flex-column justify-content-between">
+                          <span className="extra-small text-muted text-uppercase fw-bold d-block">Feed Logs</span>
+                          <strong className="fs-5 text-primary d-block mt-1">{viewingUser.performance.submitted_feeding_logs}</strong>
+                        </div>
+                      </div>
+
+                      <div className="col-6 col-md-2">
+                        <div className="p-2.5 rounded-3 bg-white border h-100 d-flex flex-column justify-content-between">
+                          <span className="extra-small text-muted text-uppercase fw-bold d-block">Disease Rep.</span>
+                          <strong className="fs-5 text-dark d-block mt-1">{viewingUser.performance.disease_reports_submitted}</strong>
+                        </div>
+                      </div>
+
+                      <div className="col-6 col-md-2">
+                        <div className="p-2.5 rounded-3 bg-white border h-100 d-flex flex-column justify-content-between">
+                          <span className="extra-small text-muted text-uppercase fw-bold d-block">Images</span>
+                          <strong className="fs-5 text-dark d-block mt-1">{viewingUser.performance.shrimp_images_uploaded}</strong>
+                        </div>
+                      </div>
+
+                      <div className="col-6 col-md-2">
+                        <div className="p-2.5 rounded-3 bg-white border h-100 d-flex flex-column justify-content-between">
+                          <span className="extra-small text-muted text-uppercase fw-bold d-block">Activity</span>
+                          <strong className="small text-dark d-block mt-1 fw-bold">{viewingUser.performance.last_activity}</strong>
+                        </div>
+                      </div>
+
+                      <div className="col-6 col-md-2">
+                        <div className="p-2.5 rounded-3 bg-white border border-success h-100 d-flex flex-column justify-content-between">
+                          <span className="extra-small text-muted text-uppercase fw-bold d-block">Attendance</span>
+                          <strong className="fs-5 text-success d-block mt-1">{viewingUser.performance.attendance_pct}%</strong>
+                        </div>
+                      </div>
+
+                      <div className="col-6 col-md-2">
+                        <div className="p-2.5 rounded-3 bg-white border border-primary h-100 d-flex flex-column justify-content-between">
+                          <span className="extra-small text-muted text-uppercase fw-bold d-block">Score</span>
+                          <strong className="fs-5 text-primary d-block mt-1">{viewingUser.performance.performance_score}%</strong>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Progress Breakdown */}
+                    <div className="d-flex flex-column gap-2.5">
+                      <div>
+                        <div className="d-flex justify-content-between small fw-bold text-dark mb-1">
+                          <span>Task Completion</span>
+                          <span className="text-primary">{viewingUser.performance.breakdown.task_completion}%</span>
+                        </div>
+                        <div className="feeding-progress-track">
+                          <div
+                            className="feeding-progress-bar"
+                            style={{ width: `${viewingUser.performance.breakdown.task_completion}%`, background: '#0284C7' }}
+                          ></div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="d-flex justify-content-between small fw-bold text-dark mb-1">
+                          <span>Feeding Schedule Adherence</span>
+                          <span className="text-success">{viewingUser.performance.breakdown.feeding_logs}%</span>
+                        </div>
+                        <div className="feeding-progress-track">
+                          <div
+                            className="feeding-progress-bar"
+                            style={{ width: `${viewingUser.performance.breakdown.feeding_logs}%`, background: '#16A34A' }}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3 rounded-3 bg-light text-center text-muted small">
+                    System Administrator Profile (Full Administrative Authority Active).
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="modal-footer p-3 bg-light border-top d-flex justify-content-between">
+                <div>
+                  {viewingUser.role === 'caretaker' && (
+                    <button
+                      type="button"
+                      className="btn btn-sm rounded-pill px-3 py-1.5 fw-semibold d-inline-flex align-items-center gap-1.5"
+                      style={{ background: '#F0F9FF', color: '#0284C7', border: '1px solid #BAE6FD' }}
+                      onClick={() => {
+                        const userToEdit = viewingUser;
+                        setViewingUser(null);
+                        openEditModal(userToEdit);
+                      }}
+                    >
+                      <FaEdit size={12} /> Edit Account
+                    </button>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-sm rounded-pill px-4 py-2 text-secondary fw-semibold border bg-white"
+                  onClick={() => setViewingUser(null)}
+                >
+                  Close Profile
+                </button>
+              </div>
             </div>
           </div>
         </div>

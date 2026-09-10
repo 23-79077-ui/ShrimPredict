@@ -278,70 +278,198 @@ export default function FeedingHistoryPage() {
   };
 
   return (
-    <div className="caretaker-history-page">
+    <div className="caretaker-history-hub">
+      {/* 🌟 HERO CONTROL STRIP: BREADCRUMB, STATUS BADGE & EXPORT BUTTON */}
+      <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+        <div>
+          <div className="d-flex align-items-center gap-2">
+            <span
+              className="badge rounded-pill fw-bold extra-small"
+              style={{ backgroundColor: '#F0F9FF', color: '#0284C7', border: '1px solid #BAE6FD' }}
+            >
+              ● FEEDING CONSUMPTION TELEMETRY
+            </span>
+            <span className="text-muted extra-small">
+              Historical Log Records • Tray & Broadcast Distribution
+            </span>
+          </div>
+          <h2 className="fw-extrabold mb-0 mt-1 tracking-tight text-dark" style={{ fontSize: '1.75rem', letterSpacing: '-0.03em' }}>
+            Feeding History & Activity
+          </h2>
+        </div>
 
-      {/* SUMMARY CARDS (REQUIRED 4 CARDS PRESERVED & DYNAMIC) */}
-      <div className="row g-3 mb-4">
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            className="btn btn-sm rounded-pill bg-white border text-dark fw-semibold px-3 py-1.5 d-flex align-items-center gap-1.5 shadow-xs"
+            style={{ height: 36, fontSize: '0.8rem' }}
+            onClick={() => loadHistory(true)}
+            disabled={refreshing}
+          >
+            <FaSync size={11} className={refreshing ? 'fa-spin text-primary' : 'text-primary'} /> Refresh
+          </button>
+          <button
+            type="button"
+            className="btn btn-sm rounded-pill px-3.5 py-1.5 d-flex align-items-center gap-2 fw-bold text-white shadow-xs"
+            style={{
+              height: 36,
+              fontSize: '0.8rem',
+              background: 'linear-gradient(135deg, #0B2C5F 0%, #0284C7 100%)',
+              border: 'none',
+            }}
+            onClick={handleExportCSV}
+          >
+            <FaFileDownload size={12} /> Export CSV
+          </button>
+        </div>
+      </div>
+
+      {/* 🌟 SUMMARY KPI CARDS (SPACIOUS LUXURY AQUACULTURE TELEMETRY STYLE) */}
+      <div className="row g-3 g-xl-4 mb-4">
         {/* Card 1: Total Feed Consumption */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card stat-card-purple shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
-            <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold pt-0.5">Total Feed Consumption</span>
-              <div className="rounded-3 p-2.5 bg-info bg-opacity-10 text-info fs-5">
-                <FaUtensils />
+          <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
+            <div>
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Total Consumption</span>
+                <div
+                  className="feeding-kpi-icon-wrap"
+                  style={{ background: 'rgba(2, 132, 199, 0.12)', color: '#0284C7' }}
+                >
+                  <FaUtensils size={18} />
+                </div>
+              </div>
+              <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+                {totalFeedKg.toFixed(1)} <small className="fs-6 text-muted fw-normal">kg</small>
+              </h2>
+            </div>
+            <div>
+              <div className="feeding-progress-track my-2.5">
+                <div
+                  className="feeding-progress-bar"
+                  style={{
+                    width: `${Math.min(100, Math.max(12, (totalFeedKg / Math.max(1, (assignedPonds?.length || 1) * 40)) * 100))}%`,
+                    background: 'linear-gradient(90deg, #0284C7, #38BDF8)',
+                  }}
+                />
+              </div>
+              <div className="d-flex justify-content-between align-items-center">
+                <span className="text-muted extra-small text-truncate" style={{ maxWidth: 140 }}>{currentScope}</span>
+                <span className="tag-cyan-active">Live</span>
               </div>
             </div>
-            <h3 className="fw-extrabold mb-2">{totalFeedKg.toFixed(1)} <small className="fs-6 text-muted fw-normal">kg</small></h3>
-            <span className="text-muted extra-small d-block pb-0.5">{currentScope}</span>
           </div>
         </div>
 
         {/* Card 2: Total Logs */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card stat-card-green shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
-            <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold pt-0.5">Total Logs</span>
-              <div className="rounded-3 p-2.5 bg-success bg-opacity-10 text-success fs-5">
-                <FaCalendarAlt />
+          <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
+            <div>
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Total Logs</span>
+                <div
+                  className="feeding-kpi-icon-wrap"
+                  style={{ background: 'rgba(22, 163, 74, 0.12)', color: '#16A34A' }}
+                >
+                  <FaCalendarAlt size={18} />
+                </div>
+              </div>
+              <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+                {totalLogsCount}
+              </h2>
+            </div>
+            <div>
+              <div className="feeding-progress-track my-2.5">
+                <div
+                  className="feeding-progress-bar"
+                  style={{
+                    width: `${Math.min(100, Math.max(10, (totalLogsCount / Math.max(1, (assignedPonds?.length || 1) * 8)) * 100))}%`,
+                    background: 'linear-gradient(90deg, #16A34A, #4ADE80)',
+                  }}
+                />
+              </div>
+              <div className="d-flex justify-content-between align-items-center">
+                <span className="text-muted extra-small">Submitted records</span>
+                <span className="tag-green-safe">Active</span>
               </div>
             </div>
-            <h3 className="fw-extrabold mb-2">{totalLogsCount}</h3>
-            <span className="text-muted extra-small d-block pb-0.5">Submitted caretaker records</span>
           </div>
         </div>
 
         {/* Card 3: Ponds With Logs */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card stat-card-cyan shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
-            <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold pt-0.5">Ponds With Logs</span>
-              <div className="rounded-3 p-2.5 bg-primary bg-opacity-10 text-primary fs-5">
-                <FaWater />
+          <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
+            <div>
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Active Basins</span>
+                <div
+                  className="feeding-kpi-icon-wrap"
+                  style={{ background: 'rgba(255, 122, 0, 0.12)', color: '#FF7A00' }}
+                >
+                  <FaWater size={18} />
+                </div>
+              </div>
+              <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+                {pondsWithRecords}
+              </h2>
+            </div>
+            <div>
+              <div className="feeding-progress-track my-2.5">
+                <div
+                  className="feeding-progress-bar"
+                  style={{
+                    width: `${Math.min(100, Math.max(15, (pondsWithRecords / Math.max(1, assignedPonds?.length || 1)) * 100))}%`,
+                    background: 'linear-gradient(90deg, #FF7A00, #FBBF24)',
+                  }}
+                />
+              </div>
+              <div className="d-flex justify-content-between align-items-center">
+                <span className="text-muted extra-small">Ponds in filter</span>
+                <span className="tag-orange-maintenance">Filtered</span>
               </div>
             </div>
-            <h3 className="fw-extrabold mb-2">{pondsWithRecords}</h3>
-            <span className="text-muted extra-small d-block pb-0.5">Within the selected filter</span>
           </div>
         </div>
 
         {/* Card 4: Vitamin Logs */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card stat-card-orange shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
-            <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold pt-0.5">Vitamin Logs</span>
-              <div className="rounded-3 p-2.5 bg-warning bg-opacity-10 text-warning fs-5">
-                <FaLeaf />
+          <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
+            <div>
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Vitamin Logs</span>
+                <div
+                  className="feeding-kpi-icon-wrap"
+                  style={{ background: 'rgba(14, 165, 233, 0.12)', color: '#0EA5E9' }}
+                >
+                  <FaLeaf size={18} />
+                </div>
+              </div>
+              <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+                {vitaminLogsCount}
+              </h2>
+            </div>
+            <div>
+              <div className="feeding-progress-track my-2.5">
+                <div
+                  className="feeding-progress-bar"
+                  style={{
+                    width: `${Math.min(100, Math.max(10, (vitaminLogsCount / Math.max(1, totalLogsCount || 1)) * 100))}%`,
+                    background: 'linear-gradient(90deg, #0EA5E9, #38BDF8)',
+                  }}
+                />
+              </div>
+              <div className="d-flex justify-content-between align-items-center">
+                <span className="text-muted extra-small text-truncate" style={{ maxWidth: 140 }}>{latestDateText}</span>
+                <span className="tag-cyan-active">Additives</span>
               </div>
             </div>
-            <h3 className="fw-extrabold mb-2">{vitaminLogsCount}</h3>
-            <span className="text-muted extra-small d-block pb-0.5">{latestDateText}</span>
           </div>
         </div>
       </div>
 
       {/* MAIN CONTENT PANEL: TOOLBAR & SCROLLABLE TABLE */}
-      <div className="card caretaker-panel-card shadow-sm border-0 rounded-4">
-        <div className="card-body p-4">
+      <div className="asymmetric-card p-4">
+        <div>
           
           {/* TOOLBAR CONTROLS */}
           <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">

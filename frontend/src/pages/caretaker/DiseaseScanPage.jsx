@@ -400,21 +400,61 @@ export default function DiseaseScanPage() {
   });
 
   return (
-    <div>
+    <div className="caretaker-disease-scan-hub">
+      {/* 🌟 HERO CONTROL STRIP: BREADCRUMB, STATUS BADGE & EXPORT PDF */}
+      <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+        <div>
+          <div className="d-flex align-items-center gap-2">
+            <span
+              className="badge rounded-pill fw-bold extra-small"
+              style={{ backgroundColor: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE' }}
+            >
+              ● AI COMPUTER VISION
+            </span>
+            <span className="text-muted extra-small">
+              Real-time WSSV Pathogen Screening & Confidence Telemetry
+            </span>
+          </div>
+          <h2 className="fw-extrabold mb-0 mt-1 tracking-tight text-dark" style={{ fontSize: '1.75rem', letterSpacing: '-0.03em' }}>
+            Shrimp Health & Disease Scan
+          </h2>
+        </div>
+
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            className="btn btn-sm rounded-pill bg-white border text-dark fw-semibold px-3 py-1.5 d-flex align-items-center gap-1.5 shadow-xs"
+            style={{ height: 36, fontSize: '0.8rem' }}
+            onClick={loadHistory}
+          >
+            <FaHistory size={11} style={{ color: '#0284C7' }} /> Sync History
+          </button>
+          <button
+            type="button"
+            className="btn btn-sm rounded-pill px-3.5 py-1.5 d-flex align-items-center gap-2 fw-bold text-white shadow-xs"
+            style={{
+              height: 36,
+              fontSize: '0.8rem',
+              background: 'linear-gradient(135deg, #0B2C5F 0%, #0E3D7D 100%)',
+              border: 'none',
+            }}
+            onClick={exportPdf}
+          >
+            <FaFilePdf size={12} /> Export Intelligence
+          </button>
+        </div>
+      </div>
+
       <div className="row g-4">
         {/* 📸 LEFT CARD: SCANNER & CONTROLS */}
         <div className="col-lg-7">
-          <div
-            className="card border border-primary border-opacity-25 shadow-sm rounded-4 position-relative overflow-hidden transition-all hover-shadow"
-            style={{ background: 'linear-gradient(180deg, rgba(13, 110, 253, 0.02) 0%, #ffffff 100%)' }}
-          >
-            <div className="position-absolute top-0 start-0 end-0 bg-primary" style={{ height: 4 }} />
-            <div className="card-body p-4">
-              {/* 🌊 POND SELECTOR BUTTONS (INLINE HEADER) */}
-              <div className="mb-3 p-3 bg-white rounded-4 border border-secondary border-opacity-15 d-flex align-items-center justify-content-between flex-wrap gap-2 shadow-xs">
+          <div className="asymmetric-card p-4">
+            <div>
+              {/* 🌊 POND SELECTOR PILL TABS */}
+              <div className="mb-3 p-3 bg-light rounded-4 border d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <div className="d-flex align-items-center gap-2 flex-wrap">
                   <span className="fw-bold text-dark extra-small text-uppercase d-flex align-items-center gap-1.5 me-1 text-nowrap">
-                    <FaWater className="text-primary" /> Select Pond:
+                    <FaWater className="text-primary" /> Target Basin:
                   </span>
                   {assignedPonds.map((pond) => {
                     const pName = pond.pond_name || pond.name || `Pond ${pond.id}`;
@@ -425,9 +465,13 @@ export default function DiseaseScanPage() {
                         type="button"
                         className={`btn btn-sm rounded-pill px-3 py-1.5 fw-bold extra-small transition-all d-inline-flex align-items-center gap-1.5 ${
                           isSelected
-                            ? 'btn-primary shadow-xs'
-                            : 'btn-outline-secondary bg-white text-dark border-opacity-25'
+                            ? 'btn-dark text-white shadow-xs'
+                            : 'btn-white bg-white text-dark border'
                         }`}
+                        style={{
+                          backgroundColor: isSelected ? '#0B2C5F' : '#FFFFFF',
+                          borderColor: isSelected ? '#0B2C5F' : '#E2E8F0',
+                        }}
                         onClick={() => setSelectedPond(pName)}
                       >
                         {isSelected && <FaCheck size={10} />} 🌊 {pName}
@@ -562,12 +606,8 @@ export default function DiseaseScanPage() {
 
         {/* 🧪 RIGHT CARD: PIPELINE ASSESSMENT RESULT */}
         <div className="col-lg-5">
-          <div
-            className="card border border-info border-opacity-25 shadow-sm rounded-4 position-relative overflow-hidden h-100 transition-all hover-shadow"
-            style={{ background: 'linear-gradient(180deg, rgba(13, 202, 240, 0.02) 0%, #ffffff 100%)' }}
-          >
-            <div className="position-absolute top-0 start-0 end-0 bg-info" style={{ height: 4 }} />
-            <div className="card-body p-4">
+          <div className="asymmetric-card p-4 h-100">
+            <div>
               {shouldShowAdditionalPrompt ? (
                 <div className="alert alert-warning border-warning d-flex flex-column gap-3 rounded-3 mb-0">
                   <strong>No WSSV detected neither Shrimp is Healthy enable additional disease detection features?</strong>
@@ -712,8 +752,8 @@ export default function DiseaseScanPage() {
       </div>
 
       {/* 📜 DETECTION & PIPELINE HISTORY TABLE WITH FILTER TOOLSTRIP & EXPORT PDF */}
-      <div className="card border-0 shadow-sm rounded-4 mt-4">
-        <div className="card-body p-4">
+      <div className="asymmetric-card p-4 mt-4">
+        <div>
           <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
             <div>
               <h5 className="fw-bold text-dark mb-1 d-flex align-items-center gap-2">

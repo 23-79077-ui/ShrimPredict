@@ -14,7 +14,7 @@
   --danger: #E04848;
   --border: rgba(11,44,95,0.1);
   --shadow: 0 28px 70px rgba(11,44,95,0.08);
-  font-family: 'Poppins', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   line-height: 1.6;
   font-weight: 400;
   color: var(--text);
@@ -48,7 +48,8 @@ body, button, input, select, textarea {
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: 'Poppins', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  letter-spacing: -0.02em;
 }
 
 p, li, label, span, a {
@@ -4463,6 +4464,1294 @@ body.dark-theme .table {
   color: #7f1d1d !important;
 }
 
+/* ==========================================================================
+   ENTERPRISE IoT AQUACULTURE DASHBOARD DESIGN SYSTEM (ShrimpPredict)
+   ========================================================================== */
 
+:root {
+  --iot-slate-900: #0F172A;
+  --iot-slate-800: #1E293B;
+  --iot-slate-700: #334155;
+  --iot-slate-600: #475569;
+  --iot-slate-400: #94A3B8;
+  --iot-slate-200: #E2E8F0;
+  --iot-slate-100: #F1F5F9;
+  --iot-slate-50:  #F8FAFC;
+  --iot-aqua-600:  #0D9488;
+  --iot-aqua-500:  #14B8A6;
+  --iot-aqua-400:  #2DD4BF;
+  --iot-aqua-50:   #F0FDFA;
+  --iot-emerald-500: #10B981;
+  --iot-red-50:    #FEF2F2;
+  --iot-red-500:   #EF4444;
+  --iot-red-600:   #DC2626;
+  --iot-amber-500: #F59E0B;
+  --iot-blue-500:  #3B82F6;
+  --radius-2xl:    1rem;
+}
 
+/* Subtle enterprise IoT dot-matrix grid background */
+.iot-bg-grid {
+  background-color: #F8FAFC;
+  background-image: radial-gradient(circle, rgba(13, 148, 136, 0.08) 1.2px, transparent 1.2px);
+  background-size: 24px 24px;
+}
 
+[data-theme="dark"] .iot-bg-grid,
+body.dark-theme .iot-bg-grid {
+  background-color: #0B1120;
+  background-image: radial-gradient(circle, rgba(45, 212, 191, 0.06) 1.2px, transparent 1.2px);
+  background-size: 24px 24px;
+}
+
+/* Global utility for rounded-2xl */
+.rounded-2xl {
+  border-radius: 1rem !important;
+}
+.rounded-3xl {
+  border-radius: 1.5rem !important;
+}
+
+/* Enterprise IoT Sidebar */
+.iot-sidebar {
+  position: sticky;
+  top: 0;
+  min-height: 100vh;
+  height: 100vh;
+  width: 275px;
+  flex: 0 0 275px;
+  padding: 1.5rem 1.15rem;
+  background-color: #0F172A !important;
+  color: #F8FAFC !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 12px 0 36px rgba(15, 23, 42, 0.25);
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+  overflow-y: auto;
+}
+
+.iot-sidebar::-webkit-scrollbar {
+  width: 4px;
+}
+.iot-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.iot-sidebar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+
+/* Brand styling with Vector Emblem */
+.iot-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-decoration: none;
+}
+
+.iot-brand-icon-wrapper {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #0D9488 0%, #0F766E 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 20px -2px rgba(13, 148, 136, 0.45);
+  flex-shrink: 0;
+}
+
+.iot-brand-title {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #FFFFFF;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.iot-brand-tagline {
+  font-size: 0.65rem;
+  color: #2DD4BF;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Sidebar Profile Badge */
+.iot-profile-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0.85rem;
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.85rem;
+}
+
+.iot-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #0D9488, #2563EB);
+  color: #FFFFFF;
+  font-weight: 700;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Navigation Items */
+.iot-nav-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-top: 0.5rem;
+}
+
+.iot-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 0.85rem;
+  color: #94A3B8;
+  font-size: 0.88rem;
+  font-weight: 500;
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.iot-nav-link:hover {
+  color: #F8FAFC;
+  background: rgba(255, 255, 255, 0.05);
+  transform: translateX(2px);
+}
+
+/* Glowing aqua-green active states (#0D9488) */
+.iot-nav-link.active {
+  background: linear-gradient(90deg, rgba(13, 148, 136, 0.2) 0%, rgba(13, 148, 136, 0.05) 100%) !important;
+  color: #2DD4BF !important;
+  border: 1px solid rgba(13, 148, 136, 0.4) !important;
+  box-shadow: 0 0 16px -2px rgba(13, 148, 136, 0.35), inset 0 0 10px rgba(13, 148, 136, 0.12) !important;
+  font-weight: 600;
+}
+
+.iot-nav-link.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 15%;
+  bottom: 15%;
+  width: 3.5px;
+  background: #2DD4BF;
+  border-radius: 0 4px 4px 0;
+  box-shadow: 0 0 8px #2DD4BF;
+}
+
+.iot-nav-icon-box {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.04);
+  color: #94A3B8;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.iot-nav-link:hover .iot-nav-icon-box {
+  color: #F8FAFC;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.iot-nav-link.active .iot-nav-icon-box {
+  background: rgba(13, 148, 136, 0.35);
+  color: #2DD4BF;
+  box-shadow: 0 0 10px rgba(13, 148, 136, 0.4);
+}
+
+/* Airy, Seamless Top Control Bar */
+.iot-topbar {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 1.25rem;
+  padding: 1.15rem 1.5rem;
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.04), 0 2px 6px -1px rgba(15, 23, 42, 0.02);
+  margin-bottom: 1.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  transition: all 0.25s ease;
+}
+
+[data-theme="dark"] .iot-topbar,
+body.dark-theme .iot-topbar {
+  background: rgba(15, 23, 42, 0.82);
+  border: 1px solid rgba(51, 65, 85, 0.65);
+  box-shadow: 0 8px 30px -4px rgba(0, 0, 0, 0.4);
+}
+
+/* Compact Pill Controls */
+.iot-pill {
+  border-radius: 9999px !important;
+  border: 1px solid rgba(203, 213, 225, 0.85);
+  background: #FFFFFF;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.iot-pill:hover {
+  border-color: #94A3B8;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+}
+
+[data-theme="dark"] .iot-pill,
+body.dark-theme .iot-pill {
+  background: #1E293B;
+  border-color: rgba(71, 85, 105, 0.7);
+  color: #F8FAFC;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .iot-pill:hover,
+body.dark-theme .iot-pill:hover {
+  border-color: #0D9488;
+  box-shadow: 0 0 12px rgba(13, 148, 136, 0.25);
+}
+
+/* Soft Pastel KPI Metric Cards */
+.kpi-card {
+  border-radius: 1rem;
+  padding: 1.25rem 1.35rem;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.kpi-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px -6px rgba(15, 23, 42, 0.08);
+}
+
+/* Healthy Ponds - Soft Pastel Mint (#F0FDFA) */
+.kpi-healthy {
+  background: #F0FDFA !important;
+  border: 1px solid #CCFBF1 !important;
+  color: #0F766E !important;
+}
+
+[data-theme="dark"] .kpi-healthy,
+body.dark-theme .kpi-healthy {
+  background: rgba(13, 148, 136, 0.12) !important;
+  border: 1px solid rgba(45, 212, 191, 0.3) !important;
+  color: #2DD4BF !important;
+}
+
+/* Disease Alerts - Soft Pastel Red (#FEF2F2) with High-Priority Red Indicator */
+.kpi-alert {
+  background: #FEF2F2 !important;
+  border: 1px solid #FEE2E2 !important;
+  color: #991B1B !important;
+}
+
+[data-theme="dark"] .kpi-alert,
+body.dark-theme .kpi-alert {
+  background: rgba(239, 68, 68, 0.12) !important;
+  border: 1px solid rgba(248, 113, 113, 0.3) !important;
+  color: #F87171 !important;
+}
+
+/* Neutral/General KPI cards */
+.kpi-neutral {
+  background: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  color: #0F172A !important;
+}
+
+[data-theme="dark"] .kpi-neutral,
+body.dark-theme .kpi-neutral {
+  background: #1E293B !important;
+  border: 1px solid rgba(51, 65, 85, 0.7) !important;
+  color: #F8FAFC !important;
+}
+
+/* Pulsing High-Priority Status Indicator */
+.pulsing-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  position: relative;
+  display: inline-block;
+}
+
+.pulsing-indicator.red {
+  background-color: #EF4444;
+}
+
+.pulsing-indicator.red::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.5);
+  animation: iot-pulse 1.8s infinite;
+}
+
+.pulsing-indicator.green {
+  background-color: #10B981;
+}
+
+.pulsing-indicator.green::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.5);
+  animation: iot-pulse 1.8s infinite;
+}
+
+@keyframes iot-pulse {
+  0% { transform: scale(1); opacity: 0.8; }
+  70% { transform: scale(2.2); opacity: 0; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+/* Mini Sparkline Graph Container */
+.iot-sparkline-wrap {
+  width: 100%;
+  height: 46px;
+  position: relative;
+  cursor: pointer;
+}
+
+.iot-sparkline-wrap svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* Floating dark tooltip for charts & sparklines */
+.iot-dark-tooltip {
+  background: rgba(15, 23, 42, 0.94) !important;
+  backdrop-filter: blur(8px) !important;
+  color: #F8FAFC !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 0.65rem !important;
+  padding: 0.45rem 0.75rem !important;
+  font-size: 0.75rem !important;
+  font-weight: 600 !important;
+  box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.4) !important;
+  pointer-events: none;
+  z-index: 1060;
+}
+
+/* Prioritized Disease Feed Panel */
+.disease-feed-panel {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 1rem;
+  box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.04);
+}
+
+[data-theme="dark"] .disease-feed-panel,
+body.dark-theme .disease-feed-panel {
+  background: #1E293B;
+  border: 1px solid rgba(51, 65, 85, 0.7);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.disease-feed-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.85rem;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  transition: all 0.2s ease;
+}
+
+.disease-feed-item:hover {
+  background: #F1F5F9;
+  border-color: #CBD5E1;
+  transform: translateY(-1.5px);
+}
+
+[data-theme="dark"] .disease-feed-item,
+body.dark-theme .disease-feed-item {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(51, 65, 85, 0.55);
+}
+
+[data-theme="dark"] .disease-feed-item:hover,
+body.dark-theme .disease-feed-item:hover {
+  background: rgba(15, 23, 42, 0.9);
+  border-color: rgba(13, 148, 136, 0.4);
+}
+
+/* Prioritized Status Tags */
+.priority-tag-high {
+  background: #FEE2E2;
+  color: #B91C1C;
+  border: 1px solid #FCA5A5;
+  font-weight: 700;
+  font-size: 0.72rem;
+  border-radius: 9999px;
+  padding: 0.2rem 0.65rem;
+}
+
+[data-theme="dark"] .priority-tag-high,
+body.dark-theme .priority-tag-high {
+  background: rgba(239, 68, 68, 0.2);
+  color: #FCA5A5;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.priority-tag-medium {
+  background: #FEF3C7;
+  color: #B45309;
+  border: 1px solid #FCD34D;
+  font-weight: 700;
+  font-size: 0.72rem;
+  border-radius: 9999px;
+  padding: 0.2rem 0.65rem;
+}
+
+[data-theme="dark"] .priority-tag-medium,
+body.dark-theme .priority-tag-medium {
+  background: rgba(245, 158, 11, 0.2);
+  color: #FCD34D;
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+.priority-tag-low {
+  background: #E0E7FF;
+  color: #4338CA;
+  border: 1px solid #C7D2FE;
+  font-weight: 700;
+  font-size: 0.72rem;
+  border-radius: 9999px;
+  padding: 0.2rem 0.65rem;
+}
+
+[data-theme="dark"] .priority-tag-low,
+body.dark-theme .priority-tag-low {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93C5FD;
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+/* Quick Action Buttons */
+.iot-quick-btn {
+  border-radius: 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.35rem 0.75rem;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.iot-quick-btn-teal {
+  background: rgba(13, 148, 136, 0.12);
+  color: #0D9488;
+  border-color: rgba(13, 148, 136, 0.3);
+}
+
+.iot-quick-btn-teal:hover {
+  background: #0D9488;
+  color: #FFFFFF;
+}
+
+[data-theme="dark"] .iot-quick-btn-teal,
+body.dark-theme .iot-quick-btn-teal {
+  background: rgba(45, 212, 191, 0.15);
+  color: #2DD4BF;
+  border-color: rgba(45, 212, 191, 0.35);
+}
+
+[data-theme="dark"] .iot-quick-btn-teal:hover,
+body.dark-theme .iot-quick-btn-teal:hover {
+  background: #0D9488;
+  color: #FFFFFF;
+}
+
+/* ==========================================================================
+   SHRIMPREDICT BRAND THEME (Harmonized with Landing Page & Login Page)
+   Primary Navy: #0B2C5F | Shrimp Orange: #FF7A00 / #FF7B38 | Ocean Cyan: #38BDF8 / #0284C7
+   ========================================================================== */
+:root {
+  --brand-navy:         #0B2C5F;
+  --brand-navy-hero:    #071733;
+  --brand-orange:       #FF7A00;
+  --brand-orange-light: #FF7B38;
+  --brand-cyan:         #38BDF8;
+  --brand-azure:        #0284C7;
+  --brand-green:        #1FB567;
+  --brand-canvas:       #F8FAFF;
+  --brand-surface:      #FFFFFF;
+  --brand-text:         #10294A;
+  --brand-muted:        #627591;
+  --brand-border:       rgba(11, 44, 95, 0.09);
+  --brand-shadow:       0 10px 30px rgba(11, 44, 95, 0.05);
+}
+
+/* Base Body Surface harmonized with Landing Page */
+.saas-layout-canvas {
+  background-color: #F8FAFF;
+  background-image: 
+    radial-gradient(circle at 12% 12%, rgba(56, 189, 248, 0.12) 0%, transparent 40%),
+    radial-gradient(circle at 88% 80%, rgba(255, 122, 0, 0.07) 0%, transparent 45%),
+    linear-gradient(180deg, #F8FAFF 0%, #EDF3FB 45%, #E8EFF8 100%);
+  min-height: 100vh;
+  color: #10294A;
+  font-family: 'Poppins', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+[data-theme="dark"] .saas-layout-canvas,
+body.dark-theme .saas-layout-canvas {
+  background-color: #040710;
+  background-image: 
+    radial-gradient(circle at 15% 20%, rgba(14, 165, 233, 0.16) 0%, transparent 50%),
+    radial-gradient(circle at 85% 50%, rgba(255, 123, 56, 0.10) 0%, transparent 50%),
+    linear-gradient(135deg, #0A1326 0%, #040710 100%);
+  color: #F0F6FF;
+}
+
+/* 🌟 FLOATING TOP NAVIGATION DOCK BAR (Matching Landing Page Nav) */
+.top-dock-bar {
+  position: sticky;
+  top: 14px;
+  z-index: 1040;
+  margin: 0 auto 1.5rem auto;
+  max-width: 1480px;
+  width: calc(100% - 2rem);
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(11, 44, 95, 0.1);
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(11, 44, 95, 0.06), 0 2px 8px rgba(11, 44, 95, 0.03);
+  padding: 0.65rem 1.25rem;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: 'Poppins', sans-serif;
+}
+
+[data-theme="dark"] .top-dock-bar,
+body.dark-theme .top-dock-bar {
+  background: rgba(10, 19, 38, 0.90);
+  border: 1px solid rgba(56, 189, 248, 0.22);
+  box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.55);
+}
+
+/* Dock Pill Navigation Links */
+.dock-nav-pill {
+  border-radius: 9999px;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #475569;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid transparent;
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+  font-family: 'Poppins', sans-serif;
+}
+
+.dock-nav-pill:hover {
+  color: #0B2C5F;
+  background: rgba(11, 44, 95, 0.06);
+  transform: translateY(-1px);
+}
+
+[data-theme="dark"] .dock-nav-pill {
+  color: #94A3B8;
+}
+
+[data-theme="dark"] .dock-nav-pill:hover {
+  color: #F8FAFC;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Active Pill Highlight - Exactly matches .nav-pill-btn.active from Landing Page */
+.dock-nav-pill.active {
+  background: #0B2C5F !important;
+  color: #FFFFFF !important;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(11, 44, 95, 0.28) !important;
+  border-color: #0B2C5F !important;
+}
+
+.dock-nav-pill.active svg {
+  color: #38BDF8 !important;
+}
+
+[data-theme="dark"] .dock-nav-pill.active,
+body.dark-theme .dock-nav-pill.active {
+  background: #0284C7 !important;
+  color: #FFFFFF !important;
+  border: 1px solid #38BDF8 !important;
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.4) !important;
+}
+
+/* 🌟 ASYMMETRICAL MASONRY CARD (Matching .stat-box-modern on Landing Page) */
+.asymmetric-card {
+  border-radius: 20px !important;
+  background: #FFFFFF;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 10px 30px rgba(11, 44, 95, 0.05);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  font-family: 'Poppins', sans-serif;
+}
+
+.asymmetric-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(56, 189, 248, 0.4);
+  box-shadow: 0 18px 40px rgba(11, 44, 95, 0.12);
+}
+
+[data-theme="dark"] .asymmetric-card,
+body.dark-theme .asymmetric-card {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1.5px solid rgba(56, 189, 248, 0.35);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .asymmetric-card:hover,
+body.dark-theme .asymmetric-card:hover {
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.55);
+  border-color: #38BDF8;
+}
+
+/* 🌟 INTERACTIVE SEGMENTED STATUS BAR (Matching Logo: Ocean Cyan & Shrimp Orange) */
+.segmented-status-bar {
+  height: 20px;
+  border-radius: 9999px;
+  overflow: hidden;
+  display: flex;
+  background: rgba(11, 44, 95, 0.06);
+  padding: 2.5px;
+  gap: 3px;
+}
+
+[data-theme="dark"] .segmented-status-bar,
+body.dark-theme .segmented-status-bar {
+  background: rgba(10, 19, 38, 0.8);
+}
+
+.segment-item {
+  height: 100%;
+  border-radius: 9999px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  position: relative;
+}
+
+.segment-item:hover {
+  filter: brightness(1.1);
+  transform: scaleY(1.15);
+}
+
+.segment-active {
+  background: linear-gradient(90deg, #0284C7 0%, #38BDF8 100%);
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.35);
+}
+
+.segment-maintenance {
+  background: linear-gradient(90deg, #FF7A00 0%, #FF9500 100%);
+  box-shadow: 0 2px 8px rgba(255, 122, 0, 0.35);
+}
+
+.segment-critical {
+  background: linear-gradient(90deg, #E04848 0%, #F43F5E 100%);
+  box-shadow: 0 2px 8px rgba(224, 72, 72, 0.35);
+}
+
+/* Mini Pond Telemetry Tile */
+.pond-telemetry-tile {
+  background: #F8FBFF;
+  border: 1px solid rgba(11, 44, 95, 0.08);
+  border-radius: 14px;
+  padding: 0.85rem 1rem;
+  transition: all 0.2s ease;
+}
+
+.pond-telemetry-tile:hover {
+  background: #F0F7FF;
+  border-color: #38BDF8;
+  transform: translateY(-1.5px);
+}
+
+[data-theme="dark"] .pond-telemetry-tile,
+body.dark-theme .pond-telemetry-tile {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+}
+
+[data-theme="dark"] .pond-telemetry-tile:hover,
+body.dark-theme .pond-telemetry-tile:hover {
+  background: rgba(15, 23, 42, 0.95);
+  border-color: #38BDF8;
+}
+
+/* 🌟 HARVEST TIMELINE MILESTONE TRACK (Matching Brand Navy & Shrimp Orange) */
+.milestone-track {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 0.5rem;
+}
+
+.milestone-line-bg {
+  position: absolute;
+  top: 32px;
+  left: 20px;
+  right: 20px;
+  height: 3.5px;
+  background: rgba(11, 44, 95, 0.08);
+  z-index: 1;
+}
+
+[data-theme="dark"] .milestone-line-bg,
+body.dark-theme .milestone-line-bg {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.milestone-line-fill {
+  position: absolute;
+  top: 32px;
+  left: 20px;
+  height: 3.5px;
+  background: linear-gradient(90deg, #0B2C5F 0%, #0284C7 50%, #FF7A00 100%);
+  z-index: 2;
+  border-radius: 9999px;
+  transition: width 0.5s ease;
+}
+
+.milestone-step {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.milestone-node {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border: 3px solid #FFFFFF;
+  box-shadow: 0 2px 8px rgba(11, 44, 95, 0.12);
+  transition: all 0.25s ease;
+}
+
+[data-theme="dark"] .milestone-node,
+body.dark-theme .milestone-node {
+  border-color: #0E223D;
+}
+
+.milestone-node.completed {
+  background: #0B2C5F;
+  color: #FFFFFF;
+}
+
+.milestone-node.current {
+  background: #FF7A00;
+  color: #FFFFFF;
+  box-shadow: 0 0 14px rgba(255, 122, 0, 0.55);
+  transform: scale(1.15);
+}
+
+.milestone-node.upcoming {
+  background: #E2E8F0;
+  color: #64748B;
+}
+
+[data-theme="dark"] .milestone-node.upcoming,
+body.dark-theme .milestone-node.upcoming {
+  background: #1E293B;
+  color: #94A3B8;
+}
+
+/* Status Badges */
+.tag-cyan-active {
+  background: #F0F9FF;
+  color: #0284C7;
+  border: 1px solid #BAE6FD;
+  font-weight: 700;
+  font-size: 0.72rem;
+  border-radius: 9999px;
+  padding: 0.2rem 0.65rem;
+}
+
+.tag-orange-maintenance {
+  background: #FFF7ED;
+  color: #EA580C;
+  border: 1px solid #FFEDD5;
+  font-weight: 700;
+  font-size: 0.72rem;
+  border-radius: 9999px;
+  padding: 0.2rem 0.65rem;
+}
+
+.tag-green-safe {
+  background: #ECFDF5;
+  color: #16A34A;
+  border: 1px solid #BBF7D0;
+  font-weight: 700;
+  font-size: 0.72rem;
+  border-radius: 9999px;
+  padding: 0.2rem 0.65rem;
+}
+
+.tag-coral-critical {
+  background: #FFF1F2;
+  color: #E11D48;
+  border: 1px solid #FECDD3;
+  font-weight: 700;
+  font-size: 0.72rem;
+  border-radius: 9999px;
+  padding: 0.2rem 0.65rem;
+}
+
+/* 🌟 FEEDING LOGS ENTERPRISE UI STYLES */
+.feeding-hero-banner {
+  background: linear-gradient(135deg, rgba(11, 44, 95, 0.04) 0%, rgba(2, 132, 199, 0.08) 100%);
+  border: 1px solid rgba(11, 44, 95, 0.08);
+  border-radius: 20px;
+  padding: 1.5rem 1.75rem;
+  margin-bottom: 1.5rem;
+}
+
+[data-theme="dark"] .feeding-hero-banner,
+body.dark-theme .feeding-hero-banner {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(14, 34, 61, 0.8) 100%);
+  border-color: rgba(56, 189, 248, 0.2);
+}
+
+.feeding-kpi-card {
+  border-radius: 20px;
+  background: #FFFFFF;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 10px 30px rgba(11, 44, 95, 0.04);
+  padding: 1.5rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.feeding-kpi-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 36px rgba(11, 44, 95, 0.10);
+  border-color: rgba(2, 132, 199, 0.35);
+}
+
+[data-theme="dark"] .feeding-kpi-card,
+body.dark-theme .feeding-kpi-card {
+  background: rgba(15, 23, 42, 0.85);
+  border-color: rgba(56, 189, 248, 0.25);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .feeding-kpi-card:hover,
+body.dark-theme .feeding-kpi-card:hover {
+  border-color: #38BDF8;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.55);
+}
+
+.feeding-kpi-icon-wrap {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  transition: transform 0.2s ease;
+}
+
+.feeding-kpi-card:hover .feeding-kpi-icon-wrap {
+  transform: scale(1.08);
+}
+
+.feeding-progress-track {
+  height: 8px;
+  background: rgba(11, 44, 95, 0.08);
+  border-radius: 9999px;
+  overflow: hidden;
+  position: relative;
+}
+
+[data-theme="dark"] .feeding-progress-track,
+body.dark-theme .feeding-progress-track {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.feeding-progress-bar {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pill-filter-btn {
+  padding: 0.35rem 0.85rem;
+  border-radius: 9999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  background: #FFFFFF;
+  color: #475569;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.pill-filter-btn:hover {
+  background: #F1F5F9;
+  color: #0B2C5F;
+  border-color: #CBD5E1;
+}
+
+.pill-filter-btn.active {
+  background: #0B2C5F;
+  color: #FFFFFF;
+  border-color: #0B2C5F;
+  box-shadow: 0 4px 12px rgba(11, 44, 95, 0.2);
+}
+
+[data-theme="dark"] .pill-filter-btn,
+body.dark-theme .pill-filter-btn {
+  background: #1E293B;
+  color: #94A3B8;
+  border-color: rgba(56, 189, 248, 0.25);
+}
+
+[data-theme="dark"] .pill-filter-btn:hover,
+body.dark-theme .pill-filter-btn:hover {
+  background: #334155;
+  color: #FFFFFF;
+}
+
+[data-theme="dark"] .pill-filter-btn.active,
+body.dark-theme .pill-filter-btn.active {
+  background: #0284C7;
+  color: #FFFFFF;
+  border-color: #38BDF8;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.35);
+}
+
+.feeding-tab-nav {
+  display: inline-flex;
+  padding: 4px;
+  background: rgba(11, 44, 95, 0.05);
+  border-radius: 9999px;
+  border: 1px solid rgba(11, 44, 95, 0.08);
+}
+
+[data-theme="dark"] .feeding-tab-nav,
+body.dark-theme .feeding-tab-nav {
+  background: rgba(15, 23, 42, 0.7);
+  border-color: rgba(56, 189, 248, 0.2);
+}
+
+.feeding-tab-item {
+  padding: 0.4rem 1.1rem;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border: none;
+  background: transparent;
+  color: #64748B;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.feeding-tab-item.active {
+  background: #FFFFFF;
+  color: #0B2C5F;
+  box-shadow: 0 3px 10px rgba(11, 44, 95, 0.1);
+}
+
+[data-theme="dark"] .feeding-tab-item.active,
+body.dark-theme .feeding-tab-item.active {
+  background: #0284C7;
+  color: #FFFFFF;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+}
+
+/* 🌟 USER MANAGEMENT & CARETAKER MODAL ENTERPRISE STYLES */
+.user-hero-banner {
+  background: linear-gradient(135deg, rgba(11, 44, 95, 0.04) 0%, rgba(2, 132, 199, 0.08) 100%);
+  border: 1px solid rgba(11, 44, 95, 0.08);
+  border-radius: 20px;
+  padding: 1.5rem 1.75rem;
+  margin-bottom: 1.5rem;
+}
+
+[data-theme="dark"] .user-hero-banner,
+body.dark-theme .user-hero-banner {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(14, 34, 61, 0.8) 100%);
+  border-color: rgba(56, 189, 248, 0.2);
+}
+
+.caretaker-modal-header {
+  background: linear-gradient(135deg, #071733 0%, #0B2C5F 55%, #0E3D7D 100%);
+  padding: 1.5rem 1.75rem;
+  color: #FFFFFF;
+  border-bottom: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.caretaker-modal-header::after {
+  content: '';
+  position: absolute;
+  right: -20px;
+  bottom: -40px;
+  width: 140px;
+  height: 140px;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.25) 0%, rgba(56, 189, 248, 0) 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.pond-select-card {
+  border: 1.5px solid #E2E8F0;
+  border-radius: 14px;
+  padding: 0.85rem;
+  background: #FFFFFF;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.pond-select-card:hover {
+  transform: translateY(-2px);
+  border-color: #0284C7;
+  box-shadow: 0 6px 18px rgba(2, 132, 199, 0.12);
+}
+
+.pond-select-card.selected {
+  border-color: #0284C7;
+  background: #F0F9FF;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.15);
+}
+
+.pond-select-card.disabled {
+  background: #F8FAFC;
+  border-color: #E2E8F0;
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+[data-theme="dark"] .pond-select-card,
+body.dark-theme .pond-select-card {
+  background: rgba(15, 23, 42, 0.85);
+  border-color: rgba(56, 189, 248, 0.2);
+}
+
+[data-theme="dark"] .pond-select-card.selected,
+body.dark-theme .pond-select-card.selected {
+  background: rgba(2, 132, 199, 0.25);
+  border-color: #38BDF8;
+}
+
+.input-icon-group {
+  position: relative;
+}
+
+.input-icon-group .input-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94A3B8;
+  font-size: 0.95rem;
+  pointer-events: none;
+  transition: color 0.2s ease;
+}
+
+.input-icon-group .form-control:focus ~ .input-icon,
+.input-icon-group .form-control:focus + .input-icon {
+  color: #0284C7;
+}
+
+.input-icon-group .form-control {
+  padding-left: 42px !important;
+  border-radius: 12px;
+  border: 1.5px solid #E2E8F0;
+  font-size: 0.88rem;
+  transition: all 0.2s ease;
+}
+
+.input-icon-group .form-control:focus {
+  border-color: #0284C7;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+}
+
+[data-theme="dark"] .input-icon-group .form-control,
+body.dark-theme .input-icon-group .form-control {
+  background: #1E293B;
+  border-color: rgba(56, 189, 248, 0.25);
+  color: #FFFFFF;
+}
+
+/* 🌟 DISEASE REPORTS & BIOSECURITY DIAGNOSTICS ENTERPRISE STYLES */
+.disease-hero-banner {
+  background: linear-gradient(135deg, rgba(11, 44, 95, 0.04) 0%, rgba(225, 29, 72, 0.06) 50%, rgba(2, 132, 199, 0.06) 100%);
+  border: 1px solid rgba(11, 44, 95, 0.08);
+  border-radius: 20px;
+  padding: 1.5rem 1.75rem;
+  margin-bottom: 1.5rem;
+}
+
+[data-theme="dark"] .disease-hero-banner,
+body.dark-theme .disease-hero-banner {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(24, 18, 36, 0.85) 100%);
+  border-color: rgba(56, 189, 248, 0.2);
+}
+
+.disease-thumb-container {
+  position: relative;
+  width: 58px;
+  height: 58px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1.5px solid #E2E8F0;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  background: #F8FAFC;
+}
+
+.disease-thumb-container:hover {
+  transform: scale(1.08);
+  border-color: #0284C7;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.25);
+}
+
+.disease-thumb-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.disease-thumb-container:hover img {
+  transform: scale(1.12);
+}
+
+.disease-zoom-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(11, 44, 95, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  font-size: 0.9rem;
+}
+
+.disease-thumb-container:hover .disease-zoom-overlay {
+  opacity: 1;
+}
+
+.highlighted-report-card {
+  background: #F0F9FF !important;
+  border-left: 4px solid #0284C7 !important;
+  animation: pulseHighlight 2.5s ease-in-out infinite alternate;
+}
+
+@keyframes pulseHighlight {
+  0% { background-color: rgba(240, 249, 255, 0.9); }
+  100% { background-color: rgba(224, 242, 254, 0.6); }
+}
+
+[data-theme="dark"] .highlighted-report-card,
+body.dark-theme .highlighted-report-card {
+  background: rgba(2, 132, 199, 0.2) !important;
+  border-left-color: #38BDF8 !important;
+}
+
+/* 🌟 DUAL-MODE OCR WATER QUALITY INGESTION & GATING STYLES */
+.water-gate-card {
+  border-radius: 20px;
+  box-shadow: 0 12px 36px rgba(185, 28, 28, 0.16);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.water-gate-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 42px rgba(185, 28, 28, 0.24);
+}
+
+.caretaker-pond-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.25rem;
+  border-radius: 9999px;
+  font-size: 0.84rem;
+  font-weight: 700;
+  border: 1.5px solid #E2E8F0;
+  background: #FFFFFF;
+  color: #475569;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.caretaker-pond-tabs button:hover {
+  background: #F8FAFC;
+  border-color: #0284C7;
+  color: #0B2C5F;
+}
+
+.caretaker-pond-tabs button.active {
+  background: #0B2C5F;
+  color: #FFFFFF;
+  border-color: #0B2C5F;
+  box-shadow: 0 4px 14px rgba(11, 44, 95, 0.25);
+}
+
+.caretaker-pond-tabs button.active .badge {
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: #FFFFFF !important;
+}
+
+.btn-time-slot.logged-crossed-out {
+  text-decoration: line-through;
+  opacity: 0.6;
+  background-color: #f1f5f9 !important;
+  color: #64748b !important;
+  border-color: #cbd5e1 !important;
+  pointer-events: none;
+}

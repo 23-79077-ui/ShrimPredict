@@ -543,6 +543,7 @@ export default function PondMonitoringPage() {
                               <small className="d-block text-secondary">Temp: <strong className="text-dark">{valueOrDash(pond.temperature, ' °C')}</strong></small>
                               <small className="d-block text-secondary">pH: <strong className="text-dark">{valueOrDash(pond.ph_level)}</strong></small>
                               <small className="d-block text-secondary">DO: <strong className="text-dark">{valueOrDash(pond.dissolved_oxygen, ' mg/L')}</strong></small>
+                              <small className="d-block text-secondary">Sal: <strong className="text-dark">{valueOrDash(pond.salinity, ' ppt')}</strong></small>
                             </td>
                             <td>
                               <small className="d-block text-secondary">Today: <strong className="text-dark">{formatNumber(pond.feed_today_kg)} kg</strong></small>

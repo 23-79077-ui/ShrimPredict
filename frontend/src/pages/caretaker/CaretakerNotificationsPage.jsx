@@ -218,101 +218,153 @@ export default function CaretakerNotificationsPage() {
   };
 
   return (
-    <div className="caretaker-notifications-page">
-
-      {/* Action Toolbar */}
+    <div className="caretaker-notifications-hub">
+      {/* 🌟 HERO CONTROL STRIP: BREADCRUMB, STATUS BADGE & ACTION BUTTONS */}
       <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-        <div className="d-flex align-items-center gap-2">
-          <span className="badge bg-primary bg-opacity-10 text-primary px-3 py-1.5 rounded-pill fw-semibold extra-small">
-            <FaBell className="me-1" /> Real-time Admin Responses & Report Updates
-          </span>
-          {counts.unread > 0 && (
-            <span className="badge bg-danger rounded-pill px-3 py-1.5 extra-small fw-bold">{counts.unread} Unread</span>
-          )}
+        <div>
+          <div className="d-flex align-items-center gap-2">
+            <span
+              className="badge rounded-pill fw-bold extra-small"
+              style={{ backgroundColor: '#F0F9FF', color: '#0284C7', border: '1px solid #BAE6FD' }}
+            >
+              ● LIVE FIELD NOTIFICATIONS
+            </span>
+            <span className="text-muted extra-small">
+              Admin Dispatches, Report Status Updates & Sensor Alerts
+            </span>
+          </div>
+          <h2 className="fw-extrabold mb-0 mt-1 tracking-tight text-dark" style={{ fontSize: '1.75rem', letterSpacing: '-0.03em' }}>
+            Caretaker Notifications
+          </h2>
         </div>
 
-        <div className="d-flex gap-2 align-items-center">
-          <button className="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1.5 rounded-pill px-3" onClick={loadNotifications}>
-            <FaSync /> Refresh
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          {counts.unread > 0 && (
+            <span className="badge rounded-pill px-3 py-1.5 extra-small fw-bold" style={{ backgroundColor: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>
+              {counts.unread} Unread
+            </span>
+          )}
+          <button
+            type="button"
+            className="btn btn-sm rounded-pill bg-white border text-dark fw-semibold px-3 py-1.5 d-flex align-items-center gap-1.5 shadow-xs"
+            style={{ height: 36, fontSize: '0.8rem' }}
+            onClick={loadNotifications}
+          >
+            <FaSync size={11} className={loading ? 'fa-spin text-primary' : 'text-primary'} /> Refresh
           </button>
           <button
-            className="btn btn-primary btn-sm d-flex align-items-center gap-2 rounded-pill px-3"
+            type="button"
+            className="btn btn-sm rounded-pill px-3.5 py-1.5 d-flex align-items-center gap-2 fw-bold text-white shadow-xs"
+            style={{
+              height: 36,
+              fontSize: '0.8rem',
+              background: 'linear-gradient(135deg, #0B2C5F 0%, #0284C7 100%)',
+              border: 'none',
+            }}
             onClick={handleMarkAllRead}
             disabled={counts.unread === 0}
           >
-            <FaCheckDouble /> Mark All as Read
+            <FaCheckDouble size={11} /> Mark All as Read
           </button>
         </div>
       </div>
 
-      {/* Tabs and Filters Navigation */}
-      <div className="card border-0 shadow-sm mb-4">
-        <div className="card-body p-3">
+      {/* 🌟 TABS AND FILTERS NAVIGATION */}
+      <div className="asymmetric-card p-3 mb-4">
+        <div>
           <div className="d-flex justify-content-between align-items-center flex-wrap gap-3">
             {/* View Tabs */}
-            <ul className="nav nav-pills gap-2">
-              <li className="nav-item">
-                <button
-                  className={`nav-link btn-sm ${currentTab === 'active' ? 'active' : ''}`}
-                  onClick={() => setCurrentTab('active')}
-                >
-                  Active <span className="badge bg-light text-dark ms-1">{counts.active}</span>
-                </button>
-              </li>
-              <li className="nav-item">
-                <button
-                  className={`nav-link btn-sm ${currentTab === 'unread' ? 'active' : ''}`}
-                  onClick={() => setCurrentTab('unread')}
-                >
-                  Unread <span className="badge bg-danger ms-1">{counts.unread}</span>
-                </button>
-              </li>
-              <li className="nav-item">
-                <button
-                  className={`nav-link btn-sm ${currentTab === 'archived' ? 'active' : ''}`}
-                  onClick={() => setCurrentTab('archived')}
-                >
-                  <FaArchive className="me-1" /> Archived{' '}
-                  <span className="badge bg-secondary ms-1">{counts.archived}</span>
-                </button>
-              </li>
-              <li className="nav-item">
-                <button
-                  className={`nav-link btn-sm ${currentTab === 'deleted' ? 'active bg-danger' : ''}`}
-                  onClick={() => setCurrentTab('deleted')}
-                >
-                  <FaTrashAlt className="me-1" /> Deleted History{' '}
-                  <span className="badge bg-dark ms-1">{counts.deleted || 0}</span>
-                </button>
-              </li>
-            </ul>
+            <div className="d-flex align-items-center gap-1.5 flex-wrap">
+              <button
+                type="button"
+                className={`btn btn-sm rounded-pill px-3 py-1.5 extra-small fw-semibold transition-all ${
+                  currentTab === 'active'
+                    ? 'btn-dark text-white'
+                    : 'btn-white bg-white text-dark border'
+                }`}
+                style={{
+                  backgroundColor: currentTab === 'active' ? '#0B2C5F' : '#FFFFFF',
+                  borderColor: currentTab === 'active' ? '#0B2C5F' : '#E2E8F0',
+                }}
+                onClick={() => setCurrentTab('active')}
+              >
+                Active <span className="badge rounded-pill bg-light text-dark ms-1">{counts.active}</span>
+              </button>
+
+              <button
+                type="button"
+                className={`btn btn-sm rounded-pill px-3 py-1.5 extra-small fw-semibold transition-all ${
+                  currentTab === 'unread'
+                    ? 'btn-dark text-white'
+                    : 'btn-white bg-white text-dark border'
+                }`}
+                style={{
+                  backgroundColor: currentTab === 'unread' ? '#0B2C5F' : '#FFFFFF',
+                  borderColor: currentTab === 'unread' ? '#0B2C5F' : '#E2E8F0',
+                }}
+                onClick={() => setCurrentTab('unread')}
+              >
+                Unread <span className="badge rounded-pill bg-danger text-white ms-1">{counts.unread}</span>
+              </button>
+
+              <button
+                type="button"
+                className={`btn btn-sm rounded-pill px-3 py-1.5 extra-small fw-semibold transition-all ${
+                  currentTab === 'archived'
+                    ? 'btn-dark text-white'
+                    : 'btn-white bg-white text-dark border'
+                }`}
+                style={{
+                  backgroundColor: currentTab === 'archived' ? '#0B2C5F' : '#FFFFFF',
+                  borderColor: currentTab === 'archived' ? '#0B2C5F' : '#E2E8F0',
+                }}
+                onClick={() => setCurrentTab('archived')}
+              >
+                <FaArchive size={10} className="me-1" /> Archived{' '}
+                <span className="badge rounded-pill bg-secondary bg-opacity-25 text-dark ms-1">{counts.archived}</span>
+              </button>
+
+              <button
+                type="button"
+                className={`btn btn-sm rounded-pill px-3 py-1.5 extra-small fw-semibold transition-all ${
+                  currentTab === 'deleted'
+                    ? 'btn-danger text-white'
+                    : 'btn-white bg-white text-dark border'
+                }`}
+                onClick={() => setCurrentTab('deleted')}
+              >
+                <FaTrashAlt size={10} className="me-1" /> Deleted History{' '}
+                <span className="badge rounded-pill bg-dark text-white ms-1">{counts.deleted || 0}</span>
+              </button>
+            </div>
 
             {/* Date Filter Toolbar */}
             <div className="d-flex align-items-center gap-2 flex-wrap">
-              <span className="text-muted small fw-semibold d-flex align-items-center gap-1">
-                <FaFilter /> Filter Date:
-              </span>
-              <select
-                className="form-select form-select-sm w-auto"
-                value={dateFilterType}
-                onChange={(e) => {
-                  setDateFilterType(e.target.value);
-                  if (e.target.value !== 'custom') setCustomDate('');
-                }}
-              >
-                <option value="all">All Dates</option>
-                <option value="today">Today</option>
-                <option value="yesterday">Yesterday</option>
-                <option value="last7">Last 7 Days</option>
-                <option value="custom">Custom Date…</option>
-              </select>
+              <div className="d-flex align-items-center gap-1.5 px-3 py-1 rounded-pill bg-white border shadow-xs" style={{ height: 36 }}>
+                <FaFilter size={10} className="text-muted me-1" />
+                <select
+                  className="form-select form-select-sm border-0 bg-transparent text-dark fw-semibold p-0 extra-small cursor-pointer"
+                  style={{ width: 120, outline: 'none' }}
+                  value={dateFilterType}
+                  onChange={(e) => {
+                    setDateFilterType(e.target.value);
+                    if (e.target.value !== 'custom') setCustomDate('');
+                  }}
+                >
+                  <option value="all">All Dates</option>
+                  <option value="today">Today</option>
+                  <option value="yesterday">Yesterday</option>
+                  <option value="last7">Last 7 Days</option>
+                  <option value="custom">Custom Date…</option>
+                </select>
+              </div>
 
               {dateFilterType === 'custom' && (
-                <div className="d-flex align-items-center gap-1">
-                  <FaCalendarAlt className="text-muted" />
+                <div className="d-flex align-items-center px-2 py-1 rounded-pill bg-white border shadow-xs" style={{ height: 36 }}>
                   <input
                     type="date"
-                    className="form-control form-control-sm"
+                    className="form-control form-control-sm border-0 bg-transparent extra-small p-0 fw-semibold"
+                    style={{ width: 125 }}
                     value={customDate}
                     onChange={(e) => setCustomDate(e.target.value)}
                   />
@@ -324,8 +376,8 @@ export default function CaretakerNotificationsPage() {
       </div>
 
       {/* Notifications List Container */}
-      <div className="card border-0 shadow-sm" ref={dropdownRef}>
-        <div className="card-body p-0">
+      <div className="asymmetric-card p-0 overflow-hidden" ref={dropdownRef}>
+        <div>
           {loading ? (
             <div className="text-center py-5 text-muted">
               <div className="spinner-border spinner-border-sm text-primary me-2" role="status"></div>

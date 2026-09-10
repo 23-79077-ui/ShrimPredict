@@ -287,100 +287,220 @@ export default function ReportsPage() {
   const statusBadges = { Pending: 'bg-warning text-dark', 'In Progress': 'bg-info text-dark', Done: 'bg-success text-white', Dismissed: 'bg-secondary text-white' };
 
   return (
-    <div className="caretaker-reports-page">
-
-      {/* SUMMARY CARDS */}
-      <div className="row g-3 mb-4">
-        <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card stat-card-cyan shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
-            <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold pt-0.5">Assigned Ponds</span>
-              <div className="rounded-3 p-2.5 bg-primary bg-opacity-10 text-primary fs-5">
-                <FaWater />
-              </div>
-            </div>
-            <h3 className="fw-extrabold mb-2">{ponds.length}</h3>
-            <span className="text-muted extra-small d-block pb-0.5">Available for reporting</span>
-          </div>
-        </div>
-
-        <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card stat-card-orange shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
-            <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold pt-0.5">Pending</span>
-              <div className="rounded-3 p-2.5 bg-warning bg-opacity-10 text-warning fs-5">
-                <FaClock />
-              </div>
-            </div>
-            <h3 className="fw-extrabold text-warning mb-2">{pendingReports}</h3>
-            <span className="badge bg-warning bg-opacity-10 text-warning rounded-pill extra-small fw-semibold">Awaiting Admin Action</span>
-          </div>
-        </div>
-
-        <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card stat-card-purple shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
-            <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold pt-0.5">In Progress</span>
-              <div className="rounded-3 p-2.5 bg-info bg-opacity-10 text-info fs-5">
-                <FaTools />
-              </div>
-            </div>
-            <h3 className="fw-extrabold text-info mb-2">{inProgressReports}</h3>
-            <span className="text-muted extra-small d-block pb-0.5">Being Handled</span>
-          </div>
-        </div>
-
-        <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card stat-card-green shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
-            <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold pt-0.5">Resolved</span>
-              <div className="rounded-3 p-2.5 bg-success bg-opacity-10 text-success fs-5">
-                <FaCheckCircle />
-              </div>
-            </div>
-            <h3 className="fw-extrabold text-success mb-2">{doneReports}</h3>
-            <span className="badge bg-success bg-opacity-10 text-success rounded-pill extra-small fw-semibold">Completed Reports</span>
-          </div>
-        </div>
-      </div>
-
-      {/* 2 NAVIGATION TABS BELOW SUMMARY CARDS: Generate Report & Report History */}
-      <div className="d-flex align-items-center gap-2 mb-4 bg-white p-2 rounded-4 border shadow-xs">
-        <button
-          type="button"
-          className={`btn rounded-pill px-4 py-2.5 fw-bold d-flex align-items-center gap-2 transition-all ${
-            activeTab === 'submit' ? 'btn-primary shadow-sm' : 'btn-light text-muted border-0'
-          }`}
-          onClick={() => setActiveTab('submit')}
-        >
-          <FaPaperPlane /> Generate Report
-        </button>
-
-        <button
-          type="button"
-          className={`btn rounded-pill px-4 py-2.5 fw-bold d-flex align-items-center gap-2 transition-all ${
-            activeTab === 'history' ? 'btn-primary shadow-sm' : 'btn-light text-muted border-0'
-          }`}
-          onClick={() => setActiveTab('history')}
-        >
-          <FaHistory /> Report History
-          {myReports.length > 0 && (
-            <span className={`badge rounded-pill extra-small ms-1 ${activeTab === 'history' ? 'bg-white text-primary' : 'bg-secondary bg-opacity-25 text-dark'}`}>
-              {myReports.length}
+    <div className="caretaker-reports-hub">
+      {/* 🌟 HERO CONTROL STRIP: BREADCRUMB, STATUS BADGE & ACTION TABS */}
+      <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+        <div>
+          <div className="d-flex align-items-center gap-2">
+            <span
+              className="badge rounded-pill fw-bold extra-small"
+              style={{ backgroundColor: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}
+            >
+              ● INCIDENT REPORTING
             </span>
-          )}
-        </button>
+            <span className="text-muted extra-small">
+              Direct Admin Dispatch • Media Proof & Equipment Logging
+            </span>
+          </div>
+          <h2 className="fw-extrabold mb-0 mt-1 tracking-tight text-dark" style={{ fontSize: '1.75rem', letterSpacing: '-0.03em' }}>
+            Pond Issue & Incident Reports
+          </h2>
+        </div>
+
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            className={`btn btn-sm rounded-pill px-3.5 py-1.5 fw-bold d-flex align-items-center gap-2 transition-all shadow-xs ${
+              activeTab === 'submit'
+                ? 'btn-dark text-white'
+                : 'btn-white bg-white text-dark border'
+            }`}
+            style={{
+              height: 36,
+              fontSize: '0.8rem',
+              backgroundColor: activeTab === 'submit' ? '#0B2C5F' : '#FFFFFF',
+              borderColor: activeTab === 'submit' ? '#0B2C5F' : '#E2E8F0',
+            }}
+            onClick={() => setActiveTab('submit')}
+          >
+            <FaPaperPlane size={11} /> Generate Report
+          </button>
+
+          <button
+            type="button"
+            className={`btn btn-sm rounded-pill px-3.5 py-1.5 fw-bold d-flex align-items-center gap-2 transition-all shadow-xs ${
+              activeTab === 'history'
+                ? 'btn-dark text-white'
+                : 'btn-white bg-white text-dark border'
+            }`}
+            style={{
+              height: 36,
+              fontSize: '0.8rem',
+              backgroundColor: activeTab === 'history' ? '#0B2C5F' : '#FFFFFF',
+              borderColor: activeTab === 'history' ? '#0B2C5F' : '#E2E8F0',
+            }}
+            onClick={() => setActiveTab('history')}
+          >
+            <FaHistory size={11} /> History
+            {myReports.length > 0 && (
+              <span className={`badge rounded-pill extra-small ms-1 ${activeTab === 'history' ? 'bg-white text-dark' : 'bg-secondary bg-opacity-25 text-dark'}`}>
+                {myReports.length}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
+
+      {/* 🌟 SUMMARY KPI CARDS (SPACIOUS LUXURY AQUACULTURE TELEMETRY STYLE) */}
+      <div className="row g-3 g-xl-4 mb-4">
+        {/* Card 1: Assigned Ponds */}
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
+            <div>
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Assigned Basins</span>
+                <div
+                  className="feeding-kpi-icon-wrap"
+                  style={{ background: 'rgba(2, 132, 199, 0.12)', color: '#0284C7' }}
+                >
+                  <FaWater size={18} />
+                </div>
+              </div>
+              <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+                {ponds.length}
+              </h2>
+            </div>
+            <div>
+              <div className="feeding-progress-track my-2.5">
+                <div
+                  className="feeding-progress-bar"
+                  style={{ width: '100%', background: 'linear-gradient(90deg, #0284C7, #38BDF8)' }}
+                />
+              </div>
+              <div className="d-flex align-items-center justify-content-between extra-small text-muted">
+                <span>Available for dispatch</span>
+                <span className="tag-cyan-active">Active</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 2: Pending Reports */}
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
+            <div>
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Pending Action</span>
+                <div
+                  className="feeding-kpi-icon-wrap"
+                  style={{ background: 'rgba(245, 158, 11, 0.12)', color: '#D97706' }}
+                >
+                  <FaClock size={18} />
+                </div>
+              </div>
+              <h2 className="fw-extrabold mb-1 text-warning" style={{ fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+                {pendingReports}
+              </h2>
+            </div>
+            <div>
+              <div className="feeding-progress-track my-2.5">
+                <div
+                  className="feeding-progress-bar"
+                  style={{
+                    width: `${Math.min(100, Math.max(10, (pendingReports / Math.max(1, myReports.length || 1)) * 100))}%`,
+                    background: 'linear-gradient(90deg, #F59E0B, #FBBF24)',
+                  }}
+                />
+              </div>
+              <div className="d-flex align-items-center justify-content-between extra-small text-muted">
+                <span>Awaiting admin review</span>
+                <span className="tag-orange-maintenance">Pending</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 3: In Progress Reports */}
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
+            <div>
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">In Progress</span>
+                <div
+                  className="feeding-kpi-icon-wrap"
+                  style={{ background: 'rgba(14, 165, 233, 0.12)', color: '#0EA5E9' }}
+                >
+                  <FaTools size={18} />
+                </div>
+              </div>
+              <h2 className="fw-extrabold mb-1 text-info" style={{ fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+                {inProgressReports}
+              </h2>
+            </div>
+            <div>
+              <div className="feeding-progress-track my-2.5">
+                <div
+                  className="feeding-progress-bar"
+                  style={{
+                    width: `${Math.min(100, Math.max(10, (inProgressReports / Math.max(1, myReports.length || 1)) * 100))}%`,
+                    background: 'linear-gradient(90deg, #0EA5E9, #38BDF8)',
+                  }}
+                />
+              </div>
+              <div className="d-flex align-items-center justify-content-between extra-small text-muted">
+                <span>Active maintenance</span>
+                <span className="tag-cyan-active">Handling</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 4: Resolved Reports */}
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
+            <div>
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Resolved</span>
+                <div
+                  className="feeding-kpi-icon-wrap"
+                  style={{ background: 'rgba(22, 163, 74, 0.12)', color: '#16A34A' }}
+                >
+                  <FaCheckCircle size={18} />
+                </div>
+              </div>
+              <h2 className="fw-extrabold mb-1 text-success" style={{ fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+                {doneReports}
+              </h2>
+            </div>
+            <div>
+              <div className="feeding-progress-track my-2.5">
+                <div
+                  className="feeding-progress-bar"
+                  style={{
+                    width: `${Math.min(100, Math.max(10, (doneReports / Math.max(1, myReports.length || 1)) * 100))}%`,
+                    background: 'linear-gradient(90deg, #16A34A, #4ADE80)',
+                  }}
+                />
+              </div>
+              <div className="d-flex align-items-center justify-content-between extra-small text-muted">
+                <span>Completed incidents</span>
+                <span className="tag-green-safe">Resolved</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
 
       {activeTab === 'submit' && (
-        <div className="card caretaker-panel-card border-0 shadow-sm rounded-4">
-          <div className="card-body p-4">
-            <div className="caretaker-panel-header d-flex align-items-center justify-content-between mb-4">
+        <div className="asymmetric-card p-4">
+          <div>
+            <div className="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
               <div>
-                <h5 className="fw-bold mb-1">Submit New Report</h5>
+                <h5 className="fw-extrabold text-dark mb-1 tracking-tight">Submit Pond Incident Report</h5>
                 <small className="text-muted">Fill in pond location, problem type, specific issue, and detailed description.</small>
               </div>
-              <div className="caretaker-history-total bg-primary bg-opacity-10 text-primary px-3 py-1.5 rounded-pill extra-small fw-semibold d-flex align-items-center gap-1.5">
+              <div className="bg-primary bg-opacity-10 text-primary px-3 py-1.5 rounded-pill extra-small fw-semibold d-flex align-items-center gap-1.5">
                 <FaFileAlt /><span>Admin notification ready</span>
               </div>
             </div>
@@ -521,8 +641,8 @@ export default function ReportsPage() {
       )}
 
       {activeTab === 'history' && (
-        <div className="card caretaker-panel-card">
-          <div className="card-body">
+        <div className="asymmetric-card p-4">
+          <div>
             <div className="caretaker-panel-header">
               <div>
                 <h5>My Submitted History</h5>

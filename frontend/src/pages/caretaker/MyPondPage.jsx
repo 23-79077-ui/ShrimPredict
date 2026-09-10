@@ -7,9 +7,36 @@ import {
   FaClock,
   FaPlus,
   FaWater,
+  FaLock,
+  FaUnlock,
+  FaCamera,
+  FaEye,
+  FaSync,
+  FaTimes,
+  FaExclamationTriangle,
+  FaThermometerHalf,
+  FaFlask,
+  FaVial,
+  FaMicrochip,
 } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
+import WaterQualityOcrModal from '../../components/WaterQualityOcrModal';
+
+const resolveImageUrl = (url) => {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:') || url.startsWith('data:')) {
+    return url;
+  }
+  const cleanPath = url.startsWith('/') ? url : `/${url}`;
+  if (cleanPath.startsWith('/shrim_predict_api')) {
+    return `http://localhost${cleanPath}`;
+  }
+  if (cleanPath.startsWith('/backend')) {
+    return `http://localhost/shrim_predict_api${cleanPath}`;
+  }
+  return `http://localhost/shrim_predict_api/backend/${cleanPath.replace(/^\/+/, '')}`;
+};
 
 const feedingTimes = ['6:00 AM', '9:00 AM', '12:00 PM', '3:00 PM', '6:00 PM'];
 const productCodes = ['Starter', 'Grower'];
@@ -66,6 +93,33 @@ export default function MyPondPage() {
   const [recordDate, setRecordDate] = useState(defaultDateStr);
   const todayDateStr = recordDate || defaultDateStr;
 
+  // Water Quality Inspection Protocol States
+  const [waterQualityStatus, setWaterQualityStatus] = useState({}); // { [pondId]: { is_verified, record } }
+  const [loadingWaterQuality, setLoadingWaterQuality] = useState(false);
+  const [isOcrModalOpen, setIsOcrModalOpen] = useState(false);
+  const [inspectProofModal, setInspectProofModal] = useState(null);
+
+  const fetchWaterQualityStatus = useCallback(async (pondId) => {
+    if (!pondId) return;
+    try {
+      setLoadingWaterQuality(true);
+      const res = await api.get('/water_quality_records.php', {
+        params: {
+          pond_id: pondId,
+          date: todayDateStr,
+        },
+      });
+      setWaterQualityStatus((prev) => ({
+        ...prev,
+        [pondId]: res.data || { is_verified: false, record: null },
+      }));
+    } catch (e) {
+      console.error('Error fetching water quality status:', e);
+    } finally {
+      setLoadingWaterQuality(false);
+    }
+  }, [todayDateStr]);
+
   useEffect(() => {
     if (!assignedPonds.length) {
       setSelectedPondId('');
@@ -81,6 +135,11 @@ export default function MyPondPage() {
   const selectedPond = assignedPonds.find((pond) => String(pond.id) === String(selectedPondId)) || assignedPonds[0] || null;
   const currentForm = formState[selectedPondId] || emptyForm;
   const samplingKey = selectedPondId ? getSamplingStorageKey(user?.id, selectedPondId, todayDateStr) : '';
+
+  // Current selected pond water quality status
+  const currentPondWq = selectedPondId ? waterQualityStatus[selectedPondId] : null;
+  const isPondWqVerified = Boolean(currentPondWq?.is_verified);
+  const activeWqRecord = currentPondWq?.record;
 
   useEffect(() => {
     if (!samplingKey) {
@@ -121,16 +180,23 @@ export default function MyPondPage() {
     if (!selectedPondId) return;
     setTrayMonitoringBySlot({});
     fetchTodayLogs(selectedPondId);
+    fetchWaterQualityStatus(selectedPondId);
 
-    const handleUpdate = () => fetchTodayLogs(selectedPondId);
+    const handleUpdate = () => {
+      fetchTodayLogs(selectedPondId);
+      fetchWaterQualityStatus(selectedPondId);
+    };
+
     window.addEventListener('shrim-feed-updated', handleUpdate);
+    window.addEventListener('shrim-water-quality-updated', handleUpdate);
     window.addEventListener('storage', handleUpdate);
 
     return () => {
       window.removeEventListener('shrim-feed-updated', handleUpdate);
+      window.removeEventListener('shrim-water-quality-updated', handleUpdate);
       window.removeEventListener('storage', handleUpdate);
     };
-  }, [selectedPondId, todayDateStr, fetchTodayLogs]);
+  }, [selectedPondId, todayDateStr, fetchTodayLogs, fetchWaterQualityStatus]);
 
   // Extract list of feeding_time strings logged today for the active pond
   const loggedTimesForPond = useMemo(() => {
@@ -366,6 +432,23 @@ export default function MyPondPage() {
   const handleSubmit = async () => {
     if (!selectedPond) return;
 
+    if (!isPondWqVerified) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Water Quality Protocol Required',
+        html: `Per O & B Aqua Farm SOP, you must verify today's water quality parameters (DO, Temp, pH, Salinity) for <strong>${selectedPond.pond_name}</strong> via Dual-Mode OCR before logging feeding records.`,
+        showCancelButton: true,
+        confirmButtonText: 'Launch OCR Scanner',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#0B2C5F',
+      }).then((res) => {
+        if (res.isConfirmed) {
+          setIsOcrModalOpen(true);
+        }
+      });
+      return;
+    }
+
     const form = formState[selectedPondId] || emptyForm;
     let amount = parseFloat(form.amountKg);
 
@@ -476,63 +559,238 @@ export default function MyPondPage() {
   const allSlotsCompleted = feedingTimes.every((time) => loggedTimesForPond.includes(time));
 
   return (
-    <div className="caretaker-mypond-page">
-
-      <div className="card border-0 shadow-sm mb-4">
-        <div className="card-body p-3 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
-          <div>
-            <h6 className="fw-bold mb-1">Demo feeding date</h6>
-            <p className="small text-muted mb-0">Change this to demo another day or next week without deleting feeding history.</p>
-          </div>
+    <div className="caretaker-mypond-hub">
+      {/* 🌟 HERO CONTROL STRIP: STATUS BADGE, TITLE & DEMO DATE PILL */}
+      <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+        <div>
           <div className="d-flex align-items-center gap-2">
+            <span
+              className="badge rounded-pill fw-bold extra-small"
+              style={{ backgroundColor: '#F0FDF4', color: '#16A34A', border: '1px solid #BBF7D0' }}
+            >
+              ● BASIN CARE & FEEDING
+            </span>
+            <span className="text-muted extra-small">
+              Real-time Tray Calculations • Dual-Mode Water Quality Gate
+            </span>
+          </div>
+          <h2 className="fw-extrabold mb-0 mt-1 tracking-tight text-dark" style={{ fontSize: '1.75rem', letterSpacing: '-0.03em' }}>
+            {selectedPond?.pond_name || 'My Pond'} Operations
+          </h2>
+        </div>
+
+        {/* Demo Feeding Date Pill */}
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <div className="d-flex align-items-center gap-2 px-3 py-1.5 rounded-pill bg-white border shadow-xs">
+            <FaClock size={12} style={{ color: '#0284C7' }} />
+            <span className="extra-small fw-semibold text-muted">Test Date:</span>
             <input
               type="date"
-              className="form-control"
+              className="form-control form-control-sm border-0 bg-transparent p-0 extra-small fw-bold text-dark"
               value={todayDateStr}
               onChange={(event) => setRecordDate(event.target.value || defaultDateStr)}
-              style={{ minWidth: 180 }}
+              style={{ width: 125, outline: 'none' }}
             />
-            <button
-              type="button"
-              className="btn btn-outline-secondary"
-              onClick={() => setRecordDate(defaultDateStr)}
-            >
-              Today
-            </button>
           </div>
+          <button
+            type="button"
+            className="btn btn-sm btn-light border rounded-pill px-3 py-1.5 extra-small fw-semibold shadow-xs"
+            onClick={() => setRecordDate(defaultDateStr)}
+          >
+            Reset to Today
+          </button>
         </div>
       </div>
 
-      {/* 3 Pond Selector Tabs (Pond A1, Pond A2, Pond A3) */}
-      <div className="caretaker-pond-tabs mb-4">
-        {assignedPonds.map((pond) => (
-          <button
-            type="button"
-            key={pond.id}
-            className={String(pond.id) === String(selectedPondId) ? 'active' : ''}
-            onClick={() => setSelectedPondId(String(pond.id))}
-          >
-            <FaWater className="me-1.5" />
-            {pond.pond_name}
-          </button>
-        ))}
+      {/* 🌟 POND SELECTOR PILL TABS */}
+      <div className="d-flex align-items-center gap-2 mb-4 flex-wrap">
+        {assignedPonds.map((pond) => {
+          const pondWq = waterQualityStatus[pond.id];
+          const isVerified = Boolean(pondWq?.is_verified);
+          const isSelected = String(pond.id) === String(selectedPondId);
+
+          return (
+            <button
+              type="button"
+              key={pond.id}
+              className={`btn btn-sm rounded-pill px-3.5 py-2 fw-semibold d-inline-flex align-items-center gap-2 transition-all ${
+                isSelected
+                  ? 'btn-dark text-white shadow-sm'
+                  : 'btn-white bg-white text-dark border'
+              }`}
+              style={{
+                borderColor: isSelected ? '#0B2C5F' : 'rgba(226, 232, 240, 0.9)',
+                backgroundColor: isSelected ? '#0B2C5F' : '#FFFFFF',
+              }}
+              onClick={() => setSelectedPondId(String(pond.id))}
+            >
+              <FaWater size={12} style={{ color: isSelected ? '#38BDF8' : '#0284C7' }} />
+              <span>{pond.pond_name}</span>
+              {isVerified ? (
+                <span
+                  className="d-inline-flex align-items-center gap-1 px-2 py-0.5 rounded-pill"
+                  style={{
+                    backgroundColor: isSelected ? 'rgba(255, 255, 255, 0.2)' : 'rgba(22, 163, 74, 0.12)',
+                    color: isSelected ? '#FFFFFF' : '#16A34A',
+                    fontSize: '0.68rem',
+                    fontWeight: 600,
+                  }}
+                >
+                  <span className="rounded-circle" style={{ width: 5, height: 5, backgroundColor: isSelected ? '#FFFFFF' : '#16A34A' }} />
+                  Verified
+                </span>
+              ) : (
+                <span
+                  className="d-inline-flex align-items-center gap-1 px-2 py-0.5 rounded-pill"
+                  style={{
+                    backgroundColor: isSelected ? 'rgba(255, 255, 255, 0.2)' : 'rgba(245, 158, 11, 0.15)',
+                    color: isSelected ? '#FDE68A' : '#D97706',
+                    fontSize: '0.68rem',
+                    fontWeight: 600,
+                  }}
+                >
+                  <span className="rounded-circle" style={{ width: 5, height: 5, backgroundColor: isSelected ? '#FDE68A' : '#F59E0B' }} />
+                  Needs Test
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Main Feeding Form Panel Card */}
-      <div className="card caretaker-panel-card border-0 shadow-sm">
-        <div className="card-body p-4">
-          <div className="caretaker-panel-header d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
-            <div>
-              <h5 className="fw-bold mb-1">Log Feeding Entry</h5>
-              <p className="text-muted small mb-0">
-                Save a real feeding record for <strong className="text-primary">{selectedPond?.pond_name || 'this pond'}</strong>.
-              </p>
-            </div>
-            <div className="caretaker-history-total d-flex align-items-center gap-2 bg-primary bg-opacity-10 text-primary px-3 py-1.5 rounded-pill extra-small fw-semibold">
-              <FaClipboardList />
-              <span>{loggedTimesForPond.length} of 5 scheduled times completed today</span>
+      {/* 🌟 WATER QUALITY GATE PROTOCOL CARD OR VERIFIED STATUS BANNER */}
+      {!isPondWqVerified ? (
+        <div
+          className="asymmetric-card mb-4 overflow-hidden"
+          style={{
+            background: 'linear-gradient(135deg, #071733 0%, #0B2C5F 55%, #991B1B 100%)',
+            border: '1.5px solid rgba(239, 68, 68, 0.4)',
+          }}
+        >
+          <div className="card-body p-4 text-white">
+            <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3.5">
+              <div className="d-flex align-items-start gap-3">
+                <div
+                  className="rounded-4 d-flex align-items-center justify-content-center flex-shrink-0 shadow-sm"
+                  style={{
+                    width: 54,
+                    height: 54,
+                    background: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)',
+                    color: '#FFFFFF',
+                    fontSize: '1.4rem',
+                    boxShadow: '0 0 20px rgba(239, 68, 68, 0.45)',
+                  }}
+                >
+                  <FaLock />
+                </div>
+                <div>
+                  <div className="d-flex align-items-center gap-2 flex-wrap">
+                    <h5 className="fw-extrabold mb-0 text-white tracking-tight">
+                      Daily Water Quality Inspection Required
+                    </h5>
+                    <span className="badge bg-danger text-white rounded-pill px-2.5 py-1 extra-small fw-bold shadow-xs">
+                      🔒 Monitoring & Feeding Locked
+                    </span>
+                  </div>
+                  <p className="text-white text-opacity-85 small mb-0 mt-1" style={{ maxWidth: 640, lineHeight: 1.5 }}>
+                    Per <strong>O & B Aqua Farm</strong> standard protocol, handheld parameter testing (Dissolved Oxygen, Temperature, pH, and Salinity) must be verified via <strong>Dual-Mode OCR</strong> for <strong>{selectedPond?.pond_name}</strong> before daily monitoring and feeding logs can be accessed.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex-shrink-0">
+                <button
+                  type="button"
+                  className="btn btn-warning rounded-pill px-4 py-2.5 fw-extrabold shadow-sm d-flex align-items-center gap-2 text-dark"
+                  style={{ fontSize: '0.88rem' }}
+                  onClick={() => setIsOcrModalOpen(true)}
+                >
+                  <FaCamera size={14} /> Launch Dual-Mode OCR Scanner
+                </button>
+              </div>
             </div>
           </div>
+        </div>
+      ) : (
+        <div
+          className="asymmetric-card mb-4 overflow-hidden"
+          style={{
+            background: 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%)',
+            border: '1.5px solid #86EFAC',
+          }}
+        >
+          <div className="card-body p-3.5 d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+            <div className="d-flex align-items-center gap-3">
+              <div
+                className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                style={{ width: 44, height: 44, background: '#16A34A', color: '#FFFFFF', fontSize: '1.25rem' }}
+              >
+                <FaCheckCircle />
+              </div>
+              <div>
+                <div className="d-flex align-items-center gap-2 flex-wrap">
+                  <h6 className="fw-bold mb-0 text-dark">
+                    Today's Water Quality Verified for {selectedPond?.pond_name}
+                  </h6>
+                  <span className="badge bg-success bg-opacity-20 text-success border border-success border-opacity-30 rounded-pill extra-small fw-bold">
+                    ✓ Gate Unlocked
+                  </span>
+                </div>
+                <div className="d-flex align-items-center gap-3 flex-wrap mt-1 text-secondary extra-small">
+                  <span><strong>DO:</strong> {activeWqRecord?.dissolved_oxygen} mg/L</span>
+                  <span>•</span>
+                  <span><strong>Temp:</strong> {activeWqRecord?.temperature}°C</span>
+                  <span>•</span>
+                  <span><strong>pH:</strong> {activeWqRecord?.ph_level}</span>
+                  <span>•</span>
+                  <span><strong>Salinity:</strong> {activeWqRecord?.salinity} ppt</span>
+                  <span>•</span>
+                  <span className="badge bg-white text-dark border">
+                    {activeWqRecord?.capture_mode === 'device_screen' ? 'LCD Meter Scan' : 'Logsheet Table Scan'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="d-flex align-items-center gap-2">
+              {activeWqRecord?.image_path && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-white bg-white border text-dark fw-bold rounded-pill px-3 py-1.5 shadow-xs d-flex align-items-center gap-1.5"
+                  style={{ fontSize: '0.8rem' }}
+                  onClick={() => setInspectProofModal(activeWqRecord)}
+                >
+                  <FaEye size={12} className="text-primary" /> View Photo Proof
+                </button>
+              )}
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-success bg-white fw-bold rounded-pill px-3 py-1.5 shadow-xs d-flex align-items-center gap-1.5"
+                style={{ fontSize: '0.8rem' }}
+                onClick={() => setIsOcrModalOpen(true)}
+              >
+                <FaSync size={11} /> Re-scan / Update
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Feeding Form Panel Card */}
+      <div className="asymmetric-card p-4 mb-4">
+        <div>
+          <div className="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+          <div>
+            <h5 className="fw-extrabold text-dark mb-1 tracking-tight">Log Feeding Entry</h5>
+            <p className="text-muted small mb-0">
+              Save a verified feeding record for <strong className="text-primary">{selectedPond?.pond_name || 'this pond'}</strong>.
+            </p>
+          </div>
+          <div className="d-flex align-items-center gap-2 px-3 py-1.5 rounded-pill extra-small fw-bold" style={{ backgroundColor: '#F0F9FF', color: '#0284C7', border: '1px solid #BAE6FD' }}>
+            <FaClipboardList />
+            <span>{loggedTimesForPond.length} of 5 scheduled times completed today</span>
+          </div>
+        </div>
 
           <div className="row g-3 mb-4">
             <div className="col-12 col-lg-4">
@@ -651,7 +909,7 @@ export default function MyPondPage() {
                 value={currentForm.amountKg}
                 onChange={(event) => handleChange('amountKg', event.target.value)}
                 placeholder="Enter amount in kilograms"
-                disabled={allSlotsCompleted}
+                disabled={!isPondWqVerified || allSlotsCompleted}
               />
             </div>
 
@@ -661,7 +919,7 @@ export default function MyPondPage() {
                 className="form-select form-select-lg fs-6"
                 value={currentForm.productCode}
                 onChange={(event) => handleChange('productCode', event.target.value)}
-                disabled={allSlotsCompleted}
+                disabled={!isPondWqVerified || allSlotsCompleted}
               >
                 {productCodes.map((code) => (
                   <option key={code} value={code}>
@@ -678,7 +936,7 @@ export default function MyPondPage() {
                 className="form-select form-select-lg fs-6"
                 value={currentForm.vitaminName || 'None'}
                 onChange={(event) => handleChange('vitaminName', event.target.value)}
-                disabled={allSlotsCompleted}
+                disabled={!isPondWqVerified || allSlotsCompleted}
               >
                 {vitaminOptions.map((vit) => (
                   <option key={vit} value={vit}>
@@ -698,26 +956,107 @@ export default function MyPondPage() {
               value={currentForm.notes}
               onChange={(event) => handleChange('notes', event.target.value)}
               placeholder="Add a note if needed"
-              disabled={allSlotsCompleted}
+              disabled={!isPondWqVerified || allSlotsCompleted}
             />
           </div>
 
-          <button
-            type="button"
-            className="btn btn-primary btn-lg w-100 py-3 fw-bold caretaker-log-button d-flex align-items-center justify-content-center gap-2"
-            disabled={submitting || allSlotsCompleted}
-            onClick={handleSubmit}
-          >
-            {submitting ? (
-              'Saving...'
-            ) : (
-              <>
-                <FaPlus /> Log Feeding for {selectedPond?.pond_name || 'Selected Pond'} ({currentForm.feedingTime})
-              </>
-            )}
-          </button>
+          {!isPondWqVerified ? (
+            <button
+              type="button"
+              className="btn btn-secondary btn-lg w-100 py-3 fw-bold d-flex align-items-center justify-content-center gap-2 shadow-sm"
+              style={{ background: 'linear-gradient(135deg, #334155 0%, #0F172A 100%)', border: 'none' }}
+              onClick={() => setIsOcrModalOpen(true)}
+            >
+              <FaLock /> Verify Water Quality via OCR to Unlock Feeding for {selectedPond?.pond_name}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="btn btn-primary btn-lg w-100 py-3 fw-bold caretaker-log-button d-flex align-items-center justify-content-center gap-2"
+              disabled={submitting || allSlotsCompleted}
+              onClick={handleSubmit}
+            >
+              {submitting ? (
+                'Saving...'
+              ) : (
+                <>
+                  <FaPlus /> Log Feeding for {selectedPond?.pond_name || 'Selected Pond'} ({currentForm.feedingTime})
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
+
+      {/* 🌟 DUAL-MODE OCR WATER QUALITY MODAL */}
+      <WaterQualityOcrModal
+        isOpen={isOcrModalOpen}
+        onClose={() => setIsOcrModalOpen(false)}
+        assignedPonds={assignedPonds}
+        initialPondId={selectedPondId}
+        caretakerName={user?.full_name || 'Caretaker'}
+        caretakerId={user?.id}
+        onSuccess={(record) => {
+          if (selectedPondId) {
+            fetchWaterQualityStatus(selectedPondId);
+          }
+        }}
+      />
+
+      {/* 🌟 INSPECTION PHOTO PROOF MODAL */}
+      {inspectProofModal && (
+        <div
+          className="modal fade show d-block"
+          tabIndex="-1"
+          style={{ backgroundColor: 'rgba(7, 23, 51, 0.85)', backdropFilter: 'blur(8px)', zIndex: 1070 }}
+        >
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content border-0 rounded-4 overflow-hidden bg-white shadow-xl">
+              <div
+                className="p-3.5 px-4 text-white d-flex justify-content-between align-items-center"
+                style={{ background: 'linear-gradient(135deg, #071733 0%, #0B2C5F 100%)' }}
+              >
+                <div className="d-flex align-items-center gap-2">
+                  <FaEye className="text-info" />
+                  <h6 className="fw-bold mb-0 text-white">Water Quality Photo Proof</h6>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-light rounded-circle p-1.5 d-flex align-items-center justify-content-center"
+                  style={{ width: 30, height: 30 }}
+                  onClick={() => setInspectProofModal(null)}
+                >
+                  <FaTimes size={12} />
+                </button>
+              </div>
+
+              <div className="modal-body p-3 text-center" style={{ background: '#0F172A' }}>
+                <img
+                  src={resolveImageUrl(inspectProofModal.image_path)}
+                  alt="Inspection Proof"
+                  className="img-fluid rounded-3"
+                  style={{ maxHeight: 420, objectFit: 'contain', width: '100%' }}
+                />
+              </div>
+
+              <div className="modal-footer p-3 bg-light border-top d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div className="extra-small text-muted">
+                  <span><strong>Basin:</strong> {selectedPond?.pond_name}</span>
+                  <span className="ms-3"><strong>Mode:</strong> {inspectProofModal.capture_mode === 'device_screen' ? 'LCD Meter Scan' : 'Logsheet Table'}</span>
+                  <span className="ms-3"><strong>Date:</strong> {inspectProofModal.recorded_at || inspectProofModal.record_date}</span>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-secondary rounded-pill px-3.5 py-1.5 extra-small fw-bold"
+                  onClick={() => setInspectProofModal(null)}
+                >
+                  Close Inspection
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
