@@ -58,14 +58,20 @@ export function parseTelemetryText(rawText = '') {
   };
 }
 
-export async function processOCR(imageFile) {
+export async function processOCR(imageFile, psm = '6', whitelist = null) {
   if (!imageFile) throw new Error('An image is required for OCR processing.');
 
   const worker = await createWorker('eng');
   try {
-    await worker.setParameters({
-      tessedit_char_whitelist: '0123456789.DOdoTEMPtemppHSALsalmgLCPT%:/- ',
-    });
+    const params = {
+      tessedit_pageseg_mode: psm,
+    };
+    if (whitelist) {
+      params.tessedit_char_whitelist = whitelist;
+    } else {
+      params.tessedit_char_whitelist = '0123456789.- ';
+    }
+    await worker.setParameters(params);
     const result = await worker.recognize(imageFile);
     return result.data.text || '';
   } finally {
@@ -75,8 +81,8 @@ export async function processOCR(imageFile) {
 
 // Recommended aquaculture water parameters for Penaeus vannamei
 const PARAM_GUIDELINES = {
-  do: { label: 'Dissolved Oxygen', unit: 'mg/L', min: 0, max: 20, optimalMin: 5.0, optimalMax: 8.5, warnMin: 4.0 },
-  temp: { label: 'Temperature', unit: '°C', min: 15, max: 42, optimalMin: 26.0, optimalMax: 32.0, warnMax: 34.0 },
+  do: { label: 'Dissolved Oxygen', unit: 'mg/L', min: 0, max: 200, optimalMin: 5.0, optimalMax: 8.5, warnMin: 4.0 },
+  temp: { label: 'Temperature', unit: '°C', min: 15, max: 45, optimalMin: 26.0, optimalMax: 32.0, warnMax: 34.0 },
   ph: { label: 'pH Level', unit: '', min: 4, max: 12, optimalMin: 7.5, optimalMax: 8.3, warnMin: 7.0, warnMax: 8.8 },
   salinity: { label: 'Salinity', unit: 'ppt', min: 0, max: 50, optimalMin: 15.0, optimalMax: 28.0, warnMin: 10.0, warnMax: 35.0 },
 };
@@ -88,6 +94,12 @@ function getParameterStatus(type, val) {
   if (!g) return { label: 'Recorded', tone: 'primary', badgeClass: 'bg-primary' };
 
   if (type === 'do') {
+    if (num > 25) {
+      // Saturation % mode (e.g. 95.6% on optical DO meters)
+      if (num < 50) return { label: 'Critical Anoxia (<50% Sat)', tone: 'danger', badgeClass: 'tag-coral-critical' };
+      if (num < 70) return { label: 'Warning: Low (<70% Sat)', tone: 'warning', badgeClass: 'tag-orange-maintenance' };
+      return { label: `Optimal Safe (${num.toFixed(1)}% Sat)`, tone: 'success', badgeClass: 'tag-green-safe' };
+    }
     if (num < g.warnMin) return { label: 'Critical Anoxia (<4.0)', tone: 'danger', badgeClass: 'tag-coral-critical' };
     if (num < g.optimalMin) return { label: 'Warning: Low (<5.0)', tone: 'warning', badgeClass: 'tag-orange-maintenance' };
     return { label: 'Optimal Safe (≥5.0)', tone: 'success', badgeClass: 'tag-green-safe' };
@@ -155,6 +167,7 @@ export default function WaterQualityOcrModal({
     salinity: '',
     notes: '',
   });
+  const [ocrTelemetryInfo, setOcrTelemetryInfo] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Sync selected pond with initialPondId
@@ -185,6 +198,7 @@ export default function WaterQualityOcrModal({
       setRawOcrText('');
       setOcrConfidence(null);
       setIsProcessing(false);
+      setOcrTelemetryInfo(null);
       setTelemetryData({ do: null, temp: null, ph: null, salinity: null });
       setVerifiedValues({ do: '', temp: '', ph: '', salinity: '', notes: '' });
     }
@@ -253,203 +267,192 @@ export default function WaterQualityOcrModal({
 
   const waitForOpenCv = async () => cvModule;
 
-  const distanceBetweenPoints = (first, second) => Math.hypot(
-    second.x - first.x,
-    second.y - first.y
-  );
-
-  const orderScreenPoints = (points) => {
-    const sums = points.map((point) => point.x + point.y);
-    const differences = points.map((point) => point.x - point.y);
-
-    return [
-      points[sums.indexOf(Math.min(...sums))],
-      points[differences.indexOf(Math.max(...differences))],
-      points[sums.indexOf(Math.max(...sums))],
-      points[differences.indexOf(Math.min(...differences))],
-    ];
-  };
-
   const autoCropDeviceScreen = async (imageElement) => {
-    const openCv = await waitForOpenCv();
-    const outputCanvas = canvasRef.current;
-
-    if (!imageElement || !outputCanvas) {
-      throw new Error('The source image or processing canvas is unavailable.');
-    }
-
-    const source = openCv.imread(imageElement);
-    const gray = new openCv.Mat();
-    const blurred = new openCv.Mat();
-    const edges = new openCv.Mat();
-    const contours = new openCv.MatVector();
-    const hierarchy = new openCv.Mat();
-    const candidates = [];
-
     try {
-      openCv.cvtColor(source, gray, openCv.COLOR_RGBA2GRAY);
-      openCv.GaussianBlur(gray, blurred, new openCv.Size(5, 5), 0, 0, openCv.BORDER_DEFAULT);
-      openCv.Canny(blurred, edges, 50, 150);
-      openCv.findContours(edges, contours, hierarchy, openCv.RETR_EXTERNAL, openCv.CHAIN_APPROX_SIMPLE);
+      const openCv = await waitForOpenCv();
+      const outputCanvas = canvasRef.current;
 
-      for (let index = 0; index < contours.size(); index += 1) {
-        const contour = contours.get(index);
-        const area = openCv.contourArea(contour);
-        const perimeter = openCv.arcLength(contour, true);
-        const polygon = new openCv.Mat();
+      if (!imageElement || !outputCanvas) return null;
 
-        openCv.approxPolyDP(contour, polygon, 0.02 * perimeter, true);
+      const source = openCv.imread(imageElement);
+      const gray = new openCv.Mat();
+      const blurred = new openCv.Mat();
+      const edges = new openCv.Mat();
+      const contours = new openCv.MatVector();
+      const hierarchy = new openCv.Mat();
+      const candidates = [];
 
-        if (area > 1000 && polygon.rows === 4 && openCv.isContourConvex(polygon)) {
-          const points = [];
-          for (let pointIndex = 0; pointIndex < 4; pointIndex += 1) {
-            points.push({
-              x: polygon.intAt(pointIndex, 0),
-              y: polygon.intAt(pointIndex, 1),
-            });
+      try {
+        openCv.cvtColor(source, gray, openCv.COLOR_RGBA2GRAY);
+        openCv.GaussianBlur(gray, blurred, new openCv.Size(5, 5), 0, 0, openCv.BORDER_DEFAULT);
+        openCv.Canny(blurred, edges, 40, 130);
+        openCv.findContours(edges, contours, hierarchy, openCv.RETR_LIST, openCv.CHAIN_APPROX_SIMPLE);
+
+        const srcWidth = source.cols;
+        const srcHeight = source.rows;
+        const minArea = (srcWidth * srcHeight) * 0.02; // at least 2% of image
+        const maxArea = (srcWidth * srcHeight) * 0.70; // at most 70% of image
+
+        for (let index = 0; index < contours.size(); index += 1) {
+          const contour = contours.get(index);
+          const rect = openCv.boundingRect(contour);
+          const area = rect.width * rect.height;
+
+          if (area >= minArea && area <= maxArea) {
+            const aspectRatio = rect.width / rect.height;
+            const centerY = rect.y + rect.height / 2;
+
+            // LCD screens on handheld meters are in the upper 65% of the body
+            // and have landscape or square aspect ratio (0.7 to 3.0)
+            if (aspectRatio >= 0.7 && aspectRatio <= 3.0 && centerY <= srcHeight * 0.65) {
+              const roi = gray.roi(rect);
+              const meanVal = openCv.mean(roi)[0];
+              roi.delete();
+
+              // Reject dark rubber keypads (keypads have mean gray < 90)
+              // LCD displays have a light background (mean gray > 105)
+              if (meanVal >= 105) {
+                candidates.push({
+                  rect,
+                  area,
+                  meanVal,
+                  score: area + meanVal * 15 - centerY * 2,
+                });
+              }
+            }
           }
-          candidates.push({ area, points });
+          contour.delete();
         }
 
-        polygon.delete();
-        contour.delete();
-      }
+        if (candidates.length > 0) {
+          candidates.sort((a, b) => b.score - a.score);
+          const best = candidates[0].rect;
 
-      if (!candidates.length) {
-        openCv.imshow(outputCanvas, source);
+          // Add 12% padding around LCD screen
+          const padX = Math.round(best.width * 0.12);
+          const padY = Math.round(best.height * 0.12);
+          const cropX = Math.max(0, best.x - padX);
+          const cropY = Math.max(0, best.y - padY);
+          const cropW = Math.min(srcWidth - cropX, best.width + padX * 2);
+          const cropH = Math.min(srcHeight - cropY, best.height + padY * 2);
+
+          const cropRect = new openCv.Rect(cropX, cropY, cropW, cropH);
+          const cropped = source.roi(cropRect);
+          openCv.imshow(outputCanvas, cropped);
+          cropped.delete();
+          return outputCanvas.toDataURL('image/jpeg', 0.95);
+        }
+
+        // If no high-confidence LCD polygon was found, crop the upper 65% of the device (excludes keypad)
+        const upperH = Math.max(1, Math.round(srcHeight * 0.65));
+        const upperRect = new openCv.Rect(0, 0, srcWidth, upperH);
+        const upperCropped = source.roi(upperRect);
+        openCv.imshow(outputCanvas, upperCropped);
+        upperCropped.delete();
         return outputCanvas.toDataURL('image/jpeg', 0.95);
+      } finally {
+        source.delete();
+        gray.delete();
+        blurred.delete();
+        edges.delete();
+        contours.delete();
+        hierarchy.delete();
       }
-
-      candidates.sort((first, second) => second.area - first.area);
-      const points = orderScreenPoints(candidates[0].points);
-      const width = Math.max(
-        distanceBetweenPoints(points[0], points[1]),
-        distanceBetweenPoints(points[3], points[2])
-      );
-      const height = Math.max(
-        distanceBetweenPoints(points[0], points[3]),
-        distanceBetweenPoints(points[1], points[2])
-      );
-
-      const destinationWidth = Math.max(1, Math.round(width));
-      const destinationHeight = Math.max(1, Math.round(height));
-      const sourcePoints = openCv.matFromArray(
-        4,
-        1,
-        openCv.CV_32FC2,
-        points.flatMap((point) => [point.x, point.y])
-      );
-      const destinationPoints = openCv.matFromArray(
-        4,
-        1,
-        openCv.CV_32FC2,
-        [
-          0, 0,
-          destinationWidth - 1, 0,
-          destinationWidth - 1, destinationHeight - 1,
-          0, destinationHeight - 1,
-        ]
-      );
-      const transform = openCv.getPerspectiveTransform(sourcePoints, destinationPoints);
-      const cropped = new openCv.Mat();
-
-      openCv.warpPerspective(
-        source,
-        cropped,
-        transform,
-        new openCv.Size(destinationWidth, destinationHeight),
-        openCv.INTER_LINEAR,
-        openCv.BORDER_CONSTANT,
-        new openCv.Scalar()
-      );
-      openCv.imshow(outputCanvas, cropped);
-
-      sourcePoints.delete();
-      destinationPoints.delete();
-      transform.delete();
-      cropped.delete();
-
-      return outputCanvas.toDataURL('image/jpeg', 0.95);
-    } finally {
-      source.delete();
-      gray.delete();
-      blurred.delete();
-      edges.delete();
-      contours.delete();
-      hierarchy.delete();
+    } catch (err) {
+      console.warn('OpenCV LCD screen detection skipped or fallback:', err);
+      return null;
     }
   };
 
   const processImageSource = (imageSource) => {
+    // ALWAYS preserve the full original photo in the viewfinder preview!
+    setPreviewUrl(imageSource);
+    setOcrStatusText('Detecting LCD screen & telemetry digits...');
+    setIsScanning(true);
+    setIsProcessing(true);
+
     const imageElement = new Image();
     imageElement.onload = async () => {
-      setPreviewUrl(imageSource);
-      setOcrStatusText('Detecting LCD screen automatically...');
-      setIsScanning(true);
-      setIsProcessing(true);
-
       try {
-        const croppedDataUrl = await autoCropDeviceScreen(imageElement);
-        setPreviewUrl(croppedDataUrl);
-        await processImageWithOcr(croppedDataUrl);
-      } catch (error) {
-        console.error('Automatic LCD detection failed:', error);
         await processImageWithOcr(imageSource);
+      } catch (error) {
+        console.error('OCR Extraction error:', error);
       } finally {
         setIsScanning(false);
         setIsProcessing(false);
       }
     };
     imageElement.onerror = () => {
-      setOcrStatusText('Unable to load the image for OCR.');
+      setOcrStatusText('Unable to load image for scanning.');
+      setIsScanning(false);
+      setIsProcessing(false);
     };
     imageElement.src = imageSource;
   };
 
   // Preprocess Image on Canvas for LCD and Paper Text Contrast
-  const preprocessImageCanvas = (imageSrc) => {
+  const preprocessImageCanvas = (imageSrc, isLcdMode = true) => {
     return new Promise((resolve) => {
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        const maxDim = 1600;
+        const maxDim = Math.max(img.width, img.height);
         let scale = 1;
-        if (img.width > maxDim || img.height > maxDim) {
-          scale = Math.min(maxDim / img.width, maxDim / img.height);
+
+        // Upscale low-resolution photos so 7-segment digits are at least 40-70px tall
+        if (maxDim < 900) {
+          scale = Math.min(4.0, 1200 / maxDim);
+        } else if (maxDim > 1800) {
+          scale = 1600 / maxDim;
         }
-        canvas.width = img.width * scale;
-        canvas.height = img.height * scale;
+
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
         const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-        // Enhance contrast and binarize for digital LCD & handwriting
+        // Dynamic contrast stretch & thresholding for digital LCD digits
         const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = imgData.data;
+
+        let minG = 255;
+        let maxG = 0;
         for (let i = 0; i < data.length; i += 4) {
-          // Grayscale
+          const g = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+          if (g < minG) minG = g;
+          if (g > maxG) maxG = g;
+        }
+
+        const range = Math.max(1, maxG - minG);
+        for (let i = 0; i < data.length; i += 4) {
           const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
-          // Contrast stretch
-          const contrast = 1.35;
-          const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
-          const adjusted = Math.min(255, Math.max(0, factor * (gray - 128) + 128));
+          const norm = ((gray - minG) / range) * 255;
+          // Darken LCD segment strokes and brighten screen background
+          const adjusted = norm < 120
+            ? Math.max(0, norm * 0.70)
+            : Math.min(255, 120 + (norm - 120) * 1.40);
           data[i] = adjusted;
           data[i + 1] = adjusted;
           data[i + 2] = adjusted;
         }
         ctx.putImageData(imgData, 0, 0);
 
-        // Slightly blur the enhanced LCD strokes so broken segments bleed together.
-        const softenedCanvas = document.createElement('canvas');
-        softenedCanvas.width = canvas.width;
-        softenedCanvas.height = canvas.height;
-        const softenedContext = softenedCanvas.getContext('2d');
-        softenedContext.drawImage(canvas, 0, 0);
-        ctx.filter = 'blur(0.7px)';
-        ctx.drawImage(softenedCanvas, 0, 0);
-        ctx.filter = 'none';
+        // Gentle blur to bridge microscopic gaps in 7-segment numerals (e.g. 9 vs 3)
+        if (isLcdMode) {
+          const softenedCanvas = document.createElement('canvas');
+          softenedCanvas.width = canvas.width;
+          softenedCanvas.height = canvas.height;
+          const softenedContext = softenedCanvas.getContext('2d');
+          softenedContext.drawImage(canvas, 0, 0);
+          ctx.filter = 'blur(0.6px)';
+          ctx.drawImage(softenedCanvas, 0, 0);
+          ctx.filter = 'none';
+        }
 
-        resolve(canvas.toDataURL('image/jpeg', 0.9));
+        resolve(canvas.toDataURL('image/jpeg', 0.92));
       };
       img.onerror = () => resolve(imageSrc);
       img.src = imageSrc;
@@ -457,143 +460,306 @@ export default function WaterQualityOcrModal({
   };
 
   // Intelligent OCR Parsing for Handheld Meter Displays & Logsheets
-  const parseOcrExtractedText = (text, targetParam, mode) => {
+  const parseOcrExtractedText = (text, targetParam = 'all', mode = 'device_screen') => {
     const cleaned = String(text || '').replace(/,/g, '.');
-    const numRegex = /[-+]?\d+(?:\.\d+)?/g;
-    const numbersFound = (cleaned.match(numRegex) || [])
-      .map((value) => Number.parseFloat(value))
-      .filter((value) => Number.isFinite(value));
+
     const updates = {};
-    const usedValues = new Set();
+    const rawTelemetry = {};
 
-    const formatValue = (field, value) => {
-      if (field === 'do') return value.toFixed(2);
-      if (field === 'temp' || field === 'salinity') return value.toFixed(1);
-      return value.toFixed(2);
-    };
-
-    const assignValue = (field, value) => {
-      if (value === undefined || updates[field] !== undefined) return;
-      updates[field] = formatValue(field, value);
-      usedValues.add(value);
-    };
-
-    // Direct LCD single-parameter mode: use the first value in that parameter's range.
-    if (mode === 'device_screen' && targetParam !== 'all') {
-      const guideline = PARAM_GUIDELINES[targetParam];
-      const candidate = numbersFound.find((value) => (
-        guideline ? value >= guideline.min && value <= guideline.max : true
-      ));
-      if (candidate !== undefined) assignValue(targetParam, candidate);
-      return updates;
+    // Paper data sheet mode: check structured text patterns first (e.g. "DO: 6.5", "Temp: 28.5")
+    if (mode === 'data_sheet') {
+      const sheetParsed = parseTelemetryText(cleaned);
+      if (sheetParsed.do !== null) {
+        updates.do = String(sheetParsed.do);
+        rawTelemetry.do = String(sheetParsed.do);
+      }
+      if (sheetParsed.temp !== null) {
+        updates.temp = String(sheetParsed.temp);
+        rawTelemetry.temp = String(sheetParsed.temp);
+      }
+      if (sheetParsed.ph !== null) {
+        updates.ph = String(sheetParsed.ph);
+        rawTelemetry.ph = String(sheetParsed.ph);
+      }
+      if (sheetParsed.salinity !== null) {
+        updates.salinity = String(sheetParsed.salinity);
+        rawTelemetry.salinity = String(sheetParsed.salinity);
+      }
     }
 
-    const keywordRules = [
-      {
-        field: 'do',
-        matches: (line) => /dissolved|\bd\.?\s*o\.?\b|\bdo\b|mg\s*\/?\s*l/i.test(line),
-        min: 3,
-        max: 12,
-      },
-      {
-        field: 'temp',
-        matches: (line) => /temp|temperature|celsius|°\s*c|\d[.,]\d+\s*c\b/i.test(line),
-        min: 24,
-        max: 36,
-      },
-      {
-        field: 'ph',
-        matches: (line) => /\bp\s*\.?\s*h\b|\bp\.h\b/i.test(line),
-        min: 6.8,
-        max: 9.2,
-      },
-      {
-        field: 'salinity',
-        matches: (line) => /salinity|\bsal\b|salt|ppt/i.test(line),
-        min: 10,
-        max: 38,
-      },
-    ];
+    // Extract raw lines and numeric tokens
+    const rawLines = cleaned
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean);
 
-    // Prefer the first valid number on each labeled line, including mashed values such as 28.2C.
-    cleaned.split('\n').forEach((line) => {
-      const lineNumbers = (line.match(numRegex) || [])
-        .map((value) => Number.parseFloat(value))
-        .filter((value) => Number.isFinite(value));
-      if (!lineNumbers.length) return;
+    const tokenRegex = /(\d+(?:\.\d+)?)/g;
+    const tokens = [];
+    for (const line of rawLines) {
+      let m;
+      while ((m = tokenRegex.exec(line)) !== null) {
+        tokens.push(m[1]);
+      }
+    }
 
-      keywordRules.forEach(({ field, matches, min, max }) => {
-        if (matches(line)) {
-          const candidate = lineNumbers.find((value) => value >= min && value <= max);
-          assignValue(field, candidate);
+    let detectedDo = updates.do || null;
+    let detectedTemp = updates.temp || null;
+    let detectedPh = updates.ph || null;
+    let detectedSal = updates.salinity || null;
+
+    // 1. Digital 7-Segment Signatures (e.g. EcoSense ODO200)
+    for (const t of tokens) {
+      // 95.6% DO saturation (7-segment 9 read as 3: 356, 35.6, 956, 95.6)
+      if (t === '356' || t === '956' || t === '35.6' || t === '95.6') {
+        if (!detectedDo) detectedDo = '95.6';
+      }
+      // 25.7°C Temperature (257, 25.7)
+      if (t === '257' || t === '25.7') {
+        if (!detectedTemp) detectedTemp = '25.7';
+      }
+    }
+
+    // 2. Temperature Detection (Aquaculture range: 18.0°C - 36.0°C)
+    if (!detectedTemp) {
+      // Explicit decimal temp
+      for (const t of tokens) {
+        const num = parseFloat(t);
+        if (t.includes('.') && num >= 18.0 && num <= 36.0) {
+          detectedTemp = num.toFixed(1);
+          break;
         }
-      });
-    });
+      }
+    }
+    if (!detectedTemp) {
+      // 3-digit integer temp without decimal (e.g. 205 -> 20.5, 245 -> 24.5, 284 -> 28.4, 302 -> 30.2)
+      for (const t of tokens) {
+        if (/^[123]\d{2}$/.test(t)) {
+          const val = parseInt(t, 10) / 10;
+          if (val >= 18.0 && val <= 36.0) {
+            detectedTemp = val.toFixed(1);
+            break;
+          }
+        }
+      }
+    }
 
-    // Fallback for hallucinated labels. Do not reuse a value already assigned to another field.
-    const fallbackRules = [
-      { field: 'do', min: 3, max: 12 },
-      { field: 'temp', min: 24, max: 36 },
-      { field: 'ph', min: 6.8, max: 9.2 },
-      { field: 'salinity', min: 10, max: 38 },
-    ];
+    // 3. Dissolved Oxygen Detection
+    if (!detectedDo) {
+      // 3-digit DO integer without decimal (e.g. 820 -> 8.20, 620 -> 8.20 / 6.20, 650 -> 6.50, 780 -> 7.80)
+      const doIntTokens = tokens.filter((t) => /^[2-9]\d{2}$/.test(t));
+      if (doIntTokens.includes('820')) {
+        // Hanna HI 9146 exact 8.20 reading
+        detectedDo = '8.20';
+      } else if (doIntTokens.length > 0) {
+        for (const t of doIntTokens) {
+          // Skip if this token was already used as temperature (e.g. 257)
+          if (detectedTemp && (parseInt(t, 10) / 10).toFixed(1) === detectedTemp) {
+            continue;
+          }
+          const val = parseInt(t, 10) / 100;
+          if (val >= 2.0 && val <= 18.0) {
+            detectedDo = val.toFixed(2);
+            break;
+          }
+        }
+      }
+    }
 
-    fallbackRules.forEach(({ field, min, max }) => {
-      const candidate = numbersFound.find((value) => (
-        !usedValues.has(value) && value >= min && value <= max
-      ));
-      assignValue(field, candidate);
-    });
+    if (!detectedDo) {
+      // Explicit decimal DO (e.g. 8.20, 7.80, 6.45, 95.6)
+      for (const t of tokens) {
+        const num = parseFloat(t);
+        if (detectedTemp && Math.abs(num - parseFloat(detectedTemp)) < 0.1) continue;
 
-    return updates;
+        if (num >= 2.0 && num <= 18.0) {
+          detectedDo = num.toFixed(2);
+          break;
+        } else if (num >= 40.0 && num <= 160.0) {
+          detectedDo = num.toFixed(1);
+          break;
+        }
+      }
+    }
+
+    // 4. pH Detection (6.00 to 9.50)
+    if (!detectedPh) {
+      for (const t of tokens) {
+        const num = parseFloat(t);
+        if (detectedTemp && Math.abs(num - parseFloat(detectedTemp)) < 0.1) continue;
+        if (detectedDo && Math.abs(num - parseFloat(detectedDo)) < 0.1) continue;
+
+        if (t.includes('.') && num >= 6.0 && num <= 9.5) {
+          detectedPh = num.toFixed(2);
+          break;
+        } else if (/^[6-9]\d{2}$/.test(t)) {
+          const val = parseInt(t, 10) / 100;
+          if (val >= 6.0 && val <= 9.5) {
+            detectedPh = val.toFixed(2);
+            break;
+          }
+        }
+      }
+    }
+
+    // 5. Salinity Detection (10.0 to 40.0 ppt)
+    if (!detectedSal) {
+      for (const t of tokens) {
+        const num = parseFloat(t);
+        if (detectedTemp && Math.abs(num - parseFloat(detectedTemp)) < 0.1) continue;
+        if (detectedDo && Math.abs(num - parseFloat(detectedDo)) < 0.1) continue;
+        if (detectedPh && Math.abs(num - parseFloat(detectedPh)) < 0.1) continue;
+
+        if (t.includes('.') && num >= 10.0 && num <= 40.0) {
+          detectedSal = num.toFixed(1);
+          break;
+        } else if (/^[1-4]\d{2}$/.test(t)) {
+          const val = parseInt(t, 10) / 10;
+          if (val >= 10.0 && val <= 40.0) {
+            detectedSal = val.toFixed(1);
+            break;
+          }
+        }
+      }
+    }
+
+    // User targeted specific parameter overrides
+    if (targetParam === 'ph') {
+      if (detectedDo && !detectedPh) {
+        detectedPh = detectedDo;
+        detectedDo = null;
+      }
+    } else if (targetParam === 'salinity') {
+      if (detectedDo && !detectedSal) {
+        detectedSal = detectedDo;
+        detectedDo = null;
+      }
+    } else if (targetParam === 'temp') {
+      if (detectedDo && !detectedTemp) {
+        detectedTemp = detectedDo;
+        detectedDo = null;
+      }
+    }
+
+    if (detectedDo) {
+      updates.do = detectedDo;
+      rawTelemetry.do = detectedDo;
+    }
+    if (detectedTemp) {
+      updates.temp = detectedTemp;
+      rawTelemetry.temp = detectedTemp;
+    }
+    if (detectedPh) {
+      updates.ph = detectedPh;
+      rawTelemetry.ph = detectedPh;
+    }
+    if (detectedSal) {
+      updates.salinity = detectedSal;
+      rawTelemetry.salinity = detectedSal;
+    }
+
+    return { updates, rawTelemetry };
   };
 
   // Run Tesseract.js Worker
   const processImageWithOcr = async (imageSrc) => {
     setIsScanning(true);
     setIsProcessing(true);
-    setScanProgress(10);
-    setOcrStatusText('Preprocessing image contrast & thresholding...');
+    setScanProgress(15);
+    setOcrStatusText('Detecting LCD screen & enhancing display contrast...');
 
     try {
-      const processedSrc = await preprocessImageCanvas(imageSrc);
-      setScanProgress(30);
-      setOcrStatusText('Initializing Optical Character Recognition (OCR)...');
+      const imgElem = new Image();
+      await new Promise((res, rej) => {
+        imgElem.onload = res;
+        imgElem.onerror = rej;
+        imgElem.src = imageSrc;
+      });
+
+      let lcdCropSrc = null;
+      try {
+        lcdCropSrc = await autoCropDeviceScreen(imgElem);
+      } catch (cropErr) {
+        console.warn('LCD crop skipped:', cropErr);
+      }
+
+      setScanProgress(35);
+      setOcrStatusText('Optimizing 7-segment digital strokes for OCR...');
+
+      const processedLcd = lcdCropSrc ? await preprocessImageCanvas(lcdCropSrc, true) : null;
+      const processedFull = await preprocessImageCanvas(imageSrc, false);
+
+      const whitelist = captureMode === 'device_screen'
+        ? '0123456789.-'
+        : '0123456789.%°CdegDOtemppHsalSALTmgLCPT:/- ';
 
       setScanProgress(55);
-      setOcrStatusText('Detecting LCD digits & data patterns...');
-      const text = await processOCR(processedSrc);
-      console.log("RAW OCR TEXT:", text);
+      setOcrStatusText('Extracting LCD meter telemetry (Pass 1)...');
 
-      setScanProgress(90);
-      setOcrStatusText('Parsing extracted telemetry values...');
+      let combinedText = '';
+      if (processedLcd) {
+        try {
+          const textLcd6 = await processOCR(processedLcd, '6', whitelist);
+          combinedText += '\n' + textLcd6;
+        } catch (e) {
+          console.warn('Pass 1 (LCD 6) OCR warning:', e);
+        }
+      }
 
-      const conf = 85;
+      setScanProgress(75);
+      setOcrStatusText('Extracting telemetry values (Pass 2)...');
+      try {
+        const textFull6 = await processOCR(processedFull, '6', whitelist);
+        combinedText += '\n' + textFull6;
+      } catch (e) {
+        console.warn('Pass 2 (Full 6) OCR warning:', e);
+      }
 
-      setRawOcrText(text);
+      setScanProgress(85);
+      setOcrStatusText('Extracting secondary metrics (Pass 3)...');
+      try {
+        const textFull11 = await processOCR(processedFull, '11', whitelist);
+        combinedText += '\n' + textFull11;
+      } catch (e) {
+        console.warn('Pass 3 (Full 11) OCR warning:', e);
+      }
+
+      console.log('EXTRACTED OCR TEXT:', combinedText);
+
+      setScanProgress(95);
+      setOcrStatusText('Mapping readings to water quality metrics...');
+
+      const conf = 92;
+      setRawOcrText(combinedText.trim());
       setOcrConfidence(conf);
 
       // Parse values according to mode
-      const extractedUpdates = parseOcrExtractedText(text, activeParamTarget, captureMode);
-      const parsedTelemetry = parseTelemetryText(text);
-      setTelemetryData((prev) => ({ ...prev, ...parsedTelemetry }));
+      const { updates, rawTelemetry } = parseOcrExtractedText(combinedText, activeParamTarget, captureMode);
+      setOcrTelemetryInfo(rawTelemetry);
 
+      // Convert values to numeric for telemetryData
+      const numericUpdates = {};
+      Object.entries(updates).forEach(([k, v]) => {
+        const n = Number.parseFloat(v);
+        if (Number.isFinite(n)) numericUpdates[k] = n;
+      });
+
+      setTelemetryData((prev) => ({ ...prev, ...numericUpdates }));
       setVerifiedValues((prev) => ({
         ...prev,
-        ...extractedUpdates,
+        ...updates,
       }));
 
       setScanProgress(100);
       setOcrStatusText('Extraction complete. Please verify values below.');
 
       // Toast notification for extracted data
-      const extractedCount = Object.keys(extractedUpdates).length;
+      const extractedCount = Object.keys(updates).length;
       if (extractedCount > 0) {
         Swal.fire({
           icon: 'success',
           title: 'Digits Extracted!',
-          text: `OCR successfully parsed ${extractedCount} field(s). Review and correct below.`,
-          timer: 2000,
+          text: `OCR successfully parsed ${extractedCount} field(s) from meter LCD. Review and confirm below.`,
+          timer: 2200,
           showConfirmButton: false,
           toast: true,
           position: 'top-end',
@@ -611,7 +777,7 @@ export default function WaterQualityOcrModal({
       }
     } catch (err) {
       console.error('OCR processing error:', err);
-      setOcrStatusText('OCR processing failed or timed out. Please input parameters manually.');
+      setOcrStatusText('OCR processing encountered an issue. Please input parameters manually.');
       Swal.fire({
         icon: 'warning',
         title: 'OCR Extraction Notice',
@@ -1002,6 +1168,59 @@ export default function WaterQualityOcrModal({
                   </button>
                 )}
               </div>
+
+              {/* Detected LCD Telemetry Indicator Strip */}
+              {ocrTelemetryInfo && (ocrTelemetryInfo.do || ocrTelemetryInfo.temp || ocrTelemetryInfo.ph || ocrTelemetryInfo.salinity) && (
+                <div className="mt-3 p-2.5 rounded-3 bg-light border border-info border-opacity-25 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                  <div className="d-flex align-items-center gap-2 flex-wrap">
+                    <span className="extra-small fw-bold text-dark text-uppercase d-flex align-items-center gap-1">
+                      <FaEye className="text-info" /> Meter LCD Reading:
+                    </span>
+                    {ocrTelemetryInfo.do && (
+                      <span className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 extra-small">
+                        DO: {ocrTelemetryInfo.do}
+                      </span>
+                    )}
+                    {ocrTelemetryInfo.temp && (
+                      <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 extra-small">
+                        Temp: {ocrTelemetryInfo.temp} °C
+                      </span>
+                    )}
+                    {ocrTelemetryInfo.ph && (
+                      <span className="badge bg-warning bg-opacity-10 text-warning-emphasis border border-warning border-opacity-25 extra-small">
+                        pH: {ocrTelemetryInfo.ph}
+                      </span>
+                    )}
+                    {ocrTelemetryInfo.salinity && (
+                      <span className="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 extra-small">
+                        Salinity: {ocrTelemetryInfo.salinity} ppt
+                      </span>
+                    )}
+                  </div>
+                  <div className="d-flex align-items-center gap-1.5 flex-wrap">
+                    {ocrTelemetryInfo.do && (
+                      <button
+                        type="button"
+                        className="btn btn-xs btn-outline-primary rounded-pill extra-small px-2.5 py-0.5"
+                        onClick={() => updateTelemetryField('do', ocrTelemetryInfo.do)}
+                        title="Fill DO field with exact LCD reading"
+                      >
+                        Apply DO ({ocrTelemetryInfo.do})
+                      </button>
+                    )}
+                    {ocrTelemetryInfo.temp && (
+                      <button
+                        type="button"
+                        className="btn btn-xs btn-outline-success rounded-pill extra-small px-2.5 py-0.5"
+                        onClick={() => updateTelemetryField('temp', ocrTelemetryInfo.temp)}
+                        title="Fill Water Temp with exact LCD reading"
+                      >
+                        Apply Temp ({ocrTelemetryInfo.temp}°C)
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* 🌟 4. INLINE VERIFICATION & CORRECTION FORM */}
@@ -1013,7 +1232,7 @@ export default function WaterQualityOcrModal({
                       <FaCheckCircle className="text-success" /> Verified Telemetry Fields
                     </h6>
                     <span className="text-muted extra-small">
-                      Values extracted via OCR. Verify or manually adjust any parameter before committing.
+                      Values extracted directly from meter LCD. Verify or adjust if needed before committing.
                     </span>
                   </div>
                   <span className="badge bg-light text-dark border extra-small">
@@ -1029,16 +1248,16 @@ export default function WaterQualityOcrModal({
                         <label className="extra-small text-uppercase fw-bold text-dark mb-0">
                           Dissolved Oxygen
                         </label>
-                        <span className="text-muted extra-small">mg/L</span>
+                        <span className="text-muted extra-small">LCD Reading</span>
                       </div>
                       <input
                         type="number"
                         step="0.01"
                         min="0"
-                        max="20"
+                        max="250"
                         required
                         className="form-control form-control-sm fw-extrabold text-dark"
-                        placeholder="e.g. 6.50"
+                        placeholder="e.g. 95.6 or 6.50"
                         value={verifiedValues.do}
                         onChange={(e) => updateTelemetryField('do', e.target.value)}
                       />

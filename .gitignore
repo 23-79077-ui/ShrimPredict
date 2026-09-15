@@ -17,5 +17,5 @@ backend/uploads/disease_scans/*
 backend/uploads/reports/*
 !backend/uploads/reports/.gitkeep
 __pycache__/
-*.pyc
-
+*.traineddata
+frontend/dist/
