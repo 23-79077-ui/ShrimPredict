@@ -400,61 +400,20 @@ export default function DiseaseScanPage() {
   });
 
   return (
-    <div className="caretaker-disease-scan-hub">
-      {/* 🌟 HERO CONTROL STRIP: BREADCRUMB, STATUS BADGE & EXPORT PDF */}
-      <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-        <div>
-          <div className="d-flex align-items-center gap-2">
-            <span
-              className="badge rounded-pill fw-bold extra-small"
-              style={{ backgroundColor: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE' }}
-            >
-              ● AI COMPUTER VISION
-            </span>
-            <span className="text-muted extra-small">
-              Real-time WSSV Pathogen Screening & Confidence Telemetry
-            </span>
-          </div>
-          <h2 className="fw-extrabold mb-0 mt-1 tracking-tight text-dark" style={{ fontSize: '1.75rem', letterSpacing: '-0.03em' }}>
-            Shrimp Health & Disease Scan
-          </h2>
-        </div>
-
-        <div className="d-flex align-items-center gap-2 flex-wrap">
-          <button
-            type="button"
-            className="btn btn-sm rounded-pill bg-white border text-dark fw-semibold px-3 py-1.5 d-flex align-items-center gap-1.5 shadow-xs"
-            style={{ height: 36, fontSize: '0.8rem' }}
-            onClick={loadHistory}
-          >
-            <FaHistory size={11} style={{ color: '#0284C7' }} /> Sync History
-          </button>
-          <button
-            type="button"
-            className="btn btn-sm rounded-pill px-3.5 py-1.5 d-flex align-items-center gap-2 fw-bold text-white shadow-xs"
-            style={{
-              height: 36,
-              fontSize: '0.8rem',
-              background: 'linear-gradient(135deg, #0B2C5F 0%, #0E3D7D 100%)',
-              border: 'none',
-            }}
-            onClick={exportPdf}
-          >
-            <FaFilePdf size={12} /> Export Intelligence
-          </button>
-        </div>
-      </div>
-
+    <div>
       <div className="row g-4">
         {/* 📸 LEFT CARD: SCANNER & CONTROLS */}
         <div className="col-lg-7">
-          <div className="asymmetric-card p-4">
-            <div>
-              {/* 🌊 POND SELECTOR PILL TABS */}
-              <div className="mb-3 p-3 bg-light rounded-4 border d-flex align-items-center justify-content-between flex-wrap gap-2">
+          <div
+            className="card disease-scan-card position-relative overflow-hidden"
+          >
+            <div className="position-absolute top-0 start-0 end-0 bg-primary" style={{ height: 4 }} />
+            <div className="card-body p-4">
+              {/* 🌊 POND SELECTOR BUTTONS (INLINE HEADER) */}
+              <div className="disease-pond-selector mb-3 p-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <div className="d-flex align-items-center gap-2 flex-wrap">
                   <span className="fw-bold text-dark extra-small text-uppercase d-flex align-items-center gap-1.5 me-1 text-nowrap">
-                    <FaWater className="text-primary" /> Target Basin:
+                    <FaWater className="text-primary" /> Select Pond:
                   </span>
                   {assignedPonds.map((pond) => {
                     const pName = pond.pond_name || pond.name || `Pond ${pond.id}`;
@@ -465,13 +424,9 @@ export default function DiseaseScanPage() {
                         type="button"
                         className={`btn btn-sm rounded-pill px-3 py-1.5 fw-bold extra-small transition-all d-inline-flex align-items-center gap-1.5 ${
                           isSelected
-                            ? 'btn-dark text-white shadow-xs'
-                            : 'btn-white bg-white text-dark border'
+                            ? 'btn-primary shadow-xs'
+                            : 'disease-ghost-button'
                         }`}
-                        style={{
-                          backgroundColor: isSelected ? '#0B2C5F' : '#FFFFFF',
-                          borderColor: isSelected ? '#0B2C5F' : '#E2E8F0',
-                        }}
                         onClick={() => setSelectedPond(pName)}
                       >
                         {isSelected && <FaCheck size={10} />} 🌊 {pName}
@@ -523,7 +478,7 @@ export default function DiseaseScanPage() {
               <div className="d-flex align-items-center justify-content-between gap-2 pt-1 w-100 flex-nowrap">
                 <div className="d-flex align-items-center gap-2 flex-grow-1 flex-nowrap">
                   <button
-                    className="btn btn-success rounded-pill px-3 py-1.5 fw-bold text-nowrap d-inline-flex align-items-center justify-content-center gap-1.5 shadow-xs flex-grow-1"
+                    className="btn disease-ghost-button px-3 py-1.5 fw-bold text-nowrap d-inline-flex align-items-center justify-content-center gap-1.5 flex-grow-1"
                     style={{ height: 38, minWidth: 95, fontSize: '0.8rem' }}
                     onClick={captureImage}
                     disabled={!streaming || scanning}
@@ -531,7 +486,7 @@ export default function DiseaseScanPage() {
                     <FaCamera size={13} /> Capture
                   </button>
                   <button
-                    className="btn btn-outline-success rounded-pill px-3 py-1.5 fw-bold text-nowrap d-inline-flex align-items-center justify-content-center gap-1.5 flex-grow-1"
+                    className="btn disease-ghost-button px-3 py-1.5 fw-bold text-nowrap d-inline-flex align-items-center justify-content-center gap-1.5 flex-grow-1"
                     style={{ height: 38, minWidth: 95, fontSize: '0.8rem' }}
                     onClick={() => fileInputRef.current?.click()}
                     disabled={scanning}
@@ -539,7 +494,7 @@ export default function DiseaseScanPage() {
                     <FaUpload size={13} /> Upload
                   </button>
                   <button
-                    className={`btn rounded-pill px-3 py-1.5 fw-bold text-nowrap d-inline-flex align-items-center justify-content-center gap-1.5 flex-grow-1 transition-all ${
+                    className={`btn disease-ghost-button px-3 py-1.5 fw-bold text-nowrap d-inline-flex align-items-center justify-content-center gap-1.5 flex-grow-1 transition-all ${
                       image
                         ? 'btn-outline-danger'
                         : 'btn-outline-secondary opacity-50 cursor-not-allowed'
@@ -553,7 +508,7 @@ export default function DiseaseScanPage() {
                   </button>
                 </div>
                 <button
-                  className={`btn btn-primary rounded-pill px-4 py-1.5 fw-bold text-nowrap d-inline-flex align-items-center justify-content-center gap-1.5 shadow-xs flex-shrink-0 ${
+                  className={`btn btn-primary disease-scan-button px-4 py-1.5 fw-bold text-nowrap d-inline-flex align-items-center justify-content-center gap-1.5 flex-shrink-0 ${
                     (!scanReady) ? 'opacity-50 cursor-not-allowed' : ''
                   }`}
                   style={{ height: 38, minWidth: 95, fontSize: '0.8rem' }}
@@ -566,9 +521,9 @@ export default function DiseaseScanPage() {
               </div>
 
               {/* Literature Benchmark Accordion */}
-              <div className="alert alert-light border mt-4 p-0 shadow-sm" style={{ fontSize: '0.9rem', borderRadius: '8px' }}>
+              <div className="disease-model-accuracy mt-4 p-0" style={{ fontSize: '0.9rem' }}>
                 <details>
-                  <summary className="fw-bold p-3 text-dark" style={{ cursor: 'pointer', listStyle: 'none' }}>
+                  <summary className="fw-bold p-3" style={{ cursor: 'pointer', listStyle: 'none' }}>
                     <i className="bi bi-caret-right-fill me-2 text-primary"></i>
                     View Model Accuracy Literature & Research Baselines
                   </summary>
@@ -594,7 +549,7 @@ export default function DiseaseScanPage() {
                         </a>
                       </li>
                     </ul>
-                    <p className="mt-3 mb-0" style={{ fontSize: '0.8rem', color: '#6c757d' }}>
+                    <p className="mt-3 mb-0" style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>
                       *Our system utilizes an EfficientNet/CNN transfer learning pipeline targeted to perform within or above these literature baselines.
                     </p>
                   </div>
@@ -606,8 +561,11 @@ export default function DiseaseScanPage() {
 
         {/* 🧪 RIGHT CARD: PIPELINE ASSESSMENT RESULT */}
         <div className="col-lg-5">
-          <div className="asymmetric-card p-4 h-100">
-            <div>
+          <div
+            className="card disease-results-card position-relative overflow-hidden h-100"
+          >
+            <div className="position-absolute top-0 start-0 end-0 bg-info" style={{ height: 4 }} />
+            <div className="card-body p-4">
               {shouldShowAdditionalPrompt ? (
                 <div className="alert alert-warning border-warning d-flex flex-column gap-3 rounded-3 mb-0">
                   <strong>No WSSV detected neither Shrimp is Healthy enable additional disease detection features?</strong>
@@ -692,7 +650,7 @@ export default function DiseaseScanPage() {
                     <div className="mb-3">
                       <div className="d-flex align-items-center justify-content-between mb-1">
                         <h4 className="fw-bold mb-0 text-primary">{diseaseTitle}</h4>
-                        <span className="badge bg-light text-dark border d-flex align-items-center gap-1">
+                        <span className="badge disease-model-badge d-flex align-items-center gap-1">
                           <FaRobot className="text-primary" /> {modelUsed}
                         </span>
                       </div>
@@ -713,7 +671,7 @@ export default function DiseaseScanPage() {
 
                   {/* Disease Class Probabilities Breakdown */}
                   {Object.keys(probabilities).length > 0 && (
-                    <div className="card bg-light border-0 mb-3 rounded-4">
+                    <div className="card disease-probability-card mb-3">
                       <div className="card-body p-3">
                         <h6 className="fw-bold small text-uppercase text-muted mb-2">Class Probability Breakdown</h6>
                         {Object.entries(probabilities).map(([diseaseName, probScore]) => (
@@ -752,8 +710,8 @@ export default function DiseaseScanPage() {
       </div>
 
       {/* 📜 DETECTION & PIPELINE HISTORY TABLE WITH FILTER TOOLSTRIP & EXPORT PDF */}
-      <div className="asymmetric-card p-4 mt-4">
-        <div>
+      <div className="card border-0 shadow-sm rounded-4 mt-4">
+        <div className="card-body p-4">
           <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
             <div>
               <h5 className="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
@@ -765,14 +723,14 @@ export default function DiseaseScanPage() {
             <div className="d-flex align-items-center gap-2 flex-wrap ms-auto">
               {/* Search Bar */}
               <div
-                className="input-group bg-white border border-secondary border-opacity-25 rounded-pill shadow-xs overflow-hidden d-flex align-items-center px-3"
+                className="input-group disease-history-search overflow-hidden d-flex align-items-center px-3"
                 style={{ width: 190, height: 36 }}
               >
                 <span className="text-muted extra-small me-2 d-flex align-items-center"><FaSearch /></span>
                 <input
                   type="text"
-                  className="form-control form-control-sm border-0 shadow-none bg-transparent p-0 extra-small fw-medium text-dark"
-                  placeholder="Search history..."
+                  className="form-control form-control-sm border-0 shadow-none bg-transparent p-0 extra-small fw-medium"
+                  placeholder="Search log..."
                   value={historySearch}
                   onChange={(e) => setHistorySearch(e.target.value)}
                   style={{ height: '100%' }}
@@ -787,11 +745,11 @@ export default function DiseaseScanPage() {
                 onChange={(e) => setHistoryStatusFilter(e.target.value)}
                 aria-label="Filter scan history by status"
               >
-                <option value="all" className="bg-white text-dark">All Statuses</option>
-                <option value="Healthy" className="bg-white text-dark">Healthy</option>
-                <option value="Diseased" className="bg-white text-dark">Diseased</option>
-                <option value="Uncertain" className="bg-white text-dark">Uncertain</option>
-                <option value="Poor Image Quality" className="bg-white text-dark">Poor Quality</option>
+                <option value="all">All Statuses</option>
+                <option value="Healthy">Healthy</option>
+                <option value="Diseased">Diseased</option>
+                <option value="Uncertain">Uncertain</option>
+                <option value="Poor Image Quality">Poor Quality</option>
               </select>
 
               {/* Export PDF Button */}

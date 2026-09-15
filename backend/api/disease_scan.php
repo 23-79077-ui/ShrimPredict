@@ -60,6 +60,21 @@ if (!isset($_FILES['image']) || !is_uploaded_file($_FILES['image']['tmp_name']))
     exit;
 }
 
+$previewResult = callShrimpCountApi($_FILES['image']['tmp_name']);
+$previewShrimpDetected = $previewResult['shrimp_detected'] ?? $previewResult['valid_shrimp_present'] ?? null;
+$hasExplicitPreviewNoShrimp = array_key_exists('shrimp_detected', $previewResult) && $previewResult['shrimp_detected'] === false
+    || array_key_exists('valid_shrimp_present', $previewResult) && $previewResult['valid_shrimp_present'] === false;
+
+if ($hasExplicitPreviewNoShrimp) {
+    http_response_code(400);
+    echo json_encode([
+        'success' => false,
+        'message' => 'No shrimp detected. Please upload a clear image containing a shrimp.',
+        'preview' => $previewResult,
+    ]);
+    exit;
+}
+
 $aiUrl = getenv('SHRIMP_AI_API_URL') ?: 'http://127.0.0.1:5001/predict';
 
 if (!function_exists('curl_init')) {
@@ -116,8 +131,6 @@ $safeName = preg_replace('/[^A-Za-z0-9_.-]/', '_', basename($_FILES['image']['na
 $targetName = time() . '_' . bin2hex(random_bytes(4)) . '_' . $safeName;
 $targetPath = $uploadDir . $targetName;
 $imagePath = 'uploads/disease_scans/' . $targetName;
-
-$previewResult = callShrimpCountApi($_FILES['image']['tmp_name']);
 
 if (!$previewResult['success']) {
     // Allow scan flow to continue even if preview detection is slightly unavailable,

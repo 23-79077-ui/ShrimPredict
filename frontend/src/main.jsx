@@ -24,7 +24,7 @@ export const applyAppTheme = (themeName) => {
 };
 
 // Initialize Dark/Light theme on startup
-const savedTheme = localStorage.getItem('shrim_theme') || 'light';
+const savedTheme = localStorage.getItem('shrim_theme') || 'dark';
 applyAppTheme(savedTheme);
 
 ReactDOM.createRoot(document.getElementById('root')).render(
