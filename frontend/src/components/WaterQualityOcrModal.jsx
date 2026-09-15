@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { createWorker } from 'tesseract.js';
+import cvModule from '@techstark/opencv-js';
 import {
   FaCamera,
   FaFileAlt,
@@ -19,6 +20,58 @@ import {
 } from 'react-icons/fa';
 import Swal from 'sweetalert2';
 import api from '../services/api';
+
+const TELEMETRY_NUMBER = '([-+]?\\d+(?:[.,]\\d+)?)';
+
+const toNumber = (value) => {
+  const parsed = Number.parseFloat(value.replace(',', '.'));
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const findTelemetryValue = (text, patterns) => {
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    const value = match ? toNumber(match[1]) : null;
+    if (value !== null) return value;
+  }
+  return null;
+};
+
+export function parseTelemetryText(rawText = '') {
+  const text = rawText.replace(/,/g, '.');
+  return {
+    do: findTelemetryValue(text, [
+      new RegExp(`(?:dissolved\\s+oxygen|d\\.?\\s*o\\.?|\\bdo\\b)\\s*[:=]?\\s*${TELEMETRY_NUMBER}`, 'i'),
+      new RegExp(`${TELEMETRY_NUMBER}\\s*mg\\s*/?\\s*l`, 'i'),
+    ]),
+    temp: findTelemetryValue(text, [
+      new RegExp(`(?:water\\s+)?temp(?:erature)?\\.?\\s*[:=]?\\s*${TELEMETRY_NUMBER}`, 'i'),
+      new RegExp(`${TELEMETRY_NUMBER}\\s*(?:°?c|celsius)`, 'i'),
+    ]),
+    ph: findTelemetryValue(text, [
+      new RegExp(`\\bp\\s*\\.?\\s*h\\b\\s*[:=]?\\s*${TELEMETRY_NUMBER}`, 'i'),
+    ]),
+    salinity: findTelemetryValue(text, [
+      new RegExp(`(?:salinity|sal|salt)\\s*[:=]?\\s*${TELEMETRY_NUMBER}`, 'i'),
+      new RegExp(`${TELEMETRY_NUMBER}\\s*ppt`, 'i'),
+    ]),
+  };
+}
+
+export async function processOCR(imageFile) {
+  if (!imageFile) throw new Error('An image is required for OCR processing.');
+
+  const worker = await createWorker('eng');
+  try {
+    await worker.setParameters({
+      tessedit_char_whitelist: '0123456789.DOdoTEMPtemppHSALsalmgLCPT%:/- ',
+    });
+    const result = await worker.recognize(imageFile);
+    return result.data.text || '';
+  } finally {
+    await worker.terminate();
+  }
+}
 
 // Recommended aquaculture water parameters for Penaeus vannamei
 const PARAM_GUIDELINES = {
@@ -72,6 +125,7 @@ export default function WaterQualityOcrModal({
   const [activeParamTarget, setActiveParamTarget] = useState('all'); // 'do' | 'temp' | 'ph' | 'salinity' | 'all'
 
   // Image & Camera States
+  const [imagePayload, setImagePayload] = useState(null);
   const [imageFile, setImageFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState('');
   const [isCameraActive, setIsCameraActive] = useState(false);
@@ -85,6 +139,13 @@ export default function WaterQualityOcrModal({
   const [ocrStatusText, setOcrStatusText] = useState('');
   const [ocrConfidence, setOcrConfidence] = useState(null);
   const [rawOcrText, setRawOcrText] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [telemetryData, setTelemetryData] = useState({
+    do: null,
+    temp: null,
+    ph: null,
+    salinity: null,
+  });
 
   // Verified Data Form States
   const [verifiedValues, setVerifiedValues] = useState({
@@ -117,11 +178,14 @@ export default function WaterQualityOcrModal({
   useEffect(() => {
     if (!isOpen) {
       stopCamera();
+      setImagePayload(null);
       setImageFile(null);
       setPreviewUrl('');
       setIsScanning(false);
       setRawOcrText('');
       setOcrConfidence(null);
+      setIsProcessing(false);
+      setTelemetryData({ do: null, temp: null, ph: null, salinity: null });
       setVerifiedValues({ do: '', temp: '', ph: '', salinity: '', notes: '' });
     }
   }, [isOpen, stopCamera]);
@@ -169,11 +233,10 @@ export default function WaterQualityOcrModal({
     canvas.toBlob((blob) => {
       if (!blob) return;
       const file = new File([blob], `meter_capture_${Date.now()}.jpg`, { type: 'image/jpeg' });
+      setImagePayload(file);
       setImageFile(file);
-      setPreviewUrl(canvas.toDataURL('image/jpeg'));
       stopCamera();
-      // Run OCR automatically upon snapshot
-      processImageWithOcr(canvas.toDataURL('image/jpeg'));
+      processImageSource(canvas.toDataURL('image/jpeg'));
     }, 'image/jpeg', 0.95);
   };
 
@@ -181,11 +244,166 @@ export default function WaterQualityOcrModal({
   const handleFileUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setImagePayload(file);
     setImageFile(file);
     const url = URL.createObjectURL(file);
-    setPreviewUrl(url);
     stopCamera();
-    processImageWithOcr(url);
+    processImageSource(url);
+  };
+
+  const waitForOpenCv = async () => cvModule;
+
+  const distanceBetweenPoints = (first, second) => Math.hypot(
+    second.x - first.x,
+    second.y - first.y
+  );
+
+  const orderScreenPoints = (points) => {
+    const sums = points.map((point) => point.x + point.y);
+    const differences = points.map((point) => point.x - point.y);
+
+    return [
+      points[sums.indexOf(Math.min(...sums))],
+      points[differences.indexOf(Math.max(...differences))],
+      points[sums.indexOf(Math.max(...sums))],
+      points[differences.indexOf(Math.min(...differences))],
+    ];
+  };
+
+  const autoCropDeviceScreen = async (imageElement) => {
+    const openCv = await waitForOpenCv();
+    const outputCanvas = canvasRef.current;
+
+    if (!imageElement || !outputCanvas) {
+      throw new Error('The source image or processing canvas is unavailable.');
+    }
+
+    const source = openCv.imread(imageElement);
+    const gray = new openCv.Mat();
+    const blurred = new openCv.Mat();
+    const edges = new openCv.Mat();
+    const contours = new openCv.MatVector();
+    const hierarchy = new openCv.Mat();
+    const candidates = [];
+
+    try {
+      openCv.cvtColor(source, gray, openCv.COLOR_RGBA2GRAY);
+      openCv.GaussianBlur(gray, blurred, new openCv.Size(5, 5), 0, 0, openCv.BORDER_DEFAULT);
+      openCv.Canny(blurred, edges, 50, 150);
+      openCv.findContours(edges, contours, hierarchy, openCv.RETR_EXTERNAL, openCv.CHAIN_APPROX_SIMPLE);
+
+      for (let index = 0; index < contours.size(); index += 1) {
+        const contour = contours.get(index);
+        const area = openCv.contourArea(contour);
+        const perimeter = openCv.arcLength(contour, true);
+        const polygon = new openCv.Mat();
+
+        openCv.approxPolyDP(contour, polygon, 0.02 * perimeter, true);
+
+        if (area > 1000 && polygon.rows === 4 && openCv.isContourConvex(polygon)) {
+          const points = [];
+          for (let pointIndex = 0; pointIndex < 4; pointIndex += 1) {
+            points.push({
+              x: polygon.intAt(pointIndex, 0),
+              y: polygon.intAt(pointIndex, 1),
+            });
+          }
+          candidates.push({ area, points });
+        }
+
+        polygon.delete();
+        contour.delete();
+      }
+
+      if (!candidates.length) {
+        openCv.imshow(outputCanvas, source);
+        return outputCanvas.toDataURL('image/jpeg', 0.95);
+      }
+
+      candidates.sort((first, second) => second.area - first.area);
+      const points = orderScreenPoints(candidates[0].points);
+      const width = Math.max(
+        distanceBetweenPoints(points[0], points[1]),
+        distanceBetweenPoints(points[3], points[2])
+      );
+      const height = Math.max(
+        distanceBetweenPoints(points[0], points[3]),
+        distanceBetweenPoints(points[1], points[2])
+      );
+
+      const destinationWidth = Math.max(1, Math.round(width));
+      const destinationHeight = Math.max(1, Math.round(height));
+      const sourcePoints = openCv.matFromArray(
+        4,
+        1,
+        openCv.CV_32FC2,
+        points.flatMap((point) => [point.x, point.y])
+      );
+      const destinationPoints = openCv.matFromArray(
+        4,
+        1,
+        openCv.CV_32FC2,
+        [
+          0, 0,
+          destinationWidth - 1, 0,
+          destinationWidth - 1, destinationHeight - 1,
+          0, destinationHeight - 1,
+        ]
+      );
+      const transform = openCv.getPerspectiveTransform(sourcePoints, destinationPoints);
+      const cropped = new openCv.Mat();
+
+      openCv.warpPerspective(
+        source,
+        cropped,
+        transform,
+        new openCv.Size(destinationWidth, destinationHeight),
+        openCv.INTER_LINEAR,
+        openCv.BORDER_CONSTANT,
+        new openCv.Scalar()
+      );
+      openCv.imshow(outputCanvas, cropped);
+
+      sourcePoints.delete();
+      destinationPoints.delete();
+      transform.delete();
+      cropped.delete();
+
+      return outputCanvas.toDataURL('image/jpeg', 0.95);
+    } finally {
+      source.delete();
+      gray.delete();
+      blurred.delete();
+      edges.delete();
+      contours.delete();
+      hierarchy.delete();
+    }
+  };
+
+  const processImageSource = (imageSource) => {
+    const imageElement = new Image();
+    imageElement.onload = async () => {
+      setPreviewUrl(imageSource);
+      setOcrStatusText('Detecting LCD screen automatically...');
+      setIsScanning(true);
+      setIsProcessing(true);
+
+      try {
+        const croppedDataUrl = await autoCropDeviceScreen(imageElement);
+        setPreviewUrl(croppedDataUrl);
+        await processImageWithOcr(croppedDataUrl);
+      } catch (error) {
+        console.error('Automatic LCD detection failed:', error);
+        await processImageWithOcr(imageSource);
+      } finally {
+        setIsScanning(false);
+        setIsProcessing(false);
+      }
+    };
+    imageElement.onerror = () => {
+      setOcrStatusText('Unable to load the image for OCR.');
+    };
+    imageElement.src = imageSource;
   };
 
   // Preprocess Image on Canvas for LCD and Paper Text Contrast
@@ -220,6 +438,17 @@ export default function WaterQualityOcrModal({
           data[i + 2] = adjusted;
         }
         ctx.putImageData(imgData, 0, 0);
+
+        // Slightly blur the enhanced LCD strokes so broken segments bleed together.
+        const softenedCanvas = document.createElement('canvas');
+        softenedCanvas.width = canvas.width;
+        softenedCanvas.height = canvas.height;
+        const softenedContext = softenedCanvas.getContext('2d');
+        softenedContext.drawImage(canvas, 0, 0);
+        ctx.filter = 'blur(0.7px)';
+        ctx.drawImage(softenedCanvas, 0, 0);
+        ctx.filter = 'none';
+
         resolve(canvas.toDataURL('image/jpeg', 0.9));
       };
       img.onerror = () => resolve(imageSrc);
@@ -229,69 +458,91 @@ export default function WaterQualityOcrModal({
 
   // Intelligent OCR Parsing for Handheld Meter Displays & Logsheets
   const parseOcrExtractedText = (text, targetParam, mode) => {
-    const cleaned = text.replace(/,/g, '.');
-    const numbersFound = [];
-    // Extract floating point or integer numbers
-    const numRegex = /\b\d+(?:\.\d+)?\b/g;
-    let match;
-    while ((match = numRegex.exec(cleaned)) !== null) {
-      const n = parseFloat(match[0]);
-      if (!isNaN(n)) numbersFound.push(n);
-    }
-
+    const cleaned = String(text || '').replace(/,/g, '.');
+    const numRegex = /[-+]?\d+(?:\.\d+)?/g;
+    const numbersFound = (cleaned.match(numRegex) || [])
+      .map((value) => Number.parseFloat(value))
+      .filter((value) => Number.isFinite(value));
     const updates = {};
+    const usedValues = new Set();
 
-    // 1. Direct LCD Single Parameter Mode
+    const formatValue = (field, value) => {
+      if (field === 'do') return value.toFixed(2);
+      if (field === 'temp' || field === 'salinity') return value.toFixed(1);
+      return value.toFixed(2);
+    };
+
+    const assignValue = (field, value) => {
+      if (value === undefined || updates[field] !== undefined) return;
+      updates[field] = formatValue(field, value);
+      usedValues.add(value);
+    };
+
+    // Direct LCD single-parameter mode: use the first value in that parameter's range.
     if (mode === 'device_screen' && targetParam !== 'all') {
-      const candidate = numbersFound.find((num) => {
-        const g = PARAM_GUIDELINES[targetParam];
-        return g ? num >= g.min && num <= g.max : true;
-      });
-      if (candidate !== undefined) {
-        updates[targetParam] = candidate.toFixed(targetParam === 'temp' || targetParam === 'ph' ? 1 : 2);
-      } else if (numbersFound.length > 0) {
-        updates[targetParam] = numbersFound[0].toString();
-      }
+      const guideline = PARAM_GUIDELINES[targetParam];
+      const candidate = numbersFound.find((value) => (
+        guideline ? value >= guideline.min && value <= guideline.max : true
+      ));
+      if (candidate !== undefined) assignValue(targetParam, candidate);
       return updates;
     }
 
-    // 2. Multi-Parameter Meter or Physical Daily Log Sheet Parsing
-    // Look for contextual keywords first (e.g. DO, D.O., mg/L, Temp, °C, pH, Sal, ppt)
-    const lines = cleaned.split('\n');
-    lines.forEach((line) => {
-      const lower = line.toLowerCase();
-      const lineNums = (line.match(numRegex) || []).map(Number).filter((n) => !isNaN(n));
-      if (!lineNums.length) return;
+    const keywordRules = [
+      {
+        field: 'do',
+        matches: (line) => /dissolved|\bd\.?\s*o\.?\b|\bdo\b|mg\s*\/?\s*l/i.test(line),
+        min: 3,
+        max: 12,
+      },
+      {
+        field: 'temp',
+        matches: (line) => /temp|temperature|celsius|°\s*c|\d[.,]\d+\s*c\b/i.test(line),
+        min: 24,
+        max: 36,
+      },
+      {
+        field: 'ph',
+        matches: (line) => /\bp\s*\.?\s*h\b|\bp\.h\b/i.test(line),
+        min: 6.8,
+        max: 9.2,
+      },
+      {
+        field: 'salinity',
+        matches: (line) => /salinity|\bsal\b|salt|ppt/i.test(line),
+        min: 10,
+        max: 38,
+      },
+    ];
 
-      if (lower.includes('do') || lower.includes('dissolved') || lower.includes('mg/l') || lower.includes('d.o')) {
-        const doVal = lineNums.find((n) => n >= 1.0 && n <= 15.0);
-        if (doVal !== undefined && !updates.do) updates.do = doVal.toFixed(2);
-      }
-      if (lower.includes('temp') || lower.includes('°c') || lower.includes('cel') || lower.includes('c')) {
-        const tempVal = lineNums.find((n) => n >= 20.0 && n <= 39.0);
-        if (tempVal !== undefined && !updates.temp) updates.temp = tempVal.toFixed(1);
-      }
-      if (lower.includes('ph') || lower.includes('p.h')) {
-        const phVal = lineNums.find((n) => n >= 5.5 && n <= 10.0);
-        if (phVal !== undefined && !updates.ph) updates.ph = phVal.toFixed(2);
-      }
-      if (lower.includes('sal') || lower.includes('ppt') || lower.includes('salt')) {
-        const salVal = lineNums.find((n) => n >= 5.0 && n <= 45.0);
-        if (salVal !== undefined && !updates.salinity) updates.salinity = salVal.toFixed(1);
-      }
+    // Prefer the first valid number on each labeled line, including mashed values such as 28.2C.
+    cleaned.split('\n').forEach((line) => {
+      const lineNumbers = (line.match(numRegex) || [])
+        .map((value) => Number.parseFloat(value))
+        .filter((value) => Number.isFinite(value));
+      if (!lineNumbers.length) return;
+
+      keywordRules.forEach(({ field, matches, min, max }) => {
+        if (matches(line)) {
+          const candidate = lineNumbers.find((value) => value >= min && value <= max);
+          assignValue(field, candidate);
+        }
+      });
     });
 
-    // Heuristic fallback for numbers based on typical physiological bounds
-    numbersFound.forEach((num) => {
-      if (!updates.do && num >= 3.0 && num <= 12.0) {
-        updates.do = num.toFixed(2);
-      } else if (!updates.temp && num >= 24.0 && num <= 36.0) {
-        updates.temp = num.toFixed(1);
-      } else if (!updates.ph && num >= 6.8 && num <= 9.2 && num !== parseFloat(updates.do)) {
-        updates.ph = num.toFixed(2);
-      } else if (!updates.salinity && num >= 10.0 && num <= 38.0 && num !== parseFloat(updates.temp)) {
-        updates.salinity = num.toFixed(1);
-      }
+    // Fallback for hallucinated labels. Do not reuse a value already assigned to another field.
+    const fallbackRules = [
+      { field: 'do', min: 3, max: 12 },
+      { field: 'temp', min: 24, max: 36 },
+      { field: 'ph', min: 6.8, max: 9.2 },
+      { field: 'salinity', min: 10, max: 38 },
+    ];
+
+    fallbackRules.forEach(({ field, min, max }) => {
+      const candidate = numbersFound.find((value) => (
+        !usedValues.has(value) && value >= min && value <= max
+      ));
+      assignValue(field, candidate);
     });
 
     return updates;
@@ -300,6 +551,7 @@ export default function WaterQualityOcrModal({
   // Run Tesseract.js Worker
   const processImageWithOcr = async (imageSrc) => {
     setIsScanning(true);
+    setIsProcessing(true);
     setScanProgress(10);
     setOcrStatusText('Preprocessing image contrast & thresholding...');
 
@@ -308,29 +560,23 @@ export default function WaterQualityOcrModal({
       setScanProgress(30);
       setOcrStatusText('Initializing Optical Character Recognition (OCR)...');
 
-      const worker = await createWorker('eng');
       setScanProgress(55);
       setOcrStatusText('Detecting LCD digits & data patterns...');
-
-      // Whitelist common digits, decimals, and parameter symbols
-      await worker.setParameters({
-        tessedit_char_whitelist: '0123456789.DOdoTEMPtemppHSALsalmgLCPT%:/- \n',
-      });
-
-      const ret = await worker.recognize(processedSrc);
-      await worker.terminate();
+      const text = await processOCR(processedSrc);
+      console.log("RAW OCR TEXT:", text);
 
       setScanProgress(90);
       setOcrStatusText('Parsing extracted telemetry values...');
 
-      const text = ret.data.text || '';
-      const conf = ret.data.confidence || 85;
+      const conf = 85;
 
       setRawOcrText(text);
       setOcrConfidence(conf);
 
       // Parse values according to mode
       const extractedUpdates = parseOcrExtractedText(text, activeParamTarget, captureMode);
+      const parsedTelemetry = parseTelemetryText(text);
+      setTelemetryData((prev) => ({ ...prev, ...parsedTelemetry }));
 
       setVerifiedValues((prev) => ({
         ...prev,
@@ -374,10 +620,23 @@ export default function WaterQualityOcrModal({
       });
     } finally {
       setIsScanning(false);
+      setIsProcessing(false);
     }
   };
 
   // Commit & Submit Verified Record
+  const updateTelemetryField = (field, value) => {
+    setVerifiedValues((prev) => ({ ...prev, [field]: value }));
+    setTelemetryData((prev) => ({
+      ...prev,
+      [field]: value === '' ? null : Number.parseFloat(value),
+    }));
+  };
+
+  const isTelemetryComplete = Object.values(telemetryData).every(
+    (value) => typeof value === 'number' && Number.isFinite(value)
+  );
+
   const handleCommitRecord = async (e) => {
     e.preventDefault();
 
@@ -391,7 +650,7 @@ export default function WaterQualityOcrModal({
     const phVal = parseFloat(verifiedValues.ph);
     const salVal = parseFloat(verifiedValues.salinity);
 
-    if (isNaN(doVal) || isNaN(tempVal) || isNaN(phVal) || isNaN(salVal)) {
+    if (!isTelemetryComplete || isNaN(doVal) || isNaN(tempVal) || isNaN(phVal) || isNaN(salVal)) {
       Swal.fire({
         icon: 'warning',
         title: 'Incomplete Parameters',
@@ -716,7 +975,7 @@ export default function WaterQualityOcrModal({
                       className="btn btn-sm btn-success rounded-pill px-3.5 py-1.5 fw-bold d-flex align-items-center gap-1.5 shadow-sm"
                       onClick={captureSnapshot}
                     >
-                      <FaCheckCircle size={13} /> Capture & Run OCR
+                      <FaCheckCircle size={13} /> Capture &amp; Scan
                     </button>
                   )}
 
@@ -736,7 +995,7 @@ export default function WaterQualityOcrModal({
                   <button
                     type="button"
                     className="btn btn-sm btn-outline-primary rounded-pill px-3 py-1.5 extra-small fw-bold d-flex align-items-center gap-1"
-                    onClick={() => processImageWithOcr(previewUrl)}
+                    onClick={() => processImageSource(previewUrl)}
                     disabled={isScanning}
                   >
                     <FaSync size={11} className={isScanning ? 'fa-spin' : ''} /> Re-scan Image
@@ -781,7 +1040,7 @@ export default function WaterQualityOcrModal({
                         className="form-control form-control-sm fw-extrabold text-dark"
                         placeholder="e.g. 6.50"
                         value={verifiedValues.do}
-                        onChange={(e) => setVerifiedValues({ ...verifiedValues, do: e.target.value })}
+                        onChange={(e) => updateTelemetryField('do', e.target.value)}
                       />
                       <div className="mt-2">
                         <span className={`badge ${getParameterStatus('do', verifiedValues.do).badgeClass} extra-small w-100 text-truncate`}>
@@ -809,7 +1068,7 @@ export default function WaterQualityOcrModal({
                         className="form-control form-control-sm fw-extrabold text-dark"
                         placeholder="e.g. 28.5"
                         value={verifiedValues.temp}
-                        onChange={(e) => setVerifiedValues({ ...verifiedValues, temp: e.target.value })}
+                        onChange={(e) => updateTelemetryField('temp', e.target.value)}
                       />
                       <div className="mt-2">
                         <span className={`badge ${getParameterStatus('temp', verifiedValues.temp).badgeClass} extra-small w-100 text-truncate`}>
@@ -837,7 +1096,7 @@ export default function WaterQualityOcrModal({
                         className="form-control form-control-sm fw-extrabold text-dark"
                         placeholder="e.g. 7.85"
                         value={verifiedValues.ph}
-                        onChange={(e) => setVerifiedValues({ ...verifiedValues, ph: e.target.value })}
+                        onChange={(e) => updateTelemetryField('ph', e.target.value)}
                       />
                       <div className="mt-2">
                         <span className={`badge ${getParameterStatus('ph', verifiedValues.ph).badgeClass} extra-small w-100 text-truncate`}>
@@ -865,7 +1124,7 @@ export default function WaterQualityOcrModal({
                         className="form-control form-control-sm fw-extrabold text-dark"
                         placeholder="e.g. 20.0"
                         value={verifiedValues.salinity}
-                        onChange={(e) => setVerifiedValues({ ...verifiedValues, salinity: e.target.value })}
+                        onChange={(e) => updateTelemetryField('salinity', e.target.value)}
                       />
                       <div className="mt-2">
                         <span className={`badge ${getParameterStatus('salinity', verifiedValues.salinity).badgeClass} extra-small w-100 text-truncate`}>
@@ -911,7 +1170,7 @@ export default function WaterQualityOcrModal({
                       background: 'linear-gradient(135deg, #0B2C5F 0%, #0284C7 100%)',
                       border: 'none',
                     }}
-                    disabled={isSubmitting || isScanning}
+                    disabled={isSubmitting || isScanning || isProcessing || !isTelemetryComplete}
                   >
                     {isSubmitting ? (
                       <>
