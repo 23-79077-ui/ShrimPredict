@@ -109,9 +109,18 @@ export default function MyPondPage() {
           date: todayDateStr,
         },
       });
+
+      const newData = res.data && typeof res.data === 'object'
+        ? {
+            ...res.data,
+            is_verified: Boolean(res.data.is_verified ?? res.data.record),
+            record: res.data.record || null,
+          }
+        : { is_verified: false, record: null };
+
       setWaterQualityStatus((prev) => ({
         ...prev,
-        [pondId]: res.data || { is_verified: false, record: null },
+        [pondId]: newData,
       }));
     } catch (e) {
       console.error('Error fetching water quality status:', e);
@@ -182,7 +191,21 @@ export default function MyPondPage() {
     fetchTodayLogs(selectedPondId);
     fetchWaterQualityStatus(selectedPondId);
 
-    const handleUpdate = () => {
+    const handleUpdate = (event) => {
+      const { pond_id, record } = event?.detail || {};
+
+      if (pond_id && String(pond_id) === String(selectedPondId)) {
+        setWaterQualityStatus((prev) => ({
+          ...prev,
+          [pond_id]: {
+            ...(prev[pond_id] || {}),
+            is_verified: true,
+            record: record || prev[pond_id]?.record || null,
+            data: record || prev[pond_id]?.data || null,
+          },
+        }));
+      }
+
       fetchTodayLogs(selectedPondId);
       fetchWaterQualityStatus(selectedPondId);
     };
