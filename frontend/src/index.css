@@ -5029,7 +5029,7 @@ body.dark-theme .saas-layout-canvas {
   color: #F0F6FF;
 }
 
-/* 🌟 FLOATING TOP NAVIGATION DOCK BAR (Matching Landing Page Nav) */
+/* 🌟 FLOATING TOP NAVIGATION DOCK BAR (Executive 2-Tier Architecture) */
 .top-dock-bar {
   position: sticky;
   top: 14px;
@@ -5037,29 +5037,56 @@ body.dark-theme .saas-layout-canvas {
   margin: 0 auto 1.5rem auto;
   max-width: 1480px;
   width: calc(100% - 2rem);
-  background: rgba(255, 255, 255, 0.94);
+  background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(11, 44, 95, 0.1);
+  border: 1px solid rgba(11, 44, 95, 0.08);
   border-radius: 20px;
-  box-shadow: 0 10px 30px rgba(11, 44, 95, 0.06), 0 2px 8px rgba(11, 44, 95, 0.03);
-  padding: 0.65rem 1.25rem;
+  box-shadow: 0 10px 32px rgba(11, 44, 95, 0.06), 0 2px 8px rgba(11, 44, 95, 0.03);
+  padding: 0.75rem 1.25rem 0.65rem 1.25rem;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   font-family: 'Poppins', sans-serif;
 }
 
 [data-theme="dark"] .top-dock-bar,
 body.dark-theme .top-dock-bar {
-  background: rgba(10, 19, 38, 0.90);
-  border: 1px solid rgba(56, 189, 248, 0.22);
+  background: rgba(10, 19, 38, 0.94);
+  border: 1px solid rgba(56, 189, 248, 0.20);
   box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.55);
+}
+
+/* Tier 1 Header Line */
+.top-dock-topbar {
+  min-height: 42px;
+}
+
+/* Subtle Hairline Divider */
+.top-dock-divider {
+  height: 1px;
+  width: 100%;
+  background: linear-gradient(90deg, rgba(11, 44, 95, 0.03) 0%, rgba(11, 44, 95, 0.09) 30%, rgba(11, 44, 95, 0.09) 70%, rgba(11, 44, 95, 0.03) 100%);
+  margin: 0.65rem 0 0.55rem 0;
+}
+
+[data-theme="dark"] .top-dock-divider,
+body.dark-theme .top-dock-divider {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0.08) 30%, rgba(255, 255, 255, 0.08) 70%, rgba(255, 255, 255, 0.02) 100%);
+}
+
+/* Navigation Row (Tier 2) */
+.top-dock-nav-row {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.top-dock-nav-row::-webkit-scrollbar {
+  display: none;
 }
 
 /* Dock Pill Navigation Links */
 .dock-nav-pill {
   border-radius: 9999px;
-  padding: 0.45rem 0.9rem;
-  font-size: 0.84rem;
+  padding: 0.48rem 1rem;
+  font-size: 0.835rem;
   font-weight: 600;
   color: #475569;
   text-decoration: none;
@@ -5067,14 +5094,16 @@ body.dark-theme .top-dock-bar {
   align-items: center;
   gap: 0.5rem;
   border: 1px solid transparent;
-  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
   font-family: 'Poppins', sans-serif;
+  letter-spacing: -0.01em;
 }
 
 .dock-nav-pill:hover {
   color: #0B2C5F;
-  background: rgba(11, 44, 95, 0.06);
+  background: rgba(11, 44, 95, 0.05);
+  border-color: rgba(11, 44, 95, 0.08);
   transform: translateY(-1px);
 }
 
@@ -5085,9 +5114,10 @@ body.dark-theme .top-dock-bar {
 [data-theme="dark"] .dock-nav-pill:hover {
   color: #F8FAFC;
   background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
-/* Active Pill Highlight - Exactly matches .nav-pill-btn.active from Landing Page */
+/* Active Pill Highlight - Matches .nav-pill-btn.active */
 .dock-nav-pill.active {
   background: #0B2C5F !important;
   color: #FFFFFF !important;
@@ -5106,6 +5136,42 @@ body.dark-theme .dock-nav-pill.active {
   color: #FFFFFF !important;
   border: 1px solid #38BDF8 !important;
   box-shadow: 0 0 16px rgba(56, 189, 248, 0.4) !important;
+}
+
+/* Live Operational Pulse Badge */
+.dock-live-indicator {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #16A34A;
+  background: rgba(22, 163, 74, 0.08);
+  border: 1px solid rgba(22, 163, 74, 0.2);
+  padding: 0.22rem 0.65rem;
+  border-radius: 9999px;
+  letter-spacing: 0.02em;
+}
+
+.dock-live-indicator .pulse-dot {
+  width: 6.5px;
+  height: 6.5px;
+  border-radius: 50%;
+  background-color: #16A34A;
+  box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.7);
+  animation: dockPulse 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
+}
+
+@keyframes dockPulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 6px rgba(22, 163, 74, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(22, 163, 74, 0);
+  }
 }
 
 /* 🌟 ASYMMETRICAL MASONRY CARD (Matching .stat-box-modern on Landing Page) */

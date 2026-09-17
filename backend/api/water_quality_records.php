@@ -131,7 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         // Mode A: Fetch single pond's status for the specified date
         if ($pondId > 0 && !$fetchAll) {
             $stmt = $conn->prepare('
-                SELECT wqr.*, p.pond_name, p.location
+                SELECT wqr.*, p.pond_name
                 FROM water_quality_records wqr
                 LEFT JOIN ponds p ON wqr.pond_id = p.id
                 WHERE wqr.pond_id = :pond_id AND wqr.record_date = :record_date
@@ -155,7 +155,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         if ($caretakerId > 0 && !$fetchAll) {
             // Find all ponds assigned to this caretaker
             $pondStmt = $conn->prepare('
-                SELECT DISTINCT p.id, p.pond_name, p.status, p.location,
+                SELECT DISTINCT p.id, p.pond_name, p.status,
                        p.dissolved_oxygen, p.temperature, p.ph_level, p.salinity
                 FROM ponds p
                 INNER JOIN caretaker_ponds cp ON p.id = cp.pond_id
@@ -171,7 +171,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 $legacyStmt->execute([':user_id' => $caretakerId]);
                 $legacyPondId = (int)$legacyStmt->fetchColumn();
                 if ($legacyPondId > 0) {
-                    $pStmt = $conn->prepare('SELECT id, pond_name, status, location, dissolved_oxygen, temperature, ph_level, salinity FROM ponds WHERE id = :pid');
+                    $pStmt = $conn->prepare('SELECT id, pond_name, status, dissolved_oxygen, temperature, ph_level, salinity FROM ponds WHERE id = :pid');
                     $pStmt->execute([':pid' => $legacyPondId]);
                     $assignedPonds = $pStmt->fetchAll(PDO::FETCH_ASSOC);
                 }
@@ -197,7 +197,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 $checklist[] = [
                     'pond_id' => $pid,
                     'pond_name' => $pond['pond_name'],
-                    'location' => $pond['location'],
                     'current_status' => $pond['status'],
                     'is_verified_today' => $isVerified,
                     'today_record' => $todayRecord ?: null,
@@ -224,7 +223,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
         // Mode C: Admin list / History
         $query = '
-            SELECT wqr.*, p.pond_name, p.location
+            SELECT wqr.*, p.pond_name
             FROM water_quality_records wqr
             LEFT JOIN ponds p ON wqr.pond_id = p.id
             WHERE 1=1

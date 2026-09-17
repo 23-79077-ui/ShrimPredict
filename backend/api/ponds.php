@@ -44,6 +44,15 @@ function ensurePondMonitoringColumns($conn) {
             } catch (Throwable $e) {}
         }
     }
+
+    if (in_array('location', $columns, true)) {
+        try {
+            $conn->exec('ALTER TABLE ponds DROP COLUMN location');
+        } catch (Throwable $e) {}
+    }
+    try {
+        $conn->exec("ALTER TABLE ponds MODIFY COLUMN status VARCHAR(20) DEFAULT 'Unmonitored'");
+    } catch (Throwable $e) {}
 }
 
 function tableExists($conn, $tableName) {
@@ -145,17 +154,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 : (is_numeric($p['disease_confidence'] ?? null) ? (float)$p['disease_confidence'] : 0.0);
 
             $status = $p['status'] ?? null;
-            if (!$status) {
-                $tempVal = is_numeric($p['temperature'] ?? null) ? (float)$p['temperature'] : null;
-                $phVal = is_numeric($p['ph_level'] ?? null) ? (float)$p['ph_level'] : null;
-                $doVal = is_numeric($p['dissolved_oxygen'] ?? null) ? (float)$p['dissolved_oxygen'] : null;
-                $hasDisease = $disease && !in_array(strtolower($disease), ['healthy', 'none', 'no disease detected'], true);
+            if (!$status || $status === 'Healthy' || $status === 'Unmonitored') {
+                $tempVal = is_numeric($p['temperature'] ?? null) && (float)$p['temperature'] > 0 ? (float)$p['temperature'] : null;
+                $phVal = is_numeric($p['ph_level'] ?? null) && (float)$p['ph_level'] > 0 ? (float)$p['ph_level'] : null;
+                $doVal = is_numeric($p['dissolved_oxygen'] ?? null) && (float)$p['dissolved_oxygen'] > 0 ? (float)$p['dissolved_oxygen'] : null;
+                $hasDisease = $disease && !in_array(strtolower($disease), ['healthy', 'none', 'no disease detected', 'clear'], true);
                 if ($hasDisease || ($doVal !== null && $doVal < 5.0) || ($tempVal !== null && $tempVal >= 33.0)) {
                     $status = 'Critical';
                 } else if (($phVal !== null && ($phVal < 7.2 || $phVal > 8.4)) || ($doVal !== null && $doVal < 5.8)) {
                     $status = 'Warning';
-                } else {
+                } else if ($tempVal !== null || $phVal !== null || $doVal !== null) {
                     $status = 'Healthy';
+                } else {
+                    $status = 'Unmonitored';
                 }
             }
             if ($status === 'Healthy') $healthyCount++;
@@ -190,7 +201,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $ponds[] = [
                 'id' => $pondId,
                 'pond_name' => $p['pond_name'],
-                'location' => $p['location'],
                 'temperature' => is_numeric($p['temperature'] ?? null) ? (float)$p['temperature'] : null,
                 'ph_level' => is_numeric($p['ph_level'] ?? null) ? (float)$p['ph_level'] : null,
                 'salinity' => is_numeric($p['salinity'] ?? null) ? (float)$p['salinity'] : null,
@@ -258,8 +268,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
         $pondId = isset($data['id']) ? (int)$data['id'] : 0;
         $pondName = trim((string)($data['pond_name'] ?? ''));
-        $location = trim((string)($data['location'] ?? ''));
-        $status = trim((string)($data['status'] ?? 'Healthy'));
         $caretakerId = isset($data['assigned_caretaker_id']) && $data['assigned_caretaker_id'] !== ''
             ? (int)$data['assigned_caretaker_id']
             : null;
@@ -268,11 +276,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => 'Pond ID and pond name are required.']);
             exit;
-        }
-
-        $validStatuses = ['Healthy', 'Warning', 'Critical'];
-        if (!in_array($status, $validStatuses, true)) {
-            $status = 'Healthy';
         }
 
         $caretakerName = null;
@@ -294,15 +297,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $stmt = $conn->prepare('
                 UPDATE ponds
                 SET pond_name = :pond_name,
-                    location = :location,
-                    status = :status,
                     assigned_caretaker_name = :assigned_caretaker_name
                 WHERE id = :id
             ');
             $stmt->execute([
                 ':pond_name' => $pondName,
-                ':location' => $location,
-                ':status' => $status,
                 ':assigned_caretaker_name' => $caretakerName,
                 ':id' => $pondId
             ]);
@@ -399,13 +398,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     } else {
         $pondName = $providedName;
     }
-    $location = trim((string)($data['location'] ?? ''));
-    $temp = $data['temperature'] ?? 29.0;
-    $ph = $data['ph_level'] ?? 7.5;
-    $salinity = $data['salinity'] ?? 18.0;
-    $do = $data['dissolved_oxygen'] ?? 6.5;
-    $waterLevel = $data['water_level'] ?? 1.2;
-    $status = $data['status'] ?? 'Healthy';
     $caretakerId = isset($data['assigned_caretaker_id']) && $data['assigned_caretaker_id'] !== ''
         ? (int)$data['assigned_caretaker_id']
         : null;
@@ -425,33 +417,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     } else if (isset($data['recorded_by_name']) && trim((string)$data['recorded_by_name']) !== '') {
         $caretakerName = trim((string)$data['recorded_by_name']);
     }
-    $areaSqm = $data['area_sqm'] ?? 500;
+
+    // Do NOT set dummy data. New ponds start with NULL parameters and Unmonitored status.
+    $status = 'Unmonitored';
+    $temp = isset($data['temperature']) ? (float)$data['temperature'] : null;
+    $ph = isset($data['ph_level']) ? (float)$data['ph_level'] : null;
+    $salinity = isset($data['salinity']) ? (float)$data['salinity'] : null;
+    $do = isset($data['dissolved_oxygen']) ? (float)$data['dissolved_oxygen'] : null;
+    $waterLevel = isset($data['water_level']) ? (float)$data['water_level'] : null;
+    $areaSqm = isset($data['area_sqm']) ? (int)$data['area_sqm'] : 500;
     $stockingDate = $data['stocking_date'] ?? date('Y-m-d');
-    $growthPct = $data['growth_percentage'] ?? 80.0;
-    $diseaseDetection = $data['disease_detection'] ?? 'Healthy';
-    $diseaseConf = $data['disease_confidence'] ?? 0.0;
-    $harvestReadiness = $data['harvest_readiness'] ?? 80.0;
-    $expectedHarvest = $data['expected_harvest_date'] ?? date('Y-m-d', strtotime('+30 days'));
-    $feedToday = $data['feed_today_kg'] ?? 10.0;
-    $totalFeed = $data['total_feed_kg'] ?? 300.0;
+    $growthPct = isset($data['growth_percentage']) ? (float)$data['growth_percentage'] : null;
+    $diseaseDetection = null;
+    $diseaseConf = 0.0;
+    $harvestReadiness = 0.0;
+    $expectedHarvest = date('Y-m-d', strtotime('+90 days'));
+    $feedToday = 0.0;
+    $totalFeed = 0.0;
 
     try {
         $conn->beginTransaction();
 
         $stmt = $conn->prepare('
             INSERT INTO ponds (
-                pond_name, location, temperature, ph_level, salinity, dissolved_oxygen, water_level, status,
+                pond_name, temperature, ph_level, salinity, dissolved_oxygen, water_level, status,
                 area_sqm, stocking_date, growth_percentage, disease_detection, disease_confidence, harvest_readiness,
                 expected_harvest_date, feed_today_kg, total_feed_kg, assigned_caretaker_name, created_at
             ) VALUES (
-                :pond_name, :location, :temperature, :ph_level, :salinity, :dissolved_oxygen, :water_level, :status,
+                :pond_name, :temperature, :ph_level, :salinity, :dissolved_oxygen, :water_level, :status,
                 :area_sqm, :stocking_date, :growth_percentage, :disease_detection, :disease_confidence, :harvest_readiness,
                 :expected_harvest_date, :feed_today_kg, :total_feed_kg, :assigned_caretaker_name, NOW()
             )
         ');
         $stmt->execute([
             ':pond_name' => $pondName,
-            ':location' => $location,
             ':temperature' => $temp,
             ':ph_level' => $ph,
             ':salinity' => $salinity,

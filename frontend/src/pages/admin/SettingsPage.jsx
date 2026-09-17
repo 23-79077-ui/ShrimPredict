@@ -190,7 +190,7 @@ export default function SettingsPage() {
   // Pond Settings State
   const [pondSettings, setPondSettings] = useState({
     max_ponds: '30',
-    default_pond_status: 'Healthy',
+    default_pond_status: 'Unmonitored',
     auto_assign_pond_number: 'ON'
   });
 
@@ -1186,6 +1186,7 @@ export default function SettingsPage() {
                         value={pondSettings.default_pond_status}
                         onChange={(e) => setPondSettings({ ...pondSettings, default_pond_status: e.target.value })}
                       >
+                        <option value="Unmonitored">Unmonitored (Recommended)</option>
                         <option value="Healthy">Healthy</option>
                         <option value="Warning">Warning</option>
                         <option value="Critical">Critical</option>

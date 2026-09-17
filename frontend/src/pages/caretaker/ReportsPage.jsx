@@ -498,7 +498,7 @@ export default function ReportsPage() {
             <div className="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
               <div>
                 <h5 className="fw-extrabold text-dark mb-1 tracking-tight">Submit Pond Incident Report</h5>
-                <small className="text-muted">Fill in pond location, problem type, specific issue, and detailed description.</small>
+                <small className="text-muted">Fill in pond name, problem type, specific issue, and detailed description.</small>
               </div>
               <div className="bg-primary bg-opacity-10 text-primary px-3 py-1.5 rounded-pill extra-small fw-semibold d-flex align-items-center gap-1.5">
                 <FaFileAlt /><span>Admin notification ready</span>
@@ -508,7 +508,7 @@ export default function ReportsPage() {
             <form onSubmit={handleSubmit}>
               <div className="row g-3 mb-3">
                 <div className="col-md-6">
-                  <label className="form-label fw-semibold text-dark">Pond Number / Location</label>
+                  <label className="form-label fw-semibold text-dark">Pond</label>
                   {loadingPonds ? (
                     <div className="caretaker-muted-box">Loading ponds...</div>
                   ) : ponds.length === 0 ? (
@@ -516,7 +516,7 @@ export default function ReportsPage() {
                   ) : (
                     <select className="form-select fw-semibold" value={form.pondId} onChange={(e) => setForm({ ...form, pondId: e.target.value })} required>
                       {ponds.map((p) => (
-                        <option key={p.id} value={String(p.id)}>{p.pond_name || `Pond #${p.id}`} {p.location ? `(${p.location})` : ''}</option>
+                        <option key={p.id} value={String(p.id)}>{p.pond_name || `Pond #${p.id}`}</option>
                       ))}
                     </select>
                   )}

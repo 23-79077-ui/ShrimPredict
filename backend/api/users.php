@@ -117,37 +117,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
-        // Update basic user info
-        $up = $conn->prepare('
-            UPDATE users 
-            SET full_name = :full_name, email = :email, phone = :phone, status = :status 
-            WHERE id = :id
-        ');
-        $up->execute([
-            ':full_name' => $fullName,
-            ':email' => $email,
-            ':phone' => $phone,
-            ':status' => $status,
-            ':id' => $userId
-        ]);
-
-        // Update assigned ponds in caretaker_ponds
-        $delPonds = $conn->prepare('DELETE FROM caretaker_ponds WHERE user_id = :user_id');
-        $delPonds->execute([':user_id' => $userId]);
-
-        if (!empty($selectedPonds)) {
-            $insPond = $conn->prepare('INSERT INTO caretaker_ponds (user_id, pond_id) VALUES (:user_id, :pond_id)');
-            foreach ($selectedPonds as $pId) {
-                try {
-                    $insPond->execute([':user_id' => $userId, ':pond_id' => (int)$pId]);
-                } catch (Exception $e) {
-                    // Ignore duplicate key errors
-                }
-            }
+        // Check if email already used by another user
+        $check = $conn->prepare('SELECT id FROM users WHERE LOWER(email) = LOWER(:email) AND id != :id LIMIT 1');
+        $check->execute([':email' => $email, ':id' => $userId]);
+        if ($check->fetch()) {
+            http_response_code(409);
+            echo json_encode(['success' => false, 'message' => 'Email address is already in use by another user.']);
+            exit;
         }
 
-        echo json_encode(['success' => true, 'message' => 'User account updated successfully!']);
-        exit;
+        try {
+            $conn->beginTransaction();
+
+            $firstPondId = !empty($selectedPonds) ? (int)$selectedPonds[0] : null;
+
+            // Update basic user info
+            $up = $conn->prepare('
+                UPDATE users 
+                SET full_name = :full_name, email = :email, phone = :phone, status = :status, pond_id = :pond_id
+                WHERE id = :id
+            ');
+            $up->execute([
+                ':full_name' => $fullName,
+                ':email' => $email,
+                ':phone' => $phone,
+                ':status' => $status,
+                ':pond_id' => $firstPondId,
+                ':id' => $userId
+            ]);
+
+            // Update assigned ponds in caretaker_ponds
+            $delPonds = $conn->prepare('DELETE FROM caretaker_ponds WHERE user_id = :user_id');
+            $delPonds->execute([':user_id' => $userId]);
+
+            if (!empty($selectedPonds)) {
+                $insPond = $conn->prepare('INSERT INTO caretaker_ponds (user_id, pond_id) VALUES (:user_id, :pond_id)');
+                foreach ($selectedPonds as $pId) {
+                    try {
+                        $insPond->execute([':user_id' => $userId, ':pond_id' => (int)$pId]);
+                    } catch (Exception $e) {
+                        // Ignore duplicate key errors
+                    }
+                }
+            }
+
+            $conn->commit();
+
+            echo json_encode(['success' => true, 'message' => 'User account updated successfully!']);
+            exit;
+        } catch (PDOException $e) {
+            if ($conn->inTransaction()) {
+                $conn->rollBack();
+            }
+            if ($e->getCode() == 23000 || strpos($e->getMessage(), 'Duplicate entry') !== false) {
+                http_response_code(409);
+                echo json_encode(['success' => false, 'message' => 'Email address is already in use.']);
+                exit;
+            }
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+            exit;
+        }
     }
 
     // Create Caretaker Action
@@ -155,7 +185,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = isset($data['email']) ? trim((string)$data['email']) : '';
     $password = isset($data['password']) ? (string)$data['password'] : '';
     $phone = isset($data['phone']) ? trim((string)$data['phone']) : '09123456789';
-    $pondId = isset($data['pond_id']) ? (int)$data['pond_id'] : null;
+    $selectedPonds = isset($data['selected_ponds']) && is_array($data['selected_ponds'])
+        ? array_map('intval', $data['selected_ponds'])
+        : [];
+    $pondId = !empty($selectedPonds) ? (int)$selectedPonds[0] : (isset($data['pond_id']) ? (int)$data['pond_id'] : null);
 
     if (empty($fullName) || empty($email) || empty($password)) {
         http_response_code(400);
@@ -164,7 +197,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Check if email already exists
-    $check = $conn->prepare('SELECT id FROM users WHERE email = :email LIMIT 1');
+    $check = $conn->prepare('SELECT id FROM users WHERE LOWER(email) = LOWER(:email) LIMIT 1');
     $check->execute([':email' => $email]);
     if ($check->fetch()) {
         http_response_code(409);
@@ -172,40 +205,73 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    $passwordHash = password_hash($password, PASSWORD_BCRYPT);
-    $insert = $conn->prepare(
-        'INSERT INTO users (full_name, email, password_hash, role, status, phone, position, pond_id, created_at) 
-         VALUES (:full_name, :email, :password_hash, :role, :status, :phone, :position, :pond_id, NOW())'
-    );
-    $insert->execute([
-        ':full_name' => $fullName,
-        ':email' => $email,
-        ':password_hash' => $passwordHash,
-        ':role' => 'caretaker',
-        ':status' => 'Active',
-        ':phone' => $phone,
-        ':position' => 'Pond Caretaker',
-        ':pond_id' => $pondId,
-    ]);
+    try {
+        $conn->beginTransaction();
 
-    $newId = $conn->lastInsertId();
+        $passwordHash = password_hash($password, PASSWORD_BCRYPT);
+        $insert = $conn->prepare(
+            'INSERT INTO users (full_name, email, password_hash, role, status, phone, position, pond_id, created_at) 
+             VALUES (:full_name, :email, :password_hash, :role, :status, :phone, :position, :pond_id, NOW())'
+        );
+        $insert->execute([
+            ':full_name' => $fullName,
+            ':email' => $email,
+            ':password_hash' => $passwordHash,
+            ':role' => 'caretaker',
+            ':status' => 'Active',
+            ':phone' => $phone,
+            ':position' => 'Pond Caretaker',
+            ':pond_id' => $pondId,
+        ]);
 
-    http_response_code(201);
-    echo json_encode([
-        'success' => true,
-        'message' => 'Caretaker created successfully.',
-        'user' => [
-            'id' => $newId,
-            'full_name' => $fullName,
-            'email' => $email,
-            'role' => 'caretaker',
-            'status' => 'Active',
-            'phone' => $phone,
-            'position' => 'Pond Caretaker',
-            'pond_id' => $pondId,
-        ]
-    ]);
-    exit;
+        $newId = (int)$conn->lastInsertId();
+
+        // Assign ponds if provided
+        if (!empty($selectedPonds)) {
+            $insPond = $conn->prepare('INSERT INTO caretaker_ponds (user_id, pond_id) VALUES (:user_id, :pond_id)');
+            foreach ($selectedPonds as $pId) {
+                if ($pId > 0) {
+                    try {
+                        $insPond->execute([':user_id' => $newId, ':pond_id' => $pId]);
+                    } catch (Exception $pe) {
+                        // ignore duplicate key
+                    }
+                }
+            }
+        }
+
+        $conn->commit();
+
+        http_response_code(201);
+        echo json_encode([
+            'success' => true,
+            'message' => 'Caretaker created successfully.',
+            'user' => [
+                'id' => $newId,
+                'full_name' => $fullName,
+                'email' => $email,
+                'role' => 'caretaker',
+                'status' => 'Active',
+                'phone' => $phone,
+                'position' => 'Pond Caretaker',
+                'pond_id' => $pondId,
+                'assigned_pond_ids' => $selectedPonds
+            ]
+        ]);
+        exit;
+    } catch (PDOException $e) {
+        if ($conn->inTransaction()) {
+            $conn->rollBack();
+        }
+        if ($e->getCode() == 23000 || strpos($e->getMessage(), 'Duplicate entry') !== false) {
+            http_response_code(409);
+            echo json_encode(['success' => false, 'message' => 'Email address is already in use.']);
+            exit;
+        }
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+        exit;
+    }
 }
 
 // GET Handler: Return all users + enriched performance statistics & ponds list

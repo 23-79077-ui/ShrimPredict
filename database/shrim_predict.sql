@@ -33,17 +33,16 @@ CREATE TABLE pond_caretakers (
 CREATE TABLE ponds (
   id INT AUTO_INCREMENT PRIMARY KEY,
   pond_name VARCHAR(100) NOT NULL,
-  location VARCHAR(150) NOT NULL,
   temperature DECIMAL(5,2) DEFAULT 0,
   ph_level DECIMAL(5,2) DEFAULT 0,
   salinity DECIMAL(5,2) DEFAULT 0,
   dissolved_oxygen DECIMAL(5,2) DEFAULT 0,
   water_level DECIMAL(5,2) DEFAULT 0,
-  status VARCHAR(20) DEFAULT 'Healthy',
+  status VARCHAR(20) DEFAULT 'Unmonitored',
   area_sqm INT DEFAULT 500,
   stocking_date DATE DEFAULT '2026-04-02',
   growth_percentage DECIMAL(5,2) DEFAULT 85.00,
-  disease_detection VARCHAR(150) DEFAULT 'Healthy',
+  disease_detection VARCHAR(150) DEFAULT NULL,
   disease_confidence DECIMAL(5,2) DEFAULT 0.00,
   harvest_readiness DECIMAL(5,2) DEFAULT 85.00,
   expected_harvest_date DATE DEFAULT '2026-08-10',
@@ -157,7 +156,7 @@ CREATE TABLE IF NOT EXISTS system_settings (
 
 INSERT INTO system_settings (setting_key, setting_value) VALUES
 ('max_ponds', '30'),
-('default_pond_status', 'Healthy'),
+('default_pond_status', 'Unmonitored'),
 ('auto_assign_pond_number', 'ON'),
 ('target_harvest_age', '120'),
 ('harvest_ready_percentage', '95'),
@@ -203,16 +202,16 @@ INSERT INTO roles (role_name, description) VALUES
 INSERT INTO admins (full_name, email, password_hash, phone, status) VALUES
 ('System Admin', 'admin@shrimpredict.com', '$2y$10$eHnwobsFGe1hdLaqndWzFe.ZRY59SOmiF/oaLP/ENn/X2UNG1XOsa', '09123456789', 'Active');
 
-INSERT INTO ponds (pond_name, location, temperature, ph_level, salinity, dissolved_oxygen, water_level, status) VALUES
-('Pond A1', 'Northern Bay - Section 1', 29.5, 7.8, 18.0, 6.8, 1.2, 'Healthy'),
-('Pond A2', 'Northern Bay - Section 2', 28.8, 7.6, 17.5, 6.5, 1.1, 'Healthy'),
-('Pond A3', 'Northern Bay - Section 3', 30.0, 7.9, 18.5, 6.9, 1.3, 'Healthy'),
-('Pond B1', 'Eastern Lagoon - Section 1', 31.0, 7.4, 22.5, 5.4, 1.0, 'Warning'),
-('Pond B2', 'Eastern Lagoon - Section 2', 30.5, 7.3, 21.0, 5.6, 0.9, 'Warning'),
-('Pond B3', 'Eastern Lagoon - Section 3', 31.5, 7.5, 23.0, 5.2, 1.1, 'Warning'),
-('Pond C1', 'Western Basin - Section 1', 33.2, 7.1, 24.0, 4.8, 0.8, 'Critical'),
-('Pond C2', 'Western Basin - Section 2', 32.8, 7.0, 23.5, 4.5, 0.7, 'Critical'),
-('Pond C3', 'Western Basin - Section 3', 33.5, 7.2, 24.5, 4.6, 0.9, 'Critical');
+INSERT INTO ponds (pond_name, temperature, ph_level, salinity, dissolved_oxygen, water_level, status) VALUES
+('Pond A1', 29.5, 7.8, 18.0, 6.8, 1.2, 'Healthy'),
+('Pond A2', 28.8, 7.6, 17.5, 6.5, 1.1, 'Healthy'),
+('Pond A3', 30.0, 7.9, 18.5, 6.9, 1.3, 'Healthy'),
+('Pond B1', 31.0, 7.4, 22.5, 5.4, 1.0, 'Warning'),
+('Pond B2', 30.5, 7.3, 21.0, 5.6, 0.9, 'Warning'),
+('Pond B3', 31.5, 7.5, 23.0, 5.2, 1.1, 'Warning'),
+('Pond C1', 33.2, 7.1, 24.0, 4.8, 0.8, 'Critical'),
+('Pond C2', 32.8, 7.0, 23.5, 4.5, 0.7, 'Critical'),
+('Pond C3', 33.5, 7.2, 24.5, 4.6, 0.9, 'Critical');
 
 INSERT INTO feeding_records (pond_id, amount_kg, feed_type, record_date, notes) VALUES
 (1, 12.5, 'Starter Feed', '2026-07-16', 'Morning feeding completed'),

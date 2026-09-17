@@ -81,6 +81,7 @@ export default function UsersPage() {
   const [viewingUser, setViewingUser] = useState(null); // User Profile Modal
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null); // Edit Caretaker Modal
+  const [isSaving, setIsSaving] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -286,6 +287,8 @@ export default function UsersPage() {
   const handleSaveUser = async (e) => {
     e.preventDefault();
 
+    if (isSaving) return;
+
     if (!editingUser) {
       if (formData.password !== formData.confirm_password) {
         Swal.fire({ icon: 'error', title: 'Password Mismatch', text: 'Passwords do not match. Please verify.', confirmButtonColor: '#0B2C5F' });
@@ -297,6 +300,7 @@ export default function UsersPage() {
       }
     }
 
+    setIsSaving(true);
     try {
       if (editingUser) {
         // Update User
@@ -304,8 +308,8 @@ export default function UsersPage() {
           action: 'update_user',
           user_id: editingUser.id,
           full_name: toTitleCase(formData.full_name),
-          email: formData.email,
-          phone: formData.phone,
+          email: formData.email.trim(),
+          phone: formData.phone.trim(),
           status: formData.status,
           selected_ponds: formData.selected_ponds
         });
@@ -328,21 +332,14 @@ export default function UsersPage() {
         const firstPondId = formData.selected_ponds.length > 0 ? formData.selected_ponds[0] : null;
         const res = await api.post('/users.php', {
           full_name: toTitleCase(formData.full_name),
-          email: formData.email,
-          phone: formData.phone,
+          email: formData.email.trim(),
+          phone: formData.phone.trim(),
           password: formData.password,
-          pond_id: firstPondId
+          pond_id: firstPondId,
+          selected_ponds: formData.selected_ponds
         });
 
         if (res.data && res.data.success) {
-          const newUserId = res.data.user.id;
-          if (newUserId && formData.selected_ponds.length > 0) {
-            await api.post('/caretaker_ponds.php', {
-              user_id: newUserId,
-              pond_ids: formData.selected_ponds
-            });
-          }
-
           Swal.fire({
             icon: 'success',
             title: 'Caretaker Registered',
@@ -357,12 +354,15 @@ export default function UsersPage() {
         }
       }
     } catch (err) {
+      const errMsg = err.response?.data?.message || err.message || 'Operation failed.';
       Swal.fire({
         icon: 'error',
-        title: 'Error',
-        text: err.response?.data?.message || err.message || 'Operation failed.',
+        title: editingUser ? 'Update Failed' : 'Registration Failed',
+        text: errMsg,
         confirmButtonColor: '#0B2C5F'
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -1214,6 +1214,7 @@ export default function UsersPage() {
                 <div className="modal-footer p-3 bg-light border-top d-flex justify-content-between">
                   <button
                     type="button"
+                    disabled={isSaving}
                     className="btn btn-sm rounded-pill px-3 py-2 text-secondary fw-semibold border bg-white"
                     onClick={() => {
                       setShowCreateModal(false);
@@ -1225,15 +1226,27 @@ export default function UsersPage() {
 
                   <button
                     type="submit"
+                    disabled={isSaving}
                     className="btn btn-sm rounded-pill px-4 py-2 d-flex align-items-center gap-2 fw-bold text-white shadow-sm"
                     style={{
                       background: 'linear-gradient(135deg, #0B2C5F 0%, #0284C7 100%)',
                       border: 'none',
-                      fontSize: '0.85rem'
+                      fontSize: '0.85rem',
+                      opacity: isSaving ? 0.7 : 1,
+                      cursor: isSaving ? 'not-allowed' : 'pointer'
                     }}
                   >
-                    <FaCheckCircle size={13} />
-                    {editingUser ? 'Save Changes' : 'Register Caretaker'}
+                    {isSaving ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        <span>{editingUser ? 'Saving...' : 'Registering...'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <FaCheckCircle size={13} />
+                        {editingUser ? 'Save Changes' : 'Register Caretaker'}
+                      </>
+                    )}
                   </button>
                 </div>
               </form>

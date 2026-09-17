@@ -47,6 +47,7 @@ const statusClass = {
   Healthy: 'success',
   Warning: 'warning',
   Critical: 'danger',
+  Unmonitored: 'secondary',
 };
 
 function valueOrDash(value, suffix = '') {
@@ -110,8 +111,6 @@ export default function PondMonitoringPage() {
   const [showAddPondModal, setShowAddPondModal] = useState(false);
   const [editingPond, setEditingPond] = useState(null);
   const [newPondName, setNewPondName] = useState('');
-  const [newPondLocation, setNewPondLocation] = useState('');
-  const [newPondStatus, setNewPondStatus] = useState('Healthy');
   const [selectedCaretakerId, setSelectedCaretakerId] = useState('');
   const [caretakers, setCaretakers] = useState([]);
   const [savingPond, setSavingPond] = useState(false);
@@ -163,7 +162,7 @@ export default function PondMonitoringPage() {
   const filteredPonds = useMemo(() => ponds.filter((p) => {
     const q = searchQuery.trim().toLowerCase();
     if (q) {
-      const haystack = [p.pond_name, p.location, p.assigned_caretaker_name].join(' ').toLowerCase();
+      const haystack = [p.pond_name, p.assigned_caretaker_name].join(' ').toLowerCase();
       if (!haystack.includes(q)) return false;
     }
     if (statusFilter !== 'All' && p.status !== statusFilter) return false;
@@ -204,13 +203,13 @@ export default function PondMonitoringPage() {
     }
 
     const headers = [
-      'Pond Name', 'Location', 'Status', 'Assigned Caretaker', 'Area (sqm)', 'Stocking Date',
+      'Pond Name', 'Status', 'Assigned Caretaker', 'Area (sqm)', 'Stocking Date',
       'Age (Days)', 'Growth (%)', 'Feed Today (kg)', 'Total Feed (kg)', 'Disease Detection',
       'Confidence (%)', 'Harvest Readiness (%)', 'Expected Harvest Date', 'Temperature',
       'pH Level', 'Salinity', 'Dissolved Oxygen', 'Water Level', 'Latest Feed Date',
     ];
     const rows = filteredPonds.map((p) => [
-      p.pond_name, p.location, p.status, p.assigned_caretaker_name, p.area_sqm, p.stocking_date,
+      p.pond_name, p.status, p.assigned_caretaker_name, p.area_sqm, p.stocking_date,
       p.current_age_days, p.growth_percentage, p.feed_today_kg, p.total_feed_kg, p.disease_detection,
       p.disease_confidence, p.harvest_readiness, p.expected_harvest_date, p.temperature,
       p.ph_level, p.salinity, p.dissolved_oxygen, p.water_level, p.latest_feed_date,
@@ -238,8 +237,6 @@ export default function PondMonitoringPage() {
   const resetPondForm = () => {
     setEditingPond(null);
     setNewPondName('');
-    setNewPondLocation('');
-    setNewPondStatus('Healthy');
     setSelectedCaretakerId('');
   };
 
@@ -252,8 +249,6 @@ export default function PondMonitoringPage() {
     const caretakerByName = caretakers.find((caretaker) => caretaker.full_name === pond.assigned_caretaker_name);
     setEditingPond(pond);
     setNewPondName(pond.pond_name || '');
-    setNewPondLocation(pond.location || '');
-    setNewPondStatus(pond.status || 'Healthy');
     setSelectedCaretakerId(pond.assigned_caretaker_id ? String(pond.assigned_caretaker_id) : (caretakerByName ? String(caretakerByName.id) : ''));
     setShowAddPondModal(true);
   };
@@ -271,8 +266,6 @@ export default function PondMonitoringPage() {
     try {
       const payload = {
         pond_name: pondName,
-        location: newPondLocation.trim(),
-        status: newPondStatus,
         assigned_caretaker_id: selectedCaretakerId,
       };
       if (editingPond) {
@@ -339,7 +332,7 @@ export default function PondMonitoringPage() {
             <FaSearch className="position-absolute top-50 translate-middle-y text-primary" style={{ left: 16 }} />
             <input
               className="form-control ps-5"
-              placeholder="Search pond, location, or caretaker"
+              placeholder="Search pond or caretaker"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
             />
@@ -366,6 +359,7 @@ export default function PondMonitoringPage() {
                 <option value="Healthy">Healthy</option>
                 <option value="Warning">Warning</option>
                 <option value="Critical">Critical</option>
+                <option value="Unmonitored">Unmonitored</option>
               </select>
             </div>
             <div className="col-12 col-md-3">
@@ -531,7 +525,7 @@ export default function PondMonitoringPage() {
                           <tr key={pond.id}>
                             <td className="ps-3">
                               <div className="fw-bold text-dark">{pond.pond_name}</div>
-                              <small className="text-muted"><FaMapMarkerAlt className="me-1 text-primary" />{valueOrDash(pond.location)}</small>
+                              <small className="text-muted">Pond #{pond.id}</small>
                             </td>
                             <td>
                               <span className={`badge bg-${tone} ${tone === 'warning' ? 'text-dark' : ''} px-2.5 py-1.5 fw-bold`}>
@@ -673,7 +667,7 @@ export default function PondMonitoringPage() {
                 <div>
                   <h4 className="fw-bold text-white mb-1">{selectedPond.pond_name}</h4>
                   <div className="small text-white text-opacity-75">
-                    {valueOrDash(selectedPond.location)} | Caretaker: {selectedPond.assigned_caretaker_name || 'Unassigned'}
+                    Pond #{selectedPond.id} | Caretaker: {selectedPond.assigned_caretaker_name || 'Unassigned'}
                   </div>
                 </div>
                 <button type="button" className="btn-close btn-close-white" onClick={() => setSelectedPond(null)} />
@@ -745,29 +739,10 @@ export default function PondMonitoringPage() {
                   className="form-control"
                   value={newPondName}
                   onChange={(event) => setNewPondName(event.target.value)}
-                  placeholder="D1"
+                  placeholder="e.g. Pond D1"
                   autoFocus
                   disabled={savingPond}
                 />
-                <label className="form-label fw-bold mt-3">Location</label>
-                <input
-                  className="form-control"
-                  value={newPondLocation}
-                  onChange={(event) => setNewPondLocation(event.target.value)}
-                  placeholder="Northern Bay"
-                  disabled={savingPond}
-                />
-                <label className="form-label fw-bold mt-3">Status</label>
-                <select
-                  className="form-select"
-                  value={newPondStatus}
-                  onChange={(event) => setNewPondStatus(event.target.value)}
-                  disabled={savingPond}
-                >
-                  <option value="Healthy">Healthy</option>
-                  <option value="Warning">Warning</option>
-                  <option value="Critical">Critical</option>
-                </select>
                 <label className="form-label fw-bold mt-3">Assigned Caretaker</label>
                 <select
                   className="form-select"
@@ -780,6 +755,12 @@ export default function PondMonitoringPage() {
                     <option key={caretaker.id} value={caretaker.id}>{caretaker.full_name}</option>
                   ))}
                 </select>
+                <div className="mt-3 p-3 bg-light rounded-3 border">
+                  <small className="text-muted d-block">
+                    <FaWater className="me-1 text-primary" />
+                    Status will initialize as <span className="badge bg-secondary">Unmonitored</span>. It will automatically update to Healthy, Warning, or Critical once actual water quality readings are recorded.
+                  </small>
+                </div>
               </div>
               <div className="modal-footer bg-light border-0">
                 <button

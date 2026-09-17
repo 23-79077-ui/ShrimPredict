@@ -346,7 +346,6 @@ export default function FeedingPage() {
           pond_id: p.id,
           pond_name: name,
           target_feed_kg: Number(p.target_feed_kg) || 45.0,
-          location: p.location || '',
           assigned_caretaker: caretaker,
           records: [],
         };
@@ -362,7 +361,6 @@ export default function FeedingPage() {
           pond_id: r.pond_id || r.id,
           pond_name: name,
           target_feed_kg: 45.0,
-          location: '',
           assigned_caretaker: r.recorded_by_name || '',
           records: [],
         };

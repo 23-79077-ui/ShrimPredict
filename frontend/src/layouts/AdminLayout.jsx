@@ -241,50 +241,283 @@ export default function AdminLayout() {
 
   return (
     <div className="saas-layout-canvas">
-      {/* 🌟 FLOATING TOP NAVIGATION DOCK BAR (Replaces the traditional vertical sidebar) */}
-      <header className="top-dock-bar d-flex align-items-center justify-content-between flex-wrap gap-2">
-        {/* 1. Brand Logo & Emblem */}
-        <div className="d-flex align-items-center gap-2.5 flex-shrink-0">
-          <NavLink to="/admin/dashboard" className="d-flex align-items-center gap-2.5 text-decoration-none">
-            <img
-              src="/ob_aquafarm_logo.png"
-              alt="O & B Aquafarm Logo"
-              className="rounded-circle flex-shrink-0 shadow-sm"
-              style={{
-                width: '42px',
-                height: '42px',
-                objectFit: 'contain',
-                backgroundColor: '#FFFFFF',
-                padding: '1.5px',
-                border: '1.5px solid rgba(255, 122, 0, 0.4)'
-              }}
-            />
-            <div>
-              <span className="fw-extrabold text-dark tracking-tight d-block" style={{ fontSize: '1.15rem', letterSpacing: '-0.02em', lineHeight: 1.15 }}>
-                Shrimp<span style={{ color: '#FF7B38' }}>Predict</span>
-              </span>
-              <span className="d-block text-muted" style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.04em', lineHeight: 1, marginTop: 2 }}>
-                O & B AQUAFARM
-              </span>
-            </div>
-          </NavLink>
+      {/* 🌟 FLOATING TOP NAVIGATION DOCK BAR (Executive 2-Tier Architecture) */}
+      <header className="top-dock-bar">
+        {/* Tier 1: Brand & Executive Utilities Bar */}
+        <div className="top-dock-topbar d-flex align-items-center justify-content-between w-100">
+          {/* 1. Brand Logo & Farm Identity */}
+          <div className="d-flex align-items-center gap-2.5 gap-md-3 flex-shrink-0">
+            <NavLink to="/admin/dashboard" className="d-flex align-items-center gap-2.5 text-decoration-none">
+              <img
+                src="/ob_aquafarm_logo.png"
+                alt="O & B Aquafarm Logo"
+                className="rounded-circle flex-shrink-0 shadow-sm"
+                style={{
+                  width: '42px',
+                  height: '42px',
+                  objectFit: 'contain',
+                  backgroundColor: '#FFFFFF',
+                  padding: '1.5px',
+                  border: '1.5px solid rgba(255, 122, 0, 0.4)'
+                }}
+              />
+              <div>
+                <span className="fw-extrabold text-dark tracking-tight d-block" style={{ fontSize: '1.18rem', letterSpacing: '-0.02em', lineHeight: 1.15 }}>
+                  Shrimp<span style={{ color: '#FF7B38' }}>Predict</span>
+                </span>
+                <span className="d-block text-muted" style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.04em', lineHeight: 1, marginTop: 2 }}>
+                  O & B AQUAFARM
+                </span>
+              </div>
+            </NavLink>
 
-          <span
-            className="badge rounded-pill extra-small fw-semibold d-none d-xl-inline-block"
-            style={{
-              backgroundColor: 'rgba(11, 44, 95, 0.05)',
-              color: '#0B2C5F',
-              border: '1px solid rgba(11, 44, 95, 0.12)',
-              fontSize: '0.68rem',
-              letterSpacing: '0.04em'
-            }}
-          >
-            AQUACULTURE OS
-          </span>
+            <span
+              className="badge rounded-pill extra-small fw-semibold d-none d-sm-inline-block"
+              style={{
+                backgroundColor: 'rgba(11, 44, 95, 0.05)',
+                color: '#0B2C5F',
+                border: '1px solid rgba(11, 44, 95, 0.12)',
+                fontSize: '0.68rem',
+                letterSpacing: '0.04em'
+              }}
+            >
+              AQUACULTURE OS
+            </span>
+
+            {/* Live Operational Pulse Indicator */}
+            <span className="dock-live-indicator d-none d-md-inline-flex align-items-center gap-1.5">
+              <span className="pulse-dot"></span>
+              <span>Farm Telemetry Active</span>
+            </span>
+          </div>
+
+          {/* 2. Utility Controls Cluster (Clock, Theme, Notifications, User) */}
+          <div className="d-flex align-items-center gap-2 flex-shrink-0">
+            {/* Real-time Clock & Date Pill */}
+            <div
+              className="d-none d-sm-flex align-items-center gap-2 px-3 py-1.5 rounded-pill border text-muted extra-small"
+              style={{
+                height: 38,
+                fontSize: '0.78rem',
+                backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.06)' : '#F8FAFC',
+                borderColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : '#E2E8F0'
+              }}
+            >
+              <FaClock size={11} style={{ color: '#0284C7' }} />
+              <span className="fw-bold font-mono" style={{ color: theme === 'dark' ? '#F1F5F9' : '#0F172A' }}>{clockDigits}</span>
+              <span className="opacity-40">•</span>
+              <span className="fw-semibold" style={{ color: theme === 'dark' ? '#94A3B8' : '#64748B' }}>{formattedDate}</span>
+            </div>
+
+            {/* Theme Toggle Pill */}
+            <button
+              type="button"
+              className="btn border rounded-pill d-flex align-items-center justify-content-center p-0"
+              style={{
+                width: 38,
+                height: 38,
+                backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.06)' : '#F8FAFC',
+                borderColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : '#E2E8F0'
+              }}
+              onClick={handleToggleTheme}
+              title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`}
+            >
+              {theme === 'dark' ? <FaSun size={13} className="text-warning" /> : <FaMoon size={12} className="text-muted" />}
+            </button>
+
+            {/* Notifications Dropdown Pill */}
+            <div className="position-relative" ref={bellRef}>
+              <button
+                type="button"
+                className="btn border rounded-pill position-relative d-flex align-items-center justify-content-center p-0"
+                style={{
+                  width: 38,
+                  height: 38,
+                  backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.06)' : '#F8FAFC',
+                  borderColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : '#E2E8F0'
+                }}
+                onClick={() => setShowNotifMenu(!showNotifMenu)}
+                title="Pond Incident Notifications"
+              >
+                <FaBell size={13} className="text-muted" />
+                {unreadCount > 0 && (
+                  <span
+                    className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-light p-1"
+                    style={{ fontSize: '0.6rem' }}
+                  >
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {showNotifMenu && (
+                <div
+                  className="dropdown-menu show border-0 position-absolute end-0 mt-2 p-0 rounded-4 shadow-xl overflow-hidden"
+                  style={{
+                    width: '340px',
+                    zIndex: 1050,
+                    backgroundColor: theme === 'dark' ? '#1E293B' : '#FFFFFF',
+                    border: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #E2E8F0'
+                  }}
+                >
+                  <div
+                    className="p-3 px-3.5 d-flex align-items-center justify-content-between text-white"
+                    style={{ background: 'linear-gradient(135deg, #071733 0%, #0B2C5F 55%, #0E3D7D 100%)' }}
+                  >
+                    <div className="d-flex align-items-center gap-2">
+                      <FaBell size={13} />
+                      <span className="fw-bold small">Pond Incident Feed</span>
+                    </div>
+                    <div className="d-flex align-items-center gap-2">
+                      <span className="badge bg-white text-dark rounded-pill extra-small px-2 py-0.5">
+                        {unreadCount} Active
+                      </span>
+                      {unreadCount > 0 && (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-link text-white p-0 text-decoration-none extra-small opacity-80 hover-opacity-100"
+                          onClick={handleMarkAllRead}
+                          title="Mark all as read"
+                        >
+                          <FaCheckDouble size={11} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="overflow-y-auto custom-scrollbar" style={{ maxHeight: '320px' }}>
+                    {recentNotifs.length === 0 ? (
+                      <div className="p-4 text-center text-muted">
+                        <FaBell size={24} className="opacity-20 mb-2" />
+                        <p className="mb-0 extra-small">No new incident telemetry alerts.</p>
+                      </div>
+                    ) : (
+                      recentNotifs.map((n) => (
+                        <div
+                          key={n.id}
+                          className={`p-3 border-bottom transition-all cursor-pointer ${
+                            !n.is_read ? (theme === 'dark' ? 'bg-primary-subtle bg-opacity-10' : 'bg-light') : ''
+                          }`}
+                          style={{
+                            borderColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.06)' : '#F1F5F9',
+                            fontSize: '0.8rem'
+                          }}
+                          onClick={() => handleNotifClick(n)}
+                        >
+                          <div className="d-flex justify-content-between align-items-start mb-1 gap-2">
+                            <span className="fw-bold extra-small text-truncate">
+                              {n.title}
+                            </span>
+                            <span className="text-muted extra-small font-mono flex-shrink-0">
+                              {new Date(n.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <p className="text-muted mb-1 extra-small" style={{ fontSize: '0.75rem', lineHeight: 1.4 }}>
+                            {n.message}
+                          </p>
+                          <span className="fw-bold extra-small" style={{ color: '#FF7A00', fontSize: '0.72rem' }}>
+                            View Telemetry Details →
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="p-2.5 text-center border-top bg-light">
+                    <button
+                      type="button"
+                      className="btn btn-link btn-sm text-decoration-none fw-semibold p-0 extra-small"
+                      style={{ color: '#0284C7' }}
+                      onClick={() => {
+                        setShowNotifMenu(false);
+                        navigate('/admin/alerts');
+                      }}
+                    >
+                      All Farm Notifications →
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* User Profile Avatar with Dropdown */}
+            <div className="position-relative" ref={userRef}>
+              <button
+                type="button"
+                className="btn border rounded-pill d-flex align-items-center gap-2 p-1 ps-1.5 pe-2.5"
+                style={{
+                  height: 38,
+                  backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.06)' : '#F8FAFC',
+                  borderColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : '#E2E8F0'
+                }}
+                onClick={() => setShowUserMenu(!showUserMenu)}
+              >
+                <div
+                  className="rounded-circle text-white d-flex align-items-center justify-content-center fw-bold"
+                  style={{
+                    width: 28,
+                    height: 28,
+                    fontSize: '0.72rem',
+                    background: 'linear-gradient(135deg, #0B2C5F 0%, #FF7A00 100%)'
+                  }}
+                >
+                  {(user?.full_name || 'Admin').slice(0, 2).toUpperCase()}
+                </div>
+                <div className="d-none d-md-flex flex-column text-start" style={{ lineHeight: 1.15 }}>
+                  <span className="fw-bold text-dark text-truncate" style={{ fontSize: '0.79rem', maxWidth: 110, color: theme === 'dark' ? '#F1F5F9' : '#0F172A' }}>
+                    {user?.full_name || 'Administrator'}
+                  </span>
+                  <span className="text-muted" style={{ fontSize: '0.64rem', fontWeight: 600 }}>
+                    Admin
+                  </span>
+                </div>
+              </button>
+
+              {showUserMenu && (
+                <div
+                  className="dropdown-menu show border-0 position-absolute end-0 mt-2 p-2 rounded-3 shadow-lg"
+                  style={{
+                    width: 200,
+                    zIndex: 1060,
+                    backgroundColor: theme === 'dark' ? '#1E293B' : '#FFFFFF',
+                    border: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #E2E8F0'
+                  }}
+                >
+                  <div className="px-2 py-1.5 border-bottom mb-1">
+                    <div className="fw-bold small text-truncate">{user?.full_name || 'Administrator'}</div>
+                    <div className="extra-small text-muted">{user?.email || 'admin@shrimpredict.io'}</div>
+                  </div>
+                  <NavLink to="/admin/settings" className="dropdown-item rounded-2 small py-1.5" onClick={() => setShowUserMenu(false)}>
+                    Settings & Preferences
+                  </NavLink>
+                  <button
+                    type="button"
+                    className="dropdown-item rounded-2 small py-1.5 text-danger d-flex align-items-center gap-2"
+                    onClick={handleLogout}
+                  >
+                    <FaSignOutAlt size={12} /> Log Out
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Mobile Navigation Toggle */}
+            <button
+              type="button"
+              className="btn btn-light border rounded-pill d-flex d-lg-none align-items-center justify-content-center p-0"
+              style={{ width: 38, height: 38 }}
+              onClick={() => setShowMobileNav(!showMobileNav)}
+            >
+              {showMobileNav ? <FaTimes size={14} /> : <FaBars size={14} />}
+            </button>
+          </div>
         </div>
 
-        {/* 2. Floating Dock Navigation Tabs (Pill-shaped with sage green active highlights) */}
-        <nav className="d-none d-lg-flex align-items-center gap-1 flex-wrap">
+        {/* Subtle Hairline Divider between Tier 1 and Navigation */}
+        <div className="top-dock-divider d-none d-lg-block" />
+
+        {/* Tier 2: Floating Dock Navigation Tabs (Spacious, Dedicated Full-Width Row) */}
+        <nav className="top-dock-nav-row d-none d-lg-flex align-items-center gap-2 flex-nowrap overflow-x-auto w-100 py-0.5">
           {dockLinks.map((link) => (
             <NavLink
               key={link.to}
@@ -300,7 +533,8 @@ export default function AdminLayout() {
                     backgroundColor: '#F43F5E',
                     color: '#FFFFFF',
                     fontSize: '0.65rem',
-                    padding: '0.15rem 0.45rem'
+                    padding: '0.15rem 0.45rem',
+                    marginLeft: '0.2rem'
                   }}
                 >
                   {unreadCount}
@@ -310,207 +544,10 @@ export default function AdminLayout() {
           ))}
         </nav>
 
-        {/* 3. Utility Controls Cluster (Clock, Theme, Notifications, User) */}
-        <div className="d-flex align-items-center gap-2 flex-shrink-0">
-          {/* Real-time Clock & Date Pill */}
-          <div
-            className="d-none d-sm-flex align-items-center gap-2 px-3 py-1.5 rounded-pill bg-light border text-muted extra-small"
-            style={{ height: 36, fontSize: '0.78rem' }}
-          >
-            <FaClock size={11} style={{ color: '#0284C7' }} />
-            <span className="fw-bold text-dark font-mono">{clockDigits}</span>
-            <span className="opacity-40">•</span>
-            <span className="fw-semibold">{formattedDate}</span>
-          </div>
-
-          {/* Theme Toggle Pill */}
-          <button
-            type="button"
-            className="btn btn-light border rounded-pill d-flex align-items-center justify-content-center p-0"
-            style={{ width: 36, height: 36 }}
-            onClick={handleToggleTheme}
-            title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`}
-          >
-            {theme === 'dark' ? <FaSun size={13} className="text-warning" /> : <FaMoon size={12} className="text-muted" />}
-          </button>
-
-          {/* Notifications Dropdown Pill */}
-          <div className="position-relative" ref={bellRef}>
-            <button
-              type="button"
-              className="btn btn-light border rounded-pill position-relative d-flex align-items-center justify-content-center p-0"
-              style={{ width: 36, height: 36 }}
-              onClick={() => setShowNotifMenu(!showNotifMenu)}
-              title="Pond Incident Notifications"
-            >
-              <FaBell size={13} className="text-muted" />
-              {unreadCount > 0 && (
-                <span
-                  className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-light p-1"
-                  style={{ fontSize: '0.6rem' }}
-                >
-                  {unreadCount}
-                </span>
-              )}
-            </button>
-
-            {showNotifMenu && (
-              <div
-                className="dropdown-menu show border-0 position-absolute end-0 mt-2 p-0 rounded-4 shadow-xl overflow-hidden"
-                style={{
-                  width: '340px',
-                  zIndex: 1050,
-                  backgroundColor: theme === 'dark' ? '#1E293B' : '#FFFFFF',
-                  border: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #E2E8F0'
-                }}
-              >
-                <div
-                  className="p-3 px-3.5 d-flex align-items-center justify-content-between text-white"
-                  style={{ background: 'linear-gradient(135deg, #071733 0%, #0B2C5F 55%, #0E3D7D 100%)' }}
-                >
-                  <div className="d-flex align-items-center gap-2">
-                    <FaBell size={13} />
-                    <span className="fw-bold small">Pond Incident Feed</span>
-                  </div>
-                  <div className="d-flex align-items-center gap-2">
-                    <span className="badge bg-white text-dark rounded-pill extra-small px-2 py-0.5">
-                      {unreadCount} Active
-                    </span>
-                    {unreadCount > 0 && (
-                      <button
-                        type="button"
-                        className="btn btn-link text-white text-decoration-none extra-small p-0 opacity-80 hover-opacity-100"
-                        onClick={handleMarkAllRead}
-                      >
-                        <FaCheckDouble size={10} className="me-1" /> Mark read
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <div className="list-group list-group-flush" style={{ maxHeight: 300, overflowY: 'auto' }}>
-                  {recentNotifs.length === 0 ? (
-                    <div className="p-4 text-center text-muted small">
-                      <FaBell size={22} className="mb-2 opacity-25" />
-                      <p className="mb-0 fw-semibold">No critical alerts</p>
-                      <small className="extra-small text-muted">All ponds and sensors are stable.</small>
-                    </div>
-                  ) : (
-                    recentNotifs.map((n) => (
-                      <div
-                        key={n.id}
-                        className="list-group-item p-3 px-3.5 small list-group-item-action cursor-pointer transition-all border-bottom"
-                        style={{
-                          cursor: 'pointer',
-                          backgroundColor: !n.is_read ? (theme === 'dark' ? 'rgba(56, 189, 248, 0.12)' : '#F0F9FF') : 'transparent',
-                          color: theme === 'dark' ? '#F8FAFC' : '#10294A',
-                          borderLeft: !n.is_read ? '3.5px solid #FF7A00' : '3.5px solid transparent'
-                        }}
-                        onClick={() => handleNotifClick(n)}
-                      >
-                        <div className="d-flex justify-content-between align-items-start mb-1 gap-2">
-                          <span className="fw-bold extra-small text-truncate">
-                            {n.title}
-                          </span>
-                          <span className="text-muted extra-small font-mono flex-shrink-0">
-                            {new Date(n.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                        <p className="text-muted mb-1 extra-small" style={{ fontSize: '0.75rem', lineHeight: 1.4 }}>
-                          {n.message}
-                        </p>
-                        <span className="fw-bold extra-small" style={{ color: '#FF7A00', fontSize: '0.72rem' }}>
-                          View Telemetry Details →
-                        </span>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                <div className="p-2.5 text-center border-top bg-light">
-                  <button
-                    type="button"
-                    className="btn btn-link btn-sm text-decoration-none fw-semibold p-0 extra-small"
-                    style={{ color: '#0284C7' }}
-                    onClick={() => {
-                      setShowNotifMenu(false);
-                      navigate('/admin/alerts');
-                    }}
-                  >
-                    All Farm Notifications →
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* User Profile Avatar with Dropdown */}
-          <div className="position-relative" ref={userRef}>
-            <button
-              type="button"
-              className="btn btn-light border rounded-pill d-flex align-items-center gap-1.5 p-1 ps-1.5 pe-2"
-              style={{ height: 36 }}
-              onClick={() => setShowUserMenu(!showUserMenu)}
-            >
-              <div
-                className="rounded-circle text-white d-flex align-items-center justify-content-center fw-bold"
-                style={{
-                  width: 26,
-                  height: 26,
-                  fontSize: '0.72rem',
-                  background: 'linear-gradient(135deg, #0B2C5F 0%, #FF7A00 100%)'
-                }}
-              >
-                {(user?.full_name || 'Admin').slice(0, 2).toUpperCase()}
-              </div>
-              <span className="fw-semibold small text-dark d-none d-md-inline" style={{ fontSize: '0.78rem' }}>
-                {user?.full_name || 'Administrator'}
-              </span>
-            </button>
-
-            {showUserMenu && (
-              <div
-                className="dropdown-menu show border-0 position-absolute end-0 mt-2 p-2 rounded-3 shadow-lg"
-                style={{
-                  width: 200,
-                  zIndex: 1060,
-                  backgroundColor: theme === 'dark' ? '#1E293B' : '#FFFFFF',
-                  border: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #E2E8F0'
-                }}
-              >
-                <div className="px-2 py-1.5 border-bottom mb-1">
-                  <div className="fw-bold small text-truncate">{user?.full_name || 'Administrator'}</div>
-                  <div className="extra-small text-muted">{user?.email || 'admin@shrimpredict.io'}</div>
-                </div>
-                <NavLink to="/admin/settings" className="dropdown-item rounded-2 small py-1.5" onClick={() => setShowUserMenu(false)}>
-                  Settings & Preferences
-                </NavLink>
-                <button
-                  type="button"
-                  className="dropdown-item rounded-2 small py-1.5 text-danger d-flex align-items-center gap-2"
-                  onClick={handleLogout}
-                >
-                  <FaSignOutAlt size={12} /> Log Out
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Mobile Navigation Toggle */}
-          <button
-            type="button"
-            className="btn btn-light border rounded-pill d-flex d-lg-none align-items-center justify-content-center p-0"
-            style={{ width: 36, height: 36 }}
-            onClick={() => setShowMobileNav(!showMobileNav)}
-          >
-            {showMobileNav ? <FaTimes size={14} /> : <FaBars size={14} />}
-          </button>
-        </div>
-
         {/* Mobile Dropdown Navigation */}
         {showMobileNav && (
-          <div className="w-100 d-lg-none pt-2 pb-1 border-top mt-2">
-            <div className="d-flex flex-wrap gap-1">
+          <div className="w-100 d-lg-none pt-2.5 pb-1 border-top mt-2">
+            <div className="d-flex flex-wrap gap-1.5">
               {dockLinks.map((link) => (
                 <NavLink
                   key={link.to}
@@ -520,6 +557,14 @@ export default function AdminLayout() {
                 >
                   <span>{link.icon}</span>
                   <span>{link.label}</span>
+                  {link.to === '/admin/alerts' && unreadCount > 0 && (
+                    <span
+                      className="badge rounded-pill bg-danger text-white ms-1"
+                      style={{ fontSize: '0.62rem', padding: '0.15rem 0.45rem' }}
+                    >
+                      {unreadCount}
+                    </span>
+                  )}
                 </NavLink>
               ))}
             </div>
