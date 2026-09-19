@@ -43,6 +43,7 @@ import {
   FaBoxes
 } from 'react-icons/fa';
 import api, { safeArray } from '../../services/api';
+import PondCycleCalendar from '../../components/PondCycleCalendar';
 
 ChartJS.register(
   CategoryScale,
@@ -55,6 +56,15 @@ ChartJS.register(
   Legend,
   Filler
 );
+
+function computeDoc(stockingDateStr, targetDateStr) {
+  if (!stockingDateStr) return null;
+  const s = new Date(stockingDateStr + 'T00:00:00');
+  const t = new Date((targetDateStr || new Date().toISOString().split('T')[0]) + 'T00:00:00');
+  if (isNaN(s.getTime()) || isNaN(t.getTime())) return null;
+  const diffTime = t - s;
+  return Math.floor(diffTime / 86400000) + 1;
+}
 
 export default function FeedingPage() {
   const [searchParams] = useSearchParams();
@@ -72,6 +82,8 @@ export default function FeedingPage() {
   const [selectedPond, setSelectedPond] = useState(targetPond || 'all');
   const [dateFilter, setDateFilter] = useState('today'); // 'today' | 'yesterday' | 'week' | 'month' | 'all' | 'custom'
   const [customDate, setCustomDate] = useState('');
+  const [stageFilter, setStageFilter] = useState('all'); // 'all' | 'nursery' | 'growout'
+  const [calendarModalPond, setCalendarModalPond] = useState(null);
   const [sortBy, setSortBy] = useState('date-desc'); // 'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc' | 'pond-asc'
 
   const loadData = useCallback(async () => {
@@ -115,9 +127,49 @@ export default function FeedingPage() {
 
   const todayYMD = formatYMD(new Date());
 
+  const effectiveFilterDate = useMemo(() => {
+    if (dateFilter === 'today') return todayYMD;
+    if (dateFilter === 'yesterday') return formatYMD(new Date(Date.now() - 86400000));
+    if (dateFilter === 'custom' && customDate) return customDate;
+    return todayYMD;
+  }, [dateFilter, customDate, todayYMD]);
+
+  // Count active basins in Nursery (Days 1–25) vs Grow-out (Day 26+) on effectiveFilterDate
+  const nurseryPondsCount = useMemo(() => {
+    return ponds.filter((p) => {
+      const d = computeDoc(p.stocking_date, effectiveFilterDate);
+      return d !== null && d >= 1 && d <= 25;
+    }).length;
+  }, [ponds, effectiveFilterDate]);
+
+  const growoutPondsCount = useMemo(() => {
+    return ponds.filter((p) => {
+      const d = computeDoc(p.stocking_date, effectiveFilterDate);
+      return d !== null && d >= 26;
+    }).length;
+  }, [ponds, effectiveFilterDate]);
+
   // Filtered & Sorted Records
   const filteredRecords = useMemo(() => {
     return records
+      .map((r) => {
+        const rDate = formatYMD(r.record_date || r.created_at);
+        const pondObj = ponds.find((p) => String(p.id) === String(r.pond_id) || p.pond_name === r.pond_name);
+        const stocking = r.stocking_date || pondObj?.stocking_date;
+        const doc = computeDoc(stocking, rDate);
+        const isNursery = doc !== null
+          ? (doc >= 1 && doc <= 25)
+          : String(r.feed_type || r.product_code).toLowerCase().includes('starter');
+        const isGrowout = doc !== null
+          ? (doc >= 26)
+          : String(r.feed_type || r.product_code).toLowerCase().includes('grower');
+        return {
+          ...r,
+          doc,
+          isNursery,
+          isGrowout,
+        };
+      })
       .filter((r) => {
         const rDate = formatYMD(r.record_date || r.created_at);
 
@@ -143,7 +195,15 @@ export default function FeedingPage() {
           selectedPond === 'all' ||
           String(r.pond_name || r.pond_id).toLowerCase() === selectedPond.toLowerCase();
 
-        // 3. Search Filter
+        // 3. Stage Filter
+        let matchStage = true;
+        if (stageFilter === 'nursery') {
+          matchStage = r.isNursery;
+        } else if (stageFilter === 'growout') {
+          matchStage = r.isGrowout;
+        }
+
+        // 4. Search Filter
         const matchSearch =
           !searchTerm ||
           String(r.pond_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -151,7 +211,7 @@ export default function FeedingPage() {
           String(r.recorded_by_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
           String(r.notes || '').toLowerCase().includes(searchTerm.toLowerCase());
 
-        return matchDate && matchPond && matchSearch;
+        return matchDate && matchPond && matchStage && matchSearch;
       })
       .sort((a, b) => {
         if (sortBy === 'date-desc') {
@@ -370,10 +430,18 @@ export default function FeedingPage() {
 
     // Transform into per-pond summary rows
     const list = Object.values(pondMap).map((item) => {
+      const originalPond = ponds.find((p) => String(p.id) === String(item.pond_id) || p.pond_name === item.pond_name);
+      const stockingDate = originalPond?.stocking_date || item.records[0]?.stocking_date || null;
+      const doc = computeDoc(stockingDate, effectiveFilterDate);
+      const isNursery = doc !== null ? (doc >= 1 && doc <= 25) : false;
+      const isGrowout = doc !== null ? (doc >= 26) : false;
+      const stage = isNursery ? 'nursery' : (isGrowout ? 'growout' : 'prestock');
+      const expectedFeed = isGrowout ? 'Grower' : 'Starter';
+
       const actualGivenKg = item.records.reduce((sum, r) => sum + (Number(r.amount_kg) || 0), 0);
       const logCount = item.records.length;
       const latestRecord = item.records[0] || {};
-      const feedType = latestRecord.feed_type || 'Tateh - Starter';
+      const feedType = latestRecord.feed_type || (isGrowout ? 'Tateh - Grower' : 'Tateh - Starter');
       const assignedCaretaker = (item.assigned_caretaker && item.assigned_caretaker !== 'Caretaker')
         ? item.assigned_caretaker
         : (latestRecord.recorded_by_name && latestRecord.recorded_by_name !== 'Caretaker' ? latestRecord.recorded_by_name : 'Unassigned');
@@ -408,6 +476,12 @@ export default function FeedingPage() {
       return {
         pond_id: item.pond_id,
         pond_name: item.pond_name,
+        stocking_date: stockingDate,
+        doc,
+        stage,
+        isNursery,
+        isGrowout,
+        expectedFeed,
         target_feed_kg: item.target_feed_kg,
         actual_given_kg: actualGivenKg,
         log_count: logCount,
@@ -423,9 +497,16 @@ export default function FeedingPage() {
       };
     });
 
+    let finalList = list;
+    if (stageFilter === 'nursery') {
+      finalList = finalList.filter((p) => p.stage === 'nursery');
+    } else if (stageFilter === 'growout') {
+      finalList = finalList.filter((p) => p.stage === 'growout');
+    }
+
     // Apply pond search filter if any
     if (searchTerm) {
-      return list.filter(
+      return finalList.filter(
         (p) =>
           p.pond_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           p.feed_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -433,8 +514,8 @@ export default function FeedingPage() {
       );
     }
 
-    return list;
-  }, [ponds, filteredRecords, searchTerm]);
+    return finalList;
+  }, [ponds, filteredRecords, searchTerm, effectiveFilterDate, stageFilter]);
 
   // View Logs Action Handler: Opens SweetAlert2 Modal Card with Pond Feeding Logs & Breakdown
   const handleViewPondLogs = (pondName, pondId) => {
@@ -455,14 +536,14 @@ export default function FeedingPage() {
       dateFilter === 'today'
         ? "Today's Logs"
         : dateFilter === 'yesterday'
-        ? "Yesterday's Logs"
-        : dateFilter === 'week'
-        ? "This Week's Logs"
-        : dateFilter === 'month'
-        ? "This Month's Logs"
-        : dateFilter === 'custom' && customDate
-        ? `Logs (${customDate})`
-        : "All Historical Logs";
+          ? "Yesterday's Logs"
+          : dateFilter === 'week'
+            ? "This Week's Logs"
+            : dateFilter === 'month'
+              ? "This Month's Logs"
+              : dateFilter === 'custom' && customDate
+                ? `Logs (${customDate})`
+                : "All Historical Logs";
 
     let statusBadge = `<span style="background: #ECFDF5; color: #16A34A; border: 1px solid #BBF7D0; font-weight: 700; font-size: 0.75rem; border-radius: 9999px; padding: 0.3rem 0.8rem;">Optimal Compliance (${compliance}%)</span>`;
     if (compliance > 110) {
@@ -510,12 +591,11 @@ export default function FeedingPage() {
               </tr>
             </thead>
             <tbody>
-              ${
-                pondLogs.length === 0
-                  ? `<tr><td colspan="6" style="text-align: center; padding: 24px; color: #94A3B8;">No feeding logs recorded for ${pondName} for ${dateLabel}.</td></tr>`
-                  : pondLogs
-                      .map(
-                        (l) => `
+              ${pondLogs.length === 0
+        ? `<tr><td colspan="6" style="text-align: center; padding: 24px; color: #94A3B8;">No feeding logs recorded for ${pondName} for ${dateLabel}.</td></tr>`
+        : pondLogs
+          .map(
+            (l) => `
                 <tr style="border-bottom: 1px solid #F1F5F9;">
                   <td style="padding: 10px 14px;">
                     <span style="background: #F0F9FF; color: #0284C7; border: 1px solid #BAE6FD; font-weight: 700; padding: 3px 8px; border-radius: 9999px; font-size: 0.75rem;">${String(l.feeding_time || '6:00 AM').replace(/^0(\d:)/, '$1')}</span>
@@ -532,9 +612,9 @@ export default function FeedingPage() {
                     ${l.notes || 'Normal feeding session completed.'}
                   </td>
                 </tr>`
-                      )
-                      .join('')
-              }
+          )
+          .join('')
+      }
             </tbody>
           </table>
         </div>
@@ -854,14 +934,14 @@ export default function FeedingPage() {
               {dateFilter === 'today'
                 ? "Today's Feeding Intelligence"
                 : dateFilter === 'yesterday'
-                ? "Yesterday's Feeding Intelligence"
-                : dateFilter === 'week'
-                ? "This Week's Feeding Intelligence"
-                : dateFilter === 'month'
-                ? "This Month's Feeding Intelligence"
-                : dateFilter === 'custom' && customDate
-                ? `Feeding Intelligence (${customDate})`
-                : 'All Historical Feeding Records'}
+                  ? "Yesterday's Feeding Intelligence"
+                  : dateFilter === 'week'
+                    ? "This Week's Feeding Intelligence"
+                    : dateFilter === 'month'
+                      ? "This Month's Feeding Intelligence"
+                      : dateFilter === 'custom' && customDate
+                        ? `Feeding Intelligence (${customDate})`
+                        : 'All Historical Feeding Records'}
             </h5>
             <p className="text-muted small mb-0" style={{ fontSize: '0.82rem' }}>
               Showing {filteredRecords.length} records totaling {metrics.filteredTotalKg} kg feed mass.
@@ -884,6 +964,53 @@ export default function FeedingPage() {
             >
               <FaTable size={12} /> Granular Log Stream ({filteredRecords.length})
             </button>
+          </div>
+        </div>
+
+        {/* 🌟 ADMIN STAGE FILTER TABS: All Basins | Nursery (Starter) | Grow-out (Grower) */}
+        <div className="p-3 rounded-4 bg-light border mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div className="d-flex align-items-center gap-2 flex-wrap">
+            <span className="extra-small fw-bold text-uppercase text-muted d-flex align-items-center gap-1">
+              <FaFilter size={11} style={{ color: '#0284C7' }} /> Basin Phase Filter ({effectiveFilterDate}):
+            </span>
+            <button
+              type="button"
+              className={`btn btn-sm rounded-pill px-3 py-1.5 extra-small fw-bold transition-all ${stageFilter === 'all' ? 'btn-dark text-white shadow-xs' : 'btn-white bg-white border text-dark'
+                }`}
+              onClick={() => setStageFilter('all')}
+            >
+              All Basins ({ponds.length})
+            </button>
+            <button
+              type="button"
+              className={`btn btn-sm rounded-pill px-3 py-1.5 extra-small fw-bold transition-all ${stageFilter === 'nursery' ? 'text-white shadow-xs' : 'btn-white bg-white border text-dark'
+                }`}
+              style={{
+                backgroundColor: stageFilter === 'nursery' ? '#059669' : '#ffffff',
+                color: stageFilter === 'nursery' ? '#ffffff' : '#047857',
+                borderColor: '#A7F3D0',
+              }}
+              onClick={() => setStageFilter('nursery')}
+            >
+              🌱 Nursery Basins (Days 1–25 • Starter Feed) ({nurseryPondsCount})
+            </button>
+            <button
+              type="button"
+              className={`btn btn-sm rounded-pill px-3 py-1.5 extra-small fw-bold transition-all ${stageFilter === 'growout' ? 'text-white shadow-xs' : 'btn-white bg-white border text-dark'
+                }`}
+              style={{
+                backgroundColor: stageFilter === 'growout' ? '#2563EB' : '#ffffff',
+                color: stageFilter === 'growout' ? '#ffffff' : '#1D4ED8',
+                borderColor: '#BFDBFE',
+              }}
+              onClick={() => setStageFilter('growout')}
+            >
+              🌊 Grow-out Basins (Day 26+ • Grower Feed) ({growoutPondsCount})
+            </button>
+          </div>
+
+          <div className="extra-small text-muted">
+            SOP Transition: <strong>Days 1–25 Nursery (Starter)</strong> ➔ <strong>Day 26+ Grow-out (Grower)</strong>
           </div>
         </div>
 
@@ -1016,7 +1143,8 @@ export default function FeedingPage() {
               <thead style={{ position: 'sticky', top: 0, zIndex: 5, background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
                 <tr className="text-muted extra-small text-uppercase fw-bold">
                   <th className="border-0 ps-3 py-3">Pond Basin</th>
-                  <th className="border-0 py-3">Current Feed Type</th>
+                  <th className="border-0 py-3">Culture Stage & DOC</th>
+                  <th className="border-0 py-3">Feed Formulation</th>
                   <th className="border-0 py-3">Daily Target</th>
                   <th className="border-0 py-3" style={{ minWidth: 180 }}>Actual Given / Progress</th>
                   <th className="border-0 py-3">Compliance Status</th>
@@ -1027,14 +1155,14 @@ export default function FeedingPage() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="7" className="text-center py-5 text-muted">
+                    <td colSpan="8" className="text-center py-5 text-muted">
                       <FaSync className="fa-spin me-2 text-primary" /> Loading live pond feeding records...
                     </td>
                   </tr>
                 ) : perPondRecords.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="text-center py-5 text-muted">
-                      No active pond feeding records found for the selected filter.
+                    <td colSpan="8" className="text-center py-5 text-muted">
+                      No active pond feeding records found for the selected stage and date filter.
                     </td>
                   </tr>
                 ) : (
@@ -1051,8 +1179,27 @@ export default function FeedingPage() {
                         </div>
                       </td>
                       <td className="py-3">
+                        {p.isNursery ? (
+                          <span
+                            className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1"
+                            style={{ background: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0', fontSize: '0.78rem' }}
+                          >
+                            🌱 {p.doc ? `Day ${p.doc}` : 'DOC 1-25'} • Nursery
+                          </span>
+                        ) : p.isGrowout ? (
+                          <span
+                            className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1"
+                            style={{ background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', fontSize: '0.78rem' }}
+                          >
+                            🌊 {p.doc ? `Day ${p.doc}` : 'DOC 26+'} • Grow-out
+                          </span>
+                        ) : (
+                          <span className="badge bg-light text-muted border extra-small">Pre-Stocking</span>
+                        )}
+                      </td>
+                      <td className="py-3">
                         <div className="fw-bold text-dark">{p.feed_type}</div>
-                        <span className="extra-small text-muted">Auto dispenser active</span>
+                        <span className="extra-small text-muted">Target: {p.expectedFeed}</span>
                       </td>
                       <td className="py-3">
                         <span className="fw-semibold text-secondary">{p.target_feed_kg.toFixed(1)} kg</span>
@@ -1073,10 +1220,10 @@ export default function FeedingPage() {
                                 p.compliance > 110
                                   ? '#FF7A00'
                                   : p.compliance >= 85
-                                  ? '#16A34A'
-                                  : p.compliance > 0
-                                  ? '#E11D48'
-                                  : '#CBD5E1'
+                                    ? '#16A34A'
+                                    : p.compliance > 0
+                                      ? '#E11D48'
+                                      : '#CBD5E1'
                             }}
                           ></div>
                         </div>
@@ -1099,7 +1246,7 @@ export default function FeedingPage() {
                             className="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white extra-small"
                             style={{ width: 28, height: 28, background: '#0B2C5F' }}
                           >
-                            {p.assigned_caretaker.charAt(0).toUpperCase()}
+                            {(p.assigned_caretaker || 'C').charAt(0).toUpperCase()}
                           </div>
                           <div>
                             <div className="fw-bold text-dark">{p.assigned_caretaker}</div>
@@ -1108,20 +1255,43 @@ export default function FeedingPage() {
                         </div>
                       </td>
                       <td className="pe-3 py-3 text-end">
-                        <button
-                          type="button"
-                          className="btn btn-sm rounded-pill px-3 py-1.5 fw-semibold d-inline-flex align-items-center gap-1.5 shadow-xs"
-                          style={{
-                            fontSize: '0.78rem',
-                            background: '#F0F9FF',
-                            color: '#0284C7',
-                            border: '1px solid #BAE6FD'
-                          }}
-                          onClick={() => handleViewPondLogs(p.pond_name, p.pond_id)}
-                          title="Inspect Detailed Feeding Sessions"
-                        >
-                          <FaEye size={13} /> Inspect Logs
-                        </button>
+                        <div className="d-inline-flex align-items-center gap-1.5">
+                          <button
+                            type="button"
+                            className="btn btn-sm rounded-pill px-2.5 py-1 fw-semibold d-inline-flex align-items-center gap-1 shadow-xs"
+                            style={{
+                              fontSize: '0.76rem',
+                              background: '#F0F9FF',
+                              color: '#0284C7',
+                              border: '1px solid #BAE6FD'
+                            }}
+                            onClick={() => handleViewPondLogs(p.pond_name, p.pond_id)}
+                            title="Inspect Detailed Feeding Sessions"
+                          >
+                            <FaEye size={12} /> Logs
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-sm rounded-pill px-2.5 py-1 fw-semibold d-inline-flex align-items-center gap-1 shadow-xs"
+                            style={{
+                              fontSize: '0.76rem',
+                              background: '#F8FAFC',
+                              color: '#475569',
+                              border: '1px solid #CBD5E1'
+                            }}
+                            onClick={() => {
+                              const originalPond = ponds.find((pond) => String(pond.id) === String(p.pond_id) || pond.pond_name === p.pond_name) || {
+                                id: p.pond_id,
+                                pond_name: p.pond_name,
+                                stocking_date: p.stocking_date,
+                              };
+                              setCalendarModalPond(originalPond);
+                            }}
+                            title="Inspect Culture Cycle Calendar"
+                          >
+                            <FaCalendarAlt size={11} /> Calendar
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -1173,7 +1343,22 @@ export default function FeedingPage() {
                         <div className="extra-small text-muted mt-1">{r.record_date || 'Today'}</div>
                       </td>
                       <td className="py-3">
-                        <strong className="text-dark">{r.pond_name || `Pond #${r.pond_id}`}</strong>
+                        <strong className="text-dark d-block">{r.pond_name || `Pond #${r.pond_id}`}</strong>
+                        {r.isNursery ? (
+                          <span
+                            className="badge rounded-pill px-2 py-0.5 fw-bold extra-small mt-1"
+                            style={{ background: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0', fontSize: '0.68rem' }}
+                          >
+                            🌱 {r.doc ? `Day ${r.doc}` : 'DOC 1-25'} • Nursery
+                          </span>
+                        ) : r.isGrowout ? (
+                          <span
+                            className="badge rounded-pill px-2 py-0.5 fw-bold extra-small mt-1"
+                            style={{ background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', fontSize: '0.68rem' }}
+                          >
+                            🌊 {r.doc ? `Day ${r.doc}` : 'DOC 26+'} • Grow-out
+                          </span>
+                        ) : null}
                       </td>
                       <td className="py-3">
                         <span className="fw-semibold text-dark">{r.feed_type || 'Starter Feed'}</span>
@@ -1182,7 +1367,14 @@ export default function FeedingPage() {
                         <span className="fw-extrabold text-success fs-6">{r.amount_kg} kg</span>
                       </td>
                       <td className="py-3">
-                        {r.vitamin_name && r.vitamin_name !== 'None' ? (
+                        {String(r.feeding_time || '').trim().toUpperCase() === '6:00 PM' ? (
+                          <span
+                            className="badge rounded-pill px-2.5 py-1 fw-semibold extra-small"
+                            style={{ background: '#F1F5F9', color: '#475569', border: '1px solid #CBD5E1', fontSize: '0.72rem' }}
+                          >
+                            🚫 5th Feed (No Vit)
+                          </span>
+                        ) : r.vitamin_name && r.vitamin_name !== 'None' ? (
                           <span
                             className="badge rounded-pill px-2.5 py-1 fw-bold"
                             style={{ background: '#ECFDF5', color: '#16A34A', border: '1px solid #BBF7D0', fontSize: '0.72rem' }}
@@ -1277,6 +1469,32 @@ export default function FeedingPage() {
           </div>
         </div>
       </div>
+
+      {/* 🌟 POND CULTURE CYCLE CALENDAR MODAL (ADMIN) */}
+      {calendarModalPond && (
+        <div
+          className="modal fade show d-block"
+          style={{ backgroundColor: 'rgba(7, 23, 51, 0.72)', zIndex: 1060 }}
+          tabIndex="-1"
+        >
+          <div className="modal-dialog modal-dialog-centered modal-lg">
+            <div className="modal-content border-0 rounded-4 overflow-hidden shadow-2xl">
+              <PondCycleCalendar
+                stockingDate={calendarModalPond.stocking_date}
+                selectedDate={effectiveFilterDate}
+                pondName={calendarModalPond.pond_name || `Pond #${calendarModalPond.id}`}
+                records={records.filter(r => String(r.pond_id) === String(calendarModalPond.id))}
+                onSelectDate={(dateStr) => {
+                  setDateFilter('custom');
+                  setCustomDate(dateStr);
+                  setCalendarModalPond(null);
+                }}
+                onClose={() => setCalendarModalPond(null)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

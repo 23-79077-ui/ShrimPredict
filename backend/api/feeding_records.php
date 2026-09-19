@@ -3,12 +3,10 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../utils/notifications_helper.php';
 header('Access-Control-Allow-Origin: *');
 header('Content-Type: application/json; charset=UTF-8');
-header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit; }
-
-
 
 $database = new Database();
 $conn = $database->getConnection();
@@ -84,16 +82,45 @@ $ensureFeedingTable = function ($conn): void {
 
 $ensureFeedingTable($conn);
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $rawBody = file_get_contents('php://input');
-    $data = json_decode($rawBody, true);
-    if (!is_array($data)) {
-        $data = [];
+$rawBody = file_get_contents('php://input');
+$data = json_decode($rawBody, true);
+if (!is_array($data)) {
+    $data = [];
+}
+if (empty($data)) {
+    $data = $_POST;
+}
+
+// -------------------------------------------------------------
+// DELETE HANDLER: HTTP DELETE or POST action=delete
+// -------------------------------------------------------------
+if ($_SERVER['REQUEST_METHOD'] === 'DELETE' || ($_SERVER['REQUEST_METHOD'] === 'POST' && ($data['action'] ?? '') === 'delete')) {
+    $recordId = (int)($data['id'] ?? $data['record_id'] ?? ($_GET['id'] ?? 0));
+    if ($recordId <= 0) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Valid feeding record ID is required for deletion.']);
+        exit;
     }
 
-    if (empty($data)) {
-        $data = $_POST;
+    try {
+        $delStmt = $conn->prepare('DELETE FROM feeding_records WHERE id = :id');
+        $delStmt->execute([':id' => $recordId]);
+        echo json_encode(['success' => true, 'message' => 'Feeding record removed successfully.']);
+        exit;
+    } catch (Throwable $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Error deleting feeding record: ' . $e->getMessage()]);
+        exit;
     }
+}
+
+// -------------------------------------------------------------
+// POST / PUT HANDLER: INSERT OR UPDATE
+// -------------------------------------------------------------
+if ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'PUT') {
+    $recordId = isset($data['record_id']) ? (int)$data['record_id'] : (isset($data['id']) ? (int)$data['id'] : 0);
+    $action = isset($data['action']) ? trim((string)$data['action']) : '';
+    $isUpdate = ($action === 'update' || $_SERVER['REQUEST_METHOD'] === 'PUT' || ($recordId > 0 && !empty($data['is_update'])));
 
     $pondId = isset($data['pond_id']) ? (int)$data['pond_id'] : 0;
     $amountKg = isset($data['amount_kg']) ? (float)$data['amount_kg'] : 0;
@@ -110,7 +137,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $vitaminName = 'None';
     }
     $hasVitamin = ($vitaminName && $vitaminName !== 'None') ? 1 : (isset($data['has_vitamin']) ? (int)$data['has_vitamin'] : 0);
-    $recordDate = isset($data['record_date']) ? trim((string)$data['record_date']) : date('Y-m-d');
+    $recordDate = isset($data['record_date']) && trim((string)$data['record_date']) !== '' ? trim((string)$data['record_date']) : date('Y-m-d');
     $notes = isset($data['notes']) ? trim((string)$data['notes']) : '';
     $recordedByName = isset($data['recorded_by_name']) ? trim((string)$data['recorded_by_name']) : (isset($data['recorded_by']) ? trim((string)$data['recorded_by']) : '');
     $userId = isset($data['user_id']) ? (int)$data['user_id'] : 0;
@@ -121,37 +148,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $broadcastFeedKg = isset($data['broadcast_feed_kg']) && is_numeric($data['broadcast_feed_kg']) ? (float)$data['broadcast_feed_kg'] : null;
     $trayMonitoringStatus = isset($data['tray_monitoring_status']) ? trim((string)$data['tray_monitoring_status']) : '';
 
+    // Farm SOP: 5 daily feedings. Feeds 1-4 receive vitamins, but the 5th feeding (6:00 PM or >= 4 logged feeds today)
+    // strictly disables vitamins (locked to None).
+    $isFifthFeeding = false;
+    if (strtoupper(trim($feedingTime)) === '6:00 PM') {
+        $isFifthFeeding = true;
+    } else if ($pondId > 0 && !$isUpdate) {
+        try {
+            $cntStmt = $conn->prepare('SELECT COUNT(*) FROM feeding_records WHERE pond_id = :pond_id AND record_date = :record_date');
+            $cntStmt->execute([':pond_id' => $pondId, ':record_date' => $recordDate]);
+            $feedsToday = (int)$cntStmt->fetchColumn();
+            if ($feedsToday >= 4) {
+                $isFifthFeeding = true;
+            }
+        } catch (Throwable $e) {}
+    }
+
+    if ($isFifthFeeding) {
+        $hasVitamin = 0;
+        $vitaminName = 'None';
+    }
+
     if (!$pondId || !$amountKg || !$feedingTime || !$productCode) {
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'Pond, amount, feeding time, and product code are required.']);
         exit;
     }
 
-    if ($userId <= 0) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'message' => 'A valid caretaker account is required to save a feeding record.']);
-        exit;
+    // Role check: Allow both caretaker and admin accounts
+    $recordingUser = null;
+    if ($userId > 0) {
+        try {
+            $userStmt = $conn->prepare('SELECT id, full_name, role, status FROM users WHERE id = :id LIMIT 1');
+            $userStmt->execute([':id' => $userId]);
+            $recordingUser = $userStmt->fetch(PDO::FETCH_ASSOC);
+        } catch (Throwable $e) {
+            $recordingUser = null;
+        }
     }
 
-    try {
-        $userStmt = $conn->prepare('SELECT id, full_name, role, status FROM users WHERE id = :id LIMIT 1');
-        $userStmt->execute([':id' => $userId]);
-        $recordingUser = $userStmt->fetch(PDO::FETCH_ASSOC);
-    } catch (Throwable $e) {
-        $recordingUser = null;
-    }
-
-    if (!$recordingUser || $recordingUser['role'] !== 'caretaker') {
+    if ($recordingUser && !in_array($recordingUser['role'], ['caretaker', 'admin'], true)) {
         http_response_code(403);
-        echo json_encode(['success' => false, 'message' => 'Only logged-in caretaker accounts can save feeding records.']);
+        echo json_encode(['success' => false, 'message' => 'Only caretakers or administrators can log or modify feeding records.']);
         exit;
     }
 
-    if ($recordedByName === '') {
+    if ($recordedByName === '' && $recordingUser) {
         $recordedByName = $recordingUser['full_name'] ?? 'Caretaker';
     }
 
-    // Tateh feed products accepted by the caretaker feeding log.
+    // Tateh feed products accepted by the feeding log.
     $validCodes = ['Starter', 'Grower'];
     if (!in_array($productCode, $validCodes, true)) {
         http_response_code(400);
@@ -176,6 +222,82 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $hasBroadcastFeedKg = in_array('broadcast_feed_kg', $columns, true);
     $hasTrayMonitoringStatus = in_array('tray_monitoring_status', $columns, true);
 
+    // -------------------------------------------------------------
+    // UPDATE EXISTING RECORD
+    // -------------------------------------------------------------
+    if ($isUpdate && $recordId > 0) {
+        $updateFields = [
+            'pond_id = :pond_id',
+            'amount_kg = :amount_kg',
+            'feed_type = :feed_type',
+            'feeding_time = :feeding_time',
+            'product_code = :product_code',
+            'has_vitamin = :has_vitamin',
+            'record_date = :record_date',
+            'notes = :notes'
+        ];
+        $updateParams = [
+            ':id' => $recordId,
+            ':pond_id' => $pondId,
+            ':amount_kg' => $amountKg,
+            ':feed_type' => 'Tateh - ' . $productCode,
+            ':feeding_time' => $feedingTime,
+            ':product_code' => $productCode,
+            ':has_vitamin' => $hasVitamin,
+            ':record_date' => $recordDate,
+            ':notes' => $notes,
+        ];
+
+        if ($hasVitaminName) {
+            $updateFields[] = 'vitamin_name = :vitamin_name';
+            $updateParams[':vitamin_name'] = $vitaminName;
+        }
+        if ($hasShrimpWeightGrams) {
+            $updateFields[] = 'shrimp_weight_grams = :shrimp_weight_grams';
+            $updateParams[':shrimp_weight_grams'] = $shrimpWeightGrams;
+        }
+        if ($hasTrayCount) {
+            $updateFields[] = 'tray_count = :tray_count';
+            $updateParams[':tray_count'] = $trayCount;
+        }
+        if ($hasTrayFeedGrams) {
+            $updateFields[] = 'tray_feed_grams = :tray_feed_grams';
+            $updateParams[':tray_feed_grams'] = $trayFeedGrams;
+        }
+        if ($hasTotalTrayFeedGrams) {
+            $updateFields[] = 'total_tray_feed_grams = :total_tray_feed_grams';
+            $updateParams[':total_tray_feed_grams'] = $totalTrayFeedGrams;
+        }
+        if ($hasBroadcastFeedKg) {
+            $updateFields[] = 'broadcast_feed_kg = :broadcast_feed_kg';
+            $updateParams[':broadcast_feed_kg'] = $broadcastFeedKg;
+        }
+        if ($hasTrayMonitoringStatus) {
+            $updateFields[] = 'tray_monitoring_status = :tray_monitoring_status';
+            $updateParams[':tray_monitoring_status'] = $trayMonitoringStatus;
+        }
+        if ($hasRecordedByName && $recordedByName) {
+            $updateFields[] = 'recorded_by_name = :recorded_by_name';
+            $updateParams[':recorded_by_name'] = $recordedByName;
+        }
+
+        try {
+            $updateSql = 'UPDATE feeding_records SET ' . implode(', ', $updateFields) . ' WHERE id = :id';
+            $stmt = $conn->prepare($updateSql);
+            $stmt->execute($updateParams);
+
+            echo json_encode(['success' => true, 'message' => 'Feeding record updated successfully.', 'id' => $recordId]);
+            exit;
+        } catch (Throwable $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Failed to update feeding record: ' . $e->getMessage()]);
+            exit;
+        }
+    }
+
+    // -------------------------------------------------------------
+    // INSERT NEW RECORD (Supports Past & Current Dates)
+    // -------------------------------------------------------------
     $insertFields = ['pond_id', 'amount_kg', 'feed_type', 'feeding_time', 'product_code', 'has_vitamin', 'record_date', 'notes'];
     $placeholders = [':pond_id', ':amount_kg', ':feed_type', ':feeding_time', ':product_code', ':has_vitamin', ':record_date', ':notes'];
     $params = [
@@ -240,7 +362,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($hasUserId) {
         $insertFields[] = 'user_id';
         $placeholders[] = ':user_id';
-        $params[':user_id'] = $userId;
+        $params[':user_id'] = $userId > 0 ? $userId : null;
     }
 
     if (!$hasRecordedByName && !$hasUserId && $recordedByName) {
@@ -271,7 +393,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (Throwable $e) {}
 
         $cName = $recordedByName ?: 'Caretaker';
-        $notifMsg = "{$cName} logged {$amountKg}kg of {$productCode} feed for {$pondName} at {$feedingTime}.";
+        $notifMsg = "{$cName} logged {$amountKg}kg of {$productCode} feed for {$pondName} on {$recordDate} at {$feedingTime}.";
         createNotification($conn, 'Feeding Record Logged', $notifMsg, $cName, 'feeding', $pondName, $userId ?: null);
 
         http_response_code(201);
@@ -294,7 +416,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $newId = $conn->lastInsertId();
 
         $cName = $recordedByName ?: 'Caretaker';
-        $notifMsg = "{$cName} logged {$amountKg}kg of {$productCode} feed for Pond #{$pondId} at {$feedingTime}.";
+        $notifMsg = "{$cName} logged {$amountKg}kg of {$productCode} feed for Pond #{$pondId} on {$recordDate} at {$feedingTime}.";
         createNotification($conn, 'Feeding Record Logged', $notifMsg, $cName, 'feeding', 'Pond #' . $pondId, $userId ?: null);
 
         http_response_code(201);
@@ -310,7 +432,7 @@ $recordedByName = isset($_GET['recorded_by_name']) ? trim((string)$_GET['recorde
 $dateFilter = isset($_GET['date']) ? trim((string)$_GET['date']) : '';
 $searchFilter = isset($_GET['search']) ? trim((string)$_GET['search']) : '';
 
-$query = 'SELECT fr.*, p.pond_name FROM feeding_records fr LEFT JOIN ponds p ON fr.pond_id = p.id WHERE 1=1';
+$query = 'SELECT fr.*, p.pond_name, p.stocking_date FROM feeding_records fr LEFT JOIN ponds p ON fr.pond_id = p.id WHERE 1=1';
 $params = [];
 
 if ($pondFilter > 0) {

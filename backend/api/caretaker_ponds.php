@@ -16,7 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
     if ($userId > 0) {
         $stmt = $conn->prepare(
-            'SELECT p.id, p.pond_name, p.status, p.temperature, p.ph_level, p.salinity, p.dissolved_oxygen, p.water_level
+            'SELECT p.id, p.pond_name, p.status, p.stocking_date, p.temperature, p.ph_level, p.salinity, p.dissolved_oxygen, p.water_level
              FROM caretaker_ponds cp
              JOIN ponds p ON cp.pond_id = p.id
              WHERE cp.user_id = :user_id
@@ -27,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
         if (empty($ponds)) {
             $fallbackStmt = $conn->prepare(
-                'SELECT p.id, p.pond_name, p.status, p.temperature, p.ph_level, p.salinity, p.dissolved_oxygen, p.water_level
+                'SELECT p.id, p.pond_name, p.status, p.stocking_date, p.temperature, p.ph_level, p.salinity, p.dissolved_oxygen, p.water_level
                  FROM users u
                  JOIN ponds p ON u.pond_id = p.id
                  WHERE u.id = :user_id AND u.role = "caretaker"

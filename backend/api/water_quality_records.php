@@ -4,7 +4,7 @@ require_once __DIR__ . '/../utils/notifications_helper.php';
 
 header('Access-Control-Allow-Origin: *');
 header('Content-Type: application/json; charset=UTF-8');
-header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -119,15 +119,59 @@ function evaluateWaterQualityAlerts($conn, $pondId, $pondName, $caretakerName, $
 }
 
 // -------------------------------------------------------------------------
+// DELETE REQUEST: Remove a water quality record
+// -------------------------------------------------------------------------
+if ($_SERVER['REQUEST_METHOD'] === 'DELETE' || (isset($_REQUEST['action']) && $_REQUEST['action'] === 'delete')) {
+    $deleteId = isset($_REQUEST['id']) ? (int)$_REQUEST['id'] : 0;
+    if ($deleteId <= 0) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Valid record id is required for deletion.']);
+        exit;
+    }
+
+    try {
+        $delStmt = $conn->prepare('DELETE FROM water_quality_records WHERE id = :id');
+        $delStmt->execute([':id' => $deleteId]);
+
+        echo json_encode(['success' => true, 'message' => 'Water quality record deleted successfully.']);
+        exit;
+    } catch (Throwable $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Error deleting record: ' . $e->getMessage()]);
+        exit;
+    }
+}
+
+// -------------------------------------------------------------------------
 // GET REQUEST: Check status or fetch records
 // -------------------------------------------------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    $recordId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
     $pondId = isset($_GET['pond_id']) ? (int)$_GET['pond_id'] : 0;
     $caretakerId = isset($_GET['caretaker_id']) ? (int)$_GET['caretaker_id'] : 0;
     $date = isset($_GET['date']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['date']) ? $_GET['date'] : date('Y-m-d');
     $fetchAll = isset($_GET['all']) && $_GET['all'] == '1';
 
     try {
+        // Mode 0: Fetch single record by ID
+        if ($recordId > 0) {
+            $stmt = $conn->prepare('
+                SELECT wqr.*, p.pond_name
+                FROM water_quality_records wqr
+                LEFT JOIN ponds p ON wqr.pond_id = p.id
+                WHERE wqr.id = :id
+                LIMIT 1
+            ');
+            $stmt->execute([':id' => $recordId]);
+            $record = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            echo json_encode([
+                'success' => !empty($record),
+                'record' => $record ?: null,
+            ]);
+            exit;
+        }
+
         // Mode A: Fetch single pond's status for the specified date
         if ($pondId > 0 && !$fetchAll) {
             $stmt = $conn->prepare('
@@ -221,7 +265,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             exit;
         }
 
-        // Mode C: Admin list / History
+        // Mode C: Admin list / Historical Timeline for Pond
         $query = '
             SELECT wqr.*, p.pond_name
             FROM water_quality_records wqr
@@ -239,7 +283,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $params[':rdate'] = $_GET['date'];
         }
 
-        $query .= ' ORDER BY wqr.record_date DESC, wqr.id DESC LIMIT 100';
+        $query .= ' ORDER BY wqr.record_date DESC, wqr.id DESC LIMIT 500';
 
         $stmt = $conn->prepare($query);
         $stmt->execute($params);
@@ -260,10 +304,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 }
 
 // -------------------------------------------------------------------------
-// POST REQUEST: Submit verified water quality record
+// POST REQUEST: Submit or Update verified water quality record
 // -------------------------------------------------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
+        $recordId = isset($_POST['record_id']) ? (int)$_POST['record_id'] : 0;
+        $action = isset($_POST['action']) ? trim($_POST['action']) : '';
+
         $pondId = isset($_POST['pond_id']) ? (int)$_POST['pond_id'] : 0;
         $caretakerId = isset($_POST['caretaker_id']) ? (int)$_POST['caretaker_id'] : 0;
         $recordedByName = isset($_POST['recorded_by_name']) ? trim((string)$_POST['recorded_by_name']) : 'Caretaker';
@@ -332,34 +379,105 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        // Insert into water_quality_records table
-        $insertStmt = $conn->prepare('
-            INSERT INTO water_quality_records
-            (pond_id, caretaker_id, recorded_by_name, dissolved_oxygen, temperature, ph_level, salinity, capture_mode, ocr_confidence, image_path, raw_ocr_text, notes, record_date, recorded_at)
-            VALUES
-            (:pond_id, :caretaker_id, :recorded_by_name, :dissolved_oxygen, :temperature, :ph_level, :salinity, :capture_mode, :ocr_confidence, :image_path, :raw_ocr_text, :notes, :record_date, :recorded_at)
-        ');
+        // Check if an existing record should be updated
+        $isUpdate = false;
+        if ($recordId > 0) {
+            $isUpdate = true;
+        } elseif ($action === 'update') {
+            // Find existing record for this pond and date
+            $findStmt = $conn->prepare('SELECT id FROM water_quality_records WHERE pond_id = :pid AND record_date = :rdate ORDER BY id DESC LIMIT 1');
+            $findStmt->execute([':pid' => $pondId, ':rdate' => $recordDate]);
+            $foundId = (int)$findStmt->fetchColumn();
+            if ($foundId > 0) {
+                $recordId = $foundId;
+                $isUpdate = true;
+            }
+        }
 
-        $insertStmt->execute([
-            ':pond_id' => $pondId,
-            ':caretaker_id' => $caretakerId > 0 ? $caretakerId : null,
-            ':recorded_by_name' => $recordedByName,
-            ':dissolved_oxygen' => $dissolvedOxygen,
-            ':temperature' => $temperature,
-            ':ph_level' => $phLevel,
-            ':salinity' => $salinity,
-            ':capture_mode' => $captureMode,
-            ':ocr_confidence' => $ocrConfidence,
-            ':image_path' => $imagePath,
-            ':raw_ocr_text' => $rawOcrText,
-            ':notes' => $notes,
-            ':record_date' => $recordDate,
-            ':recorded_at' => $recordedAt,
-        ]);
+        if ($isUpdate && $recordId > 0) {
+            // Update existing record
+            $updateSql = '
+                UPDATE water_quality_records
+                SET pond_id = :pond_id,
+                    recorded_by_name = :recorded_by_name,
+                    dissolved_oxygen = :dissolved_oxygen,
+                    temperature = :temperature,
+                    ph_level = :ph_level,
+                    salinity = :salinity,
+                    capture_mode = :capture_mode,
+                    record_date = :record_date,
+                    notes = :notes
+            ';
+            $params = [
+                ':pond_id' => $pondId,
+                ':recorded_by_name' => $recordedByName,
+                ':dissolved_oxygen' => $dissolvedOxygen,
+                ':temperature' => $temperature,
+                ':ph_level' => $phLevel,
+                ':salinity' => $salinity,
+                ':capture_mode' => $captureMode,
+                ':record_date' => $recordDate,
+                ':notes' => $notes,
+                ':id' => $recordId,
+            ];
 
-        $recordId = (int)$conn->lastInsertId();
+            if ($caretakerId > 0) {
+                $updateSql .= ', caretaker_id = :caretaker_id';
+                $params[':caretaker_id'] = $caretakerId;
+            }
+            if ($imagePath !== null) {
+                $updateSql .= ', image_path = :image_path';
+                $params[':image_path'] = $imagePath;
+            }
+            if ($ocrConfidence !== null) {
+                $updateSql .= ', ocr_confidence = :ocr_confidence';
+                $params[':ocr_confidence'] = $ocrConfidence;
+            }
+            if ($rawOcrText !== null) {
+                $updateSql .= ', raw_ocr_text = :raw_ocr_text';
+                $params[':raw_ocr_text'] = $rawOcrText;
+            }
 
-        // Calculate new pond status based on latest readings
+            $updateSql .= ' WHERE id = :id';
+            $updateStmt = $conn->prepare($updateSql);
+            $updateStmt->execute($params);
+        } else {
+            // Insert new record into water_quality_records table
+            $insertStmt = $conn->prepare('
+                INSERT INTO water_quality_records
+                (pond_id, caretaker_id, recorded_by_name, dissolved_oxygen, temperature, ph_level, salinity, capture_mode, ocr_confidence, image_path, raw_ocr_text, notes, record_date, recorded_at)
+                VALUES
+                (:pond_id, :caretaker_id, :recorded_by_name, :dissolved_oxygen, :temperature, :ph_level, :salinity, :capture_mode, :ocr_confidence, :image_path, :raw_ocr_text, :notes, :record_date, :recorded_at)
+            ');
+
+            $insertStmt->execute([
+                ':pond_id' => $pondId,
+                ':caretaker_id' => $caretakerId > 0 ? $caretakerId : null,
+                ':recorded_by_name' => $recordedByName,
+                ':dissolved_oxygen' => $dissolvedOxygen,
+                ':temperature' => $temperature,
+                ':ph_level' => $phLevel,
+                ':salinity' => $salinity,
+                ':capture_mode' => $captureMode,
+                ':ocr_confidence' => $ocrConfidence,
+                ':image_path' => $imagePath,
+                ':raw_ocr_text' => $rawOcrText,
+                ':notes' => $notes,
+                ':record_date' => $recordDate,
+                ':recorded_at' => $recordedAt,
+            ]);
+
+            $recordId = (int)$conn->lastInsertId();
+        }
+
+        // Check latest recorded date for this pond
+        $maxDateStmt = $conn->prepare('SELECT MAX(record_date) FROM water_quality_records WHERE pond_id = :pid');
+        $maxDateStmt->execute([':pid' => $pondId]);
+        $latestRecordDate = $maxDateStmt->fetchColumn();
+
+        // ONLY update live telemetry in ponds table if this record is for the newest date or today
+        $isLatestRecord = empty($latestRecordDate) || ($recordDate >= $latestRecordDate);
+
         $newStatus = 'Healthy';
         if ($dissolvedOxygen < 4.0 || $temperature >= 34.0 || $phLevel < 7.0 || $phLevel > 8.8) {
             $newStatus = 'Critical';
@@ -367,43 +485,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $newStatus = 'Warning';
         }
 
-        // Update latest values on the ponds table
-        $updatePondStmt = $conn->prepare('
-            UPDATE ponds
-            SET dissolved_oxygen = :do,
-                temperature = :temp,
-                ph_level = :ph,
-                salinity = :sal,
-                status = :status
-            WHERE id = :id
-        ');
-        $updatePondStmt->execute([
-            ':do' => $dissolvedOxygen,
-            ':temp' => $temperature,
-            ':ph' => $phLevel,
-            ':sal' => $salinity,
-            ':status' => $newStatus,
-            ':id' => $pondId,
-        ]);
+        if ($isLatestRecord) {
+            // Update latest values on the ponds table
+            $updatePondStmt = $conn->prepare('
+                UPDATE ponds
+                SET dissolved_oxygen = :do,
+                    temperature = :temp,
+                    ph_level = :ph,
+                    salinity = :sal,
+                    status = :status
+                WHERE id = :id
+            ');
+            $updatePondStmt->execute([
+                ':do' => $dissolvedOxygen,
+                ':temp' => $temperature,
+                ':ph' => $phLevel,
+                ':sal' => $salinity,
+                ':status' => $newStatus,
+                ':id' => $pondId,
+            ]);
+        }
 
-        // Evaluate and log potential alerts
-        evaluateWaterQualityAlerts($conn, $pondId, $pondName, $recordedByName, $dissolvedOxygen, $temperature, $phLevel, $salinity);
+        // Only evaluate active alert notifications for records logged today or future
+        if ($recordDate >= date('Y-m-d')) {
+            evaluateWaterQualityAlerts($conn, $pondId, $pondName, $recordedByName, $dissolvedOxygen, $temperature, $phLevel, $salinity);
+        }
 
         // Record activity log
         try {
+            $actType = $isUpdate ? "Water Quality Updated" : "Water Quality Verified";
             $actStmt = $conn->prepare('
                 INSERT INTO activity_logs (user_id, action, details, created_at)
-                VALUES (:uid, "Water Quality Verified", :details, NOW())
+                VALUES (:uid, :action, :details, NOW())
             ');
             $actStmt->execute([
                 ':uid' => $caretakerId > 0 ? $caretakerId : 1,
-                ':details' => "Recorded water quality for {$pondName} via {$captureMode} (DO: {$dissolvedOxygen} mg/L, Temp: {$temperature}°C, pH: {$phLevel}, Sal: {$salinity} ppt).",
+                ':action' => $actType,
+                ':details' => "{$actType} for {$pondName} on {$recordDate} (DO: {$dissolvedOxygen} mg/L, Temp: {$temperature}°C, pH: {$phLevel}, Sal: {$salinity} ppt).",
             ]);
         } catch (Throwable $e) {}
 
         echo json_encode([
             'success' => true,
-            'message' => "Water quality record for {$pondName} successfully logged and verified!",
+            'is_update' => $isUpdate,
+            'message' => $isUpdate
+                ? "Water quality record for {$pondName} ({$recordDate}) successfully updated!"
+                : "Water quality record for {$pondName} ({$recordDate}) successfully logged!",
             'data' => [
                 'id' => $recordId,
                 'pond_id' => $pondId,
@@ -416,6 +543,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'image_path' => $imagePath,
                 'new_pond_status' => $newStatus,
                 'record_date' => $recordDate,
+                'is_latest' => $isLatestRecord,
             ],
         ]);
         exit;

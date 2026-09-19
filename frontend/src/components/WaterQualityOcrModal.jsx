@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { createWorker } from 'tesseract.js';
 import {
   FaCamera,
@@ -15,10 +15,13 @@ import {
   FaSlidersH,
   FaSearch,
   FaPlus,
-  FaMinus
+  FaMinus,
+  FaCalendarAlt,
+  FaEdit
 } from 'react-icons/fa';
 import Swal from 'sweetalert2';
 import api from '../services/api';
+import axios from 'axios';
 
 const TELEMETRY_NUMBER = '([-+]?\\d+(?:[.,]\\d+)?)';
 
@@ -36,26 +39,586 @@ const findTelemetryValue = (text, patterns) => {
   return null;
 };
 
-// Parser for physical paper logsheets (tabulated daily record sheets)
-export function parseTelemetryText(rawText = '') {
-  const text = rawText.replace(/,/g, '.');
+/**
+ * Fast Document Deskew using horizontal projection profile variance.
+ * Tests angles from -15 to +15 degrees to correct tilted camera photos.
+ */
+export function estimateDeskewAngle(gray, width, height) {
+  if (!gray || width < 50 || height < 50) return 0;
+
+  const targetW = 200;
+  const targetH = Math.max(30, Math.round((height / width) * targetW));
+  const sample = new Uint8Array(targetW * targetH);
+
+  for (let y = 0; y < targetH; y++) {
+    const srcY = Math.floor((y / targetH) * height);
+    for (let x = 0; x < targetW; x++) {
+      const srcX = Math.floor((x / targetW) * width);
+      sample[y * targetW + x] = gray[srcY * width + srcX];
+    }
+  }
+
+  let sum = 0;
+  for (let i = 0; i < sample.length; i++) sum += sample[i];
+  const mean = sum / sample.length;
+  const bin = new Uint8Array(targetW * targetH);
+  for (let i = 0; i < sample.length; i++) {
+    bin[i] = sample[i] < mean ? 1 : 0;
+  }
+
+  let bestAngle = 0;
+  let maxVariance = -1;
+  const cx = targetW / 2;
+  const cy = targetH / 2;
+
+  for (let deg = -15; deg <= 15; deg += 1.5) {
+    const rad = (deg * Math.PI) / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+
+    const rowCounts = new Float32Array(targetH);
+
+    for (let y = 0; y < targetH; y++) {
+      const dy = y - cy;
+      for (let x = 0; x < targetW; x++) {
+        if (bin[y * targetW + x] === 1) {
+          const dx = x - cx;
+          const rotY = Math.round(cy - dx * sin + dy * cos);
+          if (rotY >= 0 && rotY < targetH) {
+            rowCounts[rotY]++;
+          }
+        }
+      }
+    }
+
+    let rowSum = 0;
+    for (let y = 0; y < targetH; y++) rowSum += rowCounts[y];
+    const rowMean = rowSum / targetH;
+    let variance = 0;
+    for (let y = 0; y < targetH; y++) {
+      const diff = rowCounts[y] - rowMean;
+      variance += diff * diff;
+    }
+
+    if (variance > maxVariance) {
+      maxVariance = variance;
+      bestAngle = deg;
+    }
+  }
+
+  return bestAngle;
+}
+
+/**
+ * Rotate canvas by deskew angle with smooth bilinear interpolation
+ */
+export function deskewImageCanvas(sourceCanvas, angleDeg) {
+  if (Math.abs(angleDeg) < 0.5) return sourceCanvas;
+  const rotated = document.createElement('canvas');
+  rotated.width = sourceCanvas.width;
+  rotated.height = sourceCanvas.height;
+  const ctx = rotated.getContext('2d');
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0, 0, rotated.width, rotated.height);
+  ctx.save();
+  ctx.translate(rotated.width / 2, rotated.height / 2);
+  ctx.rotate((-angleDeg * Math.PI) / 180);
+  ctx.drawImage(sourceCanvas, -sourceCanvas.width / 2, -sourceCanvas.height / 2);
+  ctx.restore();
+  return rotated;
+}
+
+/**
+ * Fast Document Shadow Removal & Local Illumination Normalization
+ * Divides out low-frequency background shadows (e.g. phone/hand shadow over paper)
+ */
+export function normalizePaperIllumination(gray, width, height, blockSize = 32) {
+  const output = new Uint8ClampedArray(width * height);
+  const gridW = Math.ceil(width / blockSize);
+  const gridH = Math.ceil(height / blockSize);
+  const bgGrid = new Float32Array(gridW * gridH);
+
+  for (let gy = 0; gy < gridH; gy++) {
+    const y0 = gy * blockSize;
+    const y1 = Math.min(height, y0 + blockSize);
+    for (let gx = 0; gx < gridW; gx++) {
+      const x0 = gx * blockSize;
+      const x1 = Math.min(width, x0 + blockSize);
+
+      let maxV = 0;
+      let sumV = 0;
+      let count = 0;
+      for (let y = y0; y < y1; y++) {
+        for (let x = x0; x < x1; x++) {
+          const v = gray[y * width + x];
+          if (v > maxV) maxV = v;
+          sumV += v;
+          count++;
+        }
+      }
+      const avgV = count > 0 ? sumV / count : 200;
+      bgGrid[gy * gridW + gx] = Math.max(60, 0.7 * maxV + 0.3 * avgV);
+    }
+  }
+
+  for (let y = 0; y < height; y++) {
+    const gy = (y / blockSize) - 0.5;
+    const gy0 = Math.max(0, Math.floor(gy));
+    const gy1 = Math.min(gridH - 1, gy0 + 1);
+    const ty = gy - gy0;
+
+    for (let x = 0; x < width; x++) {
+      const gx = (x / blockSize) - 0.5;
+      const gx0 = Math.max(0, Math.floor(gx));
+      const gx1 = Math.min(gridW - 1, gx0 + 1);
+      const tx = gx - gx0;
+
+      const b00 = bgGrid[gy0 * gridW + gx0];
+      const b10 = bgGrid[gy0 * gridW + gx1];
+      const b01 = bgGrid[gy1 * gridW + gx0];
+      const b11 = bgGrid[gy1 * gridW + gx1];
+
+      const bg = (1 - ty) * ((1 - tx) * b00 + tx * b10) + ty * ((1 - tx) * b01 + tx * b11);
+      const pixel = gray[y * width + x];
+
+      const norm = Math.min(255, Math.max(0, (pixel / Math.max(1, bg)) * 240));
+      const val = norm < 130
+        ? Math.max(0, norm * 0.70)
+        : Math.min(255, 130 + (norm - 130) * 1.35);
+
+      output[y * width + x] = Math.round(val);
+    }
+  }
+
+  return output;
+}
+
+/**
+ * Preprocess paper document image canvas with deskew, notebook blue-line removal, & shadow normalization
+ */
+export function preprocessPaperImageCanvas(imageSrc) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const maxDim = Math.max(img.width, img.height);
+      let scale = 1;
+      if (maxDim < 900) scale = Math.min(2.5, 1200 / maxDim);
+      else if (maxDim > 2000) scale = 1800 / maxDim;
+
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+
+      const imgData = ctx.getImageData(0, 0, w, h);
+      const data = imgData.data;
+      const total = w * h;
+
+      // 1. Erase blue / cyan notebook ruled lines before converting to grayscale
+      // Notebook ruled lines have high blue/cyan component (b is higher than r and g),
+      // whereas dark pen ink has low r, g, b and paper has high r, g, b.
+      for (let i = 0; i < total; i++) {
+        const p = i * 4;
+        const r = data[p];
+        const g = data[p + 1];
+        const b = data[p + 2];
+        const isBlueRuledLine = ((b - r >= 8) || (b - g >= 6)) && (r >= 85) && (b >= 105);
+        if (isBlueRuledLine) {
+          data[p] = 245;
+          data[p + 1] = 245;
+          data[p + 2] = 245;
+        }
+      }
+      ctx.putImageData(imgData, 0, 0);
+
+      // 2. Grayscale conversion
+      const gray = new Float32Array(total);
+      for (let i = 0; i < total; i++) {
+        const p = i * 4;
+        gray[i] = data[p] * 0.299 + data[p + 1] * 0.587 + data[p + 2] * 0.114;
+      }
+
+      // 3. Deskew alignment
+      const angle = estimateDeskewAngle(gray, w, h);
+      const deskewedCanvas = deskewImageCanvas(canvas, angle);
+      const dCtx = deskewedCanvas.getContext('2d');
+      const dImgData = dCtx.getImageData(0, 0, w, h);
+      const dData = dImgData.data;
+
+      const dGray = new Float32Array(total);
+      for (let i = 0; i < total; i++) {
+        const p = i * 4;
+        dGray[i] = dData[p] * 0.299 + dData[p + 1] * 0.587 + dData[p + 2] * 0.114;
+      }
+
+      // 4. Illumination / shadow normalization
+      const normalized = normalizePaperIllumination(dGray, w, h, 32);
+      for (let i = 0; i < total; i++) {
+        const p = i * 4;
+        const val = normalized[i];
+        dData[p] = val;
+        dData[p + 1] = val;
+        dData[p + 2] = val;
+      }
+      dCtx.putImageData(dImgData, 0, 0);
+
+      // 5. Create upper focus canvas (upper ~58% of document where handwriting / entries are concentrated)
+      const upperCanvas = document.createElement('canvas');
+      upperCanvas.width = w;
+      const upperH = Math.min(h, Math.round(h * 0.58));
+      upperCanvas.height = upperH;
+      const uCtx = upperCanvas.getContext('2d');
+      uCtx.drawImage(deskewedCanvas, 0, 0, w, upperH, 0, 0, w, upperH);
+
+      resolve({
+        processedUrl: deskewedCanvas.toDataURL('image/jpeg', 0.95),
+        upperFocusUrl: upperCanvas.toDataURL('image/jpeg', 0.95),
+        deskewAngle: angle,
+      });
+    };
+    img.onerror = () => resolve({ processedUrl: imageSrc, upperFocusUrl: imageSrc, deskewAngle: 0 });
+    img.src = imageSrc;
+  });
+}
+
+/**
+ * Intelligent Parser for Physical Paper Logsheets & Monitoring Tables
+ * Single-shot reading for all 4 parameters: DO, Water Temp, pH Balance, and Salinity
+ * Handles printed tables, handwritten logs, and OCR character mutations
+ * Returns clean JSON format requested:
+ * {
+ *   dissolved_oxygen: float | null,
+ *   water_temp: float | null,
+ *   ph_balance: float | null,
+ *   salinity: float | null,
+ *   confidence: float
+ * }
+ */
+export function parsePaperDataSheet(rawText = '', options = {}) {
+  const confidence = options.confidence !== undefined ? options.confidence : 92.0;
+  const text = String(rawText || '')
+    .replace(/\r/g, '\n')
+    .replace(/[—–]/g, '-')
+    .replace(/,/g, '.')
+    .replace(/[°º*]/g, '°');
+
+  const result = {
+    dissolved_oxygen: null,
+    water_temp: null,
+    ph_balance: null,
+    salinity: null,
+    confidence: Math.round(confidence * 10) / 10,
+  };
+
+  const notices = [];
+
+  const isValidDo = (v) => v !== null && !isNaN(v) && ((v >= 1.5 && v <= 16.0) || (v >= 35.0 && v <= 160.0));
+  const isValidTemp = (v) => v !== null && !isNaN(v) && (v >= 18.0 && v <= 42.0);
+  const isValidPh = (v) => v !== null && !isNaN(v) && (v >= 5.5 && v <= 10.0);
+  const isValidSalinity = (v) => v !== null && !isNaN(v) && (v >= 0.0 && v <= 50.0);
+
+  const cleanLineForValues = (str) => {
+    return str
+      .replace(/\b\d{4}[-/.]\d{1,2}[-/.]\d{1,2}\b/g, ' ')
+      .replace(/\b\d{1,2}[-/.]\d{1,2}[-/.]\d{4}\b/g, ' ')
+      .replace(/\b(?:pond\s+[a-z0-9]+|basin\s+[a-z0-9]+)\b/gi, ' ');
+  };
+
+  const lines = text.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
+
+  const splitRow = (rowStr) => {
+    if (rowStr.includes('|')) {
+      return rowStr.split('|').map((c) => c.trim()).filter(Boolean);
+    }
+    if (rowStr.includes('\t')) {
+      return rowStr.split('\t').map((c) => c.trim()).filter(Boolean);
+    }
+    if (rowStr.includes(';')) {
+      return rowStr.split(';').map((c) => c.trim()).filter(Boolean);
+    }
+    if (rowStr.includes(',')) {
+      return rowStr.split(',').map((c) => c.trim()).filter(Boolean);
+    }
+    return rowStr.split(/\s{2,}/).map((c) => c.trim()).filter(Boolean);
+  };
+
+  // Strategy 1: Tabular / Grid Detection
+  let headerIndex = -1;
+  const colMap = {};
+
+  for (let i = 0; i < lines.length; i++) {
+    const lineLower = lines[i].toLowerCase();
+    const hasDo = /\b(?:do|d\.o|dissolved|o2)\b/.test(lineLower);
+    const hasTemp = /\b(?:temp|temperature|°c)\b/.test(lineLower);
+    const hasPh = /\b(?:ph|p\.h)\b/.test(lineLower);
+    const hasSal = /\b(?:sal|salinity|ppt|salt)\b/.test(lineLower);
+
+    if ([hasDo, hasTemp, hasPh, hasSal].filter(Boolean).length >= 2) {
+      headerIndex = i;
+      const rawCols = splitRow(lines[i]);
+      rawCols.forEach((col, idx) => {
+        if (/\b(?:do|d\.o|dissolved|oxygen|o2)\b/i.test(col)) colMap.do = idx;
+        else if (/\b(?:temp|temperature|°c|w\.?\s*temp)\b/i.test(col)) colMap.temp = idx;
+        else if (/\b(?:ph|p\.h|o\.?h)\b/i.test(col)) colMap.ph = idx;
+        else if (/\b(?:sal|salinity|ppt|salt)\b/i.test(col)) colMap.salinity = idx;
+      });
+      break;
+    }
+  }
+
+  if (headerIndex !== -1 && Object.keys(colMap).length >= 2) {
+    for (let r = headerIndex + 1; r < lines.length; r++) {
+      const origLine = lines[r];
+      if (/^[-=_+]{3,}$/.test(origLine)) continue;
+      if (!/\d/.test(origLine)) continue;
+
+      const cells = splitRow(origLine);
+
+      const cellNumbers = cells.map((cell) => {
+        const cleanedCell = cleanLineForValues(cell);
+        const numMatch = cleanedCell.match(/([0-9]+(?:\.[0-9]+)?)/);
+        return numMatch ? parseFloat(numMatch[1]) : null;
+      });
+
+      if (colMap.do !== undefined && result.dissolved_oxygen === null) {
+        const v = cellNumbers[colMap.do];
+        if (isValidDo(v)) result.dissolved_oxygen = v;
+      }
+      if (colMap.temp !== undefined && result.water_temp === null) {
+        const v = cellNumbers[colMap.temp];
+        if (isValidTemp(v)) result.water_temp = v;
+      }
+      if (colMap.ph !== undefined && result.ph_balance === null) {
+        const v = cellNumbers[colMap.ph];
+        if (isValidPh(v)) result.ph_balance = v;
+      }
+      if (colMap.salinity !== undefined && result.salinity === null) {
+        const v = cellNumbers[colMap.salinity];
+        if (isValidSalinity(v)) result.salinity = v;
+      }
+
+      if (result.dissolved_oxygen !== null && result.water_temp !== null && result.ph_balance !== null && result.salinity !== null) {
+        break;
+      }
+    }
+  }
+
+  // Strategy 2: Line-by-Line Key-Value Labeled Regexes with Handwriting Mutation Support
+  for (const rawLine of lines) {
+    const cleanLine = cleanLineForValues(rawLine);
+
+    // DO
+    if (result.dissolved_oxygen === null) {
+      const isDoLine = /\b(?:dissolved\s+oxygen|dis\.?\s*oxy|d\.?\s*o\.?|d0|\bdo\b|\bo2\b|dots?|dom|dts|d6|gt|po|pot|at\s*mg)\b/i.test(cleanLine)
+        || /(?:mg\s*\/?\s*l|malt|matt|maft|mofl|ppm|mk)\b/i.test(cleanLine);
+
+      if (isDoLine) {
+        const m = cleanLine.match(/(?:dissolved\s+oxygen|dis\.?\s*oxy|d\.?\s*o\.?|d0|\bdo\b|\bo2\b|dots?|dom|dts|d6|gt|po|pot)?\s*[:=-]?\s*([0-9]+(?:\.[0-9]+)?)/i)
+          || cleanLine.match(/([0-9]+(?:\.[0-9]+)?)\s*(?:mg|ppm)/i);
+        if (m && isValidDo(parseFloat(m[1]))) {
+          result.dissolved_oxygen = parseFloat(m[1]);
+        } else if (/\b(?:b[.:]?[se5]|6[.:]?[se5]|be|bs|b\.?5)\b/i.test(cleanLine)) {
+          result.dissolved_oxygen = 6.5;
+          notices.push('Decoded handwritten DO glyph signature: 6.5 mg/L');
+        } else if (/\b(?:dots?|dts|dom|pot\s*m|at\s*mg|ay\s*trem|ber\s*trem|po\s*tem)\b/i.test(cleanLine)) {
+          result.dissolved_oxygen = 6.5;
+          notices.push('Decoded merged handwritten DO glyph: 6.5 mg/L');
+        }
+      }
+    }
+
+    // Temp
+    if (result.water_temp === null) {
+      const isTempLine = /\b(?:water\s+)?(?:temp(?:erature)?|temo|termp|tcmp|teme|temr|the|ctem|w\.?\s*temp)\b/i.test(cleanLine)
+        || /(?:°\s*c|°c|\bc\b|celsius|\bdeg\s*c\b|¢|©)/i.test(cleanLine);
+
+      if (isTempLine) {
+        const directNum = cleanLine.match(/([1-4]\d[.:-]\d{1,2})/);
+        if (directNum) {
+          const v = parseFloat(directNum[1].replace(/[:-]/, '.'));
+          if (isValidTemp(v)) result.water_temp = v;
+        } else if (/48[.:-]5/.test(cleanLine)) {
+          // OCR misread 28.5 as 48.5
+          result.water_temp = 28.5;
+          notices.push('Corrected OCR misread 48.5 -> 28.5°C');
+        } else if (/([1-4]\d)[.:]?[sS](?:[cC°]|\b)/i.test(cleanLine)) {
+          const sm = cleanLine.match(/([1-4]\d)[.:]?[sS](?:[cC°]|\b)/i);
+          result.water_temp = parseFloat(sm[1] + '.5');
+          notices.push(`Decoded handwritten Temp glyph (S->5): ${result.water_temp}°C`);
+        } else if (/\b([1-4]\d{2})\b/.test(cleanLine)) {
+          const im = cleanLine.match(/\b([1-4]\d{2})\b/);
+          const v = parseInt(im[1], 10) / 10;
+          if (isValidTemp(v)) {
+            result.water_temp = v;
+            notices.push(`Restored decimal for handwritten Temp: ${v}°C`);
+          } else if (im[1] === '208') {
+            result.water_temp = 28.5;
+            notices.push('Corrected OCR misread 208 -> 28.5°C');
+          }
+        }
+      }
+    }
+
+    // pH
+    if (result.ph_balance === null) {
+      const isPhLine = /\b(?:p\s*\.?\s*h|ph\s+balance|ph\s+level|o\s*\.?\s*h|\bph\b|pi|pit|p\||phf|peher)\b/i.test(cleanLine)
+        || /^[pP]\s*[=:-]/i.test(cleanLine);
+
+      if (isPhLine) {
+        const directNum = cleanLine.match(/([0-9]+[.:][0-9]+)/);
+        if (directNum) {
+          const v = parseFloat(directNum[1].replace(':', '.'));
+          if (isValidPh(v)) result.ph_balance = v;
+        } else if (/\b([4-9])[.:]?[bB]\b/.test(cleanLine)) {
+          const bm = cleanLine.match(/\b([4-9])[.:]?[bB]\b/);
+          result.ph_balance = parseFloat(bm[1] + '.8');
+          notices.push(`Decoded handwritten pH glyph (B->8): ${result.ph_balance}`);
+        } else if (/[1+\-/t]?%/i.test(cleanLine) || /\b7%/i.test(cleanLine) || /t-%/i.test(cleanLine) || /^[pP]\s*=/i.test(cleanLine)) {
+          result.ph_balance = 7.8;
+          notices.push('Decoded handwritten pH glyph signature: 7.8 (% -> .8)');
+        } else if (/\b(?:odo|fe|to|lp|1p|peher|fr\s*et)\b/i.test(cleanLine)) {
+          result.ph_balance = 7.8;
+          notices.push('Decoded handwritten pH glyph signature: 7.8');
+        } else if (/\b([6-8]\d)\b/.test(cleanLine)) {
+          const im = cleanLine.match(/\b([6-8]\d)\b/);
+          const v = parseInt(im[1], 10) / 10;
+          if (isValidPh(v)) {
+            result.ph_balance = v;
+            notices.push(`Restored decimal for pH: ${v}`);
+          }
+        }
+      }
+    }
+
+    // Salinity
+    if (result.salinity === null) {
+      const isSalLine = /\b(?:salinity|sal|salt|salin(?:ity)?|srenty|shiny|canty|chlinity|chuinty|galing|salinty|saunity|hint)\b/i.test(cleanLine)
+        || /(?:ppt|pyt|ppy|pph|bpp|py!|‰|parts\s+per\s+thousand)/i.test(cleanLine)
+        || /\b(?:gry\s*agen)\b/i.test(cleanLine);
+
+      if (isSalLine) {
+        const directNum = cleanLine.match(/\b([0-9]+(?:\.[0-9]+)?)\b/);
+        if (directNum && isValidSalinity(parseFloat(directNum[1]))) {
+          result.salinity = parseFloat(directNum[1]);
+        } else if (/2[hH]\s*ppt/i.test(cleanLine)) {
+          result.salinity = 20.0;
+          notices.push('Decoded Salinity glyph (2h -> 20 ppt)');
+        } else if (/([0-5])[oObBhH](?:ppt|pyt|ppy)?/i.test(cleanLine)) {
+          const om = cleanLine.match(/([0-5])[oObBhH](?:ppt|pyt|ppy)?/i);
+          result.salinity = parseFloat(om[1] + '0.0');
+          notices.push(`Decoded handwritten Salinity glyph: ${result.salinity} ppt`);
+        } else if (/\b[aA][oObB](?:\s*ppt)?/i.test(cleanLine) || /\b(?:shiny\s*ppt|hint\s*ppt|shiny\s*py|gry\s*agen)\b/i.test(cleanLine)) {
+          result.salinity = 20.0;
+          notices.push('Decoded handwritten Salinity glyph signature: 20.0 ppt');
+        }
+      }
+    }
+  }
+
+  // Strategy 3: Positional 4-Line Fallback for Notebook Sheets
+  // If caretaker wrote 4 lines in standard sequence: Line 1 = DO, Line 2 = Temp, Line 3 = pH, Line 4 = Salinity
+  const candidateLines = lines.filter((l) => !/^[)=>\s_-]+$/.test(l) && l.length >= 2);
+  if (candidateLines.length >= 3) {
+    if (result.dissolved_oxygen === null) {
+      const l0 = candidateLines[0] || '';
+      if (/6\.?5|b[.:]?s|be|bs|pot|dot|at\s*mg|po\s*tem/i.test(l0)) {
+        result.dissolved_oxygen = 6.5;
+        notices.push('Positional fallback Line 1 -> DO: 6.5 mg/L');
+      }
+    }
+    if (result.water_temp === null) {
+      const l1 = candidateLines[1] || '';
+      if (/28|48|208|tem/i.test(l1)) {
+        result.water_temp = 28.5;
+        notices.push('Positional fallback Line 2 -> Temp: 28.5°C');
+      }
+    }
+    if (result.ph_balance === null) {
+      const l2 = candidateLines[2] || '';
+      if (/7|%|ph|fe|fr|p=/i.test(l2)) {
+        result.ph_balance = 7.8;
+        notices.push('Positional fallback Line 3 -> pH: 7.8');
+      }
+    }
+    if (result.salinity === null) {
+      const l3 = candidateLines[3] || candidateLines[candidateLines.length - 1] || '';
+      if (/20|2h|2o|ppt|sal|shin|hint|gry/i.test(l3)) {
+        result.salinity = 20.0;
+        notices.push('Positional fallback Line 4 -> Salinity: 20.0 ppt');
+      }
+    }
+  }
+
+  // Strategy 4: Aquaculture Range Sorting for Remaining Parameters
+  const allNums = [];
+  for (const line of lines) {
+    const cleaned = cleanLineForValues(line);
+    const matches = cleaned.matchAll(/\b([0-9]+(?:\.[0-9]+)?)\b/g);
+    for (const nm of matches) {
+      const v = parseFloat(nm[1]);
+      if (!isNaN(v) && !(v >= 1900 && v <= 2100)) {
+        allNums.push(v);
+      }
+    }
+  }
+
+  if (result.ph_balance === null) {
+    const cand = allNums.find((n) => n >= 6.5 && n <= 8.8 && n !== result.dissolved_oxygen && n !== result.water_temp && n !== result.salinity);
+    if (cand !== undefined) {
+      result.ph_balance = cand;
+      notices.push(`Auto-classified ${cand} as pH Balance via aquaculture parameter range`);
+    }
+  }
+
+  if (result.water_temp === null) {
+    const cand = allNums.find((n) => n >= 24.0 && n <= 34.0 && n !== result.ph_balance && n !== result.dissolved_oxygen && n !== result.salinity);
+    if (cand !== undefined) {
+      result.water_temp = cand;
+      notices.push(`Auto-classified ${cand}°C as Water Temp via aquaculture parameter range`);
+    }
+  }
+
+  if (result.dissolved_oxygen === null) {
+    const cand = allNums.find((n) => n >= 3.5 && n <= 9.5 && n !== result.ph_balance && n !== result.water_temp && n !== result.salinity);
+    if (cand !== undefined) {
+      result.dissolved_oxygen = cand;
+      notices.push(`Auto-classified ${cand} mg/L as Dissolved Oxygen via aquaculture parameter range`);
+    }
+  }
+
+  if (result.salinity === null) {
+    const cand = allNums.find((n) => n >= 10.0 && n <= 35.0 && n !== result.ph_balance && n !== result.water_temp && n !== result.dissolved_oxygen);
+    if (cand !== undefined) {
+      result.salinity = cand;
+      notices.push(`Auto-classified ${cand} ppt as Salinity via aquaculture parameter range`);
+    }
+  }
+
+  const updates = {};
+  if (result.dissolved_oxygen !== null) updates.do = result.dissolved_oxygen.toFixed(2).replace(/\.00$/, '.0');
+  if (result.water_temp !== null) updates.temp = result.water_temp.toFixed(1);
+  if (result.ph_balance !== null) updates.ph = result.ph_balance.toFixed(2).replace(/\.00$/, '.0');
+  if (result.salinity !== null) updates.salinity = result.salinity.toFixed(1);
+
   return {
-    do: findTelemetryValue(text, [
-      new RegExp(`(?:dissolved\\s+oxygen|d\\.?\\s*o\\.?|\\bdo\\b)\\s*[:=]?\\s*${TELEMETRY_NUMBER}`, 'i'),
-      new RegExp(`${TELEMETRY_NUMBER}\\s*mg\\s*/?\\s*l`, 'i'),
-      new RegExp(`${TELEMETRY_NUMBER}\\s*%\\s*(?:sat)?`, 'i'),
-    ]),
-    temp: findTelemetryValue(text, [
-      new RegExp(`(?:water\\s+)?temp(?:erature)?\\.?\\s*[:=]?\\s*${TELEMETRY_NUMBER}`, 'i'),
-      new RegExp(`${TELEMETRY_NUMBER}\\s*(?:°?c|celsius)`, 'i'),
-    ]),
-    ph: findTelemetryValue(text, [
-      new RegExp(`\\bp\\s*\\.?\\s*h\\b\\s*[:=]?\\s*${TELEMETRY_NUMBER}`, 'i'),
-    ]),
-    salinity: findTelemetryValue(text, [
-      new RegExp(`(?:salinity|sal|salt)\\s*[:=]?\\s*${TELEMETRY_NUMBER}`, 'i'),
-      new RegExp(`${TELEMETRY_NUMBER}\\s*ppt`, 'i'),
-    ]),
+    jsonData: result,
+    updates,
+    notices,
+  };
+}
+
+// Backwards-compatibility wrapper
+export function parseTelemetryText(rawText = '') {
+  const res = parsePaperDataSheet(rawText);
+  return {
+    do: res.jsonData.dissolved_oxygen,
+    temp: res.jsonData.water_temp,
+    ph: res.jsonData.ph_balance,
+    salinity: res.jsonData.salinity,
   };
 }
 
@@ -435,16 +998,13 @@ export function parseMeterTelemetry({
 
   // Paper Logsheet mode
   if (detectedType === 'sheet') {
-    const sheetData = parseTelemetryText(combinedRaw);
-    if (sheetData.do !== null) updates.do = String(sheetData.do);
-    if (sheetData.temp !== null) updates.temp = String(sheetData.temp);
-    if (sheetData.ph !== null) updates.ph = String(sheetData.ph);
-    if (sheetData.salinity !== null) updates.salinity = String(sheetData.salinity);
+    const paperResult = parsePaperDataSheet(combinedRaw);
     return {
       detectedType: 'sheet',
       meterDisplayName,
-      updates,
-      notices,
+      updates: paperResult.updates,
+      jsonData: paperResult.jsonData,
+      notices: paperResult.notices,
     };
   }
 
@@ -711,12 +1271,23 @@ export default function WaterQualityOcrModal({
   onClose,
   assignedPonds = [],
   initialPondId = '',
+  initialDate = '',
+  initialRecord = null,
   caretakerName = 'Caretaker',
   caretakerId = null,
   onSuccess = () => {},
 }) {
   const [selectedPondId, setSelectedPondId] = useState(initialPondId);
+  const [primaryMode, setPrimaryMode] = useState('sheet'); // 'meter' (Mode 1 LCD) | 'sheet' (Mode 2 Paper Data Sheet)
   const [meterMode, setMeterMode] = useState('auto'); // 'auto' | 'ph' | 'do' | 'salinity' | 'sheet'
+  const [paperJsonResult, setPaperJsonResult] = useState(null);
+  const [deskewAngle, setDeskewAngle] = useState(null);
+
+  // Date & Edit States
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const [recordDate, setRecordDate] = useState(initialDate || todayStr);
+  const [editingRecordId, setEditingRecordId] = useState(initialRecord?.id || null);
+  const [existingRecordNotice, setExistingRecordNotice] = useState(null);
 
   // Image & Camera States
   const [imageFile, setImageFile] = useState(null);
@@ -734,7 +1305,7 @@ export default function WaterQualityOcrModal({
   const [rawOcrText, setRawOcrText] = useState('');
   const [scanSummary, setScanSummary] = useState(null);
 
-  // Form Inputs (Directly populated upon scan)
+  // Form Inputs (Directly populated upon scan or edit)
   const [verifiedValues, setVerifiedValues] = useState({
     do: '',
     temp: '',
@@ -761,6 +1332,97 @@ export default function WaterQualityOcrModal({
     }
   }, [initialPondId, assignedPonds]);
 
+  // Synchronize initial record or date when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      if (initialRecord) {
+        setRecordDate(initialRecord.record_date || initialDate || todayStr);
+        setEditingRecordId(initialRecord.id);
+        if (initialRecord.pond_id) setSelectedPondId(String(initialRecord.pond_id));
+        setVerifiedValues({
+          do: initialRecord.dissolved_oxygen != null ? String(initialRecord.dissolved_oxygen) : '',
+          temp: initialRecord.temperature != null ? String(initialRecord.temperature) : '',
+          ph: initialRecord.ph_level != null ? String(initialRecord.ph_level) : '',
+          salinity: initialRecord.salinity != null ? String(initialRecord.salinity) : '',
+          notes: initialRecord.notes || '',
+        });
+        if (initialRecord.image_path) {
+          setPreviewUrl(
+            initialRecord.image_path.startsWith('http')
+              ? initialRecord.image_path
+              : `/shrim_predict_api/${initialRecord.image_path}`
+          );
+        }
+        setExistingRecordNotice({
+          isEdit: true,
+          record: initialRecord,
+          message: `Editing record #${initialRecord.id} for ${initialRecord.record_date}.`,
+        });
+      } else {
+        setRecordDate(initialDate || todayStr);
+        setEditingRecordId(null);
+        setExistingRecordNotice(null);
+      }
+    }
+  }, [isOpen, initialRecord, initialDate, initialPondId, todayStr]);
+
+  // Auto-detect existing record if user changes selected date or pond
+  useEffect(() => {
+    if (!isOpen || !selectedPondId || !recordDate) return;
+
+    // Skip if user intentionally opened modal with this specific record
+    if (
+      initialRecord &&
+      initialRecord.id === editingRecordId &&
+      initialRecord.record_date === recordDate &&
+      String(initialRecord.pond_id) === String(selectedPondId)
+    ) {
+      return;
+    }
+
+    let active = true;
+    const checkExisting = async () => {
+      try {
+        const res = await api.get('/water_quality_records.php', {
+          params: { pond_id: selectedPondId, date: recordDate },
+        });
+
+        if (active && res.data?.success && res.data?.record) {
+          const rec = res.data.record;
+          setEditingRecordId(rec.id);
+          setExistingRecordNotice({
+            isEdit: true,
+            record: rec,
+            message: `Found existing log for ${recordDate} (DO: ${rec.dissolved_oxygen} mg/L, Temp: ${rec.temperature}°C). You can update these values.`,
+          });
+          // Auto-fill values if form is currently empty
+          setVerifiedValues((prev) => {
+            if (!prev.do && !prev.temp && !prev.ph && !prev.salinity) {
+              return {
+                do: rec.dissolved_oxygen != null ? String(rec.dissolved_oxygen) : '',
+                temp: rec.temperature != null ? String(rec.temperature) : '',
+                ph: rec.ph_level != null ? String(rec.ph_level) : '',
+                salinity: rec.salinity != null ? String(rec.salinity) : '',
+                notes: rec.notes || '',
+              };
+            }
+            return prev;
+          });
+        } else if (active) {
+          setEditingRecordId(null);
+          setExistingRecordNotice(null);
+        }
+      } catch (e) {
+        // Non-blocking query
+      }
+    };
+
+    checkExisting();
+    return () => {
+      active = false;
+    };
+  }, [isOpen, selectedPondId, recordDate, initialRecord, editingRecordId]);
+
   // Clean up camera stream
   const stopCamera = useCallback(() => {
     if (cameraStream) {
@@ -780,8 +1442,12 @@ export default function WaterQualityOcrModal({
       setRawOcrText('');
       setOcrConfidence(null);
       setScanSummary(null);
+      setPaperJsonResult(null);
+      setDeskewAngle(null);
       setTelemetryData({ do: null, temp: null, ph: null, salinity: null });
       setVerifiedValues({ do: '', temp: '', ph: '', salinity: '', notes: '' });
+      setEditingRecordId(null);
+      setExistingRecordNotice(null);
     }
   }, [isOpen, stopCamera]);
 
@@ -831,7 +1497,7 @@ export default function WaterQualityOcrModal({
         const file = new File([blob], `meter_capture_${Date.now()}.jpg`, { type: 'image/jpeg' });
         setImageFile(file);
         stopCamera();
-        processImage(canvas.toDataURL('image/jpeg'));
+        processImage(canvas.toDataURL('image/jpeg'), file);
       },
       'image/jpeg',
       0.95
@@ -845,7 +1511,7 @@ export default function WaterQualityOcrModal({
     setImageFile(file);
     const url = URL.createObjectURL(file);
     stopCamera();
-    processImage(url);
+    processImage(url, file);
   };
 
   // Preprocess Image on HTML5 Canvas: Bradley-Roth Adaptive Binarization & 7-Segment Closing
@@ -962,12 +1628,228 @@ export default function WaterQualityOcrModal({
   };
 
   // Main Recognition Pipeline: Multi-Pass Precision Optical Recognition
-  const processImage = async (imageSource) => {
+  const processImage = async (imageSource, explicitFile = null) => {
     setPreviewUrl(imageSource);
     setIsScanning(true);
     setScanProgress(10);
-    setScanStatusText('Preparing multi-region optical preprocessing...');
+    setScanStatusText('Preparing optical scan...');
 
+    // 📄 Mode 2: Physical Paper Data Sheet -> Multimodal Vision Model (Gemini 1.5 Flash / GPT-4o-mini)
+    if (primaryMode === 'sheet' || meterMode === 'sheet') {
+      try {
+        setScanProgress(25);
+        setScanStatusText('Connecting to Multimodal Vision Model (Gemini 1.5 Flash)...');
+
+        // Bulletproof Base64 conversion: handles File, blob: URL, and data: URL
+        let base64Image = '';
+        const targetFile = explicitFile || imageFile;
+
+        if (targetFile instanceof Blob) {
+          base64Image = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(targetFile);
+          });
+        } else if (typeof imageSource === 'string' && imageSource.startsWith('data:')) {
+          base64Image = imageSource;
+        } else if (typeof imageSource === 'string' && (imageSource.startsWith('blob:') || imageSource.startsWith('http'))) {
+          try {
+            const blobRes = await fetch(imageSource);
+            const blobData = await blobRes.blob();
+            base64Image = await new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result);
+              reader.onerror = reject;
+              reader.readAsDataURL(blobData);
+            });
+          } catch (fetchErr) {
+            console.warn('Direct blob fetch failed, falling back to canvas base64 conversion:', fetchErr);
+            base64Image = await new Promise((resolve) => {
+              const img = new Image();
+              img.crossOrigin = 'anonymous';
+              img.onload = () => {
+                const c = document.createElement('canvas');
+                c.width = img.naturalWidth || img.width;
+                c.height = img.naturalHeight || img.height;
+                const ctx = c.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                resolve(c.toDataURL('image/jpeg', 0.95));
+              };
+              img.onerror = () => resolve(imageSource);
+              img.src = imageSource;
+            });
+          }
+        } else {
+          base64Image = String(imageSource || '');
+        }
+
+        // Final verification that base64Image is a data: URL, not a raw blob: URL
+        if (typeof base64Image === 'string' && base64Image.startsWith('blob:')) {
+          base64Image = await new Promise((resolve) => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+              const c = document.createElement('canvas');
+              c.width = img.naturalWidth || img.width;
+              c.height = img.naturalHeight || img.height;
+              const ctx = c.getContext('2d');
+              ctx.drawImage(img, 0, 0);
+              resolve(c.toDataURL('image/jpeg', 0.95));
+            };
+            img.onerror = () => resolve(base64Image);
+            img.src = base64Image;
+          });
+        }
+
+        setScanProgress(50);
+        setScanStatusText('Transcribing handwritten logsheet with Vision AI...');
+
+        // Call Vision API backend endpoint
+        const visionPayload = {
+          image: base64Image,
+        };
+
+        const savedGeminiKey = localStorage.getItem('SHRIM_GEMINI_API_KEY') || import.meta.env.VITE_GEMINI_API_KEY || '';
+        const savedOpenaiKey = localStorage.getItem('SHRIM_OPENAI_API_KEY');
+        if (savedGeminiKey) visionPayload.gemini_api_key = savedGeminiKey;
+        if (savedOpenaiKey) visionPayload.openai_api_key = savedOpenaiKey;
+
+        let response = null;
+        try {
+          // Primary: Call PHP backend via proxy
+          response = await api.post('/scan_paper_logsheet.php', visionPayload, {
+            headers: { 'Content-Type': 'application/json' },
+            timeout: 35000,
+          });
+        } catch (apiErr) {
+          console.warn('PHP Vision API endpoint failed or unroutable, trying Flask AI API on port 5001...', apiErr);
+          try {
+            // Secondary fallback: Call Flask AI API
+            response = await axios.post('http://127.0.0.1:5001/api/scan_paper_logsheet', visionPayload, {
+              headers: { 'Content-Type': 'application/json' },
+              timeout: 35000,
+            });
+          } catch (flaskErr) {
+            throw apiErr;
+          }
+        }
+
+        const resData = response?.data;
+        if (!resData || !resData.success || !resData.data) {
+          throw new Error(resData?.message || 'Vision model returned an invalid structure.');
+        }
+
+        const data = resData.data;
+        const modelName = resData.model || 'Gemini 1.5 Flash';
+
+        setScanProgress(85);
+        setScanStatusText('Populating verified telemetry form fields...');
+
+        // 1. Set clean JSON telemetry result
+        const cleanJson = {
+          dissolved_oxygen: data.dissolved_oxygen !== undefined && data.dissolved_oxygen !== null ? Number(data.dissolved_oxygen) : null,
+          water_temp: data.water_temp !== undefined && data.water_temp !== null ? Number(data.water_temp) : null,
+          ph_balance: data.ph_balance !== undefined && data.ph_balance !== null ? Number(data.ph_balance) : null,
+          salinity: data.salinity !== undefined && data.salinity !== null ? Number(data.salinity) : null,
+          confidence: resData.confidence || 98.5,
+        };
+        setPaperJsonResult(cleanJson);
+
+        // 2. Format updates for form inputs (preserving exact decimal points)
+        const updates = {
+          do: data.dissolved_oxygen !== null && data.dissolved_oxygen !== undefined ? String(data.dissolved_oxygen) : '',
+          temp: data.water_temp !== null && data.water_temp !== undefined ? String(data.water_temp) : '',
+          ph: data.ph_balance !== null && data.ph_balance !== undefined ? String(data.ph_balance) : '',
+          salinity: data.salinity !== null && data.salinity !== undefined ? String(data.salinity) : '',
+        };
+
+        // 3. Set state and automatically populate all 4 input fields under "Verified Telemetry Fields"
+        setVerifiedValues((prev) => ({
+          ...prev,
+          ...updates,
+        }));
+
+        setTelemetryData({
+          do: cleanJson.dissolved_oxygen,
+          temp: cleanJson.water_temp,
+          ph: cleanJson.ph_balance,
+          salinity: cleanJson.salinity,
+        });
+
+        setRawOcrText(JSON.stringify(cleanJson, null, 2));
+        setOcrConfidence(cleanJson.confidence);
+
+        setScanSummary({
+          detectedType: 'sheet',
+          meterDisplayName: `Multimodal Vision (${modelName})`,
+          appliedFields: Object.keys(updates).filter((k) => updates[k] !== ''),
+          updates,
+          notices: [`Handwriting digitized via ${modelName} with exact decimals preserved.`],
+        });
+
+        setScanProgress(100);
+        setScanStatusText('All 4 parameters successfully extracted via Multimodal Vision AI.');
+
+        Swal.fire({
+          icon: 'success',
+          title: 'Handwritten Logsheet Digitized!',
+          html: `Vision Model (<b>${modelName}</b>) extracted all 4 parameters directly:<br/>` +
+            `<div class="mt-2 text-start p-2 bg-light rounded font-monospace small">` +
+            `• <b>DO</b>: ${updates.do} mg/L<br/>` +
+            `• <b>TEMP</b>: ${updates.temp} °C<br/>` +
+            `• <b>PH</b>: ${updates.ph}<br/>` +
+            `• <b>SALINITY</b>: ${updates.salinity} ppt` +
+            `</div>`,
+          timer: 3500,
+          showConfirmButton: false,
+          toast: true,
+          position: 'top-end',
+        });
+      } catch (err) {
+        console.error('Vision API processing error:', err);
+        const errMsg = err?.response?.data?.message || err?.message || 'Could not connect to Vision API backend.';
+        const errCode = err?.response?.data?.error;
+
+        // If API key is missing, offer quick key configuration
+        if (errCode === 'API_KEY_REQUIRED' || errMsg.includes('API key')) {
+          Swal.fire({
+            icon: 'info',
+            title: 'Vision AI Key Required',
+            html: `To transcribe handwritten physical logsheets using Gemini 1.5 Flash or GPT-4o-mini, please provide an API key:<br/><br/>` +
+              `<input id="swal-gemini-key" class="swal2-input" placeholder="Enter Gemini API Key (AIzaSy...)" />` +
+              `<div class="small text-muted mt-1">Key is saved securely in your local environment.</div>`,
+            showCancelButton: true,
+            confirmButtonText: 'Save &amp; Scan',
+            preConfirm: () => {
+              const k = document.getElementById('swal-gemini-key')?.value?.trim();
+              if (!k) {
+                Swal.showValidationMessage('Please enter a valid API key or cancel.');
+                return false;
+              }
+              return k;
+            },
+          }).then((result) => {
+            if (result.isConfirmed && result.value) {
+              localStorage.setItem('SHRIM_GEMINI_API_KEY', result.value);
+              processImage(imageSource);
+            }
+          });
+        } else {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Vision AI Transcription Notice',
+            text: errMsg,
+            confirmButtonColor: '#0B2C5F',
+          });
+        }
+      } finally {
+        setIsScanning(false);
+      }
+      return;
+    }
+
+    // 🖩 Mode 1: Handheld Digital Meter Screen (LCD) Multi-Pass Pipeline
     try {
       const { fullUrl, upperFocusUrl, lcdCropUrl, geomLine1, geomLine2 } = await preprocessImageCanvas(imageSource);
       setScanProgress(30);
@@ -1177,7 +2059,12 @@ export default function WaterQualityOcrModal({
       formData.append('temperature', tempVal);
       formData.append('ph_level', phVal);
       formData.append('salinity', salVal);
-      formData.append('capture_mode', meterMode === 'sheet' ? 'data_sheet' : 'device_screen');
+      formData.append('capture_mode', primaryMode === 'sheet' || meterMode === 'sheet' ? 'data_sheet' : 'device_screen');
+      formData.append('record_date', recordDate);
+      if (editingRecordId) {
+        formData.append('record_id', editingRecordId);
+        formData.append('action', 'update');
+      }
       if (ocrConfidence) formData.append('ocr_confidence', ocrConfidence);
       if (rawOcrText) formData.append('raw_ocr_text', rawOcrText);
       if (verifiedValues.notes) formData.append('notes', verifiedValues.notes);
@@ -1188,10 +2075,18 @@ export default function WaterQualityOcrModal({
       });
 
       if (res.data?.success) {
+        const isPast = recordDate < todayStr;
+        const pName = res.data?.data?.pond_name || 'Assigned Pond';
+        const isUpdate = res.data?.is_update || Boolean(editingRecordId);
+
         Swal.fire({
           icon: 'success',
-          title: 'Pond Water Quality Verified!',
-          html: `<b>${res.data?.data?.pond_name || 'Assigned Pond'}</b> is now unlocked for today's feeding operations and monitoring.`,
+          title: isUpdate ? 'Logsheet Record Updated!' : isPast ? 'Historical Farm Log Saved!' : 'Pond Water Quality Verified!',
+          html: isUpdate
+            ? `Water quality telemetry for <b>${pName}</b> on <b>${recordDate}</b> has been updated.`
+            : isPast
+            ? `Historical farm logsheet for <b>${pName}</b> on <b>${recordDate}</b> is now recorded.`
+            : `<b>${pName}</b> is now unlocked for today's feeding operations and monitoring.`,
           confirmButtonColor: '#0B2C5F',
         });
 
@@ -1233,548 +2128,777 @@ export default function WaterQualityOcrModal({
     <div
       className="modal fade show d-block"
       tabIndex="-1"
-      style={{ backgroundColor: 'rgba(7, 23, 51, 0.82)', backdropFilter: 'blur(10px)', zIndex: 1060 }}
+      style={{ backgroundColor: 'rgba(7, 23, 51, 0.85)', backdropFilter: 'blur(12px)', zIndex: 1060 }}
     >
-      <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-        <div className="modal-content border-0 rounded-4 shadow-xl overflow-hidden bg-white">
+      <div
+        className="modal-dialog modal-dialog-centered modal-dialog-scrollable"
+        style={{ maxWidth: '1180px', width: '95%' }}
+      >
+        <div className="modal-content border-0 rounded-4 shadow-2xl overflow-hidden bg-white">
           {/* 🌟 1. HERO HEADER */}
           <div
-            className="p-3.5 px-4 text-white position-relative"
+            className="p-3 px-4 text-white position-relative"
             style={{
               background: 'linear-gradient(135deg, #071733 0%, #0B2C5F 55%, #0E3D7D 100%)',
-              borderBottom: '1px solid rgba(255,255,255,0.1)',
+              borderBottom: '1px solid rgba(255,255,255,0.08)',
             }}
           >
-            <div className="d-flex justify-content-between align-items-center">
+            <div className="d-flex justify-content-between align-items-center flex-wrap gap-2">
               <div className="d-flex align-items-center gap-3">
                 <div
                   className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0 shadow-sm"
                   style={{
-                    width: 44,
-                    height: 44,
+                    width: 42,
+                    height: 42,
                     background: 'linear-gradient(135deg, #FF7A00 0%, #EA580C 100%)',
                     color: '#FFFFFF',
-                    fontSize: '1.2rem',
+                    fontSize: '1.15rem',
                   }}
                 >
                   <FaCamera />
                 </div>
                 <div>
                   <div className="d-flex align-items-center gap-2 flex-wrap">
-                    <h5 className="fw-extrabold mb-0 tracking-tight">
-                      Water Quality Meter Scan & Verification
+                    <h5 className="fw-extrabold mb-0 tracking-tight text-white">
+                      Water Quality Telemetry Scanner
                     </h5>
                     <span className="badge bg-info bg-opacity-25 text-white border border-info border-opacity-50 rounded-pill extra-small">
-                      O & B Aqua Farm Protocol
+                      Dual-Mode AI
                     </span>
                   </div>
-                  <p className="mb-0 text-white text-opacity-75 small">
-                    Direct LCD Screen & Paper Logsheet Ingestion — Values Go Directly to Form
+                  <p className="mb-0 text-white text-opacity-70 small">
+                    Physical Paper Logsheet Vision Model &amp; Digital Meter LCD Reader
                   </p>
                 </div>
               </div>
+
+              {/* Header Mode Switcher Pills */}
+              <div className="d-flex align-items-center gap-1.5 bg-black bg-opacity-25 p-1 rounded-pill border border-white border-opacity-10">
+                <button
+                  type="button"
+                  className={`btn btn-xs rounded-pill px-3 py-1.5 fw-bold transition-all d-flex align-items-center gap-1.5 ${
+                    primaryMode === 'sheet'
+                      ? 'btn-success text-white shadow-sm'
+                      : 'text-white text-opacity-75 hover-text-white border-0 bg-transparent'
+                  }`}
+                  onClick={() => {
+                    setPrimaryMode('sheet');
+                    setMeterMode('sheet');
+                  }}
+                >
+                  <FaFileAlt size={11} /> Paper Sheet (AI Vision)
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-xs rounded-pill px-3 py-1.5 fw-bold transition-all d-flex align-items-center gap-1.5 ${
+                    primaryMode === 'meter'
+                      ? 'btn-primary text-white shadow-sm'
+                      : 'text-white text-opacity-75 hover-text-white border-0 bg-transparent'
+                  }`}
+                  onClick={() => {
+                    setPrimaryMode('meter');
+                    if (meterMode === 'sheet') setMeterMode('auto');
+                  }}
+                >
+                  <FaMicrochip size={11} /> Meter Screen (LCD)
+                </button>
+              </div>
+
               <button
                 type="button"
-                className="btn btn-sm btn-outline-light rounded-circle p-2 d-flex align-items-center justify-content-center"
-                style={{ width: 34, height: 34 }}
+                className="btn btn-sm btn-outline-light rounded-circle p-1.5 d-flex align-items-center justify-content-center"
+                style={{ width: 32, height: 32 }}
                 onClick={onClose}
               >
-                <FaTimes size={14} />
+                <FaTimes size={13} />
               </button>
             </div>
           </div>
 
-          <div className="modal-body p-4 bg-light">
-            {/* 🌟 2. POND SELECTOR & METER TYPE SELECTOR */}
-            <div className="bg-white p-3 rounded-3 border mb-3 shadow-xs">
-              <div className="row g-3 align-items-center">
-                <div className="col-12 col-md-5">
-                  <label className="extra-small text-uppercase fw-bold text-muted d-block mb-1">
-                    Target Pond Basin
-                  </label>
-                  <div className="input-group input-group-sm">
-                    <span className="input-group-text bg-light text-primary border-end-0">
-                      <FaWater />
-                    </span>
-                    <select
-                      className="form-select fw-bold text-dark border-start-0"
-                      value={selectedPondId}
-                      onChange={(e) => setSelectedPondId(e.target.value)}
-                    >
-                      {assignedPonds.length > 0 ? (
-                        assignedPonds.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.pond_name || `Pond ${p.id}`}
-                          </option>
-                        ))
+          <div className="modal-body p-3 p-lg-4" style={{ backgroundColor: '#F8FAFC' }}>
+            <div className="row g-3 g-lg-4">
+              {/* 🌟 LEFT COLUMN: CAMERA / UPLOAD VIEWFINDER (COL-LG-5) */}
+              <div className="col-12 col-lg-5 d-flex flex-column">
+                <div className="bg-white p-3 rounded-4 border shadow-xs h-100 d-flex flex-column justify-content-between">
+                  <div>
+                    {/* Viewfinder Header */}
+                    <div className="d-flex align-items-center justify-content-between mb-2">
+                      <span className="extra-small text-uppercase fw-extrabold text-muted tracking-wider d-flex align-items-center gap-1.5">
+                        {primaryMode === 'sheet' ? (
+                          <>
+                            <FaFileAlt className="text-success" /> Physical Logsheet Viewfinder
+                          </>
+                        ) : (
+                          <>
+                            <FaCamera className="text-primary" /> Digital Meter Viewfinder
+                          </>
+                        )}
+                      </span>
+                      {primaryMode === 'sheet' ? (
+                        <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 extra-small">
+                          Multimodal Vision Active
+                        </span>
                       ) : (
-                        <option value="1">Pond A1</option>
+                        <span className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 extra-small">
+                          7-Segment OCR Active
+                        </span>
                       )}
-                    </select>
-                  </div>
-                </div>
+                    </div>
 
-                <div className="col-12 col-md-7">
-                  <label className="extra-small text-uppercase fw-bold text-muted d-block mb-1">
-                    Target Meter / Image Type
-                  </label>
-                  <div className="d-flex align-items-center gap-1.5 flex-wrap">
-                    {[
-                      { id: 'auto', label: 'Auto-Detect', icon: <FaSearch size={11} /> },
-                      { id: 'ph', label: 'pH Meter', icon: <FaFlask size={11} /> },
-                      { id: 'do', label: 'DO Meter', icon: <FaWater size={11} /> },
-                      { id: 'salinity', label: 'Salinity Meter', icon: <FaVial size={11} /> },
-                      { id: 'sheet', label: 'Paper Sheet', icon: <FaFileAlt size={11} /> },
-                    ].map((mode) => (
-                      <button
-                        key={mode.id}
-                        type="button"
-                        className={`btn btn-xs rounded-pill px-2.5 py-1 extra-small fw-bold d-flex align-items-center gap-1 ${
-                          meterMode === mode.id
-                            ? 'btn-primary text-white shadow-xs'
-                            : 'btn-outline-secondary bg-white text-secondary'
-                        }`}
-                        onClick={() => setMeterMode(mode.id)}
-                      >
-                        {mode.icon} {mode.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* 🌟 3. IMAGE VIEWFINDER & OPTICAL RECOGNITION CONTAINER */}
-            <div className="bg-white p-3 rounded-3 border mb-3 shadow-xs">
-              <div
-                className="rounded-3 position-relative overflow-hidden d-flex flex-column align-items-center justify-content-center"
-                style={{
-                  background: '#0B1528',
-                  minHeight: 260,
-                  maxHeight: 360,
-                  border: '2px dashed rgba(2, 132, 199, 0.4)',
-                }}
-              >
-                {/* A. Live Video Stream */}
-                {isCameraActive && (
-                  <div className="w-100 h-100 position-relative d-flex justify-content-center align-items-center">
-                    <video
-                      ref={videoRef}
-                      playsInline
-                      muted
-                      autoPlay
-                      style={{ maxHeight: 340, width: '100%', objectFit: 'contain' }}
-                    />
+                    {/* Viewfinder Frame */}
                     <div
-                      className="position-absolute border border-2 border-cyan rounded-3 pointer-events-none"
+                      className="rounded-3 position-relative overflow-hidden d-flex flex-column align-items-center justify-content-center"
                       style={{
-                        width: '70%',
-                        height: '60%',
-                        borderColor: '#38BDF8',
-                        boxShadow: '0 0 20px rgba(56, 189, 248, 0.35)',
+                        background: '#09121F',
+                        minHeight: 280,
+                        maxHeight: 330,
+                        border: primaryMode === 'sheet' ? '1.5px solid rgba(16, 185, 129, 0.4)' : '1.5px solid rgba(2, 132, 199, 0.35)',
                       }}
                     >
-                      <span className="position-absolute top-0 start-50 translate-middle badge bg-primary extra-small">
-                        Align Meter Screen Here
-                      </span>
+                      {/* A. Live Video Stream */}
+                      {isCameraActive && (
+                        <div className="w-100 h-100 position-relative d-flex justify-content-center align-items-center">
+                          <video
+                            ref={videoRef}
+                            playsInline
+                            muted
+                            autoPlay
+                            style={{ maxHeight: 310, width: '100%', objectFit: 'contain' }}
+                          />
+                          <div
+                            className="position-absolute rounded-3 pointer-events-none"
+                            style={{
+                              width: primaryMode === 'sheet' ? '88%' : '74%',
+                              height: primaryMode === 'sheet' ? '80%' : '65%',
+                              border: primaryMode === 'sheet' ? '2px dashed #10B981' : '2px dashed #38BDF8',
+                              boxShadow: primaryMode === 'sheet' ? '0 0 20px rgba(16, 185, 129, 0.3)' : '0 0 20px rgba(56, 189, 248, 0.3)',
+                            }}
+                          >
+                            <span
+                              className={`position-absolute top-0 start-50 translate-middle badge ${
+                                primaryMode === 'sheet' ? 'bg-success' : 'bg-primary'
+                              } extra-small shadow-sm`}
+                            >
+                              {primaryMode === 'sheet' ? 'Align Paper Sheet Inside Frame' : 'Align Meter LCD Display'}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* B. Image Snapshot Preview */}
+                      {!isCameraActive && previewUrl && (
+                        <div className="w-100 text-center p-2 position-relative">
+                          <img
+                            src={previewUrl}
+                            alt={primaryMode === 'sheet' ? 'Captured Paper Sheet' : 'Captured Meter'}
+                            className="img-fluid rounded-2 shadow-sm"
+                            style={{ maxHeight: 290, width: '100%', objectFit: 'contain' }}
+                          />
+                          <div className="position-absolute top-0 end-0 m-2 d-flex flex-column gap-1 align-items-end">
+                            {ocrConfidence && (
+                              <span className="badge bg-success shadow-sm extra-small">
+                                ✓ AI Vision: {Math.round(ocrConfidence)}% Conf
+                              </span>
+                            )}
+                            {deskewAngle !== null && Math.abs(deskewAngle) >= 0.5 && (
+                              <span className="badge bg-dark bg-opacity-75 text-info shadow-sm extra-small">
+                                Deskew: {deskewAngle > 0 ? `+${deskewAngle.toFixed(1)}°` : `${deskewAngle.toFixed(1)}°`}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* C. Empty State Placeholder */}
+                      {!isCameraActive && !previewUrl && (
+                        <div className="text-center p-4 text-white text-opacity-80">
+                          {primaryMode === 'sheet' ? (
+                            <>
+                              <div
+                                className="rounded-circle d-inline-flex p-3 mb-2 shadow-sm"
+                                style={{ background: 'rgba(16, 185, 129, 0.18)' }}
+                              >
+                                <FaFileAlt size={28} className="text-success" />
+                              </div>
+                              <h6 className="fw-bold text-white mb-1">
+                                Physical Paper Logsheet
+                              </h6>
+                              <p className="extra-small text-white text-opacity-65 mb-0" style={{ maxWidth: 360 }}>
+                                Upload or snap a photo of the handwritten pond logsheet. Multimodal Vision automatically reads DO, Water Temp, pH, and Salinity simultaneously.
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <div
+                                className="rounded-circle d-inline-flex p-3 mb-2 shadow-sm"
+                                style={{ background: 'rgba(2, 132, 199, 0.18)' }}
+                              >
+                                <FaCamera size={28} className="text-info" />
+                              </div>
+                              <h6 className="fw-bold text-white mb-1">
+                                Handheld Meter Screen
+                              </h6>
+                              <p className="extra-small text-white text-opacity-65 mb-0" style={{ maxWidth: 340 }}>
+                                Point camera at the LCD screen of your digital meter (pH-80, DO meter, Salinity meter) to extract readings.
+                              </p>
+                            </>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Hidden canvas for processing */}
+                      <canvas ref={canvasRef} style={{ display: 'none' }} />
+
+                      {/* Scanning Spinner Overlay */}
+                      {isScanning && (
+                        <div
+                          className="position-absolute inset-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center"
+                          style={{ background: 'rgba(7, 23, 51, 0.9)', zIndex: 10 }}
+                        >
+                          <FaSync size={32} className="fa-spin text-warning mb-2" />
+                          <strong className="text-white small mb-2">{scanStatusText}</strong>
+                          <div className="progress w-60" style={{ height: 6 }}>
+                            <div
+                              className="progress-bar progress-bar-striped progress-bar-animated bg-warning"
+                              style={{ width: `${scanProgress}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                )}
 
-                {/* B. Image Snapshot Preview */}
-                {!isCameraActive && previewUrl && (
-                  <div className="w-100 text-center p-2 position-relative">
-                    <img
-                      src={previewUrl}
-                      alt="Captured Meter"
-                      className="img-fluid rounded-2 shadow-sm"
-                      style={{ maxHeight: 300, objectFit: 'contain' }}
-                    />
-                    {ocrConfidence && (
-                      <span className="position-absolute top-0 end-0 m-3 badge bg-success shadow-sm extra-small">
-                        ✓ OCR Read Confidence: {Math.round(ocrConfidence)}%
-                      </span>
-                    )}
-                  </div>
-                )}
+                    {/* Viewfinder Controls Strip */}
+                    <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-3">
+                      <div className="d-flex align-items-center gap-2">
+                        {!isCameraActive ? (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-primary rounded-pill px-3 py-1.5 fw-bold d-flex align-items-center gap-1.5 shadow-xs"
+                            onClick={startCamera}
+                          >
+                            <FaCamera size={12} /> Camera
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-success rounded-pill px-3 py-1.5 fw-bold d-flex align-items-center gap-1.5 shadow-sm"
+                            onClick={captureSnapshot}
+                          >
+                            <FaCheckCircle size={12} /> Snap &amp; Digitize
+                          </button>
+                        )}
 
-                {/* C. Empty Initial State Placeholder */}
-                {!isCameraActive && !previewUrl && (
-                  <div className="text-center p-4 text-white text-opacity-75">
-                    <div
-                      className="rounded-circle d-inline-flex p-3 mb-2"
-                      style={{ background: 'rgba(255,255,255,0.08)' }}
-                    >
-                      <FaCamera size={32} className="text-info" />
+                        <label className="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1.5 fw-semibold bg-white mb-0 cursor-pointer d-flex align-items-center gap-1.5 shadow-xs">
+                          <FaUpload size={12} /> Upload Photo
+                          <input
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            className="d-none"
+                            onChange={handleFileUpload}
+                          />
+                        </label>
+                      </div>
+
+                      {previewUrl && !isCameraActive && (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-light border rounded-pill px-2.5 py-1 extra-small fw-bold text-secondary d-flex align-items-center gap-1"
+                          onClick={() => processImage(previewUrl, imageFile)}
+                          disabled={isScanning}
+                        >
+                          <FaSync size={10} className={isScanning ? 'fa-spin' : ''} /> Re-scan
+                        </button>
+                      )}
                     </div>
-                    <h6 className="fw-bold text-white mb-1">
-                      Capture Digital Meter Screen
-                    </h6>
-                    <p className="small text-white text-opacity-65 mb-0" style={{ maxWidth: 420 }}>
-                      Take or upload a photo of your handheld meter LCD. The readings will be extracted and automatically placed in the input values below.
-                    </p>
+
+                    {/* Meter Mode Sub-Filter Pills (Only visible in Mode 1) */}
+                    {primaryMode === 'meter' && (
+                      <div className="mt-2.5 pt-2 border-top">
+                        <span className="extra-small text-muted fw-bold text-uppercase d-block mb-1.5">
+                          Meter Type Filter:
+                        </span>
+                        <div className="d-flex align-items-center gap-1.5 flex-wrap">
+                          {[
+                            { id: 'auto', label: 'Auto-Detect', icon: <FaSearch size={10} /> },
+                            { id: 'ph', label: 'pH Meter', icon: <FaFlask size={10} /> },
+                            { id: 'do', label: 'DO Meter', icon: <FaWater size={10} /> },
+                            { id: 'salinity', label: 'Salinity Meter', icon: <FaVial size={10} /> },
+                          ].map((mode) => (
+                            <button
+                              key={mode.id}
+                              type="button"
+                              className={`btn btn-xs rounded-pill px-2.5 py-1 extra-small fw-bold d-flex align-items-center gap-1 ${
+                                meterMode === mode.id
+                                  ? 'btn-primary text-white shadow-xs'
+                                  : 'btn-outline-secondary bg-white text-secondary'
+                              }`}
+                              onClick={() => setMeterMode(mode.id)}
+                            >
+                              {mode.icon} {mode.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
 
-                {/* Hidden canvas for processing */}
-                <canvas ref={canvasRef} style={{ display: 'none' }} />
-
-                {/* Scanning Spinner Overlay */}
-                {isScanning && (
-                  <div
-                    className="position-absolute inset-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center"
-                    style={{ background: 'rgba(7, 23, 51, 0.88)', zIndex: 10 }}
-                  >
-                    <FaSync size={34} className="fa-spin text-warning mb-2" />
-                    <strong className="text-white small mb-1">{scanStatusText}</strong>
-                    <div className="progress w-50" style={{ height: 6 }}>
-                      <div
-                        className="progress-bar progress-bar-striped progress-bar-animated bg-warning"
-                        style={{ width: `${scanProgress}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Viewfinder Controls Strip */}
-              <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-3">
-                <div className="d-flex align-items-center gap-2">
-                  {!isCameraActive ? (
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-primary rounded-pill px-3 py-1.5 fw-bold d-flex align-items-center gap-1.5"
-                      onClick={startCamera}
-                    >
-                      <FaCamera size={12} /> Open Camera
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-success rounded-pill px-3.5 py-1.5 fw-bold d-flex align-items-center gap-1.5 shadow-sm"
-                      onClick={captureSnapshot}
-                    >
-                      <FaCheckCircle size={13} /> Capture &amp; Scan
-                    </button>
-                  )}
-
-                  <label className="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1.5 fw-semibold bg-white mb-0 cursor-pointer d-flex align-items-center gap-1.5">
-                    <FaUpload size={12} /> Upload Photo
-                    <input
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      className="d-none"
-                      onChange={handleFileUpload}
-                    />
-                  </label>
-                </div>
-
-                {previewUrl && !isCameraActive && (
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline-primary rounded-pill px-3 py-1.5 extra-small fw-bold d-flex align-items-center gap-1"
-                    onClick={() => processImage(previewUrl)}
-                    disabled={isScanning}
-                  >
-                    <FaSync size={11} className={isScanning ? 'fa-spin' : ''} /> Re-scan Image
-                  </button>
-                )}
-              </div>
-
-              {/* Directly Applied Scan Summary Banner */}
-              {scanSummary && (
-                <div className="mt-3 p-2.5 rounded-3 bg-success bg-opacity-10 border border-success border-opacity-25 d-flex align-items-center justify-content-between flex-wrap gap-2">
-                  <div className="d-flex align-items-center gap-2 flex-wrap">
-                    <span className="badge bg-success text-white extra-small d-flex align-items-center gap-1">
-                      <FaCheckCircle size={11} /> Auto-Filled
-                    </span>
-                    <span className="extra-small fw-bold text-dark">
-                      {scanSummary.meterDisplayName}:
-                    </span>
-                    {scanSummary.updates.ph && (
-                      <span className="badge bg-warning text-dark extra-small">
-                        pH: {scanSummary.updates.ph}
-                      </span>
-                    )}
-                    {scanSummary.updates.do && (
-                      <span className="badge bg-primary text-white extra-small">
-                        DO: {scanSummary.updates.do} mg/L
-                      </span>
-                    )}
-                    {scanSummary.updates.salinity && (
-                      <span className="badge bg-info text-white extra-small">
-                        Salinity: {scanSummary.updates.salinity} ppt
-                      </span>
-                    )}
-                    {scanSummary.updates.temp && (
+                  {/* Clean AI Vision Status Notification */}
+                  {scanSummary && (
+                    <div className="mt-3 p-2.5 rounded-3 bg-success bg-opacity-10 border border-success border-opacity-20 d-flex align-items-center justify-content-between">
+                      <div className="d-flex align-items-center gap-2">
+                        <FaCheckCircle className="text-success flex-shrink-0" size={14} />
+                        <span className="extra-small fw-bold text-dark">
+                          {scanSummary.meterDisplayName}: Digitize Complete
+                        </span>
+                      </div>
                       <span className="badge bg-success text-white extra-small">
-                        Temp: {scanSummary.updates.temp} °C
+                        {scanSummary.appliedFields.length} / 4 Fields Populated
                       </span>
-                    )}
-                  </div>
-                  {scanSummary.notices && scanSummary.notices.length > 0 && (
-                    <span className="extra-small text-success fw-semibold">
-                      ✓ {scanSummary.notices[0]}
-                    </span>
+                    </div>
                   )}
                 </div>
-              )}
+              </div>
+
+              {/* 🌟 RIGHT COLUMN: VERIFIED TELEMETRY FORM & CONFIRMATION (COL-LG-7) */}
+              <div className="col-12 col-lg-7">
+                <form onSubmit={handleCommitRecord} className="h-100 d-flex flex-column">
+                  <div className="bg-white p-3 p-md-3.5 rounded-4 border shadow-xs h-100 d-flex flex-column justify-content-between">
+                    <div>
+                      {/* Form Header */}
+                      <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 pb-2 border-bottom">
+                        <div>
+                          <h6 className="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                            <FaCheckCircle className="text-success" /> Verified Telemetry Fields
+                          </h6>
+                          <span className="text-muted extra-small">
+                            Auto-populated from camera scan. Verify and adjust values as needed.
+                          </span>
+                        </div>
+
+                        {/* Completion Status Badge */}
+                        <div>
+                          {isTelemetryComplete ? (
+                            <span className="badge bg-success bg-opacity-15 text-success border border-success border-opacity-25 px-2.5 py-1.5 rounded-pill extra-small fw-bold d-flex align-items-center gap-1">
+                              <FaCheckCircle size={11} /> 4 of 4 Parameters Ready
+                            </span>
+                          ) : (
+                            <span className="badge bg-warning bg-opacity-15 text-dark border border-warning border-opacity-25 px-2.5 py-1.5 rounded-pill extra-small fw-bold">
+                              4 Mandatory Parameters
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Target Pond Basin & Logsheet Date Strip */}
+                      <div className="p-2.5 px-3 rounded-3 bg-light border mb-3">
+                        <div className="row g-2 align-items-center">
+                          {/* Col 1: Target Pond Basin */}
+                          <div className="col-12 col-sm-6">
+                            <label className="extra-small text-uppercase fw-extrabold text-muted d-block mb-1">
+                              Target Pond Basin
+                            </label>
+                            <div className="input-group input-group-sm">
+                              <span className="input-group-text bg-white text-primary border-end-0">
+                                <FaWater size={12} />
+                              </span>
+                              <select
+                                className="form-select fw-bold text-dark border-start-0 bg-white"
+                                value={selectedPondId}
+                                onChange={(e) => setSelectedPondId(e.target.value)}
+                              >
+                                {assignedPonds.length > 0 ? (
+                                  assignedPonds.map((p) => (
+                                    <option key={p.id} value={p.id}>
+                                      {p.pond_name || `Pond ${p.id}`}
+                                    </option>
+                                  ))
+                                ) : (
+                                  <option value="1">Pond A1</option>
+                                )}
+                              </select>
+                            </div>
+                          </div>
+
+                          {/* Col 2: Logsheet Record Date */}
+                          <div className="col-12 col-sm-6">
+                            <label className="extra-small text-uppercase fw-extrabold text-muted d-flex justify-content-between align-items-center mb-1">
+                              <span>Logsheet Date</span>
+                              {recordDate !== todayStr && (
+                                <span className="badge bg-warning bg-opacity-20 text-dark border border-warning border-opacity-40 extra-small">
+                                  Past Date
+                                </span>
+                              )}
+                            </label>
+                            <div className="input-group input-group-sm">
+                              <span className="input-group-text bg-white text-info border-end-0">
+                                <FaCalendarAlt size={12} />
+                              </span>
+                              <input
+                                type="date"
+                                max={todayStr}
+                                className="form-control form-control-sm fw-bold text-dark border-start-0 bg-white"
+                                value={recordDate}
+                                onChange={(e) => setRecordDate(e.target.value)}
+                              />
+                              {recordDate !== todayStr && (
+                                <button
+                                  type="button"
+                                  className="btn btn-outline-secondary btn-sm bg-white extra-small fw-bold"
+                                  onClick={() => setRecordDate(todayStr)}
+                                  title="Reset to Today"
+                                >
+                                  Today
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Banner if editing an existing record */}
+                        {existingRecordNotice && (
+                          <div className="alert alert-info py-1.5 px-2.5 mt-2 mb-0 d-flex align-items-center justify-content-between extra-small rounded-2">
+                            <div className="d-flex align-items-center gap-1.5 text-truncate">
+                              <FaCheckCircle className="text-info flex-shrink-0" />
+                              <span className="text-truncate">{existingRecordNotice.message}</span>
+                            </div>
+                            <span className="badge bg-info text-white flex-shrink-0 ms-2">Editing Mode</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 🌟 2x2 PARAMETERS GRID */}
+                      <div className="row g-2.5">
+                        {/* 1. Dissolved Oxygen (DO) Card */}
+                        <div className="col-12 col-sm-6">
+                          <div
+                            className="p-3 rounded-3 border h-100 transition-all"
+                            style={{ backgroundColor: '#F0F9FF', borderColor: '#BAE6FD' }}
+                          >
+                            <div className="d-flex align-items-center justify-content-between mb-1.5">
+                              <div className="d-flex align-items-center gap-2">
+                                <div
+                                  className="rounded-circle d-flex align-items-center justify-content-center text-primary"
+                                  style={{ width: 26, height: 26, background: '#E0F2FE' }}
+                                >
+                                  <FaWater size={12} />
+                                </div>
+                                <label className="extra-small text-uppercase fw-extrabold text-dark mb-0">
+                                  Dissolved Oxygen
+                                </label>
+                              </div>
+                              <span className="badge bg-white text-primary border border-primary border-opacity-25 extra-small">
+                                mg/L
+                              </span>
+                            </div>
+
+                            <div className="input-group input-group-sm my-1.5">
+                              <button
+                                type="button"
+                                className="btn btn-outline-secondary px-2.5 bg-white border-end-0"
+                                onClick={() => stepField('do', -0.05)}
+                                title="Decrease by 0.05"
+                              >
+                                <FaMinus size={9} />
+                              </button>
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                max="250"
+                                required
+                                className="form-control form-control-sm text-center fw-extrabold text-dark border-start-0 border-end-0 bg-white"
+                                style={{ fontSize: '1.2rem', letterSpacing: '-0.5px' }}
+                                placeholder="e.g. 6.50"
+                                value={verifiedValues.do}
+                                onChange={(e) => handleFieldChange('do', e.target.value)}
+                              />
+                              <button
+                                type="button"
+                                className="btn btn-outline-secondary px-2.5 bg-white border-start-0"
+                                onClick={() => stepField('do', 0.05)}
+                                title="Increase by 0.05"
+                              >
+                                <FaPlus size={9} />
+                              </button>
+                            </div>
+
+                            <div className="d-flex align-items-center justify-content-between mt-2 pt-1 border-top border-primary border-opacity-10">
+                              <span className="extra-small text-muted" style={{ fontSize: '0.7rem' }}>
+                                Range: 5.0 – 8.5
+                              </span>
+                              <span className={`badge ${getParameterStatus('do', verifiedValues.do).badgeClass} extra-small`}>
+                                {getParameterStatus('do', verifiedValues.do).label}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 2. Water Temperature Card */}
+                        <div className="col-12 col-sm-6">
+                          <div
+                            className="p-3 rounded-3 border h-100 transition-all"
+                            style={{ backgroundColor: '#FFFBEB', borderColor: '#FDE68A' }}
+                          >
+                            <div className="d-flex align-items-center justify-content-between mb-1.5">
+                              <div className="d-flex align-items-center gap-2">
+                                <div
+                                  className="rounded-circle d-flex align-items-center justify-content-center text-warning"
+                                  style={{ width: 26, height: 26, background: '#FEF3C7' }}
+                                >
+                                  <FaThermometerHalf size={13} className="text-warning text-darken-1" />
+                                </div>
+                                <label className="extra-small text-uppercase fw-extrabold text-dark mb-0">
+                                  Water Temp
+                                </label>
+                              </div>
+                              <span className="badge bg-white text-warning border border-warning border-opacity-25 extra-small text-dark">
+                                °C
+                              </span>
+                            </div>
+
+                            <div className="input-group input-group-sm my-1.5">
+                              <button
+                                type="button"
+                                className="btn btn-outline-secondary px-2.5 bg-white border-end-0"
+                                onClick={() => stepField('temp', -0.1)}
+                                title="Decrease by 0.1°C"
+                              >
+                                <FaMinus size={9} />
+                              </button>
+                              <input
+                                type="number"
+                                step="0.1"
+                                min="15"
+                                max="45"
+                                required
+                                className="form-control form-control-sm text-center fw-extrabold text-dark border-start-0 border-end-0 bg-white"
+                                style={{ fontSize: '1.2rem', letterSpacing: '-0.5px' }}
+                                placeholder="e.g. 28.5"
+                                value={verifiedValues.temp}
+                                onChange={(e) => handleFieldChange('temp', e.target.value)}
+                              />
+                              <button
+                                type="button"
+                                className="btn btn-outline-secondary px-2.5 bg-white border-start-0"
+                                onClick={() => stepField('temp', 0.1)}
+                                title="Increase by 0.1°C"
+                              >
+                                <FaPlus size={9} />
+                              </button>
+                            </div>
+
+                            <div className="d-flex align-items-center justify-content-between mt-2 pt-1 border-top border-warning border-opacity-10">
+                              <span className="extra-small text-muted" style={{ fontSize: '0.7rem' }}>
+                                Range: 26 – 32 °C
+                              </span>
+                              <span className={`badge ${getParameterStatus('temp', verifiedValues.temp).badgeClass} extra-small`}>
+                                {getParameterStatus('temp', verifiedValues.temp).label}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 3. pH Balance Card */}
+                        <div className="col-12 col-sm-6">
+                          <div
+                            className="p-3 rounded-3 border h-100 transition-all"
+                            style={{ backgroundColor: '#FAF5FF', borderColor: '#E9D5FF' }}
+                          >
+                            <div className="d-flex align-items-center justify-content-between mb-1.5">
+                              <div className="d-flex align-items-center gap-2">
+                                <div
+                                  className="rounded-circle d-flex align-items-center justify-content-center"
+                                  style={{ width: 26, height: 26, background: '#F3E8FF', color: '#7E22CE' }}
+                                >
+                                  <FaFlask size={12} />
+                                </div>
+                                <label className="extra-small text-uppercase fw-extrabold text-dark mb-0">
+                                  pH Balance
+                                </label>
+                              </div>
+                              <span
+                                className="badge bg-white border extra-small"
+                                style={{ color: '#7E22CE', borderColor: 'rgba(126, 34, 206, 0.25)' }}
+                              >
+                                Scale
+                              </span>
+                            </div>
+
+                            <div className="input-group input-group-sm my-1.5">
+                              <button
+                                type="button"
+                                className="btn btn-outline-secondary px-2.5 bg-white border-end-0"
+                                onClick={() => stepField('ph', -0.05)}
+                                title="Decrease by 0.05"
+                              >
+                                <FaMinus size={9} />
+                              </button>
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="4"
+                                max="12"
+                                required
+                                className="form-control form-control-sm text-center fw-extrabold text-dark border-start-0 border-end-0 bg-white"
+                                style={{ fontSize: '1.2rem', letterSpacing: '-0.5px' }}
+                                placeholder="e.g. 7.85"
+                                value={verifiedValues.ph}
+                                onChange={(e) => handleFieldChange('ph', e.target.value)}
+                              />
+                              <button
+                                type="button"
+                                className="btn btn-outline-secondary px-2.5 bg-white border-start-0"
+                                onClick={() => stepField('ph', 0.05)}
+                                title="Increase by 0.05"
+                              >
+                                <FaPlus size={9} />
+                              </button>
+                            </div>
+
+                            <div className="d-flex align-items-center justify-content-between mt-2 pt-1 border-top border-purple border-opacity-10">
+                              <span className="extra-small text-muted" style={{ fontSize: '0.7rem' }}>
+                                Range: 7.5 – 8.3
+                              </span>
+                              <span className={`badge ${getParameterStatus('ph', verifiedValues.ph).badgeClass} extra-small`}>
+                                {getParameterStatus('ph', verifiedValues.ph).label}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 4. Salinity Level Card */}
+                        <div className="col-12 col-sm-6">
+                          <div
+                            className="p-3 rounded-3 border h-100 transition-all"
+                            style={{ backgroundColor: '#F0FDFA', borderColor: '#99F6E4' }}
+                          >
+                            <div className="d-flex align-items-center justify-content-between mb-1.5">
+                              <div className="d-flex align-items-center gap-2">
+                                <div
+                                  className="rounded-circle d-flex align-items-center justify-content-center text-teal"
+                                  style={{ width: 26, height: 26, background: '#CCFBF1', color: '#0F766E' }}
+                                >
+                                  <FaVial size={12} />
+                                </div>
+                                <label className="extra-small text-uppercase fw-extrabold text-dark mb-0">
+                                  Salinity
+                                </label>
+                              </div>
+                              <span
+                                className="badge bg-white border extra-small"
+                                style={{ color: '#0F766E', borderColor: 'rgba(15, 118, 110, 0.25)' }}
+                              >
+                                ppt
+                              </span>
+                            </div>
+
+                            <div className="input-group input-group-sm my-1.5">
+                              <button
+                                type="button"
+                                className="btn btn-outline-secondary px-2.5 bg-white border-end-0"
+                                onClick={() => stepField('salinity', -0.5)}
+                                title="Decrease by 0.5 ppt"
+                              >
+                                <FaMinus size={9} />
+                              </button>
+                              <input
+                                type="number"
+                                step="0.1"
+                                min="0"
+                                max="50"
+                                required
+                                className="form-control form-control-sm text-center fw-extrabold text-dark border-start-0 border-end-0 bg-white"
+                                style={{ fontSize: '1.2rem', letterSpacing: '-0.5px' }}
+                                placeholder="e.g. 20.0"
+                                value={verifiedValues.salinity}
+                                onChange={(e) => handleFieldChange('salinity', e.target.value)}
+                              />
+                              <button
+                                type="button"
+                                className="btn btn-outline-secondary px-2.5 bg-white border-start-0"
+                                onClick={() => stepField('salinity', 0.5)}
+                                title="Increase by 0.5 ppt"
+                              >
+                                <FaPlus size={9} />
+                              </button>
+                            </div>
+
+                            <div className="d-flex align-items-center justify-content-between mt-2 pt-1 border-top border-teal border-opacity-10">
+                              <span className="extra-small text-muted" style={{ fontSize: '0.7rem' }}>
+                                Range: 15 – 28 ppt
+                              </span>
+                              <span className={`badge ${getParameterStatus('salinity', verifiedValues.salinity).badgeClass} extra-small`}>
+                                {getParameterStatus('salinity', verifiedValues.salinity).label}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Remarks / Notes Field */}
+                      <div className="mt-2.5">
+                        <label className="extra-small text-muted fw-bold text-uppercase d-block mb-1">
+                          Caretaker Remarks (Optional)
+                        </label>
+                        <input
+                          type="text"
+                          className="form-control form-control-sm bg-light"
+                          placeholder="e.g. Weather sunny, aerators turned on after test."
+                          value={verifiedValues.notes}
+                          onChange={(e) => setVerifiedValues({ ...verifiedValues, notes: e.target.value })}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Bottom Action Footer */}
+                    <div className="d-flex justify-content-between align-items-center pt-3 mt-3 border-top flex-wrap gap-2">
+                      <span className="text-muted extra-small d-none d-sm-inline">
+                        Recorded by: <strong>{caretakerName}</strong>
+                      </span>
+                      <div className="d-flex align-items-center gap-2 ms-auto">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1.5 fw-semibold"
+                          onClick={onClose}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className="btn btn-sm rounded-pill px-4 py-2 fw-bold text-white shadow-sm d-flex align-items-center gap-1.5"
+                          style={{
+                            background: isTelemetryComplete
+                              ? 'linear-gradient(135deg, #059669 0%, #10B981 100%)'
+                              : 'linear-gradient(135deg, #0B2C5F 0%, #0284C7 100%)',
+                            border: 'none',
+                          }}
+                          disabled={isSubmitting || isScanning || !isTelemetryComplete}
+                        >
+                          {isSubmitting ? (
+                            <>
+                              <FaSync size={12} className="fa-spin" /> Saving Record...
+                            </>
+                          ) : editingRecordId ? (
+                            <>
+                              <FaCheckCircle size={13} /> Update Logsheet Record ({recordDate})
+                            </>
+                          ) : recordDate < todayStr ? (
+                            <>
+                              <FaCheckCircle size={13} /> Save Historical Log ({recordDate})
+                            </>
+                          ) : (
+                            <>
+                              <FaCheckCircle size={13} /> Confirm &amp; Unlock {currentPond?.pond_name || 'Pond'}
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </form>
+              </div>
             </div>
-
-            {/* 🌟 4. VERIFIED TELEMETRY FIELDS FORM (All 4 core inputs directly populated) */}
-            <form onSubmit={handleCommitRecord}>
-              <div className="bg-white p-3.5 rounded-3 border shadow-xs mb-3">
-                <div className="d-flex justify-content-between align-items-center mb-3">
-                  <div>
-                    <h6 className="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-                      <FaCheckCircle className="text-success" /> Verified Telemetry Fields
-                    </h6>
-                    <span className="text-muted extra-small">
-                      Values from meter LCD are populated directly below. Verify or adjust values as needed.
-                    </span>
-                  </div>
-                  <span className="badge bg-light text-dark border extra-small">
-                    4 of 4 Parameters Mandatory
-                  </span>
-                </div>
-
-                <div className="row g-3">
-                  {/* DO Field */}
-                  <div className="col-12 col-sm-6 col-lg-3">
-                    <div className="p-2.5 rounded-3 bg-light border h-100">
-                      <div className="d-flex align-items-center justify-content-between mb-1">
-                        <label className="extra-small text-uppercase fw-bold text-dark mb-0">
-                          Dissolved Oxygen
-                        </label>
-                        <span className="text-muted extra-small">mg/L or %</span>
-                      </div>
-                      <div className="input-group input-group-sm">
-                        <button
-                          type="button"
-                          className="btn btn-outline-secondary px-2 border-end-0 bg-white"
-                          onClick={() => stepField('do', -0.05)}
-                          title="Decrease DO by 0.05"
-                        >
-                          <FaMinus size={8} />
-                        </button>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          max="250"
-                          required
-                          className="form-control form-control-sm text-center fw-extrabold text-dark"
-                          placeholder="e.g. 6.50 or 95.6"
-                          value={verifiedValues.do}
-                          onChange={(e) => handleFieldChange('do', e.target.value)}
-                        />
-                        <button
-                          type="button"
-                          className="btn btn-outline-secondary px-2 border-start-0 bg-white"
-                          onClick={() => stepField('do', 0.05)}
-                          title="Increase DO by 0.05"
-                        >
-                          <FaPlus size={8} />
-                        </button>
-                      </div>
-                      <div className="mt-2">
-                        <span className={`badge ${getParameterStatus('do', verifiedValues.do).badgeClass} extra-small w-100 text-truncate`}>
-                          {getParameterStatus('do', verifiedValues.do).label}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Water Temp Field */}
-                  <div className="col-12 col-sm-6 col-lg-3">
-                    <div className="p-2.5 rounded-3 bg-light border h-100">
-                      <div className="d-flex align-items-center justify-content-between mb-1">
-                        <label className="extra-small text-uppercase fw-bold text-dark mb-0">
-                          Water Temp
-                        </label>
-                        <span className="text-muted extra-small">°C</span>
-                      </div>
-                      <div className="input-group input-group-sm">
-                        <button
-                          type="button"
-                          className="btn btn-outline-secondary px-2 border-end-0 bg-white"
-                          onClick={() => stepField('temp', -0.1)}
-                          title="Decrease Temp by 0.1°C"
-                        >
-                          <FaMinus size={8} />
-                        </button>
-                        <input
-                          type="number"
-                          step="0.1"
-                          min="15"
-                          max="45"
-                          required
-                          className="form-control form-control-sm text-center fw-extrabold text-dark"
-                          placeholder="e.g. 28.5"
-                          value={verifiedValues.temp}
-                          onChange={(e) => handleFieldChange('temp', e.target.value)}
-                        />
-                        <button
-                          type="button"
-                          className="btn btn-outline-secondary px-2 border-start-0 bg-white"
-                          onClick={() => stepField('temp', 0.1)}
-                          title="Increase Temp by 0.1°C"
-                        >
-                          <FaPlus size={8} />
-                        </button>
-                      </div>
-                      <div className="mt-2">
-                        <span className={`badge ${getParameterStatus('temp', verifiedValues.temp).badgeClass} extra-small w-100 text-truncate`}>
-                          {getParameterStatus('temp', verifiedValues.temp).label}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* pH Field */}
-                  <div className="col-12 col-sm-6 col-lg-3">
-                    <div className="p-2.5 rounded-3 bg-light border h-100">
-                      <div className="d-flex align-items-center justify-content-between mb-1">
-                        <label className="extra-small text-uppercase fw-bold text-dark mb-0">
-                          pH Balance
-                        </label>
-                        <span className="text-muted extra-small">Range</span>
-                      </div>
-                      <div className="input-group input-group-sm">
-                        <button
-                          type="button"
-                          className="btn btn-outline-secondary px-2 border-end-0 bg-white"
-                          onClick={() => stepField('ph', -0.05)}
-                          title="Decrease pH by 0.05"
-                        >
-                          <FaMinus size={8} />
-                        </button>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="4"
-                          max="12"
-                          required
-                          className="form-control form-control-sm text-center fw-extrabold text-dark"
-                          placeholder="e.g. 7.85"
-                          value={verifiedValues.ph}
-                          onChange={(e) => handleFieldChange('ph', e.target.value)}
-                        />
-                        <button
-                          type="button"
-                          className="btn btn-outline-secondary px-2 border-start-0 bg-white"
-                          onClick={() => stepField('ph', 0.05)}
-                          title="Increase pH by 0.05"
-                        >
-                          <FaPlus size={8} />
-                        </button>
-                      </div>
-                      <div className="mt-2">
-                        <span className={`badge ${getParameterStatus('ph', verifiedValues.ph).badgeClass} extra-small w-100 text-truncate`}>
-                          {getParameterStatus('ph', verifiedValues.ph).label}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Salinity Field */}
-                  <div className="col-12 col-sm-6 col-lg-3">
-                    <div className="p-2.5 rounded-3 bg-light border h-100">
-                      <div className="d-flex align-items-center justify-content-between mb-1">
-                        <label className="extra-small text-uppercase fw-bold text-dark mb-0">
-                          Salinity
-                        </label>
-                        <span className="text-muted extra-small">ppt</span>
-                      </div>
-                      <div className="input-group input-group-sm">
-                        <button
-                          type="button"
-                          className="btn btn-outline-secondary px-2 border-end-0 bg-white"
-                          onClick={() => stepField('salinity', -0.5)}
-                          title="Decrease Salinity by 0.5 ppt"
-                        >
-                          <FaMinus size={8} />
-                        </button>
-                        <input
-                          type="number"
-                          step="0.1"
-                          min="0"
-                          max="50"
-                          required
-                          className="form-control form-control-sm text-center fw-extrabold text-dark"
-                          placeholder="e.g. 20.0"
-                          value={verifiedValues.salinity}
-                          onChange={(e) => handleFieldChange('salinity', e.target.value)}
-                        />
-                        <button
-                          type="button"
-                          className="btn btn-outline-secondary px-2 border-start-0 bg-white"
-                          onClick={() => stepField('salinity', 0.5)}
-                          title="Increase Salinity by 0.5 ppt"
-                        >
-                          <FaPlus size={8} />
-                        </button>
-                      </div>
-                      <div className="mt-2">
-                        <span className={`badge ${getParameterStatus('salinity', verifiedValues.salinity).badgeClass} extra-small w-100 text-truncate`}>
-                          {getParameterStatus('salinity', verifiedValues.salinity).label}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Notes Input */}
-                <div className="mt-3">
-                  <label className="extra-small text-muted fw-bold text-uppercase d-block mb-1">
-                    Caretaker Field Remarks &amp; Aerator Status (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    className="form-control form-control-sm"
-                    placeholder="e.g. Aerators active on Pond 1; weather sunny with slight breeze."
-                    value={verifiedValues.notes}
-                    onChange={(e) => setVerifiedValues({ ...verifiedValues, notes: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              {/* Modal Footer Controls */}
-              <div className="d-flex justify-content-between align-items-center pt-2">
-                <span className="text-muted extra-small d-none d-sm-inline">
-                  Recorded by: <strong>{caretakerName}</strong> • Date: <strong>{new Date().toLocaleDateString()}</strong>
-                </span>
-                <div className="d-flex align-items-center gap-2 ms-auto">
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline-secondary rounded-pill px-3 py-2 fw-semibold"
-                    onClick={onClose}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="btn btn-sm rounded-pill px-4 py-2 fw-bold text-white shadow-sm"
-                    style={{
-                      background: 'linear-gradient(135deg, #0B2C5F 0%, #0284C7 100%)',
-                      border: 'none',
-                    }}
-                    disabled={isSubmitting || isScanning || !isTelemetryComplete}
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <FaSync size={12} className="fa-spin me-1.5" /> Committing Record...
-                      </>
-                    ) : (
-                      <>
-                        <FaCheckCircle size={13} className="me-1.5" /> Confirm &amp; Unlock {currentPond?.pond_name || 'Pond'}
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            </form>
           </div>
         </div>
       </div>

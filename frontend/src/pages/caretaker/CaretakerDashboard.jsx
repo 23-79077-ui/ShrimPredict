@@ -14,17 +14,30 @@ import {
   FaFilter,
   FaStethoscope,
   FaCamera,
+  FaSeedling,
   FaSync,
   FaLock,
   FaShieldAlt,
   FaChevronRight,
-  FaFileAlt
+  FaFileAlt,
+  FaHistory
 } from 'react-icons/fa';
 import WaterQualityOcrModal from '../../components/WaterQualityOcrModal';
+import WaterQualityHistoryModal from '../../components/WaterQualityHistoryModal';
 
 const feedingTimes = ['6:00 AM', '9:00 AM', '12:00 PM', '3:00 PM', '6:00 PM'];
 
 const normalizeFeedingTime = (value = '') => String(value).trim().replace(/^0(\d:)/, '$1').toUpperCase();
+
+function computeDoc(stockingDateStr, targetDateStr) {
+  if (!stockingDateStr) return null;
+  const s = new Date(stockingDateStr + 'T00:00:00');
+  const t = targetDateStr ? new Date(targetDateStr + 'T00:00:00') : new Date();
+  if (isNaN(s.getTime()) || isNaN(t.getTime())) return null;
+  const diffTime = t.getTime() - s.getTime();
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
+  return diffDays >= 1 ? diffDays : null;
+}
 
 const resolveImageUrl = (url) => {
   if (!url) return '';
@@ -44,9 +57,11 @@ const resolveImageUrl = (url) => {
 export default function CaretakerDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const assignedPonds = user?.assigned_ponds?.length
-    ? user.assigned_ponds
-    : (user?.pond_id ? [{ id: user.pond_id, pond_name: 'Assigned Pond', status: 'Healthy' }] : []);
+  const [assignedPonds, setAssignedPonds] = useState(
+    user?.assigned_ponds?.length
+      ? user.assigned_ponds
+      : (user?.pond_id ? [{ id: user.pond_id, pond_name: 'Assigned Pond', status: 'Healthy' }] : [])
+  );
 
   const [records, setRecords] = useState([]);
   const [diseaseScans, setDiseaseScans] = useState([]);
@@ -59,6 +74,10 @@ export default function CaretakerDashboard() {
   });
   const [isOcrModalOpen, setIsOcrModalOpen] = useState(false);
   const [ocrTargetPondId, setOcrTargetPondId] = useState('');
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [historyTargetPond, setHistoryTargetPond] = useState(null);
+  const [editingWqRecord, setEditingWqRecord] = useState(null);
+  const [ocrTargetDate, setOcrTargetDate] = useState('');
 
   const [loading, setLoading] = useState(true);
   const [selectedPondFilter, setSelectedPondFilter] = useState('all');
@@ -70,7 +89,7 @@ export default function CaretakerDashboard() {
     try {
       setLoading(true);
       const todayDateStr = new Date().toISOString().split('T')[0];
-      const [feedRes, diseaseRes, alertsRes, wqRes] = await Promise.allSettled([
+      const [feedRes, diseaseRes, alertsRes, wqRes, pondsRes] = await Promise.allSettled([
         api.get('/feeding_records.php', {
           params: {
             user_id: user?.id || 0,
@@ -90,6 +109,11 @@ export default function CaretakerDashboard() {
             date: todayDateStr,
           },
         }),
+        api.get('/caretaker_ponds.php', {
+          params: {
+            user_id: user?.id || 0,
+          },
+        }),
       ]);
 
       if (feedRes.status === 'fulfilled') setRecords(safeArray(feedRes.value.data));
@@ -97,6 +121,9 @@ export default function CaretakerDashboard() {
       if (alertsRes.status === 'fulfilled') setAlerts(safeArray(alertsRes.value.data));
       if (wqRes.status === 'fulfilled' && wqRes.value.data?.success) {
         setWaterQualityChecklist(wqRes.value.data);
+      }
+      if (pondsRes.status === 'fulfilled' && pondsRes.value.data?.success && Array.isArray(pondsRes.value.data.ponds) && pondsRes.value.data.ponds.length > 0) {
+        setAssignedPonds(pondsRes.value.data.ponds);
       }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -236,8 +263,8 @@ export default function CaretakerDashboard() {
                 firstUnverified
                   ? String(firstUnverified.pond_id)
                   : assignedPonds[0]?.id
-                  ? String(assignedPonds[0].id)
-                  : ''
+                    ? String(assignedPonds[0].id)
+                    : ''
               );
               setIsOcrModalOpen(true);
             }}
@@ -326,8 +353,8 @@ export default function CaretakerDashboard() {
                   firstUnverified
                     ? String(firstUnverified.pond_id)
                     : assignedPonds[0]?.id
-                    ? String(assignedPonds[0].id)
-                    : ''
+                      ? String(assignedPonds[0].id)
+                      : ''
                 );
                 setIsOcrModalOpen(true);
               }}
@@ -372,6 +399,24 @@ export default function CaretakerDashboard() {
                         <strong className="text-dark" style={{ fontSize: '0.9rem' }}>
                           {pond.pond_name}
                         </strong>
+                        {pond.stocking_date && (() => {
+                          const doc = computeDoc(pond.stocking_date, todayStr);
+                          if (!doc) return null;
+                          const isNursery = doc >= 1 && doc <= 25;
+                          return (
+                            <span
+                              className="badge rounded-pill px-2 py-0.5 extra-small fw-bold"
+                              style={{
+                                backgroundColor: isNursery ? '#ECFDF5' : '#EFF6FF',
+                                color: isNursery ? '#047857' : '#1D4ED8',
+                                border: `1px solid ${isNursery ? '#A7F3D0' : '#BFDBFE'}`,
+                                fontSize: '0.66rem',
+                              }}
+                            >
+                              {isNursery ? `🌱 Day ${doc} Nursery` : `🌊 Day ${doc} Grow-out`}
+                            </span>
+                          );
+                        })()}
                       </div>
 
                       {/* Proportionate, subtle status badge */}
@@ -426,7 +471,21 @@ export default function CaretakerDashboard() {
                         )}
                       </div>
 
-                      <div className="flex-shrink-0">
+                      <div className="flex-shrink-0 d-flex align-items-center gap-1.5">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-secondary bg-white rounded-pill px-2.5 py-1 extra-small fw-semibold d-inline-flex align-items-center gap-1 shadow-xs"
+                          style={{ fontSize: '0.7rem' }}
+                          onClick={() => {
+                            setHistoryTargetPond(pond);
+                            setIsHistoryModalOpen(true);
+                          }}
+                          title="View Water Quality Log History and past date records"
+                        >
+                          <FaHistory size={9} className="text-info" />
+                          <span>History</span>
+                        </button>
+
                         {!isVerified ? (
                           <button
                             type="button"
@@ -438,7 +497,9 @@ export default function CaretakerDashboard() {
                               border: 'none',
                             }}
                             onClick={() => {
+                              setEditingWqRecord(null);
                               setOcrTargetPondId(String(pond.id));
+                              setOcrTargetDate(todayStr);
                               setIsOcrModalOpen(true);
                             }}
                           >
@@ -451,7 +512,9 @@ export default function CaretakerDashboard() {
                             className="btn btn-sm btn-light border rounded-pill px-2.5 py-1 text-secondary d-inline-flex align-items-center gap-1 extra-small transition-all"
                             style={{ fontSize: '0.7rem' }}
                             onClick={() => {
+                              setEditingWqRecord(checkItem?.today_record || null);
                               setOcrTargetPondId(String(pond.id));
+                              setOcrTargetDate(todayStr);
                               setIsOcrModalOpen(true);
                             }}
                             title="Re-scan / Update Today's Readings"
@@ -823,8 +886,8 @@ export default function CaretakerDashboard() {
               {searchFilter
                 ? `No matching feeding logs found for "${searchFilter}".`
                 : selectedPondFilter === 'all'
-                ? "No feeding records logged for today yet."
-                : `No feeding records logged for ${selectedPondObj?.pond_name || 'this pond'} today.`}
+                  ? "No feeding records logged for today yet."
+                  : `No feeding records logged for ${selectedPondObj?.pond_name || 'this pond'} today.`}
             </p>
             <button
               type="button"
@@ -969,13 +1032,43 @@ export default function CaretakerDashboard() {
       {/* 🌟 DUAL-MODE OCR WATER QUALITY MODAL */}
       <WaterQualityOcrModal
         isOpen={isOcrModalOpen}
-        onClose={() => setIsOcrModalOpen(false)}
+        onClose={() => {
+          setIsOcrModalOpen(false);
+          setEditingWqRecord(null);
+        }}
         assignedPonds={assignedPonds}
         initialPondId={ocrTargetPondId || (assignedPonds[0]?.id ? String(assignedPonds[0].id) : '')}
+        initialDate={ocrTargetDate || todayStr}
+        initialRecord={editingWqRecord}
         caretakerName={user?.full_name || 'Caretaker'}
         caretakerId={user?.id}
         onSuccess={() => {
           loadData();
+        }}
+      />
+
+      {/* 🌟 WATER QUALITY LOG HISTORY & BACKFILL MODAL */}
+      <WaterQualityHistoryModal
+        isOpen={isHistoryModalOpen}
+        onClose={() => {
+          setIsHistoryModalOpen(false);
+          setHistoryTargetPond(null);
+        }}
+        pond={historyTargetPond}
+        canEdit={true}
+        onEditRecord={(record) => {
+          setEditingWqRecord(record);
+          setOcrTargetPondId(String(record.pond_id));
+          setOcrTargetDate(record.record_date);
+          setIsHistoryModalOpen(false);
+          setIsOcrModalOpen(true);
+        }}
+        onAddRecord={(date) => {
+          setEditingWqRecord(null);
+          if (historyTargetPond) setOcrTargetPondId(String(historyTargetPond.id));
+          setOcrTargetDate(date || todayStr);
+          setIsHistoryModalOpen(false);
+          setIsOcrModalOpen(true);
         }}
       />
     </div>

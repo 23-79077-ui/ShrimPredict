@@ -19,3 +19,8 @@ backend/uploads/reports/*
 __pycache__/
 *.traineddata
 frontend/dist/
+.env
+.env.local
+.env.*.local
+!.env.example
+

@@ -1,0 +1,587 @@
+import { useState, useMemo } from 'react';
+import {
+  FaChevronLeft,
+  FaChevronRight,
+  FaCalendarAlt,
+  FaSeedling,
+  FaWater,
+  FaExchangeAlt,
+  FaCheckCircle,
+  FaTimes,
+  FaClock,
+  FaCapsules,
+} from 'react-icons/fa';
+
+/**
+ * PondCycleCalendar
+ *
+ * Displays a cycle calendar highlighting:
+ * - Days 1 to 25: Nursery Phase (Starter Feed)
+ * - Day 26: Transfer Milestone to Grow-out Pond
+ * - Days 26+: Grow-out Phase (Grower Feed)
+ *
+ * @param {string} stockingDate - e.g. "2026-08-01"
+ * @param {string} selectedDate - e.g. "2026-08-26"
+ * @param {string} pondName - e.g. "Pond 1"
+ * @param {function} onSelectDate - callback(dateString, { doc, stage, feedType })
+ * @param {function} onClose - optional close callback if rendered in a modal
+ * @param {Array} records - optional feeding records array to show dots
+ */
+export default function PondCycleCalendar({
+  stockingDate,
+  selectedDate,
+  pondName = 'Pond',
+  onSelectDate,
+  onClose,
+  records = [],
+}) {
+  // Parse stocking date
+  const stockingParsed = useMemo(() => {
+    if (!stockingDate) return null;
+    const parts = stockingDate.split('-');
+    if (parts.length === 3) {
+      return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    }
+    const d = new Date(stockingDate);
+    return isNaN(d.getTime()) ? null : d;
+  }, [stockingDate]);
+
+  // Current view month (year, monthIndex 0-11)
+  const [viewDate, setViewDate] = useState(() => {
+    if (selectedDate) {
+      const parts = selectedDate.split('-');
+      if (parts.length === 3) {
+        return new Date(Number(parts[0]), Number(parts[1]) - 1, 1);
+      }
+    }
+    if (stockingParsed) {
+      return new Date(stockingParsed.getFullYear(), stockingParsed.getMonth(), 1);
+    }
+    return new Date();
+  });
+
+  const activeSelectedDateStr = selectedDate || new Date().toISOString().split('T')[0];
+
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  // Navigate months
+  const handlePrevMonth = () => {
+    setViewDate(new Date(year, month - 1, 1));
+  };
+
+  const handleNextMonth = () => {
+    setViewDate(new Date(year, month + 1, 1));
+  };
+
+  const handleJumpToStocking = () => {
+    if (stockingParsed) {
+      setViewDate(new Date(stockingParsed.getFullYear(), stockingParsed.getMonth(), 1));
+    }
+  };
+
+  const handleJumpToToday = () => {
+    const now = new Date();
+    setViewDate(new Date(now.getFullYear(), now.getMonth(), 1));
+  };
+
+  // Helper to compute DOC from stocking date
+  const computeDoc = (dateObj) => {
+    if (!stockingParsed) return null;
+    const cleanDate = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+    const cleanStocking = new Date(stockingParsed.getFullYear(), stockingParsed.getMonth(), stockingParsed.getDate());
+    const diffTime = cleanDate - cleanStocking;
+    const days = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    return days;
+  };
+
+  // Build calendar matrix
+  const calendarCells = useMemo(() => {
+    const firstDayIndex = new Date(year, month, 1).getDay(); // 0 = Sunday
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const prevMonthDays = new Date(year, month, 0).getDate();
+
+    const cells = [];
+
+    // Leading days from previous month
+    for (let i = firstDayIndex - 1; i >= 0; i--) {
+      const dayNum = prevMonthDays - i;
+      const cellDate = new Date(year, month - 1, dayNum);
+      const dateStr = `${cellDate.getFullYear()}-${String(cellDate.getMonth() + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+      const doc = computeDoc(cellDate);
+      cells.push({
+        dateStr,
+        dayNum,
+        isCurrentMonth: false,
+        doc,
+      });
+    }
+
+    // Days of current month
+    for (let dayNum = 1; dayNum <= daysInMonth; dayNum++) {
+      const cellDate = new Date(year, month, dayNum);
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+      const doc = computeDoc(cellDate);
+      cells.push({
+        dateStr,
+        dayNum,
+        isCurrentMonth: true,
+        doc,
+      });
+    }
+
+    // Trailing days from next month to complete 35 or 42 grid cells
+    const remaining = (7 - (cells.length % 7)) % 7;
+    for (let i = 1; i <= remaining; i++) {
+      const cellDate = new Date(year, month + 1, i);
+      const dateStr = `${cellDate.getFullYear()}-${String(cellDate.getMonth() + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+      const doc = computeDoc(cellDate);
+      cells.push({
+        dateStr,
+        dayNum: i,
+        isCurrentMonth: false,
+        doc,
+      });
+    }
+
+    return cells;
+  }, [year, month, stockingParsed]);
+
+  // Records map for quick lookup
+  const recordsByDate = useMemo(() => {
+    const map = {};
+    if (Array.isArray(records)) {
+      records.forEach((r) => {
+        const rDate = r.record_date ? String(r.record_date).substring(0, 10) : '';
+        if (rDate) {
+          if (!map[rDate]) map[rDate] = [];
+          map[rDate].push(r);
+        }
+      });
+    }
+    return map;
+  }, [records]);
+
+  // Selected date info
+  const selectedInfo = useMemo(() => {
+    if (!activeSelectedDateStr) return null;
+    const parts = activeSelectedDateStr.split('-');
+    if (parts.length !== 3) return null;
+    const sDate = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    const doc = computeDoc(sDate);
+
+    let stage = 'Pre-Stocking';
+    let stageTone = 'secondary';
+    let feedType = 'None';
+    let feedDesc = 'Awaiting Post-larvae stocking';
+
+    if (doc !== null) {
+      if (doc >= 1 && doc <= 25) {
+        stage = 'Nursery Phase';
+        stageTone = 'nursery';
+        feedType = 'Starter';
+        feedDesc = 'Days 1–25: Shrimp in Nursery Pond receiving Starter Feed';
+      } else if (doc === 26) {
+        stage = 'Transfer Day';
+        stageTone = 'transfer';
+        feedType = 'Grower';
+        feedDesc = 'Day 26 Milestone: Transfer to Grow-out Pond & switch to Grower Feed';
+      } else if (doc > 26) {
+        stage = 'Grow-out Phase';
+        stageTone = 'growout';
+        feedType = 'Grower';
+        feedDesc = `Day ${doc}: Shrimp in Grow-out Pond receiving Grower Feed`;
+      }
+    }
+
+    const dayLogs = recordsByDate[activeSelectedDateStr] || [];
+
+    return {
+      dateStr: activeSelectedDateStr,
+      doc,
+      stage,
+      stageTone,
+      feedType,
+      feedDesc,
+      logs: dayLogs,
+    };
+  }, [activeSelectedDateStr, stockingParsed, recordsByDate]);
+
+  const handleCellClick = (cell) => {
+    if (onSelectDate) {
+      const parts = cell.dateStr.split('-');
+      const sDate = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+      const doc = computeDoc(sDate);
+
+      let stage = 'Pre-Stocking';
+      let feedType = 'None';
+      if (doc !== null) {
+        if (doc >= 1 && doc <= 25) {
+          stage = 'Nursery';
+          feedType = 'Starter';
+        } else if (doc === 26) {
+          stage = 'Transfer Day';
+          feedType = 'Grower';
+        } else if (doc > 26) {
+          stage = 'Grow-out';
+          feedType = 'Grower';
+        }
+      }
+
+      onSelectDate(cell.dateStr, { doc, stage, feedType });
+    }
+  };
+
+  return (
+    <div className="pond-cycle-calendar-container bg-white rounded-4 shadow-sm border p-3 p-md-4">
+      {/* Header bar */}
+      <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 pb-3 border-bottom">
+        <div>
+          <div className="d-flex align-items-center gap-2">
+            <span
+              className="badge rounded-pill px-2.5 py-1 text-white fw-bold"
+              style={{ background: 'linear-gradient(135deg, #0284C7 0%, #0B2C5F 100%)', fontSize: '0.8rem' }}
+            >
+              <FaWater className="me-1" /> {pondName}
+            </span>
+            <h5 className="fw-extrabold text-dark mb-0 tracking-tight" style={{ fontSize: '1.15rem' }}>
+              Pond Culture Cycle Calendar
+            </h5>
+          </div>
+          <p className="text-muted small mb-0 mt-1" style={{ fontSize: '0.82rem' }}>
+            {stockingParsed ? (
+              <>
+                Stocked on{' '}
+                <strong>
+                  {stockingParsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </strong>{' '}
+                • Days 1–25 Nursery (Starter) ➔ Day 26+ Grow-out (Grower)
+              </>
+            ) : (
+              'No stocking date configured for this pond. Using estimated timeline.'
+            )}
+          </p>
+        </div>
+
+        {onClose && (
+          <button
+            type="button"
+            className="btn btn-sm btn-light border rounded-circle d-flex align-items-center justify-content-center"
+            style={{ width: 34, height: 34 }}
+            onClick={onClose}
+          >
+            <FaTimes />
+          </button>
+        )}
+      </div>
+
+      {/* Legend strip */}
+      <div className="d-flex align-items-center gap-2 flex-wrap mb-3 p-2.5 rounded-3 bg-light border small">
+        <span className="fw-bold text-muted extra-small text-uppercase">Cycle Legend:</span>
+        <span className="badge px-2 py-1.5 fw-semibold d-inline-flex align-items-center gap-1" style={{ background: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0' }}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#10B981', display: 'inline-block' }}></span>
+          🌱 Days 1–25: Nursery Pond (Starter Feed)
+        </span>
+        <span className="badge px-2 py-1.5 fw-semibold d-inline-flex align-items-center gap-1" style={{ background: '#FEF3C7', color: '#B45309', border: '1px solid #FDE68A' }}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#F59E0B', display: 'inline-block' }}></span>
+          ⚡ Day 26: Transfer Day to Grow-out
+        </span>
+        <span className="badge px-2 py-1.5 fw-semibold d-inline-flex align-items-center gap-1" style={{ background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE' }}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#3B82F6', display: 'inline-block' }}></span>
+          🌊 Day 26+: Grow-out Pond (Grower Feed)
+        </span>
+      </div>
+
+      {/* Month Navigation */}
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <div className="d-flex align-items-center gap-2">
+          <h6 className="fw-bold text-dark mb-0 fs-6">
+            {monthNames[month]} {year}
+          </h6>
+          {stockingParsed && (
+            <button
+              type="button"
+              className="btn btn-xs btn-outline-primary rounded-pill py-0 px-2"
+              style={{ fontSize: '0.72rem' }}
+              onClick={handleJumpToStocking}
+            >
+              Stocking Month
+            </button>
+          )}
+          <button
+            type="button"
+            className="btn btn-xs btn-outline-secondary rounded-pill py-0 px-2"
+            style={{ fontSize: '0.72rem' }}
+            onClick={handleJumpToToday}
+          >
+            Today
+          </button>
+        </div>
+
+        <div className="btn-group btn-group-sm">
+          <button
+            type="button"
+            className="btn btn-outline-secondary py-1 px-2.5"
+            onClick={handlePrevMonth}
+            title="Previous Month"
+          >
+            <FaChevronLeft size={11} />
+          </button>
+          <button
+            type="button"
+            className="btn btn-outline-secondary py-1 px-2.5"
+            onClick={handleNextMonth}
+            title="Next Month"
+          >
+            <FaChevronRight size={11} />
+          </button>
+        </div>
+      </div>
+
+      {/* Weekday Header */}
+      <div
+        className="d-grid mb-1 text-center text-muted fw-bold extra-small text-uppercase"
+        style={{ gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}
+      >
+        <div className="py-1">Sun</div>
+        <div className="py-1">Mon</div>
+        <div className="py-1">Tue</div>
+        <div className="py-1">Wed</div>
+        <div className="py-1">Thu</div>
+        <div className="py-1">Fri</div>
+        <div className="py-1">Sat</div>
+      </div>
+
+      {/* Calendar Grid */}
+      <div
+        className="d-grid mb-3"
+        style={{ gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}
+      >
+        {calendarCells.map((cell, idx) => {
+          const isSelected = cell.dateStr === activeSelectedDateStr;
+          const isNursery = cell.doc !== null && cell.doc >= 1 && cell.doc <= 25;
+          const isTransferDay = cell.doc === 26;
+          const isGrowout = cell.doc !== null && cell.doc > 26;
+          const hasLogs = Boolean(recordsByDate[cell.dateStr]?.length);
+
+          let bg = '#FAFAFA';
+          let border = '1px solid #E5E7EB';
+          let textColor = cell.isCurrentMonth ? '#1F2937' : '#9CA3AF';
+          let docBadgeBg = '#E5E7EB';
+          let docBadgeText = '#4B5563';
+
+          if (isNursery) {
+            bg = '#F0FDF4';
+            border = '1px solid #BBF7D0';
+            textColor = '#166534';
+            docBadgeBg = '#DCFCE7';
+            docBadgeText = '#15803D';
+          } else if (isTransferDay) {
+            bg = '#FFFBEB';
+            border = '2px solid #F59E0B';
+            textColor = '#92400E';
+            docBadgeBg = '#FEF3C7';
+            docBadgeText = '#B45309';
+          } else if (isGrowout) {
+            bg = '#EFF6FF';
+            border = '1px solid #BFDBFE';
+            textColor = '#1E40AF';
+            docBadgeBg = '#DBEAFE';
+            docBadgeText = '#1D4ED8';
+          }
+
+          if (isSelected) {
+            border = '2.5px solid #FF7A00';
+            bg = isTransferDay ? '#FEF3C7' : (isNursery ? '#DCFCE7' : (isGrowout ? '#DBEAFE' : '#F3F4F6'));
+          }
+
+          return (
+            <div
+              key={`${cell.dateStr}-${idx}`}
+              onClick={() => handleCellClick(cell)}
+              className="p-1 p-sm-2 rounded-3 text-center position-relative cursor-pointer transition-all"
+              style={{
+                backgroundColor: bg,
+                border,
+                minHeight: '64px',
+                cursor: 'pointer',
+                opacity: cell.isCurrentMonth ? 1 : 0.45,
+                transform: isSelected ? 'scale(1.02)' : 'none',
+                boxShadow: isSelected ? '0 4px 12px rgba(255,122,0,0.22)' : 'none',
+              }}
+              title={
+                cell.doc !== null
+                  ? `Date: ${cell.dateStr} | Day of Culture: ${cell.doc} | ${isNursery ? 'Nursery (Starter)' : isTransferDay ? 'TRANSFER DAY (Grower)' : isGrowout ? 'Grow-out (Grower)' : 'Pre-stocking'}`
+                  : cell.dateStr
+              }
+            >
+              {/* Day Number */}
+              <div className="d-flex justify-content-between align-items-center">
+                <span className="fw-extrabold" style={{ fontSize: '0.85rem', color: textColor }}>
+                  {cell.dayNum}
+                </span>
+                {hasLogs && (
+                  <span
+                    className="rounded-circle"
+                    style={{ width: 6, height: 6, backgroundColor: '#0284C7' }}
+                    title="Feeding logged on this date"
+                  ></span>
+                )}
+              </div>
+
+              {/* DOC Tag or Phase Tag */}
+              {cell.doc !== null && cell.doc >= 1 && (
+                <div className="mt-1">
+                  <span
+                    className="badge px-1 py-0.5 rounded-pill fw-bold"
+                    style={{
+                      fontSize: '0.66rem',
+                      backgroundColor: docBadgeBg,
+                      color: docBadgeText,
+                      lineHeight: 1.1,
+                      display: 'inline-block',
+                    }}
+                  >
+                    D{cell.doc}
+                  </span>
+                  <div
+                    className="extra-small fw-semibold mt-0.5 d-none d-sm-block text-truncate"
+                    style={{
+                      fontSize: '0.62rem',
+                      color: isTransferDay ? '#B45309' : (isNursery ? '#047857' : '#1D4ED8'),
+                    }}
+                  >
+                    {isTransferDay ? 'TRANSFER' : isNursery ? 'Starter' : 'Grower'}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Selected Day Details Card */}
+      {selectedInfo && (
+        <div
+          className="p-3 rounded-3 border"
+          style={{
+            backgroundColor:
+              selectedInfo.stageTone === 'transfer'
+                ? '#FFFBEB'
+                : selectedInfo.stageTone === 'nursery'
+                ? '#F0FDF4'
+                : selectedInfo.stageTone === 'growout'
+                ? '#EFF6FF'
+                : '#F8FAFC',
+            borderColor:
+              selectedInfo.stageTone === 'transfer'
+                ? '#FDE68A'
+                : selectedInfo.stageTone === 'nursery'
+                ? '#BBF7D0'
+                : selectedInfo.stageTone === 'growout'
+                ? '#BFDBFE'
+                : '#E2E8F0',
+          }}
+        >
+          <div className="d-flex justify-content-between align-items-start flex-wrap gap-2">
+            <div>
+              <div className="d-flex align-items-center gap-2 flex-wrap">
+                <span className="fw-bold text-dark fs-6">
+                  {new Date(selectedInfo.dateStr + 'T00:00:00').toLocaleDateString('en-US', {
+                    weekday: 'short',
+                    month: 'long',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })}
+                </span>
+                {selectedInfo.doc !== null && selectedInfo.doc >= 1 && (
+                  <span
+                    className="badge rounded-pill px-2.5 py-1 fw-extrabold"
+                    style={{
+                      backgroundColor:
+                        selectedInfo.stageTone === 'transfer'
+                          ? '#FEF3C7'
+                          : selectedInfo.stageTone === 'nursery'
+                          ? '#DCFCE7'
+                          : '#DBEAFE',
+                      color:
+                        selectedInfo.stageTone === 'transfer'
+                          ? '#B45309'
+                          : selectedInfo.stageTone === 'nursery'
+                          ? '#15803D'
+                          : '#1D4ED8',
+                      fontSize: '0.78rem',
+                    }}
+                  >
+                    Day of Culture: Day {selectedInfo.doc}
+                  </span>
+                )}
+                <span
+                  className="badge rounded-pill px-2.5 py-1 fw-bold text-uppercase"
+                  style={{
+                    backgroundColor:
+                      selectedInfo.stageTone === 'transfer'
+                        ? '#F59E0B'
+                        : selectedInfo.stageTone === 'nursery'
+                        ? '#10B981'
+                        : '#3B82F6',
+                    color: '#fff',
+                    fontSize: '0.72rem',
+                  }}
+                >
+                  {selectedInfo.stage}
+                </span>
+              </div>
+              <p className="text-muted small mb-0 mt-1" style={{ fontSize: '0.82rem' }}>
+                {selectedInfo.feedDesc}
+              </p>
+            </div>
+
+            <div className="text-end">
+              <span className="extra-small text-muted d-block text-uppercase fw-bold">Required Formulation</span>
+              <strong
+                className="fs-6"
+                style={{
+                  color: selectedInfo.feedType === 'Starter' ? '#047857' : (selectedInfo.feedType === 'Grower' ? '#1D4ED8' : '#4B5563')
+                }}
+              >
+                {selectedInfo.feedType !== 'None' ? `Tateh - ${selectedInfo.feedType}` : 'No Feed Scheduled'}
+              </strong>
+            </div>
+          </div>
+
+          {/* Logs on this day if any */}
+          {selectedInfo.logs && selectedInfo.logs.length > 0 && (
+            <div className="mt-3 pt-2 border-top">
+              <div className="extra-small text-muted fw-bold text-uppercase mb-1.5">
+                Feedings Recorded on this Date ({selectedInfo.logs.length} of 5 slots):
+              </div>
+              <div className="d-flex align-items-center gap-1.5 flex-wrap">
+                {selectedInfo.logs.map((log, i) => (
+                  <span
+                    key={log.id || i}
+                    className="badge bg-white text-dark border px-2 py-1 d-inline-flex align-items-center gap-1"
+                    style={{ fontSize: '0.74rem' }}
+                  >
+                    <FaClock size={10} className="text-primary" />
+                    <strong>{log.feeding_time}</strong>: {log.amount_kg}kg ({log.product_code || 'Feed'})
+                    {log.vitamin_name && log.vitamin_name !== 'None' ? (
+                      <span className="text-success ms-1">+{log.vitamin_name}</span>
+                    ) : (
+                      <span className="text-muted ms-1">(No Vit)</span>
+                    )}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

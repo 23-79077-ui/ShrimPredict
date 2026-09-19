@@ -10,7 +10,9 @@ function isPrimaryDiagnosisLabel(value) {
     || label === 'healthy shrimp'
     || label === 'white spot syndrome virus'
     || label === 'white spot syndrome virus (wssv)'
-    || label === 'wssv';
+    || label === 'wssv'
+    || label === 'black gill'
+    || label === 'black gill disease';
 }
 
 export default function DiseaseScanPage() {

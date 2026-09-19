@@ -20,15 +20,28 @@ import {
   FaHashtag,
   FaWeightHanging,
   FaCheckCircle,
-  FaLayerGroup
+  FaLayerGroup,
+  FaPlus,
+  FaEdit,
+  FaTrash
 } from 'react-icons/fa';
 import Swal from 'sweetalert2';
 import { useAuth } from '../../context/AuthContext';
 import api, { safeArray } from '../../services/api';
+import PondCycleCalendar from '../../components/PondCycleCalendar';
+
+function computeDoc(stockingDateStr, targetDateStr) {
+  if (!stockingDateStr) return null;
+  const s = new Date(stockingDateStr + 'T00:00:00');
+  const t = new Date((targetDateStr || new Date().toISOString().split('T')[0]) + 'T00:00:00');
+  if (isNaN(s.getTime()) || isNaN(t.getTime())) return null;
+  const diffTime = t - s;
+  return Math.floor(diffTime / 86400000) + 1;
+}
 
 export default function FeedingHistoryPage() {
   const { user } = useAuth();
-  
+
   const assignedPonds = useMemo(() => (
     user?.assigned_ponds?.length
       ? user.assigned_ponds
@@ -46,13 +59,29 @@ export default function FeedingHistoryPage() {
 
   // Filter States
   const [selectedPondFilter, setSelectedPondFilter] = useState('all');
+  const [stageFilter, setStageFilter] = useState('all'); // 'all' | 'nursery' | 'growout'
   const [dateFilter, setDateFilter] = useState('all'); // 'all' | 'today' | 'yesterday' | 'week' | 'month' | 'custom'
   const [customDate, setCustomDate] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Selected Log Details Modal State
+  // Selected Log Details Modal State & Cycle Calendar Modal State
   const [selectedRecordDetails, setSelectedRecordDetails] = useState(null);
+  const [calendarModalPond, setCalendarModalPond] = useState(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
+
+  // Backfill / Edit Record Modal State
+  const [backfillModalOpen, setBackfillModalOpen] = useState(false);
+  const [editingModalRecord, setEditingModalRecord] = useState(null);
+  const [backfillForm, setBackfillForm] = useState({
+    pond_id: '',
+    record_date: new Date().toISOString().split('T')[0],
+    feeding_time: '6:00 AM',
+    amount_kg: '',
+    product_code: 'Starter',
+    vitamin_name: 'None',
+    notes: '',
+  });
+  const [savingBackfill, setSavingBackfill] = useState(false);
 
   // Helper for YYYY-MM-DD format
   const formatYMD = (dateString) => {
@@ -84,7 +113,7 @@ export default function FeedingHistoryPage() {
 
       const res = await api.get('/feeding_records.php', { params });
       const rawRecords = safeArray(res.data);
-      
+
       const filtered = rawRecords.filter((record) => {
         const recordUserId = record.user_id ?? record.userId;
         const recordName = record.recorded_by_name ?? record.recordedByName;
@@ -120,9 +149,175 @@ export default function FeedingHistoryPage() {
     loadHistory();
   }, [loadHistory]);
 
-  // Client-side Filtered Records (Date & Search)
+  const handleOpenBackfill = (recordToEdit = null) => {
+    if (recordToEdit) {
+      setEditingModalRecord(recordToEdit);
+      setBackfillForm({
+        id: recordToEdit.id,
+        pond_id: String(recordToEdit.pond_id),
+        record_date: formatYMD(recordToEdit.record_date || recordToEdit.created_at) || todayYMD,
+        feeding_time: recordToEdit.feeding_time || '6:00 AM',
+        amount_kg: String(recordToEdit.amount_kg || ''),
+        product_code: recordToEdit.product_code || (String(recordToEdit.feed_type).toLowerCase().includes('grower') ? 'Grower' : 'Starter'),
+        vitamin_name: recordToEdit.vitamin_name || 'None',
+        notes: recordToEdit.notes || '',
+      });
+    } else {
+      setEditingModalRecord(null);
+      setBackfillForm({
+        pond_id: assignedPonds[0]?.id ? String(assignedPonds[0].id) : (user?.pond_id ? String(user.pond_id) : ''),
+        record_date: customDate || todayYMD,
+        feeding_time: '6:00 AM',
+        amount_kg: '',
+        product_code: 'Starter',
+        vitamin_name: 'None',
+        notes: '',
+      });
+    }
+    setBackfillModalOpen(true);
+  };
+
+  const handleSaveBackfill = async (e) => {
+    e?.preventDefault();
+    const pid = Number(backfillForm.pond_id);
+    const amt = parseFloat(backfillForm.amount_kg);
+
+    if (!pid) {
+      Swal.fire({ icon: 'warning', title: 'Pond Required', text: 'Please select a pond basin.' });
+      return;
+    }
+    if (!amt || amt <= 0) {
+      Swal.fire({ icon: 'warning', title: 'Invalid Amount', text: 'Please enter a positive amount in kilograms.' });
+      return;
+    }
+    if (!backfillForm.record_date) {
+      Swal.fire({ icon: 'warning', title: 'Date Required', text: 'Please select the record date.' });
+      return;
+    }
+
+    const isFifth = String(backfillForm.feeding_time || '').trim().toUpperCase() === '6:00 PM';
+    const vit = isFifth ? 'None' : (backfillForm.vitamin_name || 'None');
+
+    setSavingBackfill(true);
+    try {
+      const payload = {
+        action: editingModalRecord ? 'update' : 'insert',
+        record_id: editingModalRecord ? editingModalRecord.id : undefined,
+        is_update: Boolean(editingModalRecord),
+        pond_id: pid,
+        amount_kg: amt,
+        feeding_time: backfillForm.feeding_time,
+        product_code: backfillForm.product_code,
+        vitamin_name: vit,
+        has_vitamin: vit && vit !== 'None' ? 1 : 0,
+        record_date: backfillForm.record_date,
+        notes: backfillForm.notes,
+        recorded_by: user?.full_name || 'Caretaker',
+        recorded_by_name: user?.full_name || 'Caretaker',
+        user_id: Number(user?.id || 0),
+      };
+
+      const res = await api.post('/feeding_records.php', payload);
+      if (res.data?.success) {
+        Swal.fire({
+          icon: 'success',
+          title: editingModalRecord ? 'Record Updated!' : 'Feeding Record Logged!',
+          text: `${amt}kg of ${backfillForm.product_code} on ${backfillForm.record_date} (${backfillForm.feeding_time}) saved.`,
+          timer: 2000,
+          showConfirmButton: false,
+        });
+        setBackfillModalOpen(false);
+        loadHistory(true);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('shrim-feed-updated'));
+        }
+      } else {
+        throw new Error(res.data?.message || 'Save failed');
+      }
+    } catch (err) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Save Failed',
+        text: err.response?.data?.message || err.message || 'Unable to save feeding record.',
+      });
+    } finally {
+      setSavingBackfill(false);
+    }
+  };
+
+  const handleDeleteHistoryRecord = async (record) => {
+    if (!record?.id) return;
+    const confirm = await Swal.fire({
+      title: 'Delete Feeding Record?',
+      text: `Are you sure you want to delete the ${record.feeding_time} record (${record.amount_kg}kg) on ${record.record_date} for ${record.pond_name || `Pond #${record.pond_id}`}?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#EF4444',
+      confirmButtonText: 'Yes, delete',
+      cancelButtonText: 'Cancel',
+    });
+    if (!confirm.isConfirmed) return;
+
+    try {
+      const res = await api.post('/feeding_records.php', {
+        action: 'delete',
+        id: record.id,
+      });
+      if (res.data?.success) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Deleted!',
+          text: 'Record deleted successfully.',
+          timer: 1500,
+          showConfirmButton: false,
+        });
+        loadHistory(true);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('shrim-feed-updated'));
+        }
+      } else {
+        throw new Error(res.data?.message || 'Delete failed');
+      }
+    } catch (err) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Delete Failed',
+        text: err.response?.data?.message || err.message || 'Could not delete feeding record.',
+      });
+    }
+  };
+
+  // Enrich records with DOC and stage relative to record_date
+  const recordsWithStage = useMemo(() => {
+    return records.map((r) => {
+      const rDate = formatYMD(r.record_date || r.created_at);
+      const pondObj = assignedPonds.find((p) => String(p.id) === String(r.pond_id));
+      const stocking = r.stocking_date || pondObj?.stocking_date;
+      const doc = computeDoc(stocking, rDate);
+      const isNursery = doc !== null
+        ? (doc >= 1 && doc <= 25)
+        : (String(r.product_code || r.feed_type).toLowerCase().includes('starter'));
+      const isGrowout = doc !== null
+        ? (doc >= 26)
+        : (String(r.product_code || r.feed_type).toLowerCase().includes('grower'));
+      const stage = isNursery ? 'nursery' : (isGrowout ? 'growout' : 'other');
+
+      return {
+        ...r,
+        doc,
+        stage,
+        isNursery,
+        isGrowout,
+      };
+    });
+  }, [records, assignedPonds]);
+
+  const nurseryRecordsCount = useMemo(() => recordsWithStage.filter((r) => r.isNursery).length, [recordsWithStage]);
+  const growoutRecordsCount = useMemo(() => recordsWithStage.filter((r) => r.isGrowout).length, [recordsWithStage]);
+
+  // Client-side Filtered Records (Date, Stage & Search)
   const filteredRecords = useMemo(() => {
-    return records.filter((r) => {
+    return recordsWithStage.filter((r) => {
       const rDate = formatYMD(r.record_date || r.created_at);
 
       // 1. Date Filter
@@ -142,7 +337,15 @@ export default function FeedingHistoryPage() {
         matchDate = rDate === customDate;
       }
 
-      // 2. Search Term Filter
+      // 2. Stage Filter
+      let matchStage = true;
+      if (stageFilter === 'nursery') {
+        matchStage = r.isNursery;
+      } else if (stageFilter === 'growout') {
+        matchStage = r.isGrowout;
+      }
+
+      // 3. Search Term Filter
       const matchSearch =
         !searchTerm ||
         String(r.pond_name || `Pond ${r.pond_id}`).toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -154,21 +357,21 @@ export default function FeedingHistoryPage() {
         String(r.feeding_time || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         String(r.notes || '').toLowerCase().includes(searchTerm.toLowerCase());
 
-      return matchDate && matchSearch;
+      return matchDate && matchStage && matchSearch;
     });
-  }, [records, dateFilter, customDate, searchTerm, todayYMD]);
+  }, [recordsWithStage, dateFilter, customDate, stageFilter, searchTerm, todayYMD]);
 
   // Dynamic Summary Metrics
   const selectedPond = assignedPonds.find((pond) => String(pond.id) === String(selectedPondFilter));
   const currentScope = selectedPondFilter === 'all' ? 'All Ponds' : selectedPond?.pond_name || 'Selected pond';
-  
+
   const totalFeedKg = filteredRecords.reduce((sum, record) => sum + (parseFloat(record.amount_kg) || 0), 0);
   const totalLogsCount = filteredRecords.length;
   const pondsWithRecords = new Set(filteredRecords.map((record) => String(record.pond_id || record.pond_name || '')).filter(Boolean)).size;
-  
+
   const vitaminRecords = filteredRecords.filter((record) => record.has_vitamin || (record.vitamin_name && record.vitamin_name !== 'None'));
   const vitaminLogsCount = vitaminRecords.length;
-  
+
   const latestVitaminRecord = vitaminRecords[0] || filteredRecords.find(r => r.record_date);
   const latestDateText = latestVitaminRecord?.record_date ? `Latest: ${latestVitaminRecord.record_date}` : 'No records yet';
 
@@ -181,7 +384,7 @@ export default function FeedingHistoryPage() {
     }
 
     const headers = ['Record ID,Pond Name,Date,Time,Amount (kg),Feed Type,Vitamin Name,Recorded By,Notes'];
-    const rows = filteredRecords.map((r) => 
+    const rows = filteredRecords.map((r) =>
       `${r.id},"${r.pond_name || `Pond #${r.pond_id}`}","${r.record_date || ''}","${r.feeding_time || ''}",${r.amount_kg || 0},"${r.feed_type || r.product_code || 'Starter'}","${r.vitamin_name || 'None'}","${r.recorded_by_name || 'Caretaker'}","${(r.notes || '').replace(/"/g, '""')}"`
     );
 
@@ -470,7 +673,7 @@ export default function FeedingHistoryPage() {
       {/* MAIN CONTENT PANEL: TOOLBAR & SCROLLABLE TABLE */}
       <div className="asymmetric-card p-4">
         <div>
-          
+
           {/* TOOLBAR CONTROLS */}
           <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
             <div>
@@ -565,7 +768,18 @@ export default function FeedingHistoryPage() {
                 <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
               </button>
 
-              {/* 5. Export Dropdown Options */}
+              {/* 5. Backfill Feeding Button */}
+              <button
+                type="button"
+                className="btn btn-success rounded-pill d-inline-flex align-items-center justify-content-center gap-1.5 px-3.5 extra-small fw-bold shadow-xs text-white"
+                style={{ height: 38, background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)', border: 'none' }}
+                onClick={() => handleOpenBackfill()}
+                title="Backfill real farm feeding log for any date"
+              >
+                <FaPlus size={11} /> Backfill Feeding
+              </button>
+
+              {/* 6. Export Dropdown Options */}
               <div className="position-relative">
                 <button
                   type="button"
@@ -601,7 +815,59 @@ export default function FeedingHistoryPage() {
             </div>
           </div>
 
-          {/* TABLE SECTION (FIXED HEIGHT CONTAINER FOR 10 DISPLAY ITEMS + SCROLLABLE FOR REST) */}
+          {/* STAGE FILTER PILLS & CALENDAR BUTTON */}
+          <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 pt-3 border-top">
+            <div className="d-flex align-items-center gap-1.5 flex-wrap">
+              <span className="extra-small fw-bold text-uppercase text-muted me-1">Stage Filter:</span>
+              <button
+                type="button"
+                className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all ${stageFilter === 'all' ? 'btn-dark text-white' : 'btn-light border text-dark'
+                  }`}
+                onClick={() => setStageFilter('all')}
+              >
+                All Stages ({records.length})
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all ${stageFilter === 'nursery' ? 'text-white' : 'border text-dark'
+                  }`}
+                style={{
+                  backgroundColor: stageFilter === 'nursery' ? '#059669' : '#ECFDF5',
+                  color: stageFilter === 'nursery' ? '#ffffff' : '#065F46',
+                  borderColor: '#A7F3D0',
+                }}
+                onClick={() => setStageFilter('nursery')}
+              >
+                🌱 Nursery (Days 1–25 • Starter) ({nurseryRecordsCount})
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all ${stageFilter === 'growout' ? 'text-white' : 'border text-dark'
+                  }`}
+                style={{
+                  backgroundColor: stageFilter === 'growout' ? '#2563EB' : '#EFF6FF',
+                  color: stageFilter === 'growout' ? '#ffffff' : '#1E40AF',
+                  borderColor: '#BFDBFE',
+                }}
+                onClick={() => setStageFilter('growout')}
+              >
+                🌊 Grow-out (Day 26+ • Grower) ({growoutRecordsCount})
+              </button>
+            </div>
+
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 extra-small fw-bold d-inline-flex align-items-center gap-1.5 shadow-xs"
+              onClick={() => {
+                const activePond = assignedPonds.find((p) => String(p.id) === String(selectedPondFilter)) || assignedPonds[0] || null;
+                setCalendarModalPond(activePond);
+              }}
+            >
+              <FaCalendarAlt size={11} /> Pond Cycle Calendar
+            </button>
+          </div>
+
+          {/* TABLE SECTION */}
           {loading ? (
             <div className="caretaker-empty-state py-5 text-center text-muted">
               <div className="spinner-border text-primary spinner-border-sm me-2" role="status"></div>
@@ -617,7 +883,7 @@ export default function FeedingHistoryPage() {
             <div
               className="table-responsive border rounded-3 shadow-xs position-relative"
               style={{
-                maxHeight: '450px', // Fits ~10 rows comfortably
+                maxHeight: '480px',
                 overflowY: 'auto',
               }}
             >
@@ -627,45 +893,128 @@ export default function FeedingHistoryPage() {
                   style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: '#f8fafc' }}
                 >
                   <tr>
-                    <th className="ps-3 py-3 text-secondary text-uppercase small fw-bold">Pond</th>
-                    <th className="py-3 text-secondary text-uppercase small fw-bold">Time</th>
-                    <th className="py-3 text-secondary text-uppercase small fw-bold">Date</th>
-                    <th className="pe-3 py-3 text-center text-secondary text-uppercase small fw-bold" style={{ width: 100 }}>Actions</th>
+                    <th className="ps-3 py-3 text-secondary text-uppercase small fw-bold">Pond Basin</th>
+                    <th className="py-3 text-secondary text-uppercase small fw-bold">Culture Stage & DOC</th>
+                    <th className="py-3 text-secondary text-uppercase small fw-bold">Feeding Slot</th>
+                    <th className="py-3 text-secondary text-uppercase small fw-bold">Amount & Formulation</th>
+                    <th className="py-3 text-secondary text-uppercase small fw-bold">Vitamins Status</th>
+                    <th className="py-3 text-secondary text-uppercase small fw-bold">Log Date</th>
+                    <th className="pe-3 py-3 text-center text-secondary text-uppercase small fw-bold" style={{ width: 160 }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredRecords.map((record) => (
-                    <tr key={record.id} className="border-bottom">
-                      <td className="ps-3 fw-bold text-dark">
-                        <div className="d-flex align-items-center gap-2">
-                          <span className="p-1.5 rounded-circle bg-primary bg-opacity-10 text-primary d-inline-flex">
-                            <FaWater size={13} />
+                  {filteredRecords.map((record) => {
+                    const is5th = String(record.feeding_time || '').trim().toUpperCase() === '6:00 PM';
+
+                    return (
+                      <tr key={record.id} className="border-bottom">
+                        <td className="ps-3 fw-bold text-dark">
+                          <div className="d-flex align-items-center gap-2">
+                            <span className="p-1.5 rounded-circle bg-primary bg-opacity-10 text-primary d-inline-flex">
+                              <FaWater size={13} />
+                            </span>
+                            <span>{record.pond_name || `Pond #${record.pond_id}`}</span>
+                          </div>
+                        </td>
+                        <td>
+                          {record.isNursery ? (
+                            <span
+                              className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1"
+                              style={{ background: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0' }}
+                            >
+                              🌱 {record.doc ? `Day ${record.doc}` : 'DOC 1-25'} • Nursery
+                            </span>
+                          ) : record.isGrowout ? (
+                            <span
+                              className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1"
+                              style={{ background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE' }}
+                            >
+                              🌊 {record.doc ? `Day ${record.doc}` : 'DOC 26+'} • Grow-out
+                            </span>
+                          ) : (
+                            <span className="badge bg-light text-muted border">General</span>
+                          )}
+                        </td>
+                        <td>
+                          <span className="badge bg-light text-dark border font-mono px-2.5 py-1 rounded-pill fw-semibold">
+                            <FaClock className="me-1 text-primary" size={11} />
+                            {record.feeding_time || '-'}
                           </span>
-                          <span>{record.pond_name || `Pond #${record.pond_id}`}</span>
-                        </div>
-                      </td>
-                      <td>
-                        <span className="badge bg-secondary bg-opacity-10 text-dark font-mono px-2.5 py-1.5 rounded-pill fw-semibold">
-                          <FaClock className="me-1 text-muted" size={11} />
-                          {record.feeding_time || '-'}
-                        </span>
-                      </td>
-                      <td>
-                        <strong className="text-dark">{record.record_date || '-'}</strong>
-                      </td>
-                      <td className="pe-3 text-center">
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline-primary rounded-circle d-inline-flex align-items-center justify-content-center p-0 shadow-xs hover-scale"
-                          style={{ width: 34, height: 34, transition: 'all 0.2s ease' }}
-                          onClick={() => setSelectedRecordDetails(record)}
-                          title="View Feeding Details"
-                        >
-                          <FaEye size={15} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td>
+                          <div className="d-flex flex-column">
+                            <strong>{Number(record.amount_kg || 0).toFixed(2)} kg</strong>
+                            <span className="extra-small text-muted">
+                              {record.feed_type || record.product_code || 'Starter'}
+                            </span>
+                          </div>
+                        </td>
+                        <td>
+                          {is5th ? (
+                            <span className="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 rounded-pill px-2 py-1 extra-small fw-semibold">
+                              🚫 5th Feed (No Vit)
+                            </span>
+                          ) : record.has_vitamin && record.vitamin_name && record.vitamin_name !== 'None' ? (
+                            <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-2 py-1 extra-small fw-bold">
+                              +{record.vitamin_name}
+                            </span>
+                          ) : (
+                            <span className="text-muted extra-small">None</span>
+                          )}
+                        </td>
+                        <td>
+                          <strong className="text-dark">{record.record_date || '-'}</strong>
+                        </td>
+                        <td className="pe-3 text-center">
+                          <div className="d-flex align-items-center justify-content-center gap-1">
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-primary rounded-circle d-inline-flex align-items-center justify-content-center p-0 shadow-xs hover-scale"
+                              style={{ width: 30, height: 30, transition: 'all 0.2s ease' }}
+                              onClick={() => setSelectedRecordDetails(record)}
+                              title="View Feeding Details"
+                            >
+                              <FaEye size={12} />
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-success rounded-circle d-inline-flex align-items-center justify-content-center p-0 shadow-xs hover-scale"
+                              style={{ width: 30, height: 30, transition: 'all 0.2s ease' }}
+                              onClick={() => handleOpenBackfill(record)}
+                              title="Edit this Feeding Record"
+                            >
+                              <FaEdit size={12} />
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-danger rounded-circle d-inline-flex align-items-center justify-content-center p-0 shadow-xs hover-scale"
+                              style={{ width: 30, height: 30, transition: 'all 0.2s ease' }}
+                              onClick={() => handleDeleteHistoryRecord(record)}
+                              title="Delete this Feeding Record"
+                            >
+                              <FaTrash size={11} />
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-secondary rounded-circle d-inline-flex align-items-center justify-content-center p-0 shadow-xs hover-scale"
+                              style={{ width: 30, height: 30, transition: 'all 0.2s ease' }}
+                              onClick={() => {
+                                const matchedPond = assignedPonds.find(p => String(p.id) === String(record.pond_id)) || {
+                                  id: record.pond_id,
+                                  pond_name: record.pond_name,
+                                  stocking_date: record.stocking_date,
+                                };
+                                setCalendarModalPond(matchedPond);
+                              }}
+                              title="View Culture Cycle Calendar"
+                            >
+                              <FaCalendarAlt size={11} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -763,7 +1112,7 @@ export default function FeedingHistoryPage() {
 
               {/* MODAL BODY - COMPACT NO-SCROLL LAYOUT */}
               <div className="modal-body" style={{ background: '#f8fafc', padding: '1.15rem 1.25rem' }}>
-                
+
                 {/* HERO POND & LOG BADGE CARD */}
                 <div
                   className="rounded-4 mb-2.5 position-relative overflow-hidden"
@@ -977,6 +1326,187 @@ export default function FeedingHistoryPage() {
                 </div>
 
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🌟 POND CULTURE CYCLE CALENDAR MODAL */}
+      {calendarModalPond && (
+        <div
+          className="modal fade show d-block"
+          style={{ backgroundColor: 'rgba(7, 23, 51, 0.72)', zIndex: 1060 }}
+          tabIndex="-1"
+        >
+          <div className="modal-dialog modal-dialog-centered modal-lg">
+            <div className="modal-content border-0 rounded-4 overflow-hidden shadow-2xl">
+              <PondCycleCalendar
+                stockingDate={calendarModalPond.stocking_date}
+                selectedDate={customDate || todayYMD}
+                pondName={calendarModalPond.pond_name || `Pond #${calendarModalPond.id}`}
+                records={records.filter(r => String(r.pond_id) === String(calendarModalPond.id))}
+                onSelectDate={(dateStr) => {
+                  setDateFilter('custom');
+                  setCustomDate(dateStr);
+                  setCalendarModalPond(null);
+                }}
+                onClose={() => setCalendarModalPond(null)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🌟 BACKFILL & EDIT FEEDING RECORD MODAL */}
+      {backfillModalOpen && (
+        <div
+          className="modal fade show d-block"
+          tabIndex="-1"
+          style={{ backgroundColor: 'rgba(7, 23, 51, 0.82)', backdropFilter: 'blur(8px)', zIndex: 1070 }}
+        >
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content border-0 rounded-4 overflow-hidden bg-white shadow-2xl">
+              <form onSubmit={handleSaveBackfill}>
+                <div
+                  className="p-3.5 px-4 text-white d-flex justify-content-between align-items-center"
+                  style={{ background: 'linear-gradient(135deg, #071733 0%, #0B2C5F 100%)' }}
+                >
+                  <div className="d-flex align-items-center gap-2">
+                    {editingModalRecord ? <FaEdit className="text-warning" /> : <FaPlus className="text-info" />}
+                    <h6 className="fw-bold mb-0 text-white">
+                      {editingModalRecord ? `Edit Feeding Record #${editingModalRecord.id}` : 'Backfill Farm Feeding Record'}
+                    </h6>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-light rounded-circle p-1.5 d-flex align-items-center justify-content-center"
+                    style={{ width: 30, height: 30 }}
+                    onClick={() => setBackfillModalOpen(false)}
+                  >
+                    <FaTimes size={12} />
+                  </button>
+                </div>
+
+                <div className="modal-body p-4 bg-white">
+                  <div className="row g-3">
+                    <div className="col-md-6">
+                      <label className="form-label extra-small fw-bold text-dark mb-1">Pond Basin</label>
+                      <select
+                        className="form-select form-select-sm fw-semibold"
+                        value={backfillForm.pond_id}
+                        onChange={(e) => setBackfillForm({ ...backfillForm, pond_id: e.target.value })}
+                        required
+                      >
+                        <option value="">Select Pond...</option>
+                        {assignedPonds.map((p) => (
+                          <option key={p.id} value={p.id}>{p.pond_name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="col-md-6">
+                      <label className="form-label extra-small fw-bold text-dark mb-1">Log Date</label>
+                      <input
+                        type="date"
+                        className="form-control form-control-sm fw-semibold"
+                        value={backfillForm.record_date}
+                        onChange={(e) => setBackfillForm({ ...backfillForm, record_date: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="col-md-6">
+                      <label className="form-label extra-small fw-bold text-dark mb-1">Feeding Slot</label>
+                      <select
+                        className="form-select form-select-sm font-mono fw-bold"
+                        value={backfillForm.feeding_time}
+                        onChange={(e) => setBackfillForm({ ...backfillForm, feeding_time: e.target.value })}
+                      >
+                        {['6:00 AM', '10:00 AM', '2:00 PM', '5:00 PM', '6:00 PM'].map((t) => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="col-md-6">
+                      <label className="form-label extra-small fw-bold text-dark mb-1">Amount (kg)</label>
+                      <input
+                        type="number"
+                        min="0.1"
+                        step="0.1"
+                        className="form-control form-control-sm fw-bold"
+                        placeholder="e.g. 12.5"
+                        value={backfillForm.amount_kg}
+                        onChange={(e) => setBackfillForm({ ...backfillForm, amount_kg: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="col-md-6">
+                      <label className="form-label extra-small fw-bold text-dark mb-1">Product Code</label>
+                      <select
+                        className="form-select form-select-sm fw-semibold"
+                        value={backfillForm.product_code}
+                        onChange={(e) => setBackfillForm({ ...backfillForm, product_code: e.target.value })}
+                      >
+                        <option value="Starter">Starter (Tateh Feed - Nursery)</option>
+                        <option value="Grower">Grower (Tateh Feed - Grow-out)</option>
+                      </select>
+                    </div>
+
+                    <div className="col-md-6">
+                      <label className="form-label extra-small fw-bold text-dark mb-1">Vitamins</label>
+                      {String(backfillForm.feeding_time).trim().toUpperCase() === '6:00 PM' ? (
+                        <input
+                          type="text"
+                          className="form-control form-control-sm bg-light text-muted"
+                          value="None (5th Feed: Disabled)"
+                          disabled
+                        />
+                      ) : (
+                        <select
+                          className="form-select form-select-sm fw-semibold"
+                          value={backfillForm.vitamin_name}
+                          onChange={(e) => setBackfillForm({ ...backfillForm, vitamin_name: e.target.value })}
+                        >
+                          <option value="None">None (No Vitamin)</option>
+                          <option value="Sanolife PRO-2">Sanolife PRO-2</option>
+                          <option value="Sano Top-S">Sano Top-S</option>
+                        </select>
+                      )}
+                    </div>
+
+                    <div className="col-12">
+                      <label className="form-label extra-small fw-bold text-dark mb-1">Notes / Remarks (Optional)</label>
+                      <textarea
+                        className="form-control form-control-sm"
+                        rows="2"
+                        placeholder="e.g. Backfilled from O&B farm paper logsheet"
+                        value={backfillForm.notes}
+                        onChange={(e) => setBackfillForm({ ...backfillForm, notes: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="modal-footer p-3 bg-light border-top d-flex justify-content-end gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-secondary rounded-pill px-3.5 py-1.5 extra-small fw-bold"
+                    onClick={() => setBackfillModalOpen(false)}
+                    disabled={savingBackfill}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn btn-sm btn-primary rounded-pill px-4 py-1.5 extra-small fw-bold shadow-sm"
+                    disabled={savingBackfill}
+                  >
+                    {savingBackfill ? 'Saving...' : (editingModalRecord ? 'Save Changes' : 'Save Backfill Record')}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </div>

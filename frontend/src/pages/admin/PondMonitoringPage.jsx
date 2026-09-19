@@ -16,6 +16,7 @@ import {
   FaPlus,
   FaRulerVertical,
   FaSearch,
+  FaSeedling,
   FaSync,
   FaThermometerHalf,
   FaTimesCircle,
@@ -26,11 +27,25 @@ import {
   FaWater,
   FaWeightHanging,
   FaWind,
+  FaHistory
 } from 'react-icons/fa';
 import Swal from 'sweetalert2';
 import api from '../../services/api';
+import PondCycleCalendar from '../../components/PondCycleCalendar';
+import WaterQualityHistoryModal from '../../components/WaterQualityHistoryModal';
+import WaterQualityOcrModal from '../../components/WaterQualityOcrModal';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
+
+function computeDoc(stockingDateStr, targetDateStr) {
+  if (!stockingDateStr) return null;
+  const s = new Date(stockingDateStr + 'T00:00:00');
+  const t = targetDateStr ? new Date(targetDateStr + 'T00:00:00') : new Date();
+  if (isNaN(s.getTime()) || isNaN(t.getTime())) return null;
+  const diffTime = t.getTime() - s.getTime();
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
+  return diffDays >= 1 ? diffDays : null;
+}
 
 const emptySummary = {
   total_ponds: 0,
@@ -66,12 +81,12 @@ function isDiseaseAlert(value) {
 }
 
 function MetricCard({ title, value, detail, icon, tone = 'primary' }) {
-  const cardGlowClass = 
+  const cardGlowClass =
     tone === 'success' ? 'stat-card-green' :
-    tone === 'danger' ? 'stat-card-red' :
-    tone === 'warning' ? 'stat-card-orange' :
-    tone === 'info' ? 'stat-card-purple' :
-    'stat-card-cyan';
+      tone === 'danger' ? 'stat-card-red' :
+        tone === 'warning' ? 'stat-card-orange' :
+          tone === 'info' ? 'stat-card-purple' :
+            'stat-card-cyan';
 
   return (
     <div className={`card ${cardGlowClass} shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden`}>
@@ -107,6 +122,9 @@ export default function PondMonitoringPage() {
   const [statusFilter, setStatusFilter] = useState('All');
   const [diseaseFilter, setDiseaseFilter] = useState('All');
   const [caretakerFilter, setCaretakerFilter] = useState('All');
+  const [filterDate, setFilterDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [stageFilter, setStageFilter] = useState('All'); // 'All' | 'Nursery' | 'Growout'
+  const [calendarModalPond, setCalendarModalPond] = useState(null);
   const [showFilters, setShowFilters] = useState(true);
   const [showAddPondModal, setShowAddPondModal] = useState(false);
   const [editingPond, setEditingPond] = useState(null);
@@ -114,6 +132,14 @@ export default function PondMonitoringPage() {
   const [selectedCaretakerId, setSelectedCaretakerId] = useState('');
   const [caretakers, setCaretakers] = useState([]);
   const [savingPond, setSavingPond] = useState(false);
+  const [historyModalPond, setHistoryModalPond] = useState(null);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [isOcrModalOpen, setIsOcrModalOpen] = useState(false);
+  const [editingWqRecord, setEditingWqRecord] = useState(null);
+  const [ocrTargetDate, setOcrTargetDate] = useState('');
+  const [ocrTargetPondId, setOcrTargetPondId] = useState('');
+
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
 
   const loadPondData = async () => {
     setLoading(true);
@@ -159,7 +185,38 @@ export default function PondMonitoringPage() {
     [ponds]
   );
 
-  const filteredPonds = useMemo(() => ponds.filter((p) => {
+  // Compute DOC, culture stage (Nursery vs Grow-out) and recommended feed for each pond on filterDate
+  const pondsWithDoc = useMemo(() => {
+    return ponds.map((p) => {
+      const doc = computeDoc(p.stocking_date, filterDate);
+      const isNursery = doc !== null && doc >= 1 && doc <= 25;
+      const isGrowout = doc !== null && doc >= 26;
+      const stageLabel = isNursery
+        ? 'Nursery (Starter Feed)'
+        : isGrowout
+          ? 'Grow-out (Grower Feed)'
+          : 'Pre-Stocking';
+      const feedType = isNursery ? 'Tateh - Starter' : isGrowout ? 'Tateh - Grower' : '-';
+      return {
+        ...p,
+        docOnFilterDate: doc,
+        isNursery,
+        isGrowout,
+        stageLabel,
+        feedType,
+      };
+    });
+  }, [ponds, filterDate]);
+
+  const nurseryCount = useMemo(() => {
+    return pondsWithDoc.filter((p) => p.isNursery).length;
+  }, [pondsWithDoc]);
+
+  const growoutCount = useMemo(() => {
+    return pondsWithDoc.filter((p) => p.isGrowout).length;
+  }, [pondsWithDoc]);
+
+  const filteredPonds = useMemo(() => pondsWithDoc.filter((p) => {
     const q = searchQuery.trim().toLowerCase();
     if (q) {
       const haystack = [p.pond_name, p.assigned_caretaker_name].join(' ').toLowerCase();
@@ -169,8 +226,10 @@ export default function PondMonitoringPage() {
     if (diseaseFilter === 'Clear' && isDiseaseAlert(p.disease_detection)) return false;
     if (diseaseFilter === 'Alert' && !isDiseaseAlert(p.disease_detection)) return false;
     if (caretakerFilter !== 'All' && p.assigned_caretaker_name !== caretakerFilter) return false;
+    if (stageFilter === 'Nursery' && !p.isNursery) return false;
+    if (stageFilter === 'Growout' && !p.isGrowout) return false;
     return true;
-  }), [ponds, searchQuery, statusFilter, diseaseFilter, caretakerFilter]);
+  }), [pondsWithDoc, searchQuery, statusFilter, diseaseFilter, caretakerFilter, stageFilter]);
 
   const pieData = {
     labels: ['Healthy', 'Warning', 'Critical'],
@@ -203,15 +262,15 @@ export default function PondMonitoringPage() {
     }
 
     const headers = [
-      'Pond Name', 'Status', 'Assigned Caretaker', 'Area (sqm)', 'Stocking Date',
-      'Age (Days)', 'Growth (%)', 'Feed Today (kg)', 'Total Feed (kg)', 'Disease Detection',
-      'Confidence (%)', 'Harvest Readiness (%)', 'Expected Harvest Date', 'Temperature',
+      'Pond Name', 'Status', 'Assigned Caretaker', 'Culture Stage', 'DOC (on Filter Date)', 'Recommended Feed',
+      'Area (sqm)', 'Stocking Date', 'Age (Days)', 'Growth (%)', 'Feed Today (kg)', 'Total Feed (kg)',
+      'Disease Detection', 'Confidence (%)', 'Harvest Readiness (%)', 'Expected Harvest Date', 'Temperature',
       'pH Level', 'Salinity', 'Dissolved Oxygen', 'Water Level', 'Latest Feed Date',
     ];
     const rows = filteredPonds.map((p) => [
-      p.pond_name, p.status, p.assigned_caretaker_name, p.area_sqm, p.stocking_date,
-      p.current_age_days, p.growth_percentage, p.feed_today_kg, p.total_feed_kg, p.disease_detection,
-      p.disease_confidence, p.harvest_readiness, p.expected_harvest_date, p.temperature,
+      p.pond_name, p.status, p.assigned_caretaker_name, p.stageLabel, p.docOnFilterDate ?? '-', p.feedType,
+      p.area_sqm, p.stocking_date, p.current_age_days, p.growth_percentage, p.feed_today_kg, p.total_feed_kg,
+      p.disease_detection, p.disease_confidence, p.harvest_readiness, p.expected_harvest_date, p.temperature,
       p.ph_level, p.salinity, p.dissolved_oxygen, p.water_level, p.latest_feed_date,
     ].map((value) => `"${String(value ?? '').replace(/"/g, '""')}"`));
 
@@ -220,7 +279,7 @@ export default function PondMonitoringPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `ShrimPredict_Pond_Monitoring_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = `ShrimPredict_Pond_Monitoring_${filterDate}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -232,6 +291,8 @@ export default function PondMonitoringPage() {
     setStatusFilter('All');
     setDiseaseFilter('All');
     setCaretakerFilter('All');
+    setStageFilter('All');
+    setFilterDate(new Date().toISOString().split('T')[0]);
   };
 
   const resetPondForm = () => {
@@ -351,34 +412,100 @@ export default function PondMonitoringPage() {
         </div>
 
         {showFilters && (
-          <div className="row g-3 mt-3 pt-3 border-top">
-            <div className="col-12 col-md-3">
-              <label className="form-label small fw-bold text-muted">Pond Status</label>
-              <select className="form-select" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-                <option value="All">All statuses</option>
-                <option value="Healthy">Healthy</option>
-                <option value="Warning">Warning</option>
-                <option value="Critical">Critical</option>
-                <option value="Unmonitored">Unmonitored</option>
-              </select>
+          <div className="mt-3 pt-3 border-top">
+            {/* 🌟 Stage Filter Tabs Bar */}
+            <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3 pb-2 border-bottom">
+              <div className="d-flex align-items-center gap-1.5 flex-wrap">
+                <button
+                  type="button"
+                  className={`btn btn-sm rounded-pill px-3 py-1.5 extra-small fw-bold transition-all ${stageFilter === 'All' ? 'btn-dark text-white shadow-xs' : 'btn-light border text-dark'
+                    }`}
+                  onClick={() => setStageFilter('All')}
+                >
+                  All Basins ({ponds.length})
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-sm rounded-pill px-3 py-1.5 extra-small fw-bold transition-all ${stageFilter === 'Nursery' ? 'text-white shadow-xs' : 'btn-light border text-dark'
+                    }`}
+                  style={{
+                    backgroundColor: stageFilter === 'Nursery' ? '#059669' : '#FFFFFF',
+                    color: stageFilter === 'Nursery' ? '#FFFFFF' : '#047857',
+                    borderColor: '#A7F3D0',
+                  }}
+                  onClick={() => setStageFilter('Nursery')}
+                >
+                  🌱 Nursery Basins (Days 1–25 • Starter Feed) ({nurseryCount})
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-sm rounded-pill px-3 py-1.5 extra-small fw-bold transition-all ${stageFilter === 'Growout' ? 'text-white shadow-xs' : 'btn-light border text-dark'
+                    }`}
+                  style={{
+                    backgroundColor: stageFilter === 'Growout' ? '#2563EB' : '#FFFFFF',
+                    color: stageFilter === 'Growout' ? '#FFFFFF' : '#1D4ED8',
+                    borderColor: '#BFDBFE',
+                  }}
+                  onClick={() => setStageFilter('Growout')}
+                >
+                  🌊 Grow-out Basins (Day 26+ • Grower Feed) ({growoutCount})
+                </button>
+              </div>
+              <div className="extra-small text-muted">
+                Target Feed: <strong>Days 1–25 Nursery (Starter)</strong> ➔ <strong>Day 26+ Grow-out (Grower)</strong>
+              </div>
             </div>
-            <div className="col-12 col-md-3">
-              <label className="form-label small fw-bold text-muted">Disease Detection</label>
-              <select className="form-select" value={diseaseFilter} onChange={(event) => setDiseaseFilter(event.target.value)}>
-                <option value="All">All detections</option>
-                <option value="Clear">Clear only</option>
-                <option value="Alert">Alerts only</option>
-              </select>
-            </div>
-            <div className="col-12 col-md-4">
-              <label className="form-label small fw-bold text-muted">Assigned Caretaker</label>
-              <select className="form-select" value={caretakerFilter} onChange={(event) => setCaretakerFilter(event.target.value)}>
-                <option value="All">All caretakers</option>
-                {uniqueCaretakers.map((caretaker) => <option key={caretaker} value={caretaker}>{caretaker}</option>)}
-              </select>
-            </div>
-            <div className="col-12 col-md-2 d-flex align-items-end">
-              <button className="btn btn-light border w-100" onClick={clearFilters}>Clear</button>
+
+            <div className="row g-3">
+              {/* Date Filter */}
+              <div className="col-12 col-md-3">
+                <label className="form-label small fw-bold text-muted d-flex align-items-center justify-content-between">
+                  <span><FaCalendarAlt className="me-1 text-primary" /> Evaluation Date</span>
+                  {filterDate !== todayStr && (
+                    <button
+                      type="button"
+                      className="btn btn-link p-0 extra-small text-primary text-decoration-none"
+                      onClick={() => setFilterDate(todayStr)}
+                    >
+                      Reset Today
+                    </button>
+                  )}
+                </label>
+                <input
+                  type="date"
+                  className="form-control"
+                  value={filterDate}
+                  onChange={(event) => setFilterDate(event.target.value)}
+                />
+              </div>
+              <div className="col-12 col-md-2">
+                <label className="form-label small fw-bold text-muted">Pond Status</label>
+                <select className="form-select" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+                  <option value="All">All statuses</option>
+                  <option value="Healthy">Healthy</option>
+                  <option value="Warning">Warning</option>
+                  <option value="Critical">Critical</option>
+                  <option value="Unmonitored">Unmonitored</option>
+                </select>
+              </div>
+              <div className="col-12 col-md-2">
+                <label className="form-label small fw-bold text-muted">Disease Detection</label>
+                <select className="form-select" value={diseaseFilter} onChange={(event) => setDiseaseFilter(event.target.value)}>
+                  <option value="All">All detections</option>
+                  <option value="Clear">Clear only</option>
+                  <option value="Alert">Alerts only</option>
+                </select>
+              </div>
+              <div className="col-12 col-md-3">
+                <label className="form-label small fw-bold text-muted">Assigned Caretaker</label>
+                <select className="form-select" value={caretakerFilter} onChange={(event) => setCaretakerFilter(event.target.value)}>
+                  <option value="All">All caretakers</option>
+                  {uniqueCaretakers.map((caretaker) => <option key={caretaker} value={caretaker}>{caretaker}</option>)}
+                </select>
+              </div>
+              <div className="col-12 col-md-2 d-flex align-items-end">
+                <button className="btn btn-light border w-100" onClick={clearFilters}>Reset Filters</button>
+              </div>
             </div>
           </div>
         )}
@@ -510,6 +637,7 @@ export default function PondMonitoringPage() {
                     <thead className="table-light sticky-top shadow-xs" style={{ top: 0, zIndex: 5 }}>
                       <tr>
                         <th className="ps-3 py-3 text-secondary text-uppercase extra-small fw-bold">Pond</th>
+                        <th className="py-3 text-secondary text-uppercase extra-small fw-bold">Culture Stage & Feed</th>
                         <th className="py-3 text-secondary text-uppercase extra-small fw-bold">Status</th>
                         <th className="py-3 text-secondary text-uppercase extra-small fw-bold">Caretaker</th>
                         <th className="py-3 text-secondary text-uppercase extra-small fw-bold">Water Quality</th>
@@ -526,6 +654,45 @@ export default function PondMonitoringPage() {
                             <td className="ps-3">
                               <div className="fw-bold text-dark">{pond.pond_name}</div>
                               <small className="text-muted">Pond #{pond.id}</small>
+                            </td>
+                            <td>
+                              {pond.docOnFilterDate !== null ? (
+                                pond.isNursery ? (
+                                  <div>
+                                    <span
+                                      className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1"
+                                      style={{ background: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0', fontSize: '0.78rem' }}
+                                    >
+                                      🌱 Day {pond.docOnFilterDate} • Nursery
+                                    </span>
+                                    <small className="d-block text-muted extra-small mt-0.5">Feed: <strong>Tateh - Starter</strong></small>
+                                  </div>
+                                ) : pond.docOnFilterDate === 26 ? (
+                                  <div>
+                                    <span
+                                      className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1"
+                                      style={{ background: '#FEF3C7', color: '#B45309', border: '1px solid #FCD34D', fontSize: '0.78rem' }}
+                                    >
+                                      ⚡ Day 26 • Transfer Day
+                                    </span>
+                                    <small className="d-block text-muted extra-small mt-0.5">Feed: <strong>Tateh - Grower</strong></small>
+                                  </div>
+                                ) : (
+                                  <div>
+                                    <span
+                                      className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1"
+                                      style={{ background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', fontSize: '0.78rem' }}
+                                    >
+                                      🌊 Day {pond.docOnFilterDate} • Grow-out
+                                    </span>
+                                    <small className="d-block text-muted extra-small mt-0.5">Feed: <strong>Tateh - Grower</strong></small>
+                                  </div>
+                                )
+                              ) : (
+                                <span className="badge bg-light text-muted border px-2 py-1 extra-small">
+                                  Pre-Stocking
+                                </span>
+                              )}
                             </td>
                             <td>
                               <span className={`badge bg-${tone} ${tone === 'warning' ? 'text-dark' : ''} px-2.5 py-1.5 fw-bold`}>
@@ -553,21 +720,43 @@ export default function PondMonitoringPage() {
                               )}
                             </td>
                             <td className="pe-3 text-end">
-                              <div className="d-flex justify-content-end gap-2">
+                              <div className="d-flex justify-content-end gap-1.5 flex-wrap">
+                                <button
+                                  className="btn btn-sm btn-outline-info rounded-pill px-2.5 py-1 fw-bold shadow-xs d-inline-flex align-items-center gap-1"
+                                  style={{ fontSize: '0.78rem' }}
+                                  onClick={() => setCalendarModalPond(pond)}
+                                  title="View Pond Culture Cycle Calendar"
+                                >
+                                  <FaCalendarAlt size={11} /> Cycle
+                                </button>
+                                <button
+                                  className="btn btn-sm btn-outline-secondary rounded-pill px-2.5 py-1 fw-bold shadow-xs d-inline-flex align-items-center gap-1"
+                                  style={{ fontSize: '0.78rem' }}
+                                  onClick={() => {
+                                    setHistoryModalPond(pond);
+                                    setIsHistoryModalOpen(true);
+                                  }}
+                                  title="View Water Quality Log History and past date records"
+                                >
+                                  <FaHistory size={11} className="text-info" /> Logs
+                                </button>
                                 <button
                                   className="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 fw-bold shadow-xs"
+                                  style={{ fontSize: '0.78rem' }}
                                   onClick={() => setSelectedPond(pond)}
                                 >
                                   Details
                                 </button>
                                 <button
                                   className="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1 fw-bold shadow-xs"
+                                  style={{ fontSize: '0.78rem' }}
                                   onClick={() => openEditPondModal(pond)}
                                 >
                                   <FaEdit className="me-1" /> Edit
                                 </button>
                                 <button
                                   className="btn btn-sm btn-outline-danger rounded-pill px-3 py-1 fw-bold shadow-xs"
+                                  style={{ fontSize: '0.78rem' }}
                                   onClick={() => handleDeletePond(pond)}
                                 >
                                   <FaTrash className="me-1" /> Delete
@@ -680,6 +869,59 @@ export default function PondMonitoringPage() {
                   <div className="col-12 col-md-3"><MetricCard title="Harvest Readiness" value={valueOrDash(formatNumber(selectedPond.harvest_readiness), '%')} detail={selectedPond.harvest_readiness_status || '-'} icon={<FaWeightHanging />} tone="warning" /></div>
                 </div>
 
+                {/* Culture Stage & Recommended Feed formulation Banner */}
+                {(() => {
+                  const selDoc = computeDoc(selectedPond.stocking_date, filterDate);
+                  const isNursery = selDoc !== null && selDoc >= 1 && selDoc <= 25;
+                  const isGrowout = selDoc !== null && selDoc >= 26;
+                  const feedType = isNursery ? 'Tateh - Starter' : isGrowout ? 'Tateh - Grower' : '-';
+
+                  return (
+                    <div className="p-3.5 rounded-4 border mb-4 d-flex align-items-center justify-content-between flex-wrap gap-3" style={{ background: '#F8FAFC' }}>
+                      <div className="d-flex align-items-center gap-3">
+                        <div
+                          className="rounded-3 d-flex align-items-center justify-content-center text-white flex-shrink-0 shadow-xs"
+                          style={{
+                            width: 44,
+                            height: 44,
+                            background: isNursery ? '#059669' : '#0284C7',
+                          }}
+                        >
+                          {isNursery ? <FaSeedling size={20} /> : <FaWater size={20} />}
+                        </div>
+                        <div>
+                          <div className="d-flex align-items-center gap-2 flex-wrap">
+                            <h6 className="fw-extrabold mb-0 text-dark">
+                              {selDoc !== null
+                                ? isNursery
+                                  ? `🌱 Nursery Pond Stage (Day ${selDoc} of Culture)`
+                                  : selDoc === 26
+                                    ? `⚡ Transfer Milestone Day (Day 26 of Culture)`
+                                    : `🌊 Grow-out Pond Stage (Day ${selDoc} of Culture)`
+                                : 'Unstocked / Pre-Stocking Phase'}
+                            </h6>
+                            <span className="badge bg-secondary bg-opacity-10 text-secondary extra-small">
+                              Evaluated on {filterDate}
+                            </span>
+                          </div>
+                          <p className="text-muted extra-small mb-0 mt-1">
+                            Required Feed Formulation: <strong className="text-dark">{feedType}</strong> • Protocol: Starter (Days 1–25 Nursery) ➔ Grower (Day 26+ Grow-out)
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-primary rounded-pill px-3 py-1.5 fw-bold d-flex align-items-center gap-2 shadow-xs"
+                        onClick={() => {
+                          setCalendarModalPond(selectedPond);
+                        }}
+                      >
+                        <FaCalendarAlt size={12} /> View Pond Cycle Calendar
+                      </button>
+                    </div>
+                  );
+                })()}
+
                 <div className="row g-3 mb-4">
                   <div className="col-12 col-md-6">
                     <div className={`p-4 rounded-4 border h-100 ${isDiseaseAlert(selectedPond.disease_detection) ? 'bg-danger bg-opacity-10 border-danger border-opacity-25' : 'bg-success bg-opacity-10 border-success border-opacity-25'}`}>
@@ -700,7 +942,19 @@ export default function PondMonitoringPage() {
                   </div>
                 </div>
 
-                <h6 className="fw-bold text-muted text-uppercase mb-3">Water Quality Parameters</h6>
+                <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+                  <h6 className="fw-bold text-muted text-uppercase mb-0">Water Quality Parameters</h6>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 extra-small fw-bold d-inline-flex align-items-center gap-1.5 shadow-xs"
+                    onClick={() => {
+                      setHistoryModalPond(selectedPond);
+                      setIsHistoryModalOpen(true);
+                    }}
+                  >
+                    <FaHistory size={11} /> View Water Quality History &amp; Backfill
+                  </button>
+                </div>
                 <div className="row g-3 text-center">
                   <WaterMetric icon={<FaThermometerHalf size={20} />} label="Temperature" value={valueOrDash(selectedPond.temperature, ' C')} tone="danger" />
                   <WaterMetric icon={<FaVial size={20} />} label="pH" value={valueOrDash(selectedPond.ph_level)} />
@@ -782,6 +1036,108 @@ export default function PondMonitoringPage() {
           </div>
         </div>
       )}
+
+      {/* 📅 POND CYCLE CALENDAR MODAL (DAYS 1-25 NURSERY / STARTER & DAY 26+ GROW-OUT / GROWER) */}
+      {calendarModalPond && (
+        <div
+          className="modal fade show d-block"
+          tabIndex="-1"
+          style={{ backgroundColor: 'rgba(15, 23, 42, 0.65)', zIndex: 1070 }}
+        >
+          <div className="modal-dialog modal-dialog-centered modal-lg">
+            <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+              <div
+                className="modal-header text-white border-0 py-3"
+                style={{ background: 'linear-gradient(135deg, #071733 0%, #0B2C5F 50%, #0284C7 100%)' }}
+              >
+                <div className="d-flex align-items-center gap-2.5">
+                  <div
+                    className="rounded-circle d-flex align-items-center justify-content-center"
+                    style={{ width: 34, height: 34, background: 'rgba(255, 255, 255, 0.15)' }}
+                  >
+                    <FaCalendarAlt size={16} />
+                  </div>
+                  <div>
+                    <h5 className="modal-title fw-bold text-white mb-0">
+                      Pond Culture Timeline & Cycle Calendar
+                    </h5>
+                    <span className="text-white text-opacity-80 extra-small">
+                      {calendarModalPond.pond_name} • Assigned: {calendarModalPond.assigned_caretaker_name || 'Unassigned'}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn-close btn-close-white"
+                  onClick={() => setCalendarModalPond(null)}
+                />
+              </div>
+              <div className="modal-body p-4 bg-light">
+                <PondCycleCalendar
+                  pondName={calendarModalPond.pond_name}
+                  stockingDate={calendarModalPond.stocking_date}
+                  records={[]}
+                  onSelectDate={(dateStr) => {
+                    setFilterDate(dateStr);
+                    setCalendarModalPond(null);
+                  }}
+                />
+              </div>
+              <div className="modal-footer bg-white border-top py-2.5">
+                <button
+                  type="button"
+                  className="btn btn-secondary rounded-pill px-4"
+                  onClick={() => setCalendarModalPond(null)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🌟 WATER QUALITY LOG HISTORY & BACKFILL MODAL */}
+      <WaterQualityHistoryModal
+        isOpen={isHistoryModalOpen}
+        onClose={() => {
+          setIsHistoryModalOpen(false);
+          setHistoryModalPond(null);
+        }}
+        pond={historyModalPond}
+        canEdit={true}
+        onEditRecord={(record) => {
+          setEditingWqRecord(record);
+          setOcrTargetPondId(String(record.pond_id));
+          setOcrTargetDate(record.record_date);
+          setIsHistoryModalOpen(false);
+          setIsOcrModalOpen(true);
+        }}
+        onAddRecord={(date) => {
+          setEditingWqRecord(null);
+          if (historyModalPond) setOcrTargetPondId(String(historyModalPond.id));
+          setOcrTargetDate(date || todayStr);
+          setIsHistoryModalOpen(false);
+          setIsOcrModalOpen(true);
+        }}
+      />
+
+      {/* 🌟 DUAL-MODE OCR WATER QUALITY MODAL */}
+      <WaterQualityOcrModal
+        isOpen={isOcrModalOpen}
+        onClose={() => {
+          setIsOcrModalOpen(false);
+          setEditingWqRecord(null);
+        }}
+        assignedPonds={ponds}
+        initialPondId={ocrTargetPondId || (historyModalPond ? String(historyModalPond.id) : '')}
+        initialDate={ocrTargetDate || todayStr}
+        initialRecord={editingWqRecord}
+        caretakerName="Administrator"
+        onSuccess={() => {
+          loadPondData();
+        }}
+      />
     </div>
   );
 }
