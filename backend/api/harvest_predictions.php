@@ -113,6 +113,8 @@ function savePrediction(PDO $conn, array $item): void {
     $existing->execute([':pond_id' => $item['pond_id'], ':prediction_date' => $today]);
     $id = $existing->fetchColumn();
 
+    $averageWeight = round((float)($item['average_weight'] ?? 0), 2);
+
     $params = [
         ':pond_id' => $item['pond_id'],
         ':total_feed_consumed_kg' => $item['total_feed_consumed_kg'],
@@ -126,6 +128,7 @@ function savePrediction(PDO $conn, array $item): void {
         ':adjustment_reason' => $item['adjustment_reason'],
         ':prediction_method' => PREDICTION_METHOD,
         ':estimated_harvest' => round($item['adjusted_harvest_kg'], 2),
+        ':average_weight' => $averageWeight,
         ':recommendation' => $item['recommendation'],
         ':prediction_date' => $today,
     ];
@@ -147,6 +150,7 @@ function savePrediction(PDO $conn, array $item): void {
                 adjustment_reason = :adjustment_reason,
                 prediction_method = :prediction_method,
                 estimated_harvest = :estimated_harvest,
+                average_weight = :average_weight,
                 recommendation = :recommendation,
                 calculated_at = NOW()
             WHERE id = :id
@@ -163,7 +167,7 @@ function savePrediction(PDO $conn, array $item): void {
                 :pond_id, :total_feed_consumed_kg, :baseline_ratio, :baseline_harvest_kg,
                 :adjusted_harvest_kg, :predicted_harvest_tons, :feed_progress_percentage,
                 :readiness_status, :adjustment_percentage, :adjustment_reason, :prediction_method,
-                :estimated_harvest, 0, 0, 0, :recommendation, :prediction_date, NOW(), 'System'
+                :estimated_harvest, :average_weight, 0, 0, :recommendation, :prediction_date, NOW(), 'System'
             )
         ");
     }
@@ -217,6 +221,12 @@ $feedStmt = $conn->prepare("
         COALESCE(SUM(fr.amount_kg), 0) AS total_feed_consumed_kg,
         COUNT(fr.id) AS feeding_record_count,
         MAX(fr.record_date) AS last_feeding_date,
+        COALESCE((
+            SELECT shrimp_weight_grams 
+            FROM feeding_records 
+            WHERE pond_id = p.id AND shrimp_weight_grams IS NOT NULL AND shrimp_weight_grams > 0 
+            ORDER BY record_date DESC, id DESC LIMIT 1
+        ), 0) AS average_weight,
         GROUP_CONCAT(DISTINCT u.id ORDER BY u.full_name SEPARATOR ',') AS caretaker_ids,
         GROUP_CONCAT(DISTINCT u.full_name ORDER BY u.full_name SEPARATOR ', ') AS caretaker_names
     FROM feeding_records fr
@@ -277,6 +287,7 @@ foreach ($feedStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
         'baseline_harvest_kg' => round($baselineHarvest, 4),
         'adjusted_harvest_kg' => round($adjustedHarvest, 4),
         'predicted_harvest_tons' => round($adjustedHarvest / 1000, 4),
+        'average_weight' => round((float)($row['average_weight'] ?? 0), 2),
         'feed_progress_percentage' => round($progress, 2),
         'feed_progress_visual_percentage' => round(min(100, $progress), 2),
         'remaining_feed_kg' => round($remainingFeed, 2),

@@ -1778,13 +1778,13 @@ export default function MyPondPage() {
           <div className="modal-dialog modal-dialog-centered modal-lg">
             <div className="modal-content border-0 rounded-4 overflow-hidden shadow-2xl">
               <PondCycleCalendar
+                pondId={selectedPond?.id}
                 stockingDate={selectedPond?.stocking_date}
-                selectedDate={todayDateStr}
+                selectedDate={recordDate || todayDateStr}
                 pondName={selectedPond?.pond_name || 'My Pond'}
                 records={todayLogs}
                 onSelectDate={(dateStr) => {
                   setRecordDate(dateStr);
-                  setShowCycleCalendar(false);
                 }}
                 onClose={() => setShowCycleCalendar(false)}
               />

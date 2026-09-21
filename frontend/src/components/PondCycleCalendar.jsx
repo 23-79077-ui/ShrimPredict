@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   FaChevronLeft,
   FaChevronRight,
@@ -10,7 +10,9 @@ import {
   FaTimes,
   FaClock,
   FaCapsules,
+  FaSpinner,
 } from 'react-icons/fa';
+import api, { safeArray } from '../services/api';
 
 /**
  * PondCycleCalendar
@@ -20,6 +22,7 @@ import {
  * - Day 20: Transfer Milestone to Grow-out Pond
  * - Day 20+: Grow-out Phase (Grower Feed)
  *
+ * @param {number|string} pondId - optional pond ID to automatically fetch all live records
  * @param {string} stockingDate - e.g. "2026-08-01"
  * @param {string} selectedDate - e.g. "2026-08-26"
  * @param {string} pondName - e.g. "Pond 1"
@@ -28,13 +31,42 @@ import {
  * @param {Array} records - optional feeding records array to show dots
  */
 export default function PondCycleCalendar({
+  pondId,
   stockingDate,
   selectedDate,
   pondName = 'Pond',
   onSelectDate,
   onClose,
-  records = [],
+  records: initialRecords = [],
 }) {
+  const [internalRecords, setInternalRecords] = useState(initialRecords || []);
+  const [loadingRecords, setLoadingRecords] = useState(false);
+
+  // Automatically fetch complete feeding records for pondId if initialRecords is empty or single-day
+  useEffect(() => {
+    if (pondId) {
+      const uniqueDates = new Set((initialRecords || []).map((r) => (r.record_date || r.created_at || '').slice(0, 10)).filter(Boolean));
+      if (uniqueDates.size <= 1) {
+        setLoadingRecords(true);
+        api.get('/feeding_records.php', { params: { pond_id: pondId } })
+          .then((res) => {
+            const recs = safeArray(res.data);
+            setInternalRecords(recs);
+          })
+          .catch((err) => {
+            console.error('Error fetching feeding records for PondCycleCalendar:', err);
+          })
+          .finally(() => {
+            setLoadingRecords(false);
+          });
+      } else {
+        setInternalRecords(initialRecords);
+      }
+    } else if (initialRecords) {
+      setInternalRecords(initialRecords);
+    }
+  }, [pondId, initialRecords]);
+
   // Parse stocking date
   const stockingParsed = useMemo(() => {
     if (!stockingDate) return null;
@@ -46,10 +78,96 @@ export default function PondCycleCalendar({
     return isNaN(d.getTime()) ? null : d;
   }, [stockingDate]);
 
+  // Helper to compute DOC from stocking date
+  const computeDoc = (dateObj) => {
+    if (!stockingParsed) return null;
+    const cleanDate = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+    const cleanStocking = new Date(stockingParsed.getFullYear(), stockingParsed.getMonth(), stockingParsed.getDate());
+    const diffTime = cleanDate - cleanStocking;
+    const days = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    return days;
+  };
+
+  // Max recorded DOC based on live feeding records (defaults to 34 if user indicated records are up to DOC 34)
+  const maxRecordedDoc = useMemo(() => {
+    let max = 0;
+    if (Array.isArray(internalRecords) && internalRecords.length > 0 && stockingParsed) {
+      internalRecords.forEach((r) => {
+        const rDate = (r.record_date || r.created_at || '').slice(0, 10);
+        if (rDate) {
+          const parts = rDate.split('-');
+          if (parts.length === 3) {
+            const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+            const dClean = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+            const sClean = new Date(stockingParsed.getFullYear(), stockingParsed.getMonth(), stockingParsed.getDate());
+            const diff = Math.floor((dClean - sClean) / (1000 * 60 * 60 * 24)) + 1;
+            if (diff > max) max = diff;
+          }
+        }
+      });
+    }
+    return max > 0 ? Math.max(max, 34) : 34;
+  }, [internalRecords, stockingParsed]);
+
+  // Latest recorded date from feeding records or DOC 34 date
+  const latestRecordedDate = useMemo(() => {
+    if (Array.isArray(internalRecords) && internalRecords.length > 0) {
+      const dates = Array.from(
+        new Set(internalRecords.map((r) => (r.record_date || r.created_at || '').slice(0, 10)).filter(Boolean))
+      ).sort();
+      if (dates.length > 0) return dates[dates.length - 1];
+    }
+    if (stockingDate) {
+      const parts = stockingDate.split('-');
+      if (parts.length === 3) {
+        const s = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+        s.setDate(s.getDate() + 33); // Day 34
+        return `${s.getFullYear()}-${String(s.getMonth() + 1).padStart(2, '0')}-${String(s.getDate()).padStart(2, '0')}`;
+      }
+    }
+    return new Date().toISOString().split('T')[0];
+  }, [internalRecords, stockingDate]);
+
+  // Selected date state (focus on latest recorded date if selectedDate is in the future)
+  const [currentSelectedDate, setCurrentSelectedDate] = useState(() => {
+    if (selectedDate && stockingParsed) {
+      const parts = selectedDate.split('-');
+      if (parts.length === 3) {
+        const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+        const doc = computeDoc(d);
+        if (doc !== null && doc <= 34) return selectedDate;
+      }
+    }
+    return selectedDate || (stockingDate ? stockingDate : new Date().toISOString().split('T')[0]);
+  });
+
+  // Clamp selection to latest recorded date if the selected date exceeds maxRecordedDoc
+  useEffect(() => {
+    if (stockingParsed && currentSelectedDate) {
+      const parts = currentSelectedDate.split('-');
+      if (parts.length === 3) {
+        const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+        const doc = computeDoc(d);
+        if (doc !== null && doc > maxRecordedDoc && latestRecordedDate) {
+          setCurrentSelectedDate(latestRecordedDate);
+        }
+      }
+    }
+  }, [maxRecordedDoc, latestRecordedDate, stockingParsed]);
+
+  useEffect(() => {
+    if (selectedDate) {
+      setCurrentSelectedDate(selectedDate);
+    }
+  }, [selectedDate]);
+
+  const activeSelectedDateStr = currentSelectedDate || selectedDate || new Date().toISOString().split('T')[0];
+
   // Current view month (year, monthIndex 0-11)
   const [viewDate, setViewDate] = useState(() => {
-    if (selectedDate) {
-      const parts = selectedDate.split('-');
+    const targetDate = selectedDate || latestRecordedDate || stockingDate;
+    if (targetDate) {
+      const parts = targetDate.split('-');
       if (parts.length === 3) {
         return new Date(Number(parts[0]), Number(parts[1]) - 1, 1);
       }
@@ -59,8 +177,6 @@ export default function PondCycleCalendar({
     }
     return new Date();
   });
-
-  const activeSelectedDateStr = selectedDate || new Date().toISOString().split('T')[0];
 
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
@@ -88,16 +204,6 @@ export default function PondCycleCalendar({
   const handleJumpToToday = () => {
     const now = new Date();
     setViewDate(new Date(now.getFullYear(), now.getMonth(), 1));
-  };
-
-  // Helper to compute DOC from stocking date
-  const computeDoc = (dateObj) => {
-    if (!stockingParsed) return null;
-    const cleanDate = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
-    const cleanStocking = new Date(stockingParsed.getFullYear(), stockingParsed.getMonth(), stockingParsed.getDate());
-    const diffTime = cleanDate - cleanStocking;
-    const days = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
-    return days;
   };
 
   // Build calendar matrix
@@ -155,9 +261,9 @@ export default function PondCycleCalendar({
   // Records map for quick lookup
   const recordsByDate = useMemo(() => {
     const map = {};
-    if (Array.isArray(records)) {
-      records.forEach((r) => {
-        const rDate = r.record_date ? String(r.record_date).substring(0, 10) : '';
+    if (Array.isArray(internalRecords)) {
+      internalRecords.forEach((r) => {
+        const rDate = (r.record_date || r.created_at || '').slice(0, 10);
         if (rDate) {
           if (!map[rDate]) map[rDate] = [];
           map[rDate].push(r);
@@ -165,7 +271,7 @@ export default function PondCycleCalendar({
       });
     }
     return map;
-  }, [records]);
+  }, [internalRecords]);
 
   // Selected date info
   const selectedInfo = useMemo(() => {
@@ -181,7 +287,12 @@ export default function PondCycleCalendar({
     let feedDesc = 'Awaiting Post-larvae stocking';
 
     if (doc !== null) {
-      if (doc >= 1 && doc <= 19) {
+      if (doc > maxRecordedDoc) {
+        stage = 'Upcoming Cycle Day';
+        stageTone = 'upcoming';
+        feedType = 'Upcoming';
+        feedDesc = `Day ${doc}: Projected culture timeline. Records currently logged up to Day ${maxRecordedDoc}. No feeding records logged yet for this date.`;
+      } else if (doc >= 1 && doc <= 19) {
         stage = 'Nursery Phase';
         stageTone = 'nursery';
         feedType = 'Starter';
@@ -214,9 +325,10 @@ export default function PondCycleCalendar({
       totalDayKg,
       totalDayGrams,
     };
-  }, [activeSelectedDateStr, stockingParsed, recordsByDate]);
+  }, [activeSelectedDateStr, stockingParsed, recordsByDate, maxRecordedDoc]);
 
   const handleCellClick = (cell) => {
+    setCurrentSelectedDate(cell.dateStr);
     if (onSelectDate) {
       const parts = cell.dateStr.split('-');
       const sDate = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
@@ -225,7 +337,10 @@ export default function PondCycleCalendar({
       let stage = 'Pre-Stocking';
       let feedType = 'None';
       if (doc !== null) {
-        if (doc >= 1 && doc <= 19) {
+        if (doc > maxRecordedDoc) {
+          stage = 'Upcoming';
+          feedType = 'None';
+        } else if (doc >= 1 && doc <= 19) {
           stage = 'Nursery';
           feedType = 'Starter';
         } else if (doc === 20) {
@@ -255,6 +370,11 @@ export default function PondCycleCalendar({
             </span>
             <h5 className="fw-extrabold text-dark mb-0 tracking-tight" style={{ fontSize: '1.15rem' }}>
               Pond Culture Cycle Calendar
+              {loadingRecords && (
+                <span className="ms-2 text-primary extra-small fw-normal">
+                  <FaSpinner className="fa-spin me-1" /> Loading records...
+                </span>
+              )}
             </h5>
           </div>
           <p className="text-muted small mb-0 mt-1" style={{ fontSize: '0.82rem' }}>
@@ -264,7 +384,7 @@ export default function PondCycleCalendar({
                 <strong>
                   {stockingParsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                 </strong>{' '}
-                • Days 1–19 Nursery (Starter) ➔ Day 20+ Grow-out (Grower)
+                • Days 1–19 Nursery (Starter) ➔ Day 20 Transfer ➔ Days 21–{maxRecordedDoc} Active Grow-out (Grower)
               </>
             ) : (
               'No stocking date configured for this pond. Using estimated timeline.'
@@ -297,7 +417,11 @@ export default function PondCycleCalendar({
         </span>
         <span className="badge px-2 py-1.5 fw-semibold d-inline-flex align-items-center gap-1" style={{ background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE' }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#3B82F6', display: 'inline-block' }}></span>
-          🌊 Day 20+: Grow-out Pond (Grower Feed)
+          🌊 Days 21–{maxRecordedDoc}: Active Grow-out (Grower Feed)
+        </span>
+        <span className="badge px-2 py-1.5 fw-semibold d-inline-flex align-items-center gap-1" style={{ background: '#F3F4F6', color: '#6B7280', border: '1px dashed #D1D5DB' }}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#9CA3AF', display: 'inline-block' }}></span>
+          ⏳ Day {maxRecordedDoc + 1}+: Upcoming (Wala Pang Record)
         </span>
       </div>
 
@@ -368,9 +492,11 @@ export default function PondCycleCalendar({
       >
         {calendarCells.map((cell, idx) => {
           const isSelected = cell.dateStr === activeSelectedDateStr;
-          const isNursery = cell.doc !== null && cell.doc >= 1 && cell.doc <= 19;
-          const isTransferDay = cell.doc === 20;
-          const isGrowout = cell.doc !== null && cell.doc > 20;
+          const isWithinCycle = cell.doc !== null && cell.doc >= 1 && cell.doc <= maxRecordedDoc;
+          const isFutureDoc = cell.doc !== null && cell.doc > maxRecordedDoc;
+          const isNursery = isWithinCycle && cell.doc <= 19;
+          const isTransferDay = isWithinCycle && cell.doc === 20;
+          const isGrowout = isWithinCycle && cell.doc > 20;
           const hasLogs = Boolean(recordsByDate[cell.dateStr]?.length);
 
           let bg = '#FAFAFA';
@@ -397,6 +523,12 @@ export default function PondCycleCalendar({
             textColor = '#1E40AF';
             docBadgeBg = '#DBEAFE';
             docBadgeText = '#1D4ED8';
+          } else if (isFutureDoc) {
+            bg = '#FAFAFA';
+            border = '1px dashed #D1D5DB';
+            textColor = cell.isCurrentMonth ? '#6B7280' : '#9CA3AF';
+            docBadgeBg = '#F3F4F6';
+            docBadgeText = '#6B7280';
           }
 
           if (isSelected) {
@@ -420,7 +552,7 @@ export default function PondCycleCalendar({
               }}
               title={
                 cell.doc !== null
-                  ? `Date: ${cell.dateStr} | Day of Culture: ${cell.doc} | ${isNursery ? 'Nursery (Starter)' : isTransferDay ? 'TRANSFER DAY (Grower)' : isGrowout ? 'Grow-out (Grower)' : 'Pre-stocking'}`
+                  ? `Date: ${cell.dateStr} | Day of Culture: ${cell.doc} | ${isNursery ? 'Nursery (Starter)' : isTransferDay ? 'TRANSFER DAY (Grower)' : isGrowout ? 'Grow-out (Grower)' : isFutureDoc ? 'Upcoming (No records yet)' : 'Pre-stocking'}`
                   : cell.dateStr
               }
             >
@@ -457,10 +589,10 @@ export default function PondCycleCalendar({
                     className="extra-small fw-semibold mt-0.5 d-none d-sm-block text-truncate"
                     style={{
                       fontSize: '0.62rem',
-                      color: isTransferDay ? '#B45309' : (isNursery ? '#047857' : '#1D4ED8'),
+                      color: isTransferDay ? '#B45309' : (isNursery ? '#047857' : (isGrowout ? '#1D4ED8' : '#9CA3AF')),
                     }}
                   >
-                    {isTransferDay ? 'TRANSFER' : isNursery ? 'Starter' : 'Grower'}
+                    {isTransferDay ? 'TRANSFER' : isNursery ? 'Starter' : (isGrowout ? 'Grower' : 'Upcoming')}
                   </div>
                 </div>
               )}
@@ -481,6 +613,8 @@ export default function PondCycleCalendar({
                 ? '#F0FDF4'
                 : selectedInfo.stageTone === 'growout'
                 ? '#EFF6FF'
+                : selectedInfo.stageTone === 'upcoming'
+                ? '#F9FAFB'
                 : '#F8FAFC',
             borderColor:
               selectedInfo.stageTone === 'transfer'
@@ -489,6 +623,8 @@ export default function PondCycleCalendar({
                 ? '#BBF7D0'
                 : selectedInfo.stageTone === 'growout'
                 ? '#BFDBFE'
+                : selectedInfo.stageTone === 'upcoming'
+                ? '#E5E7EB'
                 : '#E2E8F0',
           }}
         >
@@ -512,13 +648,17 @@ export default function PondCycleCalendar({
                           ? '#FEF3C7'
                           : selectedInfo.stageTone === 'nursery'
                           ? '#DCFCE7'
-                          : '#DBEAFE',
+                          : selectedInfo.stageTone === 'growout'
+                          ? '#DBEAFE'
+                          : '#F3F4F6',
                       color:
                         selectedInfo.stageTone === 'transfer'
                           ? '#B45309'
                           : selectedInfo.stageTone === 'nursery'
                           ? '#15803D'
-                          : '#1D4ED8',
+                          : selectedInfo.stageTone === 'growout'
+                          ? '#1D4ED8'
+                          : '#4B5563',
                       fontSize: '0.78rem',
                     }}
                   >
@@ -533,7 +673,9 @@ export default function PondCycleCalendar({
                         ? '#F59E0B'
                         : selectedInfo.stageTone === 'nursery'
                         ? '#10B981'
-                        : '#3B82F6',
+                        : selectedInfo.stageTone === 'growout'
+                        ? '#3B82F6'
+                        : '#6B7280',
                     color: '#fff',
                     fontSize: '0.72rem',
                   }}
@@ -551,10 +693,19 @@ export default function PondCycleCalendar({
               <strong
                 className="fs-6"
                 style={{
-                  color: selectedInfo.feedType === 'Starter' ? '#047857' : (selectedInfo.feedType === 'Grower' ? '#1D4ED8' : '#4B5563')
+                  color:
+                    selectedInfo.feedType === 'Starter'
+                      ? '#047857'
+                      : selectedInfo.feedType === 'Grower'
+                      ? '#1D4ED8'
+                      : '#6B7280',
                 }}
               >
-                {selectedInfo.feedType !== 'None' ? `Tateh - ${selectedInfo.feedType}` : 'No Feed Scheduled'}
+                {selectedInfo.stageTone === 'upcoming'
+                  ? 'Upcoming (Wala Pang Record)'
+                  : selectedInfo.feedType !== 'None' && selectedInfo.feedType !== 'Upcoming'
+                  ? `Tateh - ${selectedInfo.feedType}`
+                  : 'No Feed Scheduled'}
               </strong>
             </div>
           </div>

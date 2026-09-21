@@ -1074,13 +1074,14 @@ export default function PondMonitoringPage() {
               </div>
               <div className="modal-body p-4 bg-light">
                 <PondCycleCalendar
+                  pondId={calendarModalPond.id}
                   pondName={calendarModalPond.pond_name}
                   stockingDate={calendarModalPond.stocking_date}
-                  records={[]}
+                  selectedDate={filterDate && computeDoc(calendarModalPond.stocking_date, filterDate) <= 34 ? filterDate : undefined}
                   onSelectDate={(dateStr) => {
                     setFilterDate(dateStr);
-                    setCalendarModalPond(null);
                   }}
+                  onClose={() => setCalendarModalPond(null)}
                 />
               </div>
               <div className="modal-footer bg-white border-top py-2.5">

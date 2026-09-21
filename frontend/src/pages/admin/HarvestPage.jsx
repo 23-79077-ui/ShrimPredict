@@ -216,6 +216,7 @@ export default function HarvestPage() {
                     <th>Pond</th>
                     <th>Caretaker</th>
                     <th>Total Feed</th>
+                    <th>ABW (Sampling)</th>
                     <th>Baseline Estimate</th>
                     <th>Adjusted Estimate</th>
                     <th>Tons</th>
@@ -227,7 +228,7 @@ export default function HarvestPage() {
                 </thead>
                 <tbody>
                   {predictions.length === 0 && (
-                    <tr><td colSpan="10" className="text-muted">No pond feeding records found for this caretaker.</td></tr>
+                    <tr><td colSpan="11" className="text-muted">No pond feeding records found for this caretaker.</td></tr>
                   )}
                   {predictions.map((item) => (
                     <tr key={item.pond_id}>
@@ -237,6 +238,11 @@ export default function HarvestPage() {
                       </td>
                       <td>{item.caretaker_names || 'Caretaker account'}</td>
                       <td>{formatKg(item.total_feed_consumed_kg)}</td>
+                      <td>
+                        <span className="badge bg-success bg-opacity-10 text-success fw-bold px-2.5 py-1">
+                          {Number(item.average_weight || 0) > 0 ? `${Number(item.average_weight).toFixed(1)} g` : '—'}
+                        </span>
+                      </td>
                       <td>{formatKg(item.baseline_harvest_kg)}</td>
                       <td>
                         {formatKg(item.adjusted_harvest_kg)}

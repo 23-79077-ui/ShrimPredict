@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import api, { safeArray } from '../../services/api';
@@ -62,6 +62,9 @@ export default function CaretakerDashboard() {
       ? user.assigned_ponds
       : (user?.pond_id ? [{ id: user.pond_id, pond_name: 'Assigned Pond', status: 'Healthy' }] : [])
   );
+
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const [selectedDate, setSelectedDate] = useState(todayStr);
 
   const [records, setRecords] = useState([]);
   const [diseaseScans, setDiseaseScans] = useState([]);
@@ -151,9 +154,6 @@ export default function CaretakerDashboard() {
       window.removeEventListener('shrim-water-quality-updated', handleUpdate);
     };
   }, [loadData]);
-
-  const todayStr = new Date().toISOString().split('T')[0];
-  const [selectedDate, setSelectedDate] = useState(todayStr);
 
   const availableDates = useMemo(() => {
     const dateMap = new Map();
