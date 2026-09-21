@@ -200,6 +200,8 @@ export default function PondCycleCalendar({
     }
 
     const dayLogs = recordsByDate[activeSelectedDateStr] || [];
+    const totalDayKg = dayLogs.reduce((sum, r) => sum + (parseFloat(r.amount_kg) || 0), 0);
+    const totalDayGrams = dayLogs.reduce((sum, r) => sum + (parseFloat(r.amount_grams) || ((parseFloat(r.amount_kg) || 0) * 1000)), 0);
 
     return {
       dateStr: activeSelectedDateStr,
@@ -209,6 +211,8 @@ export default function PondCycleCalendar({
       feedType,
       feedDesc,
       logs: dayLogs,
+      totalDayKg,
+      totalDayGrams,
     };
   }, [activeSelectedDateStr, stockingParsed, recordsByDate]);
 
@@ -555,29 +559,85 @@ export default function PondCycleCalendar({
             </div>
           </div>
 
-          {/* Logs on this day if any */}
-          {selectedInfo.logs && selectedInfo.logs.length > 0 && (
-            <div className="mt-3 pt-2 border-top">
-              <div className="extra-small text-muted fw-bold text-uppercase mb-1.5">
-                Feedings Recorded on this Date ({selectedInfo.logs.length} of 5 slots):
+          {/* Detailed Feeding Slots Breakdown on this Date */}
+          {selectedInfo.logs && selectedInfo.logs.length > 0 ? (
+            <div className="mt-3 pt-3 border-top">
+              <div className="d-flex justify-content-between align-items-center mb-2.5 flex-wrap gap-2">
+                <div className="extra-small text-muted fw-bold text-uppercase d-flex align-items-center gap-1.5">
+                  <FaClock className="text-primary" size={12} />
+                  <span>Feeding Slots Breakdown ({selectedInfo.logs.length} of 5 slots logged):</span>
+                </div>
+                <div className="badge rounded-pill bg-white text-dark border px-3 py-1.5 shadow-xs fw-bold" style={{ fontSize: '0.78rem' }}>
+                  Total Daily Mass: <span className="text-primary font-mono fw-extrabold">{selectedInfo.totalDayKg.toFixed(2)} kg</span>
+                  <span className="text-muted ms-1 font-mono fw-normal">({Math.round(selectedInfo.totalDayGrams).toLocaleString()} g)</span>
+                </div>
               </div>
-              <div className="d-flex align-items-center gap-1.5 flex-wrap">
-                {selectedInfo.logs.map((log, i) => (
-                  <span
-                    key={log.id || i}
-                    className="badge bg-white text-dark border px-2 py-1 d-inline-flex align-items-center gap-1"
-                    style={{ fontSize: '0.74rem' }}
-                  >
-                    <FaClock size={10} className="text-primary" />
-                    <strong>{log.feeding_time}</strong>: {log.amount_kg}kg ({log.product_code || 'Feed'})
-                    {log.vitamin_name && log.vitamin_name !== 'None' ? (
-                      <span className="text-success ms-1">+{log.vitamin_name}</span>
-                    ) : (
-                      <span className="text-muted ms-1">(No Vit)</span>
-                    )}
-                  </span>
-                ))}
+
+              <div className="table-responsive rounded-3 border bg-white shadow-xs">
+                <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.8rem' }}>
+                  <thead className="table-light">
+                    <tr className="text-muted extra-small text-uppercase">
+                      <th className="ps-3 py-2">Time Slot</th>
+                      <th className="py-2">Mass (Grams / Kg)</th>
+                      <th className="py-2">Feed Formulation</th>
+                      <th className="py-2">Vitamins & Supplements</th>
+                      <th className="py-2">Notes / Status</th>
+                      <th className="pe-3 py-2">Caretaker</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedInfo.logs.map((log, i) => {
+                      const kg = parseFloat(log.amount_kg) || 0;
+                      const g = log.amount_grams !== null && log.amount_grams !== undefined ? parseFloat(log.amount_grams) : Math.round(kg * 1000);
+                      const isZeroFeed = kg === 0 && g === 0;
+
+                      return (
+                        <tr key={log.id || i}>
+                          <td className="ps-3">
+                            <span className="badge bg-light text-dark border rounded-pill px-2.5 py-1 font-mono fw-bold">
+                              <FaClock className="text-primary me-1" size={10} />
+                              {log.feeding_time}
+                            </span>
+                          </td>
+                          <td>
+                            {isZeroFeed ? (
+                              <span className="badge bg-light text-muted border">0 g (Wala pang pakain)</span>
+                            ) : (
+                              <div>
+                                <strong className="text-dark font-mono">{g.toLocaleString()} g</strong>
+                                <span className="text-primary extra-small font-mono fw-semibold ms-1">({kg.toFixed(2)} kg)</span>
+                              </div>
+                            )}
+                          </td>
+                          <td>
+                            <span className="fw-semibold text-dark">{log.feed_type || log.product_code || 'Starter'}</span>
+                          </td>
+                          <td>
+                            {log.vitamin_name && log.vitamin_name !== 'None' ? (
+                              <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-2.5 py-1 extra-small fw-bold d-inline-flex align-items-center gap-1">
+                                <FaCapsules size={9} />
+                                {log.vitamin_name}
+                              </span>
+                            ) : (
+                              <span className="text-muted extra-small">None</span>
+                            )}
+                          </td>
+                          <td>
+                            <span className="text-secondary extra-small">{log.notes || (isZeroFeed ? 'Wala pang pakain (0g)' : 'Nominal feed')}</span>
+                          </td>
+                          <td className="pe-3">
+                            <span className="badge bg-light text-dark border extra-small">{log.recorded_by_name || log.recorded_by || 'Caretaker'}</span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
+            </div>
+          ) : (
+            <div className="mt-3 pt-2 border-top text-center text-muted extra-small py-2">
+              No feeding records logged for {selectedInfo.dateStr} yet.
             </div>
           )}
         </div>

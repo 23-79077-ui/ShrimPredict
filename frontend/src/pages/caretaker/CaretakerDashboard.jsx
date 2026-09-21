@@ -144,8 +144,10 @@ export default function CaretakerDashboard() {
   }, [loadData]);
 
   const todayStr = new Date().toISOString().split('T')[0];
-  const todayRecords = records.filter((r) => r.record_date === todayStr);
-  const filteredTodayRecords = todayRecords.filter((r) => {
+  const [selectedDate, setSelectedDate] = useState(todayStr);
+  const selectedDateRecords = records.filter((r) => (r.record_date || r.created_at || '').slice(0, 10) === selectedDate);
+  const todayRecords = selectedDateRecords;
+  const filteredTodayRecords = selectedDateRecords.filter((r) => {
     if (selectedPondFilter === 'all') return true;
     return String(r.pond_id) === String(selectedPondFilter);
   });
@@ -178,6 +180,7 @@ export default function CaretakerDashboard() {
   });
 
   const totalAmountToday = filteredTodayRecords.reduce((sum, r) => sum + (parseFloat(r.amount_kg) || 0), 0);
+  const totalGramsToday = filteredTodayRecords.reduce((sum, r) => sum + (parseFloat(r.amount_grams) || ((parseFloat(r.amount_kg) || 0) * 1000) || 0), 0);
   const selectedPondObj = assignedPonds.find((p) => String(p.id) === String(selectedPondFilter));
   const loggedFeedingSlots = new Set(filteredTodayRecords.map((r) => normalizeFeedingTime(r.feeding_time)).filter(Boolean));
   const completedFeedingSlots = feedingTimes.filter((time) => loggedFeedingSlots.has(normalizeFeedingTime(time))).length;
@@ -231,10 +234,33 @@ export default function CaretakerDashboard() {
             </select>
           </div>
 
-          {/* Date Indicator Pill */}
+          {/* Interactive Date Selector Pill with DOC Presets */}
           <div className="d-flex align-items-center gap-1.5 px-3 py-1.5 rounded-pill bg-white border shadow-xs text-muted extra-small">
             <FaCalendarAlt size={12} style={{ color: '#FF7A00' }} />
-            <span className="fw-bold text-dark">{todayStr}</span>
+            <input
+              type="date"
+              className="form-control form-control-sm border-0 bg-transparent fw-semibold text-dark p-0"
+              style={{ width: 110, fontSize: '0.8rem', outline: 'none' }}
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              title="Select date to inspect feeding records & DOC"
+            />
+            <select
+              className="form-select form-select-sm border-0 bg-transparent fw-bold text-primary p-0 ps-1"
+              style={{ width: 'auto', fontSize: '0.78rem', outline: 'none', cursor: 'pointer' }}
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              title="Quick jump to Culture Day (DOC)"
+            >
+              <option value={todayStr}>Today ({todayStr})</option>
+              <option value="2026-08-10">Aug 10 • DOC #1 (1.50 kg)</option>
+              <option value="2026-08-11">Aug 11 • DOC #2 (3.25 kg)</option>
+              <option value="2026-08-12">Aug 12 • DOC #3 (3.50 kg)</option>
+              <option value="2026-08-13">Aug 13 • DOC #4 (3.75 kg)</option>
+              <option value="2026-08-14">Aug 14 • DOC #5 (4.00 kg)</option>
+              <option value="2026-08-15">Aug 15 • DOC #6 (4.25 kg)</option>
+              <option value="2026-08-16">Aug 16 • DOC #7 (4.50 kg)</option>
+            </select>
           </div>
 
           {/* Sync Button */}
@@ -400,7 +426,7 @@ export default function CaretakerDashboard() {
                           {pond.pond_name}
                         </strong>
                         {pond.stocking_date && (() => {
-                          const doc = computeDoc(pond.stocking_date, todayStr);
+                          const doc = computeDoc(pond.stocking_date, selectedDate);
                           if (!doc) return null;
                           const isNursery = doc >= 1 && doc <= 25;
                           return (
@@ -413,7 +439,7 @@ export default function CaretakerDashboard() {
                                 fontSize: '0.66rem',
                               }}
                             >
-                              {isNursery ? `🌱 Day ${doc} Nursery` : `🌊 Day ${doc} Grow-out`}
+                              {isNursery ? `🌱 Day ${doc} Nursery (DOC #${doc})` : `🌊 Day ${doc} Grow-out (DOC #${doc})`}
                             </span>
                           );
                         })()}
@@ -606,12 +632,14 @@ export default function CaretakerDashboard() {
           </div>
         </div>
 
-        {/* KPI 3: Total Feed Today */}
+        {/* KPI 3: Total Feed */}
         <div className="col-12 col-sm-6 col-xl-3">
           <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Total Feed Today</span>
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">
+                  Total Feed ({selectedDate === todayStr ? 'Today' : selectedDate})
+                </span>
                 <div
                   className="feeding-kpi-icon-wrap"
                   style={{ background: 'rgba(255, 122, 0, 0.12)', color: '#FF7A00' }}
@@ -620,8 +648,11 @@ export default function CaretakerDashboard() {
                 </div>
               </div>
               <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
-                {totalAmountToday.toFixed(1)} <small className="fs-6 text-muted fw-normal">kg</small>
+                {totalAmountToday.toFixed(2)} <small className="fs-6 text-muted fw-normal">kg</small>
               </h2>
+              <div className="extra-small text-muted fw-semibold">
+                Total grams: <strong className="text-dark font-mono">{Math.round(totalGramsToday).toLocaleString()} g</strong>
+              </div>
             </div>
             <div>
               <div className="feeding-progress-track my-2.5">
@@ -634,8 +665,8 @@ export default function CaretakerDashboard() {
                 />
               </div>
               <div className="d-flex justify-content-between align-items-center">
-                <span className="text-muted extra-small">Distributed feed</span>
-                <span className="tag-orange-maintenance">Live</span>
+                <span className="text-muted extra-small">Distributed across 5 slots</span>
+                <span className="tag-orange-maintenance">5 Feedings</span>
               </div>
             </div>
           </div>
@@ -836,8 +867,9 @@ export default function CaretakerDashboard() {
                 <tr>
                   <th className="ps-3 py-3 text-secondary text-uppercase extra-small fw-bold">Time Slot</th>
                   <th className="py-3 text-secondary text-uppercase extra-small fw-bold">Basin</th>
+                  <th className="py-3 text-secondary text-uppercase extra-small fw-bold">DOC / Stage</th>
                   <th className="py-3 text-secondary text-uppercase extra-small fw-bold">Product / Feed Type</th>
-                  <th className="py-3 text-secondary text-uppercase extra-small fw-bold">Amount</th>
+                  <th className="py-3 text-secondary text-uppercase extra-small fw-bold">Amount (Grams / Kg)</th>
                   <th className="py-3 text-secondary text-uppercase extra-small fw-bold">Vitamin / Additive</th>
                   <th className="py-3 text-secondary text-uppercase extra-small fw-bold">Logged At</th>
                 </tr>
@@ -854,12 +886,43 @@ export default function CaretakerDashboard() {
                       <strong className="text-dark">{r.pond_name || `Pond ${r.pond_id}`}</strong>
                     </td>
                     <td>
+                      {(() => {
+                        const pondObj = assignedPonds.find((p) => String(p.id) === String(r.pond_id));
+                        const sDate = r.stocking_date || pondObj?.stocking_date;
+                        const d = computeDoc(sDate, r.record_date || selectedDate);
+                        if (!d) return <span className="text-muted extra-small">—</span>;
+                        const isNur = d >= 1 && d <= 25;
+                        return (
+                          <span
+                            className={`badge rounded-pill extra-small fw-bold ${
+                              isNur
+                                ? 'bg-success bg-opacity-10 text-success border border-success border-opacity-25'
+                                : 'bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25'
+                            }`}
+                          >
+                            {isNur ? `🌱 Day ${d} Nursery (DOC #${d})` : `🌊 Day ${d} Grow-out (DOC #${d})`}
+                          </span>
+                        );
+                      })()}
+                    </td>
+                    <td>
                       <span className="badge bg-primary bg-opacity-10 text-primary rounded-pill px-2.5 py-1 extra-small fw-semibold">
                         {r.feed_type || r.product_code || 'Tateh'}
                       </span>
                     </td>
                     <td>
-                      <strong className="text-dark" style={{ color: '#0B2C5F' }}>{r.amount_kg} kg</strong>
+                      {parseFloat(r.amount_kg) === 0 ? (
+                        <span className="badge bg-light text-muted border">0 g (Wala pang pakain)</span>
+                      ) : (
+                        <div>
+                          <strong className="text-dark d-block">
+                            {r.amount_grams ?? Math.round(parseFloat(r.amount_kg) * 1000)} g
+                          </strong>
+                          <span className="extra-small text-primary font-mono fw-semibold">
+                            ({parseFloat(r.amount_kg).toFixed(2)} kg)
+                          </span>
+                        </div>
+                      )}
                     </td>
                     <td>
                       {r.vitamin_name && r.vitamin_name !== 'None' ? (

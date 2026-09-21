@@ -102,14 +102,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         ');
         $rawPonds = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $feedStmt = $conn->query('
+        $targetDate = isset($_GET['date']) && trim($_GET['date']) !== '' ? trim($_GET['date']) : date('Y-m-d');
+        $feedStmt = $conn->prepare('
             SELECT pond_id,
-                   COALESCE(SUM(CASE WHEN DATE(record_date) = CURDATE() THEN amount_kg ELSE 0 END), 0) AS feed_today_kg,
+                   COALESCE(SUM(CASE WHEN DATE(record_date) = :target_date THEN amount_kg ELSE 0 END), 0) AS feed_today_kg,
                    COALESCE(SUM(amount_kg), 0) AS total_feed_kg,
                    MAX(record_date) AS latest_feed_date
             FROM feeding_records
             GROUP BY pond_id
         ');
+        $feedStmt->execute([':target_date' => $targetDate]);
         $feedByPond = [];
         foreach ($feedStmt->fetchAll(PDO::FETCH_ASSOC) as $feedRow) {
             $feedByPond[(int)$feedRow['pond_id']] = $feedRow;

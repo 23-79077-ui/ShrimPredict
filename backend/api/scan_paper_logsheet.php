@@ -19,8 +19,8 @@ $headers = getallheaders() ?: [];
 $headerGemini = $headers['X-Gemini-Api-Key'] ?? $headers['x-gemini-api-key'] ?? $_SERVER['HTTP_X_GEMINI_API_KEY'] ?? null;
 $headerOpenai = $headers['X-OpenAI-Api-Key'] ?? $headers['x-openai-api-key'] ?? $_SERVER['HTTP_X_OPENAI_API_KEY'] ?? null;
 
-$geminiKey = $headerGemini ?: ($_POST['gemini_api_key'] ?? $inputJson['gemini_api_key'] ?? GEMINI_API_KEY);
-$openaiKey = $headerOpenai ?: ($_POST['openai_api_key'] ?? $inputJson['openai_api_key'] ?? OPENAI_API_KEY);
+$geminiKey = $headerGemini ?: ($_POST['gemini_api_key'] ?? $inputJson['gemini_api_key'] ?? (defined('GEMINI_API_KEY') ? GEMINI_API_KEY : ''));
+$openaiKey = $headerOpenai ?: ($_POST['openai_api_key'] ?? $inputJson['openai_api_key'] ?? (defined('OPENAI_API_KEY') ? OPENAI_API_KEY : ''));
 
 // 2. Extract Image Data & MIME Type
 $base64Data = null;
@@ -93,10 +93,9 @@ $extractedData = null;
 $modelUsed = null;
 $lastError = null;
 
-// 5. Option A: Call Gemini 1.5 Flash Vision API
 // 5. Option A: Call Gemini Vision API (Flash models with automatic fallback)
 if (!empty($geminiKey)) {
-    $geminiModels = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-flash-latest', 'gemini-2.5-flash-lite'];
+    $geminiModels = ['gemini-flash-latest', 'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-2.5-flash-lite'];
     
     foreach ($geminiModels as $geminiModel) {
         $url = "https://generativelanguage.googleapis.com/v1beta/models/{$geminiModel}:generateContent?key=" . urlencode($geminiKey);
@@ -167,8 +166,8 @@ if (!empty($geminiKey)) {
     }
 }
 
-// 6. Option B: Call OpenAI GPT-4o-mini Vision API (if Gemini was not used or failed)
-if (!$extractedData && !empty($openaiKey)) {
+// 6. Option B: Call OpenAI GPT-4o-mini Vision API (only if valid OpenAI key starting with sk- is provided)
+if (!$extractedData && !empty($openaiKey) && strpos($openaiKey, 'sk-') === 0) {
     $url = "https://api.openai.com/v1/chat/completions";
     $payload = [
         'model' => 'gpt-4o-mini',

@@ -36,12 +36,21 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, ArcElement, Tooltip, Legend, Filler);
 
+function computeDoc(stockingDateStr, targetDateStr) {
+  if (!stockingDateStr) return null;
+  const s = new Date(stockingDateStr.slice(0, 10) + 'T00:00:00');
+  const t = targetDateStr ? new Date(targetDateStr.slice(0, 10) + 'T00:00:00') : new Date();
+  if (isNaN(s.getTime()) || isNaN(t.getTime())) return null;
+  const diffDays = Math.floor((t - s) / 86400000) + 1;
+  return diffDays > 0 ? diffDays : null;
+}
+
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [caretakers, setCaretakers] = useState([]);
   const [selectedCaretakerId, setSelectedCaretakerId] = useState('all');
 
-  // Date Filter states: 'all' | 'today' | 'yesterday' | 'last7' | 'custom'
+  // Date Filter states: 'all' | 'today' | 'yesterday' | 'aug10' | 'last7' | 'custom'
   const [dateFilterType, setDateFilterType] = useState('all');
   const [customDate, setCustomDate] = useState('');
 
@@ -55,6 +64,7 @@ export default function AdminDashboard() {
   const [hoveredSegment, setHoveredSegment] = useState(null);
 
   const [stats, setStats] = useState({});
+  const [ponds, setPonds] = useState([]);
   const [allFeedingRecords, setAllFeedingRecords] = useState([]);
   const [allDiseaseReports, setAllDiseaseReports] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -78,10 +88,11 @@ export default function AdminDashboard() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [dashRes, feedRes, diseaseRes] = await Promise.allSettled([
+      const [dashRes, feedRes, diseaseRes, pondsRes] = await Promise.allSettled([
         api.get('/dashboard.php'),
         api.get('/feeding_records.php'),
         api.get('/disease_reports.php'),
+        api.get('/ponds.php'),
       ]);
 
       if (dashRes.status === 'fulfilled') {
@@ -92,6 +103,9 @@ export default function AdminDashboard() {
       }
       if (diseaseRes.status === 'fulfilled') {
         setAllDiseaseReports(safeArray(diseaseRes.value.data));
+      }
+      if (pondsRes.status === 'fulfilled') {
+        setPonds(safeArray(pondsRes.value.data));
       }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -142,6 +156,14 @@ export default function AdminDashboard() {
         yest.setDate(yest.getDate() - 1);
         return dateOnly === yest.toISOString().split('T')[0];
       }
+      if (dateFilterType === 'doc_batch') return dateOnly >= '2026-08-10' && dateOnly <= '2026-08-16';
+      if (dateFilterType === 'aug10') return dateOnly === '2026-08-10';
+      if (dateFilterType === 'aug11') return dateOnly === '2026-08-11';
+      if (dateFilterType === 'aug12') return dateOnly === '2026-08-12';
+      if (dateFilterType === 'aug13') return dateOnly === '2026-08-13';
+      if (dateFilterType === 'aug14') return dateOnly === '2026-08-14';
+      if (dateFilterType === 'aug15') return dateOnly === '2026-08-15';
+      if (dateFilterType === 'aug16') return dateOnly === '2026-08-16';
       if (dateFilterType === 'last7') {
         const sevenDaysAgo = new Date(today);
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -391,6 +413,14 @@ export default function AdminDashboard() {
               <option value="all">All Time History</option>
               <option value="today">Today</option>
               <option value="yesterday">Yesterday</option>
+              <option value="doc_batch">Aug 10–16 (DOC #1–#7 Batch)</option>
+              <option value="aug10">Aug 10 • DOC #1 (1.50 kg)</option>
+              <option value="aug11">Aug 11 • DOC #2 (3.25 kg)</option>
+              <option value="aug12">Aug 12 • DOC #3 (3.50 kg)</option>
+              <option value="aug13">Aug 13 • DOC #4 (3.75 kg)</option>
+              <option value="aug14">Aug 14 • DOC #5 (4.00 kg)</option>
+              <option value="aug15">Aug 15 • DOC #6 (4.25 kg)</option>
+              <option value="aug16">Aug 16 • DOC #7 (4.50 kg)</option>
               <option value="last7">Last 7 Days</option>
               <option value="custom">Custom Date…</option>
             </select>
@@ -533,52 +563,49 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* 3 Mini Live Telemetry Pond Tiles */}
+            {/* Dynamic Live Telemetry Pond Tiles with DOC */}
             <div className="row g-2.5">
-              <div className="col-12 col-md-4">
-                <div className="pond-telemetry-tile">
-                  <div className="d-flex justify-content-between align-items-center mb-1">
-                    <span className="fw-bold small text-dark">Pond #1 North</span>
-                    <span className="tag-cyan-active">
-                      Optimal
-                    </span>
-                  </div>
-                  <div className="d-flex justify-content-between text-muted extra-small">
-                    <span>DO: <strong className="text-dark">7.4 mg/L</strong></span>
-                    <span>Temp: <strong className="text-dark">28.2°C</strong></span>
-                  </div>
-                </div>
-              </div>
+              {(ponds.length > 0 ? ponds.slice(0, 3) : [
+                { id: 1, name: 'Pond A1', stocking_date: '2026-08-10', feed_today_kg: 1.50, caretaker_name: 'Cj Arroyo' },
+                { id: 2, name: 'Pond #2 Main', stocking_date: '2026-07-01', feed_today_kg: 24.5, caretaker_name: 'Caretaker' },
+                { id: 3, name: 'Pond #3 East', stocking_date: '2026-06-15', feed_today_kg: 32.0, caretaker_name: 'Caretaker' },
+              ]).map((p) => {
+                let effectiveDate = '2026-08-16';
+                if (dateFilterType === 'aug10') effectiveDate = '2026-08-10';
+                else if (dateFilterType === 'aug11') effectiveDate = '2026-08-11';
+                else if (dateFilterType === 'aug12') effectiveDate = '2026-08-12';
+                else if (dateFilterType === 'aug13') effectiveDate = '2026-08-13';
+                else if (dateFilterType === 'aug14') effectiveDate = '2026-08-14';
+                else if (dateFilterType === 'aug15') effectiveDate = '2026-08-15';
+                else if (dateFilterType === 'aug16') effectiveDate = '2026-08-16';
+                else if (dateFilterType === 'custom' && customDate) effectiveDate = customDate;
+                else if (dateFilterType === 'today') effectiveDate = new Date().toISOString().slice(0, 10);
+                const doc = computeDoc(p.stocking_date, effectiveDate);
+                const isNursery = doc !== null && doc <= 25;
+                const feedKg = p.feed_today_kg !== null && p.feed_today_kg !== undefined ? parseFloat(p.feed_today_kg) : 0;
+                const feedG = Math.round(feedKg * 1000);
 
-              <div className="col-12 col-md-4">
-                <div className="pond-telemetry-tile">
-                  <div className="d-flex justify-content-between align-items-center mb-1">
-                    <span className="fw-bold small text-dark">Pond #2 Main</span>
-                    <span className="tag-cyan-active">
-                      Optimal
-                    </span>
+                return (
+                  <div className="col-12 col-md-4" key={p.id}>
+                    <div className="pond-telemetry-tile p-3 rounded-3 border bg-white shadow-xs">
+                      <div className="d-flex justify-content-between align-items-center mb-1">
+                        <span className="fw-bold small text-dark">{p.pond_name || p.name || `Pond #${p.id}`}</span>
+                        <span className={`badge rounded-pill extra-small ${isNursery ? 'bg-info text-dark' : 'bg-success text-white'}`}>
+                          {doc ? `DOC #${doc}` : 'Active'}
+                        </span>
+                      </div>
+                      <div className="d-flex justify-content-between text-muted extra-small mb-1">
+                        <span>Stage: <strong className="text-dark">{isNursery ? '🌱 Nursery' : '🌊 Grow-out'}</strong></span>
+                        <span>Feed: <strong className="text-primary">{feedKg.toFixed(2)} kg ({feedG.toLocaleString()}g)</strong></span>
+                      </div>
+                      <div className="d-flex justify-content-between text-muted extra-small">
+                        <span>Caretaker: <strong className="text-dark">{p.caretaker_name || p.assigned_caretaker_name || 'Cj Arroyo'}</strong></span>
+                        <span>Status: <strong className="text-success">{p.status || 'Optimal'}</strong></span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="d-flex justify-content-between text-muted extra-small">
-                    <span>DO: <strong className="text-dark">6.9 mg/L</strong></span>
-                    <span>Temp: <strong className="text-dark">28.5°C</strong></span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="col-12 col-md-4">
-                <div className="pond-telemetry-tile" style={{ borderColor: '#FECDD3', background: '#FFF1F2' }}>
-                  <div className="d-flex justify-content-between align-items-center mb-1">
-                    <span className="fw-bold small text-dark">Pond #3 East</span>
-                    <span className="tag-coral-critical">
-                      Alert Flag
-                    </span>
-                  </div>
-                  <div className="d-flex justify-content-between text-muted extra-small">
-                    <span>DO: <strong className="text-danger">5.8 mg/L</strong></span>
-                    <span>Temp: <strong className="text-dark">29.1°C</strong></span>
-                  </div>
-                </div>
-              </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -682,8 +709,8 @@ export default function AdminDashboard() {
               <div className="col-4">
                 <div className="p-3 rounded-3 bg-light border">
                   <span className="extra-small text-muted text-uppercase fw-bold d-block">Total Feed Mass</span>
-                  <span className="fw-extrabold text-dark fs-4">{totalFilteredFeedKg > 0 ? totalFilteredFeedKg.toFixed(1) : '630.4'} kg</span>
-                  <span className="extra-small text-success d-block fw-semibold">Filtered window</span>
+                  <span className="fw-extrabold text-dark fs-4">{totalFilteredFeedKg.toFixed(2)} kg</span>
+                  <span className="extra-small text-success d-block fw-semibold">{Math.round(totalFilteredFeedKg * 1000).toLocaleString()} grams total</span>
                 </div>
               </div>
               <div className="col-4">
@@ -718,39 +745,79 @@ export default function AdminDashboard() {
               <FaUtensils size={14} style={{ color: '#0284C7' }} />
             </div>
 
-            <div className="table-responsive" style={{ maxHeight: 250, overflowY: 'auto' }}>
+            <div className="table-responsive" style={{ maxHeight: 280, overflowY: 'auto' }}>
               <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.82rem' }}>
                 <thead className="sticky-top bg-white">
                   <tr className="text-muted extra-small text-uppercase">
                     <th>Operator</th>
                     <th>Pond</th>
+                    <th>DOC / Stage</th>
                     <th>Time Slot</th>
                     <th>Feed Formulation</th>
-                    <th>Mass</th>
+                    <th>Mass (kg / g)</th>
                     <th>Additive</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredFeedingRecords.slice(0, 10).map((r) => (
-                    <tr key={r.id}>
-                      <td>
-                        <span className="badge rounded-pill fw-bold" style={{ backgroundColor: 'rgba(11, 44, 95, 0.06)', color: '#0B2C5F' }}>
-                          {r.recorded_by_name || r.recorded_by || 'Caretaker'}
-                        </span>
-                      </td>
-                      <td><strong>{r.pond_name || `Pond #${r.pond_id}`}</strong></td>
-                      <td><span className="badge bg-light text-dark border">{r.feeding_time || '08:00 AM'}</span></td>
-                      <td>{r.feed_type || r.product_code || 'Starter Pro'}</td>
-                      <td><span className="fw-extrabold text-dark">{r.amount_kg} kg</span></td>
-                      <td>
-                        {r.vitamin_name && r.vitamin_name !== 'None' ? (
-                          <span className="badge rounded-pill bg-light text-dark border">{r.vitamin_name}</span>
-                        ) : (
-                          <span className="text-muted extra-small">None</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                  {filteredFeedingRecords.slice(0, 15).map((r) => {
+                    const pondObj = ponds.find((p) => String(p.id) === String(r.pond_id) || p.name === r.pond_name);
+                    const stockingDate = pondObj?.stocking_date || (String(r.pond_id) === '1' ? '2026-08-10' : null);
+                    const recordDate = (r.record_date || r.created_at || '').slice(0, 10);
+                    const doc = computeDoc(stockingDate, recordDate);
+                    const isNursery = doc !== null && doc <= 25;
+                    const amountKg = parseFloat(r.amount_kg) || 0;
+                    const amountG = r.amount_grams !== null && r.amount_grams !== undefined
+                      ? parseFloat(r.amount_grams)
+                      : Math.round(amountKg * 1000);
+
+                    return (
+                      <tr key={r.id}>
+                        <td>
+                          <span className="badge rounded-pill fw-bold" style={{ backgroundColor: 'rgba(11, 44, 95, 0.06)', color: '#0B2C5F' }}>
+                            {r.recorded_by_name || r.recorded_by || 'Caretaker'}
+                          </span>
+                        </td>
+                        <td><strong>{r.pond_name || `Pond #${r.pond_id}`}</strong></td>
+                        <td>
+                          {doc !== null ? (
+                            <div>
+                              <span className={`badge rounded-pill ${isNursery ? 'bg-info text-dark' : 'bg-success text-white'}`} style={{ fontSize: '0.68rem' }}>
+                                {isNursery ? '🌱 Nursery' : '🌊 Grow-out'}
+                              </span>
+                              <div className="extra-small fw-bold text-dark mt-0.5">DOC #{doc}</div>
+                            </div>
+                          ) : (
+                            <span className="text-muted extra-small">N/A</span>
+                          )}
+                        </td>
+                        <td><span className="badge bg-light text-dark border">{r.feeding_time || '08:00 AM'}</span></td>
+                        <td>
+                          <span className="fw-semibold">{r.feed_type || r.product_code || 'Starter Pro'}</span>
+                          {recordDate && <div className="text-muted" style={{ fontSize: '0.7rem' }}>{recordDate}</div>}
+                        </td>
+                        <td>
+                          {amountKg > 0 || amountG > 0 ? (
+                            <div>
+                              <span className="fw-extrabold text-dark">{amountKg.toFixed(2)} kg</span>
+                              <span className="text-muted extra-small d-block">({amountG.toLocaleString()} g)</span>
+                            </div>
+                          ) : (
+                            <div>
+                              <span className="badge bg-light text-muted border">0 kg (0 g)</span>
+                              <span className="text-muted extra-small d-block">Wala pang pakain</span>
+                            </div>
+                          )}
+                        </td>
+                        <td>
+                          {r.vitamin_name && r.vitamin_name !== 'None' ? (
+                            <span className="badge rounded-pill bg-light text-dark border">{r.vitamin_name}</span>
+                          ) : (
+                            <span className="text-muted extra-small">None</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

@@ -62,6 +62,7 @@ $ensureFeedingTable = function ($conn): void {
         ['tray_feed_grams', "ALTER TABLE feeding_records ADD COLUMN tray_feed_grams DECIMAL(10,2) DEFAULT NULL"],
         ['total_tray_feed_grams', "ALTER TABLE feeding_records ADD COLUMN total_tray_feed_grams DECIMAL(10,2) DEFAULT NULL"],
         ['broadcast_feed_kg', "ALTER TABLE feeding_records ADD COLUMN broadcast_feed_kg DECIMAL(10,3) DEFAULT NULL"],
+        ['amount_grams', "ALTER TABLE feeding_records ADD COLUMN amount_grams DECIMAL(10,2) DEFAULT NULL"],
         ['tray_monitoring_status', "ALTER TABLE feeding_records ADD COLUMN tray_monitoring_status VARCHAR(50) DEFAULT NULL"],
         ['record_date', "ALTER TABLE feeding_records ADD COLUMN record_date DATE NOT NULL DEFAULT (CURRENT_DATE)"],
         ['recorded_by_name', "ALTER TABLE feeding_records ADD COLUMN recorded_by_name VARCHAR(100) DEFAULT NULL"],
@@ -123,7 +124,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'PUT
     $isUpdate = ($action === 'update' || $_SERVER['REQUEST_METHOD'] === 'PUT' || ($recordId > 0 && !empty($data['is_update'])));
 
     $pondId = isset($data['pond_id']) ? (int)$data['pond_id'] : 0;
-    $amountKg = isset($data['amount_kg']) ? (float)$data['amount_kg'] : 0;
+    $amountGrams = isset($data['amount_grams']) && is_numeric($data['amount_grams']) ? (float)$data['amount_grams'] : null;
+    $amountKg = isset($data['amount_kg']) && is_numeric($data['amount_kg']) ? (float)$data['amount_kg'] : null;
+
+    if ($amountGrams !== null && $amountKg === null) {
+        $amountKg = round($amountGrams / 1000.0, 3);
+    } elseif ($amountKg !== null && $amountGrams === null) {
+        $amountGrams = round($amountKg * 1000.0, 1);
+    } elseif ($amountGrams === null && $amountKg === null) {
+        $amountKg = 0.0;
+        $amountGrams = 0.0;
+    }
     $feedingTime = isset($data['feeding_time']) ? trim((string)$data['feeding_time']) : '';
     $productCode = isset($data['product_code']) ? trim((string)$data['product_code']) : '';
     $normalizedProduct = strtolower($productCode);
@@ -148,30 +159,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'PUT
     $broadcastFeedKg = isset($data['broadcast_feed_kg']) && is_numeric($data['broadcast_feed_kg']) ? (float)$data['broadcast_feed_kg'] : null;
     $trayMonitoringStatus = isset($data['tray_monitoring_status']) ? trim((string)$data['tray_monitoring_status']) : '';
 
-    // Farm SOP: 5 daily feedings. Feeds 1-4 receive vitamins, but the 5th feeding (6:00 PM or >= 4 logged feeds today)
-    // strictly disables vitamins (locked to None).
-    $isFifthFeeding = false;
-    if (strtoupper(trim($feedingTime)) === '6:00 PM') {
-        $isFifthFeeding = true;
-    } else if ($pondId > 0 && !$isUpdate) {
-        try {
-            $cntStmt = $conn->prepare('SELECT COUNT(*) FROM feeding_records WHERE pond_id = :pond_id AND record_date = :record_date');
-            $cntStmt->execute([':pond_id' => $pondId, ':record_date' => $recordDate]);
-            $feedsToday = (int)$cntStmt->fetchColumn();
-            if ($feedsToday >= 4) {
-                $isFifthFeeding = true;
-            }
-        } catch (Throwable $e) {}
-    }
-
-    if ($isFifthFeeding) {
-        $hasVitamin = 0;
-        $vitaminName = 'None';
-    }
-
-    if (!$pondId || !$amountKg || !$feedingTime || !$productCode) {
+    // Farm SOP: 5 daily feedings. Vitamins can be consumed across all feedings in both Nursery and Grow-out stages.
+    if (!$pondId || $amountKg < 0 || !$feedingTime || !$productCode) {
         http_response_code(400);
-        echo json_encode(['success' => false, 'message' => 'Pond, amount, feeding time, and product code are required.']);
+        echo json_encode(['success' => false, 'message' => 'Pond, valid amount (>= 0), feeding time, and product code are required.']);
         exit;
     }
 
@@ -220,6 +211,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'PUT
     $hasTrayFeedGrams = in_array('tray_feed_grams', $columns, true);
     $hasTotalTrayFeedGrams = in_array('total_tray_feed_grams', $columns, true);
     $hasBroadcastFeedKg = in_array('broadcast_feed_kg', $columns, true);
+    $hasAmountGrams = in_array('amount_grams', $columns, true);
     $hasTrayMonitoringStatus = in_array('tray_monitoring_status', $columns, true);
 
     // -------------------------------------------------------------
@@ -247,6 +239,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'PUT
             ':record_date' => $recordDate,
             ':notes' => $notes,
         ];
+
+        if ($hasAmountGrams) {
+            $updateFields[] = 'amount_grams = :amount_grams';
+            $updateParams[':amount_grams'] = $amountGrams;
+        }
 
         if ($hasVitaminName) {
             $updateFields[] = 'vitamin_name = :vitamin_name';
@@ -347,6 +344,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'PUT
         $params[':broadcast_feed_kg'] = $broadcastFeedKg;
     }
 
+    if ($hasAmountGrams) {
+        $insertFields[] = 'amount_grams';
+        $placeholders[] = ':amount_grams';
+        $params[':amount_grams'] = $amountGrams;
+    }
+
     if ($hasTrayMonitoringStatus) {
         $insertFields[] = 'tray_monitoring_status';
         $placeholders[] = ':tray_monitoring_status';
@@ -401,11 +404,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'PUT
         exit;
     } catch (Throwable $e) {
         $fallbackStmt = $conn->prepare(
-            'INSERT INTO feeding_records (pond_id, amount_kg, feed_type, feeding_time, product_code, has_vitamin, record_date, notes) VALUES (:pond_id, :amount_kg, :feed_type, :feeding_time, :product_code, :has_vitamin, :record_date, :notes)'
+            'INSERT INTO feeding_records (pond_id, amount_kg, amount_grams, feed_type, feeding_time, product_code, has_vitamin, record_date, notes) VALUES (:pond_id, :amount_kg, :amount_grams, :feed_type, :feeding_time, :product_code, :has_vitamin, :record_date, :notes)'
         );
         $fallbackStmt->execute([
             ':pond_id' => $pondId,
             ':amount_kg' => $amountKg,
+            ':amount_grams' => $amountGrams,
             ':feed_type' => 'Tateh - ' . $productCode,
             ':feeding_time' => $feedingTime,
             ':product_code' => $productCode,
@@ -432,7 +436,7 @@ $recordedByName = isset($_GET['recorded_by_name']) ? trim((string)$_GET['recorde
 $dateFilter = isset($_GET['date']) ? trim((string)$_GET['date']) : '';
 $searchFilter = isset($_GET['search']) ? trim((string)$_GET['search']) : '';
 
-$query = 'SELECT fr.*, p.pond_name, p.stocking_date FROM feeding_records fr LEFT JOIN ponds p ON fr.pond_id = p.id WHERE 1=1';
+$query = 'SELECT fr.*, COALESCE(fr.amount_grams, ROUND(fr.amount_kg * 1000, 1)) AS amount_grams, p.pond_name, p.stocking_date FROM feeding_records fr LEFT JOIN ponds p ON fr.pond_id = p.id WHERE 1=1';
 $params = [];
 
 if ($pondFilter > 0) {

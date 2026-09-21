@@ -1712,7 +1712,9 @@ export default function WaterQualityOcrModal({
 
         const savedGeminiKey = localStorage.getItem('SHRIM_GEMINI_API_KEY') || import.meta.env.VITE_GEMINI_API_KEY || '';
         const savedOpenaiKey = localStorage.getItem('SHRIM_OPENAI_API_KEY');
-        if (savedGeminiKey) visionPayload.gemini_api_key = savedGeminiKey;
+        if (savedGeminiKey) {
+          visionPayload.gemini_api_key = savedGeminiKey;
+        }
         if (savedOpenaiKey) visionPayload.openai_api_key = savedOpenaiKey;
 
         let response = null;

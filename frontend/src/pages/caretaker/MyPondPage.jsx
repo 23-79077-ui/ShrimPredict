@@ -53,6 +53,7 @@ const vitaminOptions = ['None', 'Sanolife PRO-2', 'Sano Top-S'];
 const feedingTrayCount = 4;
 const emptyForm = {
   feedingTime: '6:00 AM',
+  amountGrams: '',
   amountKg: '',
   productCode: 'Starter',
   vitaminName: 'None',
@@ -318,8 +319,11 @@ export default function MyPondPage() {
     return null;
   }, [currentForm.feedingTime, todayLogs]);
 
+  const isNurseryStage = currentStage === 'nursery' || currentDoc <= 25;
+
   const selectedSlotRequiresMonitoring = Boolean(
-    previousFeedingLogForSelectedSlot
+    !isNurseryStage
+      && previousFeedingLogForSelectedSlot
       && !loggedTimesForPond.some((logged) => normalizeTime(logged) === normalizeTime(currentForm.feedingTime))
   );
 
@@ -328,7 +332,24 @@ export default function MyPondPage() {
     : '';
 
   const feedingPlan = useMemo(() => {
-    const amountKg = parseFloat(currentForm.amountKg);
+    const rawGrams = parseFloat(currentForm.amountGrams);
+    const amountKg = !isNaN(rawGrams) ? rawGrams / 1000 : parseFloat(currentForm.amountKg);
+    if (isNaN(amountKg) || amountKg < 0) {
+      return null;
+    }
+
+    if (isNurseryStage) {
+      return {
+        amountKg,
+        amountGrams: amountKg * 1000,
+        isNursery: true,
+        trayCount: 0,
+        trayFeedGrams: 0,
+        totalTrayFeedGrams: 0,
+        broadcastFeedKg: amountKg,
+      };
+    }
+
     const shrimpWeightGrams = parseFloat(weeklySampling?.shrimpWeightGrams);
     if (!amountKg || amountKg <= 0 || !shrimpWeightGrams || shrimpWeightGrams <= 0) {
       return null;
@@ -340,13 +361,15 @@ export default function MyPondPage() {
 
     return {
       amountKg,
+      amountGrams: amountKg * 1000,
+      isNursery: false,
       shrimpWeightGrams,
       trayCount: feedingTrayCount,
       trayFeedGrams,
       totalTrayFeedGrams,
       broadcastFeedKg,
     };
-  }, [currentForm.amountKg, weeklySampling]);
+  }, [currentForm.amountKg, currentForm.amountGrams, weeklySampling, isNurseryStage]);
 
   // Auto-select first un-logged feeding time slot when changing pond or after log submission
   useEffect(() => {
@@ -381,50 +404,43 @@ export default function MyPondPage() {
     });
   }, [selectedPondId, autoProductCode]);
 
-  // Farm Rule 2: 5th Daily Feeding Vitamin Prohibition
-  // Daily schedule has 5 slots. Feeds 1-4 receive vitamins, but the 5th feeding (6:00 PM or 4 logged feeds)
-  // strictly disables vitamins (locked to None).
+  // Farm SOP: Vitamins are consumed consistently across both Nursery and Grow-out stages.
   const isFifthFeeding = useMemo(() => {
     const slotNormalized = normalizeTime(currentForm.feedingTime);
-    if (slotNormalized === '6:00 PM') return true;
-    if (todayLogs.length >= 4) return true;
-    return false;
-  }, [currentForm.feedingTime, todayLogs]);
-
-  useEffect(() => {
-    if (isFifthFeeding && currentForm.vitaminName !== 'None' && selectedPondId) {
-      setFormState((prev) => ({
-        ...prev,
-        [selectedPondId]: {
-          ...(prev[selectedPondId] || emptyForm),
-          vitaminName: 'None',
-        },
-      }));
-    }
-  }, [isFifthFeeding, currentForm.vitaminName, selectedPondId]);
+    return slotNormalized === '6:00 PM';
+  }, [currentForm.feedingTime]);
 
   const handleChange = (field, value) => {
     if (!selectedPondId) return;
 
-    if (field === 'vitaminName' && isFifthFeeding && value !== 'None') {
-      return;
-    }
-    setFormState((prev) => ({
-      ...prev,
-      [selectedPondId]: {
-        ...(prev[selectedPondId] || emptyForm),
-        [field]: value,
-      },
-    }));
+    setFormState((prev) => {
+      const current = prev[selectedPondId] || emptyForm;
+      const updated = { ...current, [field]: value };
+      if (field === 'amountGrams') {
+        const g = parseFloat(value);
+        updated.amountKg = isNaN(g) ? '' : (g / 1000).toFixed(3);
+      } else if (field === 'amountKg') {
+        const kg = parseFloat(value);
+        updated.amountGrams = isNaN(kg) ? '' : String(Math.round(kg * 1000));
+      }
+      return {
+        ...prev,
+        [selectedPondId]: updated,
+      };
+    });
   };
 
   const handleSelectSlot = (time) => {
     const matchingLog = todayLogs.find((log) => normalizeTime(log.feeding_time) === normalizeTime(time));
     if (matchingLog) {
       setEditingRecord(matchingLog);
+      const gramsVal = matchingLog.amount_grams !== undefined && matchingLog.amount_grams !== null
+        ? String(matchingLog.amount_grams)
+        : String(Math.round((parseFloat(matchingLog.amount_kg) || 0) * 1000));
       setFormState((prev) => ({
         ...prev,
         [selectedPondId]: {
+          amountGrams: gramsVal,
           amountKg: String(matchingLog.amount_kg || ''),
           feedingTime: matchingLog.feeding_time,
           productCode: matchingLog.product_code || autoProductCode,
@@ -637,10 +653,12 @@ export default function MyPondPage() {
     }
 
     const form = formState[selectedPondId] || emptyForm;
-    let amount = parseFloat(form.amountKg);
+    const rawGrams = form.amountGrams !== undefined && form.amountGrams !== '' ? parseFloat(form.amountGrams) : (parseFloat(form.amountKg) * 1000);
+    const grams = isNaN(rawGrams) ? 0 : rawGrams;
+    let amount = parseFloat((grams / 1000).toFixed(3));
 
-    if (!amount || amount <= 0) {
-      Swal.fire({ icon: 'warning', title: 'Invalid Amount', text: 'Please enter a valid feeding amount in kilograms.' });
+    if (isNaN(grams) || grams < 0) {
+      Swal.fire({ icon: 'warning', title: 'Invalid Amount', text: 'Please enter a valid feeding amount in grams (0 or more).' });
       return;
     }
 
@@ -655,10 +673,14 @@ export default function MyPondPage() {
       return;
     }
 
-    let sampling = weeklySampling;
+    let sampling = null;
     let trayMonitoring = null;
 
-    if (isPastDate || editingRecord) {
+    if (isNurseryStage) {
+      // Nursery stage (DOC 1-25): No sampling, no tray monitoring (100% broadcast)
+      sampling = null;
+      trayMonitoring = { status: 'Nursery (No Trays • 100% Broadcast)' };
+    } else if (isPastDate || editingRecord) {
       // Fast historical backfill / edit mode: bypass modal prompt blockers
       sampling = weeklySampling?.shrimpWeightGrams ? weeklySampling : { shrimpWeightGrams: 3.0 };
       trayMonitoring = { status: editingRecord ? (editingRecord.tray_monitoring_status || 'Manual Entry') : 'Farm Log Backfill' };
@@ -674,16 +696,18 @@ export default function MyPondPage() {
       }
     }
 
-    const shrimpWeightGrams = Number(sampling.shrimpWeightGrams || 3.0);
-    const trayFeedGrams = amount * shrimpWeightGrams;
-    const totalTrayFeedGrams = trayFeedGrams * feedingTrayCount;
-    const broadcastFeedKg = Math.max(0, amount - (totalTrayFeedGrams / 1000));
-    const trayNotes = [
-      `Sample: ${shrimpWeightGrams}g avg shrimp`,
-      `Trays (${feedingTrayCount}): ${formatKg(totalTrayFeedGrams)}g`,
-      `Broadcast: ${formatKg(broadcastFeedKg)}kg`,
-      `Tray check: ${trayMonitoring?.status || trayMonitoring}`,
-    ].join(' | ');
+    const shrimpWeightGrams = isNurseryStage ? null : Number(sampling?.shrimpWeightGrams || 3.0);
+    const trayFeedGrams = isNurseryStage ? 0 : amount * (shrimpWeightGrams || 3.0);
+    const totalTrayFeedGrams = isNurseryStage ? 0 : trayFeedGrams * feedingTrayCount;
+    const broadcastFeedKg = isNurseryStage ? amount : Math.max(0, amount - (totalTrayFeedGrams / 1000));
+    const trayNotes = isNurseryStage
+      ? `Nursery Day ${currentDoc}: 100% Broadcast (${grams}g / ${formatKg(amount)}kg)`
+      : [
+          `Sample: ${shrimpWeightGrams}g avg shrimp`,
+          `Trays (${feedingTrayCount}): ${formatKg(totalTrayFeedGrams)}g`,
+          `Broadcast: ${formatKg(broadcastFeedKg)}kg`,
+          `Tray check: ${trayMonitoring?.status || trayMonitoring}`,
+        ].join(' | ');
 
     setSubmitting(true);
     try {
@@ -693,12 +717,13 @@ export default function MyPondPage() {
         is_update: Boolean(editingRecord),
         pond_id: Number(selectedPond.id),
         amount_kg: amount,
+        amount_grams: grams,
         feeding_time: form.feedingTime || '6:00 AM',
         product_code: form.productCode || autoProductCode,
-        vitamin_name: isFifthFeeding ? 'None' : (form.vitaminName || 'None'),
-        has_vitamin: isFifthFeeding ? 0 : (form.vitaminName && form.vitaminName !== 'None' ? 1 : 0),
+        vitamin_name: form.vitaminName || 'None',
+        has_vitamin: form.vitaminName && form.vitaminName !== 'None' ? 1 : 0,
         shrimp_weight_grams: shrimpWeightGrams,
-        tray_count: feedingTrayCount,
+        tray_count: isNurseryStage ? 0 : feedingTrayCount,
         tray_feed_grams: Number(trayFeedGrams.toFixed(2)),
         total_tray_feed_grams: Number(totalTrayFeedGrams.toFixed(2)),
         broadcast_feed_kg: Number(broadcastFeedKg.toFixed(3)),
@@ -729,9 +754,12 @@ export default function MyPondPage() {
         title: editingRecord ? 'Feeding Log Updated!' : (isPastDate ? 'Historical Feeding Saved!' : 'Feeding Logged!'),
         html: `
           <div style="text-align:left">
-            <p><strong>${formatKg(amount)} kg</strong> of <strong>${payload.product_code}</strong> saved for ${selectedPond.pond_name} on <strong>${todayDateStr}</strong> (${form.feedingTime}).</p>
-            <p class="mb-1">Tray feed: <strong>${formatKg(trayFeedGrams)}g</strong> per tray x ${feedingTrayCount} = <strong>${formatKg(totalTrayFeedGrams)}g</strong></p>
-            <p class="mb-0">Broadcast to pond: <strong>${formatKg(broadcastFeedKg)} kg</strong></p>
+            <p><strong>${grams} g (${formatKg(amount)} kg)</strong> of <strong>${payload.product_code}</strong> saved for ${selectedPond.pond_name} on <strong>${todayDateStr}</strong> (${form.feedingTime}).</p>
+            ${isNurseryStage
+              ? '<p class="mb-0 text-success">🌱 <strong>Nursery Mode:</strong> 100% Broadcast into basin (No trays required).</p>'
+              : `<p class="mb-1">Tray feed: <strong>${formatKg(trayFeedGrams)}g</strong> per tray x ${feedingTrayCount} = <strong>${formatKg(totalTrayFeedGrams)}g</strong></p>
+                 <p class="mb-0">Broadcast to pond: <strong>${formatKg(broadcastFeedKg)} kg</strong></p>`
+            }
           </div>
         `,
       });
@@ -1264,21 +1292,38 @@ export default function MyPondPage() {
               <div className="p-3 rounded-4 bg-light border h-100">
                 <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
                   <span className="small fw-bold text-dark">Weekly shrimp sample</span>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline-primary"
-                    onClick={requestWeeklySampling}
-                    disabled={!selectedPondId || allSlotsCompleted}
-                  >
-                    {weeklySampling?.shrimpWeightGrams ? 'Update' : 'Set'}
-                  </button>
+                  {isNurseryStage ? (
+                    <span className="badge rounded-pill bg-success bg-opacity-10 text-success border border-success border-opacity-25 extra-small fw-bold">
+                      Nursery • Day {currentDoc}
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-primary"
+                      onClick={requestWeeklySampling}
+                      disabled={!selectedPondId || allSlotsCompleted}
+                    >
+                      {weeklySampling?.shrimpWeightGrams ? 'Update' : 'Set'}
+                    </button>
+                  )}
                 </div>
-                <h4 className="fw-bold text-primary mb-1">
-                  {weeklySampling?.shrimpWeightGrams ? `${weeklySampling.shrimpWeightGrams}g` : '-'}
-                </h4>
-                <p className="extra-small text-muted mb-0">
-                  Required once per week before feeding logs. Example: 3g average shrimp.
-                </p>
+                {isNurseryStage ? (
+                  <>
+                    <h5 className="fw-bold text-success mb-1">🌱 Not Required</h5>
+                    <p className="extra-small text-muted mb-0">
+                      Shrimp are in Nursery phase (DOC 1–25). Weekly weight sampling starts in Grow-out (Day 26+).
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h4 className="fw-bold text-primary mb-1">
+                      {weeklySampling?.shrimpWeightGrams ? `${weeklySampling.shrimpWeightGrams}g` : '-'}
+                    </h4>
+                    <p className="extra-small text-muted mb-0">
+                      Required once per week before feeding logs. Example: 3g average shrimp.
+                    </p>
+                  </>
+                )}
               </div>
             </div>
 
@@ -1286,29 +1331,54 @@ export default function MyPondPage() {
               <div className="p-3 rounded-4 bg-primary bg-opacity-10 border border-primary border-opacity-25 h-100">
                 <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
                   <div>
-                    <span className="small fw-bold text-primary">Feeding tray computation</span>
-                    <p className="extra-small text-muted mb-0">4 trays are reserved first; remaining feed is broadcast to the pond.</p>
+                    <span className="small fw-bold text-primary">
+                      {isNurseryStage ? '🌱 Nursery Feed Broadcasting (100% Broadcast)' : 'Feeding tray computation'}
+                    </span>
+                    <p className="extra-small text-muted mb-0">
+                      {isNurseryStage
+                        ? 'Nursery basins do not use feeding trays. All feed is broadcast directly into the pond.'
+                        : '4 trays are reserved first; remaining feed is broadcast to the pond.'}
+                    </p>
                   </div>
-                  <span className="badge bg-white text-primary border">Tray count: {feedingTrayCount}</span>
+                  <span className="badge bg-white text-primary border">
+                    {isNurseryStage ? 'Trays: None (Nursery)' : `Tray count: ${feedingTrayCount}`}
+                  </span>
                 </div>
-                <div className="row g-2">
-                  <div className="col-6 col-md-3">
-                    <small className="text-muted d-block">Per tray</small>
-                    <strong>{feedingPlan ? `${formatKg(feedingPlan.trayFeedGrams)}g` : '-'}</strong>
+                {isNurseryStage ? (
+                  <div className="row g-2">
+                    <div className="col-6 col-md-4">
+                      <small className="text-muted d-block">Feed Mass (grams)</small>
+                      <strong className="fs-6 text-dark">{currentForm.amountGrams ? `${currentForm.amountGrams} g` : '0 g'}</strong>
+                    </div>
+                    <div className="col-6 col-md-4">
+                      <small className="text-muted d-block">Mass in Kilograms</small>
+                      <strong className="fs-6 text-primary">{feedingPlan ? `${formatKg(feedingPlan.amountKg)} kg` : '0 kg'}</strong>
+                    </div>
+                    <div className="col-12 col-md-4">
+                      <small className="text-muted d-block">Broadcast Mode</small>
+                      <span className="badge bg-success bg-opacity-20 text-success fw-bold">100% Direct Broadcast</span>
+                    </div>
                   </div>
-                  <div className="col-6 col-md-3">
-                    <small className="text-muted d-block">All trays</small>
-                    <strong>{feedingPlan ? `${formatKg(feedingPlan.totalTrayFeedGrams)}g` : '-'}</strong>
+                ) : (
+                  <div className="row g-2">
+                    <div className="col-6 col-md-3">
+                      <small className="text-muted d-block">Per tray</small>
+                      <strong>{feedingPlan ? `${formatKg(feedingPlan.trayFeedGrams)}g` : '-'}</strong>
+                    </div>
+                    <div className="col-6 col-md-3">
+                      <small className="text-muted d-block">All trays</small>
+                      <strong>{feedingPlan ? `${formatKg(feedingPlan.totalTrayFeedGrams)}g` : '-'}</strong>
+                    </div>
+                    <div className="col-6 col-md-3">
+                      <small className="text-muted d-block">Broadcast</small>
+                      <strong>{feedingPlan ? `${formatKg(feedingPlan.broadcastFeedKg)}kg` : '-'}</strong>
+                    </div>
+                    <div className="col-6 col-md-3">
+                      <small className="text-muted d-block">Formula</small>
+                      <strong>{feedingPlan ? `${formatKg(feedingPlan.amountKg)} x ${feedingPlan.shrimpWeightGrams}g` : '-'}</strong>
+                    </div>
                   </div>
-                  <div className="col-6 col-md-3">
-                    <small className="text-muted d-block">Broadcast</small>
-                    <strong>{feedingPlan ? `${formatKg(feedingPlan.broadcastFeedKg)}kg` : '-'}</strong>
-                  </div>
-                  <div className="col-6 col-md-3">
-                    <small className="text-muted d-block">Formula</small>
-                    <strong>{feedingPlan ? `${formatKg(feedingPlan.amountKg)} x ${feedingPlan.shrimpWeightGrams}g` : '-'}</strong>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           </div>
@@ -1354,7 +1424,9 @@ export default function MyPondPage() {
                         fontWeight: 700,
                       }}
                     >
-                      {matchingLog.amount_kg}kg
+                      {parseFloat(matchingLog.amount_kg) === 0
+                        ? '0g (No Feed)'
+                        : `${matchingLog.amount_grams ?? Math.round(parseFloat(matchingLog.amount_kg) * 1000)}g (${matchingLog.amount_kg}kg)`}
                     </span>
                   )}
                 </button>
@@ -1398,20 +1470,30 @@ export default function MyPondPage() {
             </div>
           )}
 
-          {/* 3-Column Responsive Grid Form (Amount kg, Product Code, Vitamins) */}
+          {/* 3-Column Responsive Grid Form (Amount grams, Product Code, Vitamins) */}
           <div className="row g-3 mb-3">
             <div className="col-md-4">
-              <label className="form-label fw-semibold text-dark">Amount (kg)</label>
+              <label className="form-label fw-semibold text-dark">
+                Amount (grams) <span className="text-muted fw-normal">/ Pakain sa grams</span>
+              </label>
               <input
                 type="number"
-                min="0.1"
-                step="0.1"
+                min="0"
+                step="10"
                 className="form-control form-control-lg fs-6"
-                value={currentForm.amountKg}
-                onChange={(event) => handleChange('amountKg', event.target.value)}
-                placeholder="Enter amount in kilograms"
+                value={currentForm.amountGrams ?? ''}
+                onChange={(event) => handleChange('amountGrams', event.target.value)}
+                placeholder="e.g. 500 (or 0 if wala pang pakain)"
                 disabled={submitting || (allSlotsCompleted && !editingRecord)}
               />
+              <div className="d-flex justify-content-between align-items-center mt-1 extra-small">
+                <span className="text-muted">Equivalent in Kilograms:</span>
+                <strong className="text-primary font-mono">
+                  {currentForm.amountGrams !== '' && !isNaN(parseFloat(currentForm.amountGrams))
+                    ? `${(parseFloat(currentForm.amountGrams) / 1000).toFixed(3)} kg`
+                    : (currentForm.amountKg ? `${parseFloat(currentForm.amountKg).toFixed(3)} kg` : '0.000 kg')}
+                </strong>
+              </div>
             </div>
 
             <div className="col-md-4">
@@ -1450,36 +1532,26 @@ export default function MyPondPage() {
 
             <div className="col-md-4">
               <div className="d-flex justify-content-between align-items-center mb-1">
-                <label className="form-label fw-semibold text-dark mb-0">Vitamins</label>
-                {isFifthFeeding && (
-                  <span className="badge bg-danger text-white extra-small px-2 py-0.5" style={{ fontSize: '0.7rem' }}>
-                    <FaBan size={9} className="me-1" /> 5th Feed: Disabled
-                  </span>
-                )}
+                <label className="form-label fw-semibold text-dark mb-0">Vitamins / Additive</label>
+                <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 extra-small px-2 py-0.5" style={{ fontSize: '0.7rem' }}>
+                  ✓ Consumed (Nursery &amp; Grow-out)
+                </span>
               </div>
               <select
-                className={`form-select form-select-lg fs-6 ${isFifthFeeding ? 'bg-light text-muted border-danger border-opacity-25' : ''}`}
-                value={isFifthFeeding ? 'None' : (currentForm.vitaminName || 'None')}
+                className="form-select form-select-lg fs-6"
+                value={currentForm.vitaminName || 'None'}
                 onChange={(event) => handleChange('vitaminName', event.target.value)}
-                disabled={submitting || (allSlotsCompleted && !editingRecord) || isFifthFeeding}
+                disabled={submitting || (allSlotsCompleted && !editingRecord)}
               >
-                {isFifthFeeding ? (
-                  <option value="None">None (Disabled for 5th Feeding)</option>
-                ) : (
-                  vitaminOptions.map((vit) => (
-                    <option key={vit} value={vit}>
-                      {vit === 'None' ? 'None (No Vitamin)' : vit}
-                    </option>
-                  ))
-                )}
+                {vitaminOptions.map((vit) => (
+                  <option key={vit} value={vit}>
+                    {vit === 'None' ? 'None (No Vitamin)' : vit}
+                  </option>
+                ))}
               </select>
-              {isFifthFeeding ? (
-                <small className="text-danger extra-small fw-semibold d-block mt-1">
-                  🚫 5th Daily Feed Rule: Vitamins are omitted on the 5th feeding (administered on feeds 1–4 only).
-                </small>
-              ) : (
-                <small className="text-muted extra-small d-block mt-1">Sanolife PRO-2 or Sano Top-S (Feeds 1 to 4).</small>
-              )}
+              <small className="text-muted extra-small d-block mt-1">
+                Sanolife PRO-2 or Sano Top-S (administered with feed).
+              </small>
             </div>
           </div>
 
