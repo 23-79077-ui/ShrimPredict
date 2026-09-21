@@ -332,8 +332,8 @@ export default function WaterQualityHistoryModal({
                                 </div>
                                 <div className="extra-small text-muted d-flex align-items-center gap-1.5 mt-0.5">
                                   {doc ? (
-                                    <span className={doc <= 25 ? 'text-success fw-bold' : 'text-primary fw-bold'}>
-                                      Day {doc} ({doc <= 25 ? 'Nursery' : 'Grow-out'})
+                                    <span className={doc <= 19 ? 'text-success fw-bold' : 'text-primary fw-bold'}>
+                                      Day {doc} ({doc <= 19 ? 'Nursery' : 'Grow-out'})
                                     </span>
                                   ) : (
                                     <span>Record #{r.id}</span>

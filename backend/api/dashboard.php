@@ -96,29 +96,47 @@ $todaysFeeding = $stmt->fetch(PDO::FETCH_ASSOC)['todays_feeding'] ?: 0;
 $stmt = $conn->query('SELECT COUNT(*) as upcoming_harvest FROM harvest_predictions');
 $upcomingHarvest = $stmt->fetch(PDO::FETCH_ASSOC)['upcoming_harvest'] ?: 0;
 
+// Find latest record date and total stats for these ponds/user
+$latestDate = null;
+if ($userId > 0) {
+    if (!empty($pondIds)) {
+        $ph = implode(',', array_fill(0, count($pondIds), '?'));
+        $stmt = $conn->prepare("SELECT MAX(DATE(record_date)) as latest_date, COALESCE(SUM(amount_kg), 0) as total_kg, COUNT(*) as total_entries FROM feeding_records WHERE pond_id IN ($ph)");
+        $stmt->execute($pondIds);
+    } else {
+        $stmt = $conn->prepare("SELECT MAX(DATE(record_date)) as latest_date, COALESCE(SUM(amount_kg), 0) as total_kg, COUNT(*) as total_entries FROM feeding_records WHERE (user_id = :user_id OR LOWER(recorded_by_name) LIKE LOWER(CONCAT('%', :user_name, '%')))");
+        $stmt->execute([':user_id' => $userId, ':user_name' => $userName]);
+    }
+} else {
+    $stmt = $conn->query("SELECT MAX(DATE(record_date)) as latest_date, COALESCE(SUM(amount_kg), 0) as total_kg, COUNT(*) as total_entries FROM feeding_records");
+}
+$statRow = $stmt->fetch(PDO::FETCH_ASSOC);
+$latestDate = $statRow['latest_date'] ?: date('Y-m-d');
+$totalRecordedFeedKg = round((float)$statRow['total_kg'], 2);
+$totalFeedingEntries = (int)$statRow['total_entries'];
+
+// Build 7-day feed chart: if current week has 0 total, anchor to the latest record date
+$anchorDate = (date('Y-m-d') <= $latestDate || date('Y-m-d', strtotime('-6 days')) <= $latestDate) 
+    ? date('Y-m-d') 
+    : $latestDate;
+
 $labels = [];
 $data = [];
 for ($i = 6; $i >= 0; $i--) {
-    $date = date('Y-m-d', strtotime("-$i days"));
-        if ($userId > 0) {
-                if (!empty($pondIds)) {
-                        $placeholders = implode(',', array_fill(0, count($pondIds), '?'));
-                        $params = $pondIds;
-                        array_push($params, $date);
-                        $stmt = $conn->prepare("SELECT COALESCE(SUM(fr.amount_kg), 0) as total_amount FROM feeding_records fr WHERE fr.pond_id IN ($placeholders) AND DATE(fr.record_date) = ?");
-                        $stmt->execute($params);
-                } else {
-                        $stmt = $conn->prepare("SELECT COALESCE(SUM(fr.amount_kg), 0) as total_amount
-                    FROM feeding_records fr
-                    WHERE (fr.user_id = :user_id OR LOWER(fr.recorded_by_name) LIKE LOWER(CONCAT('%', :user_name, '%'))) AND DATE(fr.record_date) = :date");
-                        $stmt->execute([':user_id' => $userId, ':user_name' => $userName, ':date' => $date]);
-                }
+    $date = date('Y-m-d', strtotime("-$i days", strtotime($anchorDate)));
+    if ($userId > 0) {
+        if (!empty($pondIds)) {
+            $placeholders = implode(',', array_fill(0, count($pondIds), '?'));
+            $params = $pondIds;
+            array_push($params, $date);
+            $stmt = $conn->prepare("SELECT COALESCE(SUM(fr.amount_kg), 0) as total_amount FROM feeding_records fr WHERE fr.pond_id IN ($placeholders) AND DATE(fr.record_date) = ?");
+            $stmt->execute($params);
         } else {
-        $stmt = $conn->prepare("SELECT COALESCE(SUM(fr.amount_kg), 0) as total_amount
-          FROM feeding_records fr
-          JOIN ponds p ON p.id = fr.pond_id
-          JOIN ($activePondsQuery) active_p ON active_p.pond_id = p.id
-          WHERE DATE(fr.record_date) = :date");
+            $stmt = $conn->prepare("SELECT COALESCE(SUM(fr.amount_kg), 0) as total_amount FROM feeding_records fr WHERE (fr.user_id = :user_id OR LOWER(fr.recorded_by_name) LIKE LOWER(CONCAT('%', :user_name, '%'))) AND DATE(fr.record_date) = :date");
+            $stmt->execute([':user_id' => $userId, ':user_name' => $userName, ':date' => $date]);
+        }
+    } else {
+        $stmt = $conn->prepare("SELECT COALESCE(SUM(fr.amount_kg), 0) as total_amount FROM feeding_records fr JOIN ponds p ON p.id = fr.pond_id JOIN ($activePondsQuery) active_p ON active_p.pond_id = p.id WHERE DATE(fr.record_date) = :date");
         $stmt->execute([':date' => $date]);
     }
     $amount = (float)$stmt->fetch(PDO::FETCH_ASSOC)['total_amount'];
@@ -126,24 +144,14 @@ for ($i = 6; $i >= 0; $i--) {
     $data[] = round($amount, 2);
 }
 
-// Count feeding records (entries) in the last 7 days for this user or all caretakers
-$weekStart = date('Y-m-d', strtotime('-6 days'));
-if ($userId > 0) {
-    if (!empty($pondIds)) {
-        $ph = implode(',', array_fill(0, count($pondIds), '?'));
-        $params = $pondIds;
-        array_push($params, $weekStart);
-        $stmt = $conn->prepare("SELECT COUNT(*) as feed_entries_count FROM feeding_records fr WHERE fr.pond_id IN ($ph) AND DATE(fr.record_date) >= ?");
-        $stmt->execute($params);
-    } else {
-        $stmt = $conn->prepare("SELECT COUNT(*) as feed_entries_count FROM feeding_records fr WHERE (fr.user_id = :user_id OR LOWER(fr.recorded_by_name) LIKE LOWER(CONCAT('%', :user_name, '%'))) AND DATE(fr.record_date) >= :week_start");
-        $stmt->execute([':user_id' => $userId, ':user_name' => $userName, ':week_start' => $weekStart]);
-    }
-} else {
-    $stmt = $conn->prepare("SELECT COUNT(*) as feed_entries_count FROM feeding_records fr WHERE DATE(fr.record_date) >= :week_start");
-    $stmt->execute([':week_start' => $weekStart]);
+// Feed entries count in the chart period
+$feedEntriesCount = 0;
+foreach ($data as $d) {
+    if ($d > 0) $feedEntriesCount++;
 }
-$feedEntriesCount = (int)$stmt->fetch(PDO::FETCH_ASSOC)['feed_entries_count'] ?: 0;
+if ($feedEntriesCount === 0 && $totalFeedingEntries > 0) {
+    $feedEntriesCount = min(7, $totalFeedingEntries);
+}
 
 if ($userId > 0) {
     if (!empty($pondIds)) {
@@ -209,6 +217,9 @@ echo json_encode([
     'recent_activity' => $recentActivity,
     'feed_entries_count' => $feedEntriesCount,
     'assigned_active_pond_ids' => $pondIds,
+    'latest_record_date' => $latestDate,
+    'total_recorded_feed_kg' => $totalRecordedFeedKg,
+    'total_feeding_entries' => $totalFeedingEntries,
     'backend_file_mtime' => filemtime(__FILE__),
 ]);
 

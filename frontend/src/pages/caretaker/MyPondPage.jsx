@@ -149,12 +149,12 @@ export default function MyPondPage() {
   const [ocrTargetDate, setOcrTargetDate] = useState('');
   const [inspectProofModal, setInspectProofModal] = useState(null);
 
-  // Enrich assigned ponds with DOC and Stage (Nursery: Days 1–25, Grow-out: Day 26+) relative to recordDate
+  // Enrich assigned ponds with DOC and Stage (Nursery: Days 1–19, Grow-out: Day 20+) relative to recordDate
   const pondsWithStage = useMemo(() => {
     return assignedPonds.map((pond) => {
       const doc = computeDoc(pond.stocking_date, todayDateStr);
-      const isNursery = doc >= 1 && doc <= 25;
-      const isGrowout = doc >= 26;
+      const isNursery = doc >= 1 && doc <= 19;
+      const isGrowout = doc >= 20;
       return {
         ...pond,
         doc,
@@ -180,7 +180,6 @@ export default function MyPondPage() {
       const res = await api.get('/water_quality_records.php', {
         params: {
           pond_id: pondId,
-          date: todayDateStr,
         },
       });
 
@@ -201,7 +200,7 @@ export default function MyPondPage() {
     } finally {
       setLoadingWaterQuality(false);
     }
-  }, [todayDateStr]);
+  }, []);
 
   useEffect(() => {
     if (!assignedPonds.length) {
@@ -220,7 +219,7 @@ export default function MyPondPage() {
 
   const currentDoc = selectedPondWithStage?.doc ?? 1;
   const currentStage = selectedPondWithStage?.stage ?? 'nursery';
-  const autoProductCode = currentDoc >= 26 ? 'Grower' : 'Starter';
+  const autoProductCode = currentDoc >= 20 ? 'Grower' : 'Starter';
 
   const currentForm = formState[selectedPondId] || emptyForm;
   const samplingKey = selectedPondId ? getSamplingStorageKey(user?.id, selectedPondId, todayDateStr) : '';
@@ -319,7 +318,7 @@ export default function MyPondPage() {
     return null;
   }, [currentForm.feedingTime, todayLogs]);
 
-  const isNurseryStage = currentStage === 'nursery' || currentDoc <= 25;
+  const isNurseryStage = currentStage === 'nursery' || currentDoc <= 19;
 
   const selectedSlotRequiresMonitoring = Boolean(
     !isNurseryStage
@@ -386,7 +385,7 @@ export default function MyPondPage() {
     }
   }, [selectedPondId, loggedTimesForPond]);
 
-  // Farm Rule 1: Auto-switch feed between Starter (Days 1–25 Nursery) and Grower (Day 26+ Grow-out)
+  // Farm Rule 1: Auto-switch feed between Starter (Days 1–19 Nursery) and Grower (Day 20+ Grow-out)
   useEffect(() => {
     if (!selectedPondId) return;
     setFormState((prev) => {
@@ -633,23 +632,22 @@ export default function MyPondPage() {
   const handleSubmit = async () => {
     if (!selectedPond) return;
 
-    // For today's live feeding, recommend water quality verification if not done yet
+    // For live feeding, require pre-stocking baseline water quality verification if not done yet
     if (!isPastDate && !isPondWqVerified) {
       const choice = await Swal.fire({
         icon: 'info',
-        title: 'Water Quality Verification Notice',
-        html: `Water quality testing for <strong>${selectedPond.pond_name}</strong> has not been verified via OCR today.<br/><br/>Would you like to continue saving this feeding record, or launch the OCR scanner first?`,
+        title: 'Initial Water Quality Scan Required',
+        html: `Pre-stocking water quality testing for <strong>${selectedPond.pond_name}</strong> has not been verified yet.<br/><br/>O&B Aqua Farm requires a one-time baseline water quality scan before initiating pond monitoring. Would you like to launch the OCR scanner now?`,
         showCancelButton: true,
-        confirmButtonText: 'Continue Feeding Log',
-        cancelButtonText: 'Launch OCR Scanner',
-        confirmButtonColor: '#16A34A',
-        cancelButtonColor: '#0B2C5F',
+        confirmButtonText: 'Launch OCR Scanner',
+        cancelButtonText: 'Continue Anyway',
+        confirmButtonColor: '#0B2C5F',
+        cancelButtonColor: '#6B7280',
       });
-      if (choice.dismiss === Swal.DismissReason.cancel) {
+      if (choice.isConfirmed) {
         setIsOcrModalOpen(true);
         return;
       }
-      if (!choice.isConfirmed) return;
     }
 
     const form = formState[selectedPondId] || emptyForm;
@@ -677,7 +675,7 @@ export default function MyPondPage() {
     let trayMonitoring = null;
 
     if (isNurseryStage) {
-      // Nursery stage (DOC 1-25): No sampling, no tray monitoring (100% broadcast)
+      // Nursery stage (DOC 1-19): No sampling, no tray monitoring (100% broadcast)
       sampling = null;
       trayMonitoring = { status: 'Nursery (No Trays • 100% Broadcast)' };
     } else if (isPastDate || editingRecord) {
@@ -842,7 +840,7 @@ export default function MyPondPage() {
             type="button"
             className="btn btn-sm btn-outline-primary rounded-pill px-3 py-1.5 extra-small fw-bold shadow-xs d-flex align-items-center gap-1.5"
             onClick={() => setShowCycleCalendar(true)}
-            title="Open Cycle Calendar showing Nursery (Days 1-25) and Grow-out (Day 26+) highlights"
+            title="Open Cycle Calendar showing Nursery (Days 1-19) and Grow-out (Day 20+) highlights"
           >
             <FaCalendarAlt size={11} /> Pond Cycle Calendar
           </button>
@@ -867,7 +865,7 @@ export default function MyPondPage() {
             </span>
           </div>
           <span className="extra-small text-muted">
-            Days 1–25 = <strong>Nursery (Starter)</strong> • Day 26+ = <strong>Grow-out (Grower)</strong>
+            Days 1–19 = <strong>Nursery (Starter)</strong> • Day 20+ = <strong>Grow-out (Grower)</strong>
           </span>
         </div>
 
@@ -915,7 +913,7 @@ export default function MyPondPage() {
             }}
             onClick={() => setStageFilter('growout')}
           >
-            🌊 Grow-out Basins (Day 26+ • Grower Feed) ({growoutCount})
+            🌊 Grow-out Basins (Day 20+ • Grower Feed) ({growoutCount})
           </button>
         </div>
       </div>
@@ -1013,8 +1011,8 @@ export default function MyPondPage() {
         <div
           className="p-3 rounded-4 mb-4 border d-flex justify-content-between align-items-center flex-wrap gap-2"
           style={{
-            backgroundColor: currentDoc >= 26 ? '#EFF6FF' : '#F0FDF4',
-            borderColor: currentDoc >= 26 ? '#BFDBFE' : '#BBF7D0',
+            backgroundColor: currentDoc >= 20 ? '#EFF6FF' : '#F0FDF4',
+            borderColor: currentDoc >= 20 ? '#BFDBFE' : '#BBF7D0',
           }}
         >
           <div className="d-flex align-items-center gap-3">
@@ -1023,11 +1021,11 @@ export default function MyPondPage() {
               style={{
                 width: 42,
                 height: 42,
-                backgroundColor: currentDoc >= 26 ? '#DBEAFE' : '#DCFCE7',
-                color: currentDoc >= 26 ? '#1D4ED8' : '#15803D',
+                backgroundColor: currentDoc >= 20 ? '#DBEAFE' : '#DCFCE7',
+                color: currentDoc >= 20 ? '#1D4ED8' : '#15803D',
               }}
             >
-              {currentDoc >= 26 ? <FaWater size={18} /> : <FaSeedling size={18} />}
+              {currentDoc >= 20 ? <FaWater size={18} /> : <FaSeedling size={18} />}
             </div>
             <div>
               <div className="d-flex align-items-center gap-2 flex-wrap">
@@ -1035,12 +1033,12 @@ export default function MyPondPage() {
                 <span
                   className="badge rounded-pill px-2.5 py-1 fw-extrabold"
                   style={{
-                    backgroundColor: currentDoc >= 26 ? '#2563EB' : '#059669',
+                    backgroundColor: currentDoc >= 20 ? '#2563EB' : '#059669',
                     color: '#fff',
                     fontSize: '0.75rem',
                   }}
                 >
-                  Day {currentDoc} of Culture ({currentDoc >= 26 ? 'Grow-out Phase' : 'Nursery Phase'})
+                  Day {currentDoc} of Culture ({currentDoc >= 20 ? 'Grow-out Phase' : 'Nursery Phase'})
                 </span>
                 {selectedPond.stocking_date && (
                   <span className="extra-small text-muted">
@@ -1049,13 +1047,13 @@ export default function MyPondPage() {
                 )}
               </div>
               <p className="extra-small text-muted mb-0 mt-0.5">
-                {currentDoc >= 26 ? (
+                {currentDoc >= 20 ? (
                   <>
-                    <strong className="text-primary">Grow-out Pond Active</strong>: Shrimp transferred on Day 26. Required feed formulation is <strong>Tateh - Grower</strong>.
+                    <strong className="text-primary">Grow-out Pond Active</strong>: Shrimp transferred on Day 20. Required feed formulation is <strong>Tateh - Grower</strong>.
                   </>
                 ) : (
                   <>
-                    <strong className="text-success">Nursery Pond Active</strong>: Days 1–25 culture window. Required feed formulation is <strong>Tateh - Starter</strong>.
+                    <strong className="text-success">Nursery Pond Active</strong>: Days 1–19 culture window. Required feed formulation is <strong>Tateh - Starter</strong>.
                   </>
                 )}
               </p>
@@ -1100,28 +1098,16 @@ export default function MyPondPage() {
                 <div>
                   <div className="d-flex align-items-center gap-2 flex-wrap">
                     <h5 className="fw-extrabold mb-0 text-white tracking-tight">
-                      {isPastDate
-                        ? `Past Date: ${new Date(todayDateStr + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
-                        : "Daily Water Quality Inspection Recommended"}
+                      Pre-Stocking Water Quality Scan Required
                     </h5>
                     <span
-                      className={`badge rounded-pill px-2.5 py-1 extra-small fw-bold shadow-xs ${
-                        isPastDate ? 'bg-primary text-white' : 'bg-warning text-dark'
-                      }`}
+                      className="badge rounded-pill px-2.5 py-1 extra-small fw-bold shadow-xs bg-warning text-dark"
                     >
-                      {isPastDate ? '📅 Historical Feed Entry Unlocked' : '⚠️ Inspection Pending'}
+                      ⚠️ Initial Baseline Pending
                     </span>
                   </div>
                   <p className="text-white text-opacity-85 small mb-0 mt-1" style={{ maxWidth: 640, lineHeight: 1.5 }}>
-                    {isPastDate ? (
-                      <>
-                        No verified water quality logsheet found for <strong>{selectedPond?.pond_name}</strong> on <strong>{todayDateStr}</strong>. You can enter real feeding logs directly below from your farm logsheets, or backfill water quality if available.
-                      </>
-                    ) : (
-                      <>
-                        Handheld parameter testing (DO, Temp, pH, Salinity) is recommended for <strong>{selectedPond?.pond_name}</strong>. You can launch the Dual-Mode OCR scanner or proceed directly with feeding logs below.
-                      </>
-                    )}
+                    O&B Aqua Farm Protocol: An initial one-time water quality scan (DO, Temp, pH, Salinity) must be verified before stocking shrimp and logging daily feeding records for <strong>{selectedPond?.pond_name}</strong>.
                   </p>
                 </div>
               </div>
@@ -1145,7 +1131,7 @@ export default function MyPondPage() {
                     setIsOcrModalOpen(true);
                   }}
                 >
-                  <FaCamera size={13} /> {isPastDate ? `Scan WQ for ${todayDateStr}` : 'Launch Dual-Mode OCR'}
+                  <FaCamera size={13} /> Verify Pre-Stocking WQ (OCR)
                 </button>
               </div>
             </div>
@@ -1170,12 +1156,10 @@ export default function MyPondPage() {
               <div>
                 <div className="d-flex align-items-center gap-2 flex-wrap">
                   <h6 className="fw-bold mb-0 text-dark">
-                    {todayDateStr === defaultDateStr
-                      ? `Today's Water Quality Verified for ${selectedPond?.pond_name}`
-                      : `Water Quality Verified on ${new Date(todayDateStr + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} for ${selectedPond?.pond_name}`}
+                    Pre-Stocking Water Quality Verified for {selectedPond?.pond_name}
                   </h6>
                   <span className="badge bg-success bg-opacity-20 text-success border border-success border-opacity-30 rounded-pill extra-small fw-bold">
-                    ✓ Verified
+                    ✓ Verified (Baseline)
                   </span>
                 </div>
                 <div className="d-flex align-items-center gap-3 flex-wrap mt-1 text-secondary extra-small">
@@ -1311,7 +1295,7 @@ export default function MyPondPage() {
                   <>
                     <h5 className="fw-bold text-success mb-1">🌱 Not Required</h5>
                     <p className="extra-small text-muted mb-0">
-                      Shrimp are in Nursery phase (DOC 1–25). Weekly weight sampling starts in Grow-out (Day 26+).
+                      Shrimp are in Nursery phase (DOC 1–19). Weekly weight sampling starts in Grow-out (Day 20+).
                     </p>
                   </>
                 ) : (
@@ -1502,13 +1486,13 @@ export default function MyPondPage() {
                 <span
                   className="badge rounded-pill extra-small px-2 py-0.5"
                   style={{
-                    backgroundColor: currentDoc >= 26 ? '#EFF6FF' : '#F0FDF4',
-                    color: currentDoc >= 26 ? '#1D4ED8' : '#15803D',
-                    border: `1px solid ${currentDoc >= 26 ? '#BFDBFE' : '#BBF7D0'}`,
+                    backgroundColor: currentDoc >= 20 ? '#EFF6FF' : '#F0FDF4',
+                    color: currentDoc >= 20 ? '#1D4ED8' : '#15803D',
+                    border: `1px solid ${currentDoc >= 20 ? '#BFDBFE' : '#BBF7D0'}`,
                     fontSize: '0.7rem',
                   }}
                 >
-                  {currentDoc >= 26 ? 'Day 26+ Grower (Auto)' : 'Days 1-25 Starter (Auto)'}
+                  {currentDoc >= 20 ? 'Day 20+ Grower (Auto)' : 'Days 1-19 Starter (Auto)'}
                 </span>
               </div>
               <select
@@ -1524,9 +1508,9 @@ export default function MyPondPage() {
                 ))}
               </select>
               <small className="extra-small text-muted d-block mt-1">
-                {currentDoc >= 26
-                  ? '🌊 Day 26+ Grow-out phase: Feed automatically switched from Starter to Grower.'
-                  : '🌱 Days 1–25 Nursery phase: Starter feed designated for nursery culture.'}
+                {currentDoc >= 20
+                  ? '🌊 Day 20+ Grow-out phase: Feed automatically switched from Starter to Grower.'
+                  : '🌱 Days 1–19 Nursery phase: Starter feed designated for nursery culture.'}
               </small>
             </div>
 

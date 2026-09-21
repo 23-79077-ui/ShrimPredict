@@ -140,6 +140,45 @@ export default function AdminDashboard() {
   // Selected caretaker object
   const selectedCaretakerObj = caretakers.find((c) => String(c.id) === String(selectedCaretakerId));
 
+  // Displayed ponds filtered by selected caretaker
+  const displayedPonds = useMemo(() => {
+    if (selectedCaretakerId === 'all') {
+      // Show assigned active ponds
+      const assigned = ponds.filter((p) => p.caretaker_id || p.caretaker_ids || p.caretaker_name);
+      return assigned.length > 0 ? assigned : ponds;
+    }
+    return ponds.filter((p) => {
+      const cIds = String(p.caretaker_ids || p.caretaker_id || '').split(',');
+      const matchId = cIds.includes(String(selectedCaretakerId));
+      const matchName = selectedCaretakerObj?.full_name && p.caretaker_name === selectedCaretakerObj.full_name;
+      return matchId || matchName;
+    });
+  }, [ponds, selectedCaretakerId, selectedCaretakerObj]);
+
+  // Distinct recorded dates for dropdown & inspection
+  const availableDates = useMemo(() => {
+    const recordsToInspect = selectedCaretakerId === 'all'
+      ? allFeedingRecords
+      : allFeedingRecords.filter((r) => {
+          const recUserId = r.user_id ?? r.userId;
+          const recName = r.recorded_by_name ?? r.recorded_by;
+          return (recUserId && String(recUserId) === String(selectedCaretakerId)) ||
+                 (selectedCaretakerObj?.full_name && recName === selectedCaretakerObj.full_name);
+        });
+
+    const dateMap = new Map();
+    recordsToInspect.forEach((r) => {
+      const d = (r.record_date || r.created_at || '').slice(0, 10);
+      if (!d) return;
+      const existing = dateMap.get(d) || { date: d, count: 0, totalKg: 0, stockingDate: r.stocking_date || '2026-08-10' };
+      existing.count += 1;
+      existing.totalKg += parseFloat(r.amount_kg) || 0;
+      dateMap.set(d, existing);
+    });
+
+    return Array.from(dateMap.values()).sort((a, b) => b.date.localeCompare(a.date));
+  }, [allFeedingRecords, selectedCaretakerId, selectedCaretakerObj]);
+
   // Date match helper
   const isDateMatch = useCallback(
     (recordDateStr) => {
@@ -156,14 +195,14 @@ export default function AdminDashboard() {
         yest.setDate(yest.getDate() - 1);
         return dateOnly === yest.toISOString().split('T')[0];
       }
+      if (dateFilterType.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        return dateOnly === dateFilterType;
+      }
       if (dateFilterType === 'doc_batch') return dateOnly >= '2026-08-10' && dateOnly <= '2026-08-16';
-      if (dateFilterType === 'aug10') return dateOnly === '2026-08-10';
-      if (dateFilterType === 'aug11') return dateOnly === '2026-08-11';
-      if (dateFilterType === 'aug12') return dateOnly === '2026-08-12';
-      if (dateFilterType === 'aug13') return dateOnly === '2026-08-13';
-      if (dateFilterType === 'aug14') return dateOnly === '2026-08-14';
-      if (dateFilterType === 'aug15') return dateOnly === '2026-08-15';
-      if (dateFilterType === 'aug16') return dateOnly === '2026-08-16';
+      if (dateFilterType.startsWith('aug')) {
+        const dayNum = dateFilterType.replace('aug', '');
+        return dateOnly === `2026-08-${dayNum.padStart(2, '0')}`;
+      }
       if (dateFilterType === 'last7') {
         const sevenDaysAgo = new Date(today);
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -195,23 +234,35 @@ export default function AdminDashboard() {
   // Filtered Disease Reports
   const filteredDiseaseReports = useMemo(() => {
     return allDiseaseReports.filter((rep) => {
+      if (selectedCaretakerId !== 'all') {
+        const repUserId = rep.user_id ?? rep.userId;
+        const repName = rep.caretaker_name;
+        const matchUser = repUserId && String(repUserId) === String(selectedCaretakerId);
+        const matchName = selectedCaretakerObj?.full_name && repName === selectedCaretakerObj.full_name;
+        if (!matchUser && !matchName) return false;
+      }
       const repDate = rep.report_date || rep.created_at || '';
       return isDateMatch(repDate);
     });
-  }, [allDiseaseReports, isDateMatch]);
+  }, [allDiseaseReports, selectedCaretakerId, selectedCaretakerObj, isDateMatch]);
 
   // Total Feed Consumed
   const totalFilteredFeedKg = useMemo(() => {
     return filteredFeedingRecords.reduce((sum, r) => sum + (parseFloat(r.amount_kg) || 0), 0);
   }, [filteredFeedingRecords]);
 
-  // Dynamic Chart for Feed Consumption (Wave-Line with Sage Green Fill)
+  // Dynamic Chart for Feed Consumption (Wave-Line with Cyan/Navy Fill)
   const feedChart = useMemo(() => {
     const labels = [];
     const data = [];
 
-    if (dateFilterType === 'today') {
-      const slots = ['6:00 AM', '9:00 AM', '12:00 PM', '3:00 PM', '6:00 PM', '9:00 PM'];
+    const isSingleDate = dateFilterType === 'today' ||
+      dateFilterType === 'yesterday' ||
+      dateFilterType.match(/^\d{4}-\d{2}-\d{2}$/) ||
+      (dateFilterType === 'custom' && customDate);
+
+    if (isSingleDate) {
+      const slots = ['6:00 AM', '9:00 AM', '12:00 PM', '3:00 PM', '6:00 PM'];
       slots.forEach((slot) => {
         labels.push(slot);
         const sum = filteredFeedingRecords.reduce((acc, r) => {
@@ -222,18 +273,20 @@ export default function AdminDashboard() {
         data.push(Math.round(sum * 100) / 100);
       });
     } else {
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        const dayStr = d.toISOString().slice(0, 10);
-        labels.push(d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
-
-        const sum = filteredFeedingRecords.reduce((acc, r) => {
-          const recDate = (r.record_date || r.created_at || '').slice(0, 10);
-          if (recDate === dayStr) return acc + (parseFloat(r.amount_kg) || 0);
-          return acc;
-        }, 0);
-        data.push(Math.round(sum * 100) / 100);
+      const datesToShow = availableDates.slice(0, 7).reverse();
+      if (datesToShow.length > 0) {
+        datesToShow.forEach((item) => {
+          const dObj = new Date(item.date + 'T00:00:00');
+          labels.push(dObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
+          data.push(Math.round(item.totalKg * 100) / 100);
+        });
+      } else {
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date();
+          d.setDate(d.getDate() - i);
+          labels.push(d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
+          data.push(0);
+        }
       }
     }
 
@@ -266,7 +319,7 @@ export default function AdminDashboard() {
         },
       ],
     };
-  }, [filteredFeedingRecords, dateFilterType]);
+  }, [filteredFeedingRecords, dateFilterType, customDate, availableDates]);
 
   const feedChartOptions = useMemo(() => ({
     responsive: true,
@@ -341,29 +394,35 @@ export default function AdminDashboard() {
 
   // Prioritized Disease Feed Data with Clean Legend Tags
   const diseaseItems = useMemo(() => {
-    const raw = filteredDiseaseReports.length > 0
-      ? filteredDiseaseReports.map((r) => ({
-          id: r.id,
-          title: r.disease_name || 'White Spot Syndrome Virus (WSSV)',
-          pond: r.pond_name || `Pond #${r.pond_id || 3}`,
-          risk: (r.risk_level || 'Critical').toLowerCase(),
-          status: r.status || 'Active Notice',
-          time: new Date(r.report_date || r.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          confidence: r.confidence_score ? `${Math.round(r.confidence_score * 100)}%` : '96.2%',
-        }))
-      : [
-          { id: 1, title: 'White Spot Syndrome Virus (WSSV)', pond: 'Pond #3 East', risk: 'critical', status: 'Active Telemetry', time: '10:45 AM', confidence: '97.2%' },
-          { id: 2, title: 'Early Mortality Syndrome (AHPND)', pond: 'Pond #1 Nursery', risk: 'critical', status: 'High Alert', time: '09:20 AM', confidence: '94.8%' },
-          { id: 3, title: 'Vibrio Parahaemolyticus Indicator', pond: 'Pond #5 South', risk: 'moderate', status: 'Observation', time: 'Yesterday', confidence: '88.5%' },
-          { id: 4, title: 'Gill Spotting & Discoloration', pond: 'Pond #2 Main', risk: 'moderate', status: 'Stabilizing', time: 'Sep 9', confidence: '81.0%' },
-          { id: 5, title: 'Growth Uniformity Baseline', pond: 'Pond #4 North', risk: 'safe', status: 'Nominal', time: 'Sep 8', confidence: '99.1%' },
-        ];
+    const sourceReports = filteredDiseaseReports.length > 0 ? filteredDiseaseReports : allDiseaseReports;
+    if (sourceReports.length === 0) return [];
+
+    const raw = sourceReports.map((r) => {
+      const riskLower = (r.risk_level || 'Low').toLowerCase();
+      const normalizedRisk = ['high', 'critical'].includes(riskLower)
+        ? 'critical'
+        : ['moderate', 'medium', 'warning'].includes(riskLower)
+          ? 'moderate'
+          : 'safe';
+
+      const isHealthy = (r.disease_name || '').toLowerCase().includes('healthy') || normalizedRisk === 'safe';
+
+      return {
+        id: r.id,
+        title: isHealthy ? 'Healthy - No Disease Detected' : (r.disease_name || 'Biosecurity Anomaly'),
+        pond: r.pond_name || `Pond #${r.pond_id || 1}`,
+        risk: normalizedRisk,
+        status: isHealthy ? 'Nominal' : (r.status || 'Active Notice'),
+        time: new Date(r.report_date || r.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        confidence: r.confidence_score ? `${Math.round(r.confidence_score)}%` : '98%',
+      };
+    });
 
     return raw.filter((item) => {
       if (diseaseFilter === 'all') return true;
       return item.risk === diseaseFilter;
     });
-  }, [filteredDiseaseReports, diseaseFilter]);
+  }, [filteredDiseaseReports, allDiseaseReports, diseaseFilter]);
 
   return (
     <div>
@@ -374,7 +433,9 @@ export default function AdminDashboard() {
             <span className="badge rounded-pill fw-bold extra-small" style={{ backgroundColor: '#F0F9FF', color: '#0284C7', border: '1px solid #BAE6FD' }}>
               ● LIVE TELEMETRY
             </span>
-            <span className="text-muted extra-small">6 Monitored Aquaculture Basins • AI Diagnostics</span>
+            <span className="text-muted extra-small">
+              {displayedPonds.length} Monitored Aquaculture {displayedPonds.length === 1 ? 'Basin' : 'Basins'} • AI Diagnostics
+            </span>
           </div>
           <h2 className="fw-extrabold mb-0 mt-1 tracking-tight text-dark" style={{ fontSize: '1.75rem', letterSpacing: '-0.03em' }}>
             Aquaculture Operations Hub
@@ -406,21 +467,24 @@ export default function AdminDashboard() {
             <FaCalendarAlt className="text-muted" style={{ fontSize: '0.8rem' }} />
             <select
               className="form-select form-select-sm border-0 bg-transparent fw-semibold text-dark p-0 ps-1"
-              style={{ width: 'auto', minWidth: 130, fontSize: '0.82rem', outline: 'none' }}
+              style={{ width: 'auto', minWidth: 140, fontSize: '0.82rem', outline: 'none' }}
               value={dateFilterType}
               onChange={(e) => setDateFilterType(e.target.value)}
             >
-              <option value="all">All Time History</option>
-              <option value="today">Today</option>
+              <option value="all">All Time History ({totalFilteredFeedKg.toFixed(1)} kg)</option>
+              <option value="today">Today ({new Date().toISOString().slice(0, 10)})</option>
               <option value="yesterday">Yesterday</option>
-              <option value="doc_batch">Aug 10–16 (DOC #1–#7 Batch)</option>
-              <option value="aug10">Aug 10 • DOC #1 (1.50 kg)</option>
-              <option value="aug11">Aug 11 • DOC #2 (3.25 kg)</option>
-              <option value="aug12">Aug 12 • DOC #3 (3.50 kg)</option>
-              <option value="aug13">Aug 13 • DOC #4 (3.75 kg)</option>
-              <option value="aug14">Aug 14 • DOC #5 (4.00 kg)</option>
-              <option value="aug15">Aug 15 • DOC #6 (4.25 kg)</option>
-              <option value="aug16">Aug 16 • DOC #7 (4.50 kg)</option>
+              {availableDates.map((item) => {
+                const doc = computeDoc(item.stockingDate, item.date);
+                const isNursery = doc !== null && doc <= 19;
+                const dateFormatted = new Date(item.date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                const stageBadge = doc ? (isNursery ? `DOC #${doc} Nursery` : `DOC #${doc} Grow-out`) : item.date;
+                return (
+                  <option key={item.date} value={item.date}>
+                    {dateFormatted} • {stageBadge} ({item.totalKg.toFixed(2)} kg)
+                  </option>
+                );
+              })}
               <option value="last7">Last 7 Days</option>
               <option value="custom">Custom Date…</option>
             </select>
@@ -488,105 +552,124 @@ export default function AdminDashboard() {
         <div className="col-12 col-xl-7">
           <div className="asymmetric-card p-4 h-100 d-flex flex-column justify-content-between">
             <div>
-              <div className="d-flex justify-content-between align-items-center mb-3">
-                <div>
-                  <h5 className="fw-extrabold mb-0 text-dark tracking-tight">Ponds Fleet Overview</h5>
-                  <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
-                    Active telemetry status across 6 production basins. Hover segments for live count.
-                  </p>
-                </div>
-                <span className="badge rounded-pill extra-small px-3 py-1.5" style={{ backgroundColor: '#F0F9FF', color: '#0284C7', border: '1px solid #BAE6FD' }}>
-                  Total 6 Ponds
-                </span>
-              </div>
+              {(() => {
+                const totalPondsCount = displayedPonds.length;
+                const healthyCount = displayedPonds.filter(p => (p.status || '').toLowerCase() === 'healthy').length;
+                const warningCount = displayedPonds.filter(p => (p.status || '').toLowerCase() === 'warning' || (p.status || '').toLowerCase() === 'maintenance').length;
+                const unmonitoredCount = displayedPonds.filter(p => !['healthy', 'warning', 'maintenance'].includes((p.status || '').toLowerCase())).length;
+                const healthyPct = totalPondsCount > 0 ? Math.round((healthyCount / totalPondsCount) * 1000) / 10 : 100;
+                const warningPct = totalPondsCount > 0 ? Math.round((warningCount / totalPondsCount) * 1000) / 10 : 0;
+                const unmonitoredPct = totalPondsCount > 0 ? Math.max(0, 100 - healthyPct - warningPct) : 0;
 
-              {/* Segmented Counters Legend */}
-              <div className="d-flex align-items-center gap-3 mb-2.5 flex-wrap extra-small fw-semibold">
-                <div className="d-flex align-items-center gap-1.5">
-                  <span className="rounded-circle" style={{ width: 8, height: 8, background: '#0284C7' }}></span>
-                  <span className="text-dark fw-bold">4 Active Healthy (66.7%)</span>
-                </div>
-                <div className="d-flex align-items-center gap-1.5">
-                  <span className="rounded-circle" style={{ width: 8, height: 8, background: '#FF7A00' }}></span>
-                  <span className="text-muted">1 Maintenance (16.7%)</span>
-                </div>
-                <div className="d-flex align-items-center gap-1.5">
-                  <span className="rounded-circle" style={{ width: 8, height: 8, background: '#E04848' }}></span>
-                  <span className="text-danger fw-bold">1 Bio-Quarantine (16.6%)</span>
-                </div>
-              </div>
+                return (
+                  <>
+                    <div className="d-flex justify-content-between align-items-center mb-3">
+                      <div>
+                        <h5 className="fw-extrabold mb-0 text-dark tracking-tight">Ponds Fleet Overview</h5>
+                        <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
+                          Active telemetry status across {totalPondsCount} production {totalPondsCount === 1 ? 'basin' : 'basins'}. Live caretaker monitoring.
+                        </p>
+                      </div>
+                      <span className="badge rounded-pill extra-small px-3 py-1.5" style={{ backgroundColor: '#F0F9FF', color: '#0284C7', border: '1px solid #BAE6FD' }}>
+                        Total {totalPondsCount} {totalPondsCount === 1 ? 'Pond' : 'Ponds'}
+                      </span>
+                    </div>
 
-              {/* Interactive Segmented Status Bar */}
-              <div className="position-relative mb-4">
-                <div className="segmented-status-bar">
-                  <div
-                    className="segment-item segment-active"
-                    style={{ width: '66.7%' }}
-                    onMouseEnter={() => setHoveredSegment('active')}
-                    onMouseLeave={() => setHoveredSegment(null)}
-                    title="4 Ponds Active & Healthy (66.7%)"
-                  ></div>
-                  <div
-                    className="segment-item segment-maintenance"
-                    style={{ width: '16.7%' }}
-                    onMouseEnter={() => setHoveredSegment('maintenance')}
-                    onMouseLeave={() => setHoveredSegment(null)}
-                    title="1 Pond Under Aerator Maintenance (16.7%)"
-                  ></div>
-                  <div
-                    className="segment-item segment-critical"
-                    style={{ width: '16.6%' }}
-                    onMouseEnter={() => setHoveredSegment('critical')}
-                    onMouseLeave={() => setHoveredSegment(null)}
-                    title="1 Pond Under Bio-Security Isolation (16.6%)"
-                  ></div>
-                </div>
+                    {/* Segmented Counters Legend */}
+                    <div className="d-flex align-items-center gap-3 mb-2.5 flex-wrap extra-small fw-semibold">
+                      <div className="d-flex align-items-center gap-1.5">
+                        <span className="rounded-circle" style={{ width: 8, height: 8, background: '#0284C7' }}></span>
+                        <span className="text-dark fw-bold">{healthyCount} Active Healthy ({healthyPct}%)</span>
+                      </div>
+                      {warningCount > 0 && (
+                        <div className="d-flex align-items-center gap-1.5">
+                          <span className="rounded-circle" style={{ width: 8, height: 8, background: '#FF7A00' }}></span>
+                          <span className="text-muted">{warningCount} Attention / Warning ({warningPct}%)</span>
+                        </div>
+                      )}
+                      {unmonitoredCount > 0 && (
+                        <div className="d-flex align-items-center gap-1.5">
+                          <span className="rounded-circle" style={{ width: 8, height: 8, background: '#64748B' }}></span>
+                          <span className="text-secondary fw-bold">{unmonitoredCount} Unmonitored ({unmonitoredPct}%)</span>
+                        </div>
+                      )}
+                    </div>
 
-                {/* Floating Segment Tooltip */}
-                {hoveredSegment && (
-                  <div
-                    className="position-absolute extra-small px-2.5 py-1 rounded-pill text-white shadow-sm"
-                    style={{
-                      top: -30,
-                      left: hoveredSegment === 'active' ? '30%' : hoveredSegment === 'maintenance' ? '70%' : '88%',
-                      transform: 'translateX(-50%)',
-                      background: '#1E293B',
-                      fontSize: '0.72rem',
-                      zIndex: 10
-                    }}
-                  >
-                    {hoveredSegment === 'active' && '4 Basins: DO 7.2 mg/L • pH 7.8'}
-                    {hoveredSegment === 'maintenance' && 'Pond #4: Oxygen Diffuser Check'}
-                    {hoveredSegment === 'critical' && 'Pond #3: WSSV Screening Active'}
-                  </div>
-                )}
-              </div>
+                    {/* Interactive Segmented Status Bar */}
+                    <div className="position-relative mb-4">
+                      <div className="segmented-status-bar">
+                        <div
+                          className="segment-item segment-active"
+                          style={{ width: `${healthyPct}%` }}
+                          onMouseEnter={() => setHoveredSegment('active')}
+                          onMouseLeave={() => setHoveredSegment(null)}
+                          title={`${healthyCount} Ponds Active & Healthy (${healthyPct}%)`}
+                        ></div>
+                        {warningPct > 0 && (
+                          <div
+                            className="segment-item segment-maintenance"
+                            style={{ width: `${warningPct}%` }}
+                            onMouseEnter={() => setHoveredSegment('maintenance')}
+                            onMouseLeave={() => setHoveredSegment(null)}
+                            title={`${warningCount} Ponds Under Attention / Maintenance (${warningPct}%)`}
+                          ></div>
+                        )}
+                        {unmonitoredPct > 0 && (
+                          <div
+                            className="segment-item segment-critical"
+                            style={{ width: `${unmonitoredPct}%`, background: '#64748B' }}
+                            onMouseEnter={() => setHoveredSegment('unmonitored')}
+                            onMouseLeave={() => setHoveredSegment(null)}
+                            title={`${unmonitoredCount} Ponds Unmonitored (${unmonitoredPct}%)`}
+                          ></div>
+                        )}
+                      </div>
+
+                      {/* Floating Segment Tooltip */}
+                      {hoveredSegment && (
+                        <div
+                          className="position-absolute extra-small px-2.5 py-1 rounded-pill text-white shadow-sm"
+                          style={{
+                            top: -30,
+                            left: hoveredSegment === 'active' ? '30%' : hoveredSegment === 'maintenance' ? '70%' : '88%',
+                            transform: 'translateX(-50%)',
+                            background: '#1E293B',
+                            fontSize: '0.72rem',
+                            zIndex: 10
+                          }}
+                        >
+                          {hoveredSegment === 'active' && `${healthyCount} Basins: DO & Temp Optimal`}
+                          {hoveredSegment === 'maintenance' && `${warningCount} Basins Under Observation`}
+                          {hoveredSegment === 'unmonitored' && `${unmonitoredCount} Basins Pending Initial Stocking`}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
             </div>
 
             {/* Dynamic Live Telemetry Pond Tiles with DOC */}
             <div className="row g-2.5">
-              {(ponds.length > 0 ? ponds.slice(0, 3) : [
-                { id: 1, name: 'Pond A1', stocking_date: '2026-08-10', feed_today_kg: 1.50, caretaker_name: 'Cj Arroyo' },
-                { id: 2, name: 'Pond #2 Main', stocking_date: '2026-07-01', feed_today_kg: 24.5, caretaker_name: 'Caretaker' },
-                { id: 3, name: 'Pond #3 East', stocking_date: '2026-06-15', feed_today_kg: 32.0, caretaker_name: 'Caretaker' },
-              ]).map((p) => {
-                let effectiveDate = '2026-08-16';
-                if (dateFilterType === 'aug10') effectiveDate = '2026-08-10';
-                else if (dateFilterType === 'aug11') effectiveDate = '2026-08-11';
-                else if (dateFilterType === 'aug12') effectiveDate = '2026-08-12';
-                else if (dateFilterType === 'aug13') effectiveDate = '2026-08-13';
-                else if (dateFilterType === 'aug14') effectiveDate = '2026-08-14';
-                else if (dateFilterType === 'aug15') effectiveDate = '2026-08-15';
-                else if (dateFilterType === 'aug16') effectiveDate = '2026-08-16';
-                else if (dateFilterType === 'custom' && customDate) effectiveDate = customDate;
-                else if (dateFilterType === 'today') effectiveDate = new Date().toISOString().slice(0, 10);
+              {displayedPonds.map((p) => {
+                const pondRecords = allFeedingRecords.filter((r) => String(r.pond_id) === String(p.id));
+                const latestPondRecordDate = pondRecords.length > 0
+                  ? pondRecords.reduce((max, r) => (r.record_date > max ? r.record_date : max), pondRecords[0].record_date)
+                  : null;
+
+                let effectiveDate = (dateFilterType !== 'all' && dateFilterType.match(/^\d{4}-\d{2}-\d{2}$/))
+                  ? dateFilterType
+                  : (dateFilterType === 'today' ? new Date().toISOString().slice(0, 10) : (latestPondRecordDate || new Date().toISOString().slice(0, 10)));
+
                 const doc = computeDoc(p.stocking_date, effectiveDate);
-                const isNursery = doc !== null && doc <= 25;
-                const feedKg = p.feed_today_kg !== null && p.feed_today_kg !== undefined ? parseFloat(p.feed_today_kg) : 0;
+                const isNursery = doc !== null && doc <= 19;
+
+                const pondFilteredRecords = pondRecords.filter((r) => isDateMatch(r.record_date || r.created_at));
+                const feedKg = pondFilteredRecords.reduce((sum, r) => sum + (parseFloat(r.amount_kg) || 0), 0);
                 const feedG = Math.round(feedKg * 1000);
 
                 return (
-                  <div className="col-12 col-md-4" key={p.id}>
+                  <div className={`col-12 col-md-${displayedPonds.length === 1 ? '12' : displayedPonds.length === 2 ? '6' : '4'}`} key={p.id}>
                     <div className="pond-telemetry-tile p-3 rounded-3 border bg-white shadow-xs">
                       <div className="d-flex justify-content-between align-items-center mb-1">
                         <span className="fw-bold small text-dark">{p.pond_name || p.name || `Pond #${p.id}`}</span>
@@ -599,7 +682,7 @@ export default function AdminDashboard() {
                         <span>Feed: <strong className="text-primary">{feedKg.toFixed(2)} kg ({feedG.toLocaleString()}g)</strong></span>
                       </div>
                       <div className="d-flex justify-content-between text-muted extra-small">
-                        <span>Caretaker: <strong className="text-dark">{p.caretaker_name || p.assigned_caretaker_name || 'Cj Arroyo'}</strong></span>
+                        <span>Caretaker: <strong className="text-dark">{p.caretaker_name || p.assigned_caretaker_name || selectedCaretakerObj?.full_name || 'Cj Arroyo'}</strong></span>
                         <span>Status: <strong className="text-success">{p.status || 'Optimal'}</strong></span>
                       </div>
                     </div>
@@ -613,71 +696,95 @@ export default function AdminDashboard() {
         {/* WIDGET 2: HARVEST PREDICTION (Compact Milestone Timeline Card) */}
         <div className="col-12 col-xl-5">
           <div className="asymmetric-card p-4 h-100 d-flex flex-column justify-content-between">
-            <div>
-              <div className="d-flex justify-content-between align-items-center mb-3">
+            {(() => {
+              const focusedPond = displayedPonds[0] || ponds[0] || { pond_name: 'Pond A1', stocking_date: '2026-08-10' };
+              const pondRecords = allFeedingRecords.filter((r) => String(r.pond_id) === String(focusedPond.id));
+              const latestPondRecordDate = pondRecords.length > 0
+                ? pondRecords.reduce((max, r) => (r.record_date > max ? r.record_date : max), pondRecords[0].record_date)
+                : null;
+              const effectiveFocusedDate = (dateFilterType !== 'all' && dateFilterType.match(/^\d{4}-\d{2}-\d{2}$/))
+                ? dateFilterType
+                : (latestPondRecordDate || new Date().toISOString().slice(0, 10));
+              const focusedDoc = computeDoc(focusedPond.stocking_date, effectiveFocusedDate) || 33;
+              const focusedIsNursery = focusedDoc <= 19;
+              const cultureProgressPct = Math.min(100, Math.round((focusedDoc / 90) * 100));
+
+              return (
                 <div>
-                  <h5 className="fw-extrabold mb-0 text-dark tracking-tight">Harvest Milestone Forecast</h5>
-                  <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
-                    AI biomass projection based on feed conversion & size samples.
-                  </p>
-                </div>
-                <div className="rounded-circle p-2" style={{ backgroundColor: '#FFF7ED', color: '#FF7A00' }}>
-                  <FaCalendarCheck size={16} />
-                </div>
-              </div>
+                  <div className="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                      <h5 className="fw-extrabold mb-0 text-dark tracking-tight">Harvest Milestone Forecast</h5>
+                      <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
+                        Biomass projection for {focusedPond.pond_name || 'Pond A1'} based on feed conversion & DOC progression.
+                      </p>
+                    </div>
+                    <div className="rounded-circle p-2" style={{ backgroundColor: '#FFF7ED', color: '#FF7A00' }}>
+                      <FaCalendarCheck size={16} />
+                    </div>
+                  </div>
 
-              {/* Key Forecast Metric Badges */}
-              <div className="d-flex align-items-center gap-3 p-3 rounded-3 mb-3" style={{ background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
-                <div className="flex-grow-1">
-                  <span className="text-muted extra-small text-uppercase fw-bold d-block">Projected Biomass</span>
-                  <span className="fw-extrabold text-dark fs-5">4,850 kg</span>
-                  <span className="extra-small text-success ms-1 fw-bold"><FaArrowUp size={9} /> +8.4% target</span>
-                </div>
-                <div className="vr opacity-25"></div>
-                <div className="flex-grow-1">
-                  <span className="text-muted extra-small text-uppercase fw-bold d-block">Est. Harvest Window</span>
-                  <span className="fw-extrabold text-dark fs-5">12 Days</span>
-                  <span className="extra-small text-muted ms-1">Pond #3 Batch</span>
-                </div>
-              </div>
+                  {/* Key Forecast Metric Badges */}
+                  <div className="d-flex align-items-center gap-3 p-3 rounded-3 mb-3" style={{ background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
+                    <div className="flex-grow-1">
+                      <span className="text-muted extra-small text-uppercase fw-bold d-block">Current Stage</span>
+                      <span className="fw-extrabold text-dark fs-5">
+                        {focusedIsNursery ? '🌱 Nursery' : '🌊 Grow-out'}
+                      </span>
+                      <span className="extra-small text-primary ms-1 fw-bold">DOC #{focusedDoc}</span>
+                    </div>
+                    <div className="vr opacity-25"></div>
+                    <div className="flex-grow-1">
+                      <span className="text-muted extra-small text-uppercase fw-bold d-block">Target Harvest</span>
+                      <span className="fw-extrabold text-dark fs-5">{Math.max(0, 90 - focusedDoc)} Days</span>
+                      <span className="extra-small text-muted ms-1">DOC 90–100 Target</span>
+                    </div>
+                  </div>
 
-              {/* Milestone Timeline Track */}
-              <div className="milestone-track">
-                <div className="milestone-line-bg"></div>
-                <div className="milestone-line-fill" style={{ width: '72%' }}></div>
+                  {/* Milestone Timeline Track */}
+                  <div className="milestone-track">
+                    <div className="milestone-line-bg"></div>
+                    <div className="milestone-line-fill" style={{ width: `${cultureProgressPct}%` }}></div>
 
-                {/* Step 1 */}
-                <div className="milestone-step">
-                  <div className="milestone-node completed">✓</div>
-                  <span className="fw-bold mt-2 extra-small text-dark">PL-15 Stocking</span>
-                  <span className="text-muted extra-small font-mono">Day 1</span>
-                </div>
+                    {/* Step 1 */}
+                    <div className="milestone-step">
+                      <div className="milestone-node completed">✓</div>
+                      <span className="fw-bold mt-2 extra-small text-dark">PL-15 Stocking</span>
+                      <span className="text-muted extra-small font-mono">Day 1</span>
+                    </div>
 
-                {/* Step 2 */}
-                <div className="milestone-step">
-                  <div className="milestone-node completed">✓</div>
-                  <span className="fw-bold mt-2 extra-small text-dark">Nursery</span>
-                  <span className="text-muted extra-small font-mono">Day 45</span>
-                </div>
+                    {/* Step 2 */}
+                    <div className="milestone-step">
+                      <div className={`milestone-node ${focusedDoc >= 20 ? 'completed' : 'current'}`}>
+                        {focusedDoc >= 20 ? '✓' : '2'}
+                      </div>
+                      <span className="fw-bold mt-2 extra-small text-dark">Nursery</span>
+                      <span className="text-muted extra-small font-mono">Day 1–19</span>
+                    </div>
 
-                {/* Step 3 (Current) */}
-                <div className="milestone-step">
-                  <div className="milestone-node current">3</div>
-                  <span className="fw-bold mt-2 extra-small" style={{ color: '#FF7A00' }}>28g Biomass</span>
-                  <span className="badge rounded-pill extra-small text-white" style={{ background: '#FF7A00', fontSize: '0.62rem' }}>74% Done</span>
-                </div>
+                    {/* Step 3 (Current) */}
+                    <div className="milestone-step">
+                      <div className={`milestone-node ${focusedDoc >= 20 ? 'current' : 'upcoming'}`}>3</div>
+                      <span className="fw-bold mt-2 extra-small" style={{ color: focusedDoc >= 20 ? '#FF7A00' : '#64748B' }}>
+                        Grow-out
+                      </span>
+                      <span className="badge rounded-pill extra-small text-white" style={{ background: '#FF7A00', fontSize: '0.62rem' }}>
+                        {cultureProgressPct}% Cycle
+                      </span>
+                    </div>
 
-                {/* Step 4 */}
-                <div className="milestone-step">
-                  <div className="milestone-node upcoming">4</div>
-                  <span className="fw-bold mt-2 extra-small text-muted">Full Harvest</span>
-                  <span className="text-muted extra-small font-mono">In 12d</span>
+                    {/* Step 4 */}
+                    <div className="milestone-step">
+                      <div className="milestone-node upcoming">4</div>
+                      <span className="fw-bold mt-2 extra-small text-muted">Harvest</span>
+                      <span className="text-muted extra-small font-mono">Day 90+</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              );
+            })()}
 
             <div className="pt-2 d-flex justify-content-between align-items-center border-top">
-              <span className="text-muted extra-small">Average Shrimp Growth Rate: <strong>0.32g / day</strong></span>
+              <span className="text-muted extra-small">20-Day Threshold: <strong>Days 1–19 Nursery • Day 20+ Grow-out</strong></span>
               <Link to="/admin/harvest" className="fw-bold extra-small text-decoration-none" style={{ color: '#FF7A00' }}>
                 Growth Curve →
               </Link>
@@ -696,7 +803,7 @@ export default function AdminDashboard() {
               <div>
                 <h5 className="fw-extrabold mb-0 text-dark tracking-tight">Feeding Dispersal Wave & Consumption</h5>
                 <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
-                  Continuous hourly feed mass distribution. Hover curve to inspect telemetry details.
+                  Continuous feed mass distribution from caretaker logs. Hover curve to inspect details.
                 </p>
               </div>
               <Link to="/admin/feeding" className="btn btn-sm rounded-pill px-3 py-1 extra-small fw-semibold border text-dark bg-light">
@@ -716,14 +823,16 @@ export default function AdminDashboard() {
               <div className="col-4">
                 <div className="p-3 rounded-3 bg-light border">
                   <span className="extra-small text-muted text-uppercase fw-bold d-block">Automated Cycles</span>
-                  <span className="fw-extrabold text-dark fs-4">{filteredFeedingRecords.length || 72} Runs</span>
-                  <span className="extra-small text-muted d-block">Timers verified</span>
+                  <span className="fw-extrabold text-dark fs-4">{filteredFeedingRecords.length} Runs</span>
+                  <span className="extra-small text-muted d-block">{filteredFeedingRecords.length > 0 ? 'Verified logs' : 'No logs in window'}</span>
                 </div>
               </div>
               <div className="col-4">
                 <div className="p-3 rounded-3 bg-light border">
                   <span className="extra-small text-muted text-uppercase fw-bold d-block">Ration Adherence</span>
-                  <span className="fw-extrabold text-dark fs-4" style={{ color: '#16A34A' }}>98.4%</span>
+                  <span className="fw-extrabold text-dark fs-4" style={{ color: '#16A34A' }}>
+                    {filteredFeedingRecords.length > 0 ? '100%' : '—'}
+                  </span>
                   <span className="extra-small text-muted d-block">Zero feed waste</span>
                 </div>
               </div>
@@ -764,7 +873,7 @@ export default function AdminDashboard() {
                     const stockingDate = pondObj?.stocking_date || (String(r.pond_id) === '1' ? '2026-08-10' : null);
                     const recordDate = (r.record_date || r.created_at || '').slice(0, 10);
                     const doc = computeDoc(stockingDate, recordDate);
-                    const isNursery = doc !== null && doc <= 25;
+                    const isNursery = doc !== null && doc <= 19;
                     const amountKg = parseFloat(r.amount_kg) || 0;
                     const amountG = r.amount_grams !== null && r.amount_grams !== undefined
                       ? parseFloat(r.amount_grams)
@@ -827,54 +936,71 @@ export default function AdminDashboard() {
         {/* WIDGET 4: DISEASE RISK ANALYSIS (Minimalist Donut Chart + Clean Legend Tags) */}
         <div className="col-12 col-xl-4">
           <div className="asymmetric-card p-4 mb-4">
-            <div className="d-flex justify-content-between align-items-center mb-2">
-              <div>
-                <h5 className="fw-extrabold mb-0 text-dark tracking-tight">Disease Risk Breakdown</h5>
-                <p className="text-muted mb-0 small" style={{ fontSize: '0.8rem' }}>AI Biosecurity Health Index</p>
-              </div>
-              <span className="tag-green-safe">● 94% Bio-Safe</span>
-            </div>
+            {(() => {
+              const activeDiseaseReports = filteredDiseaseReports.length > 0 ? filteredDiseaseReports : allDiseaseReports;
+              const safeCount = activeDiseaseReports.filter(r => (r.risk_level || '').toLowerCase() === 'low' || (r.disease_name || '').toLowerCase() === 'healthy').length;
+              const modCount = activeDiseaseReports.filter(r => ['moderate', 'medium', 'warning'].includes((r.risk_level || '').toLowerCase())).length;
+              const critCount = activeDiseaseReports.filter(r => ['high', 'critical'].includes((r.risk_level || '').toLowerCase())).length;
+              const totalCount = activeDiseaseReports.length || 1;
+              const safePct = Math.round((safeCount / totalCount) * 100);
+              const modPct = Math.round((modCount / totalCount) * 100);
+              const critPct = Math.max(0, 100 - safePct - modPct);
 
-            {/* Minimalist Donut Chart */}
-            <div className="position-relative d-flex justify-content-center align-items-center my-3" style={{ height: 190 }}>
-              <Doughnut
-                data={{
-                  labels: ['Safe', 'Moderate Risk', 'Critical Alert'],
-                  datasets: [
-                    {
-                      data: [72, 20, 8],
-                      backgroundColor: ['#16A34A', '#0284C7', '#FF7A00'],
-                      borderWidth: 3,
-                      borderColor: '#FFFFFF',
-                      hoverOffset: 4
-                    }
-                  ]
-                }}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: { legend: { display: false } },
-                  cutout: '78%'
-                }}
-              />
-              <div className="position-absolute text-center">
-                <span className="extra-small text-muted d-block" style={{ fontSize: '0.72rem' }}>Fleet Risk</span>
-                <strong className="fw-extrabold text-dark" style={{ fontSize: '1.25rem' }}>LOW</strong>
-              </div>
-            </div>
+              return (
+                <>
+                  <div className="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                      <h5 className="fw-extrabold mb-0 text-dark tracking-tight">Disease Risk Breakdown</h5>
+                      <p className="text-muted mb-0 small" style={{ fontSize: '0.8rem' }}>AI Biosecurity Health Index</p>
+                    </div>
+                    <span className="tag-green-safe">● {safePct}% Bio-Safe</span>
+                  </div>
 
-            {/* Clean Legend Tags: Critical, Moderate, Safe */}
-            <div className="d-flex justify-content-center gap-2 mb-3 flex-wrap">
-              <span className="tag-orange-maintenance">● Critical (8%)</span>
-              <span className="tag-cyan-active">● Moderate (20%)</span>
-              <span className="tag-green-safe">● Safe (72%)</span>
-            </div>
+                  {/* Minimalist Donut Chart */}
+                  <div className="position-relative d-flex justify-content-center align-items-center my-3" style={{ height: 190 }}>
+                    <Doughnut
+                      data={{
+                        labels: ['Safe', 'Moderate Risk', 'Critical Alert'],
+                        datasets: [
+                          {
+                            data: [safeCount || 1, modCount, critCount],
+                            backgroundColor: ['#16A34A', '#0284C7', '#FF7A00'],
+                            borderWidth: 3,
+                            borderColor: '#FFFFFF',
+                            hoverOffset: 4
+                          }
+                        ]
+                      }}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        cutout: '78%'
+                      }}
+                    />
+                    <div className="position-absolute text-center">
+                      <span className="extra-small text-muted d-block" style={{ fontSize: '0.72rem' }}>Fleet Risk</span>
+                      <strong className="fw-extrabold text-dark" style={{ fontSize: '1.25rem' }}>
+                        {critCount > 0 ? 'HIGH' : modCount > 0 ? 'MOD' : 'LOW'}
+                      </strong>
+                    </div>
+                  </div>
+
+                  {/* Clean Legend Tags: Critical, Moderate, Safe */}
+                  <div className="d-flex justify-content-center gap-2 mb-3 flex-wrap">
+                    <span className="tag-green-safe">● Safe ({safePct}%)</span>
+                    {modPct > 0 && <span className="tag-cyan-active">● Moderate ({modPct}%)</span>}
+                    {critPct > 0 && <span className="tag-orange-maintenance">● Critical ({critPct}%)</span>}
+                  </div>
+                </>
+              );
+            })()}
 
             {/* Priority Filter Tabs */}
             <div className="d-flex justify-content-between align-items-center mb-2.5 pt-2 border-top">
               <span className="fw-bold extra-small text-dark">Live Diagnostic Stream</span>
               <div className="d-flex gap-1">
-                {['all', 'critical', 'moderate'].map((lvl) => (
+                {['all', 'critical', 'moderate', 'safe'].map((lvl) => (
                   <button
                     key={lvl}
                     type="button"
@@ -892,57 +1018,65 @@ export default function AdminDashboard() {
 
             {/* Prioritized Diagnostic Items */}
             <div className="d-flex flex-column gap-2" style={{ maxHeight: 240, overflowY: 'auto' }}>
-              {diseaseItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="p-2.5 rounded-3 border d-flex justify-content-between align-items-center"
-                  style={{
-                    backgroundColor: item.risk === 'critical' ? '#FFF7ED' : '#F8FAFC',
-                    borderColor: item.risk === 'critical' ? '#FFEDD5' : '#E2E8F0'
-                  }}
-                >
-                  <div style={{ minWidth: 0 }}>
-                    <div className="d-flex align-items-center gap-1.5 mb-1">
-                      {item.risk === 'critical' ? (
-                        <span className="tag-orange-maintenance">CRITICAL</span>
-                      ) : item.risk === 'moderate' ? (
-                        <span className="tag-cyan-active">MODERATE</span>
-                      ) : (
-                        <span className="tag-green-safe">SAFE</span>
-                      )}
-                      <span className="fw-bold extra-small text-dark">{item.pond}</span>
+              {diseaseItems.length > 0 ? (
+                diseaseItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="p-2.5 rounded-3 border d-flex justify-content-between align-items-center"
+                    style={{
+                      backgroundColor: item.risk === 'critical' ? '#FFF7ED' : '#F8FAFC',
+                      borderColor: item.risk === 'critical' ? '#FFEDD5' : '#E2E8F0'
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <div className="d-flex align-items-center gap-1.5 mb-1">
+                        {item.risk === 'critical' ? (
+                          <span className="tag-orange-maintenance">CRITICAL</span>
+                        ) : item.risk === 'moderate' ? (
+                          <span className="tag-cyan-active">MODERATE</span>
+                        ) : (
+                          <span className="tag-green-safe">SAFE</span>
+                        )}
+                        <span className="fw-bold extra-small text-dark">{item.pond}</span>
+                      </div>
+                      <div className="fw-semibold text-truncate text-dark" style={{ fontSize: '0.8rem' }}>
+                        {item.title}
+                      </div>
+                      <div className="extra-small text-muted">
+                        {item.confidence} AI Vision • {item.time}
+                      </div>
                     </div>
-                    <div className="fw-semibold text-truncate text-dark" style={{ fontSize: '0.8rem' }}>
-                      {item.title}
-                    </div>
-                    <div className="extra-small text-muted">
-                      {item.confidence} AI Vision • {item.time}
-                    </div>
-                  </div>
 
-                  {/* Quick Action Buttons */}
-                  <div className="d-flex flex-column gap-1 flex-shrink-0 ms-2">
-                    <button
-                      type="button"
-                      className="btn btn-xs rounded-pill px-2 py-1 fw-bold text-white"
-                      style={{ background: '#0B2C5F', fontSize: '0.68rem' }}
-                      onClick={() => navigate(`/admin/disease-reports?pond=${encodeURIComponent(item.pond)}`)}
-                    >
-                      <FaEye size={9} /> Inspect
-                    </button>
-                    {item.risk === 'critical' && (
+                    {/* Quick Action Buttons */}
+                    <div className="d-flex flex-column gap-1 flex-shrink-0 ms-2">
                       <button
                         type="button"
-                        className="btn btn-xs rounded-pill px-2 py-0.5 fw-bold text-white btn-danger"
-                        style={{ fontSize: '0.66rem' }}
-                        onClick={() => handleQuickIsolate(item)}
+                        className="btn btn-xs rounded-pill px-2 py-1 fw-bold text-white"
+                        style={{ background: '#0B2C5F', fontSize: '0.68rem' }}
+                        onClick={() => navigate(`/admin/disease-reports?pond=${encodeURIComponent(item.pond)}`)}
                       >
-                        <FaShieldAlt size={8} /> Isolate
+                        <FaEye size={9} /> Inspect
                       </button>
-                    )}
+                      {item.risk === 'critical' && (
+                        <button
+                          type="button"
+                          className="btn btn-xs rounded-pill px-2 py-0.5 fw-bold text-white btn-danger"
+                          style={{ fontSize: '0.66rem' }}
+                          onClick={() => handleQuickIsolate(item)}
+                        >
+                          <FaShieldAlt size={8} /> Isolate
+                        </button>
+                      )}
+                    </div>
                   </div>
+                ))
+              ) : (
+                <div className="text-center py-4 text-muted extra-small">
+                  <FaCheckCircle className="text-success mb-1" size={18} />
+                  <div>No disease anomalies detected for selected filter.</div>
+                  <div className="text-success fw-bold mt-0.5">All monitored basins are bio-secure.</div>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>

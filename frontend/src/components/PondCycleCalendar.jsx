@@ -16,9 +16,9 @@ import {
  * PondCycleCalendar
  *
  * Displays a cycle calendar highlighting:
- * - Days 1 to 25: Nursery Phase (Starter Feed)
- * - Day 26: Transfer Milestone to Grow-out Pond
- * - Days 26+: Grow-out Phase (Grower Feed)
+ * - Days 1–19: Nursery Phase (Starter Feed)
+ * - Day 20: Transfer Milestone to Grow-out Pond
+ * - Day 20+: Grow-out Phase (Grower Feed)
  *
  * @param {string} stockingDate - e.g. "2026-08-01"
  * @param {string} selectedDate - e.g. "2026-08-26"
@@ -181,17 +181,17 @@ export default function PondCycleCalendar({
     let feedDesc = 'Awaiting Post-larvae stocking';
 
     if (doc !== null) {
-      if (doc >= 1 && doc <= 25) {
+      if (doc >= 1 && doc <= 19) {
         stage = 'Nursery Phase';
         stageTone = 'nursery';
         feedType = 'Starter';
-        feedDesc = 'Days 1–25: Shrimp in Nursery Pond receiving Starter Feed';
-      } else if (doc === 26) {
+        feedDesc = 'Days 1–19: Shrimp in Nursery Pond receiving Starter Feed';
+      } else if (doc === 20) {
         stage = 'Transfer Day';
         stageTone = 'transfer';
         feedType = 'Grower';
-        feedDesc = 'Day 26 Milestone: Transfer to Grow-out Pond & switch to Grower Feed';
-      } else if (doc > 26) {
+        feedDesc = 'Day 20 Milestone: Transfer to Grow-out Pond & switch to Grower Feed';
+      } else if (doc > 20) {
         stage = 'Grow-out Phase';
         stageTone = 'growout';
         feedType = 'Grower';
@@ -225,13 +225,13 @@ export default function PondCycleCalendar({
       let stage = 'Pre-Stocking';
       let feedType = 'None';
       if (doc !== null) {
-        if (doc >= 1 && doc <= 25) {
+        if (doc >= 1 && doc <= 19) {
           stage = 'Nursery';
           feedType = 'Starter';
-        } else if (doc === 26) {
+        } else if (doc === 20) {
           stage = 'Transfer Day';
           feedType = 'Grower';
-        } else if (doc > 26) {
+        } else if (doc > 20) {
           stage = 'Grow-out';
           feedType = 'Grower';
         }
@@ -264,7 +264,7 @@ export default function PondCycleCalendar({
                 <strong>
                   {stockingParsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                 </strong>{' '}
-                • Days 1–25 Nursery (Starter) ➔ Day 26+ Grow-out (Grower)
+                • Days 1–19 Nursery (Starter) ➔ Day 20+ Grow-out (Grower)
               </>
             ) : (
               'No stocking date configured for this pond. Using estimated timeline.'
@@ -289,15 +289,15 @@ export default function PondCycleCalendar({
         <span className="fw-bold text-muted extra-small text-uppercase">Cycle Legend:</span>
         <span className="badge px-2 py-1.5 fw-semibold d-inline-flex align-items-center gap-1" style={{ background: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0' }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#10B981', display: 'inline-block' }}></span>
-          🌱 Days 1–25: Nursery Pond (Starter Feed)
+          🌱 Days 1–19: Nursery Pond (Starter Feed)
         </span>
         <span className="badge px-2 py-1.5 fw-semibold d-inline-flex align-items-center gap-1" style={{ background: '#FEF3C7', color: '#B45309', border: '1px solid #FDE68A' }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#F59E0B', display: 'inline-block' }}></span>
-          ⚡ Day 26: Transfer Day to Grow-out
+          ⚡ Day 20: Transfer Day to Grow-out
         </span>
         <span className="badge px-2 py-1.5 fw-semibold d-inline-flex align-items-center gap-1" style={{ background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE' }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#3B82F6', display: 'inline-block' }}></span>
-          🌊 Day 26+: Grow-out Pond (Grower Feed)
+          🌊 Day 20+: Grow-out Pond (Grower Feed)
         </span>
       </div>
 
@@ -368,9 +368,9 @@ export default function PondCycleCalendar({
       >
         {calendarCells.map((cell, idx) => {
           const isSelected = cell.dateStr === activeSelectedDateStr;
-          const isNursery = cell.doc !== null && cell.doc >= 1 && cell.doc <= 25;
-          const isTransferDay = cell.doc === 26;
-          const isGrowout = cell.doc !== null && cell.doc > 26;
+          const isNursery = cell.doc !== null && cell.doc >= 1 && cell.doc <= 19;
+          const isTransferDay = cell.doc === 20;
+          const isGrowout = cell.doc !== null && cell.doc > 20;
           const hasLogs = Boolean(recordsByDate[cell.dateStr]?.length);
 
           let bg = '#FAFAFA';

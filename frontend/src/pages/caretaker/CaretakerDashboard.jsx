@@ -106,7 +106,6 @@ export default function CaretakerDashboard() {
         api.get('/water_quality_records.php', {
           params: {
             caretaker_id: user?.id || 0,
-            date: todayDateStr,
           },
         }),
         api.get('/caretaker_ponds.php', {
@@ -116,7 +115,17 @@ export default function CaretakerDashboard() {
         }),
       ]);
 
-      if (feedRes.status === 'fulfilled') setRecords(safeArray(feedRes.value.data));
+      if (feedRes.status === 'fulfilled') {
+        const recs = safeArray(feedRes.value.data);
+        setRecords(recs);
+        const hasToday = recs.some((r) => (r.record_date || r.created_at || '').slice(0, 10) === todayDateStr);
+        if (!hasToday && recs.length > 0) {
+          const sortedRecDates = Array.from(new Set(recs.map((r) => (r.record_date || r.created_at || '').slice(0, 10)).filter(Boolean))).sort().reverse();
+          if (sortedRecDates[0]) {
+            setSelectedDate(sortedRecDates[0]);
+          }
+        }
+      }
       if (diseaseRes.status === 'fulfilled') setDiseaseScans(safeArray(diseaseRes.value.data));
       if (alertsRes.status === 'fulfilled') setAlerts(safeArray(alertsRes.value.data));
       if (wqRes.status === 'fulfilled' && wqRes.value.data?.success) {
@@ -145,6 +154,25 @@ export default function CaretakerDashboard() {
 
   const todayStr = new Date().toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState(todayStr);
+
+  const availableDates = useMemo(() => {
+    const dateMap = new Map();
+    records.forEach((r) => {
+      const d = (r.record_date || r.created_at || '').slice(0, 10);
+      if (!d) return;
+      const existing = dateMap.get(d) || {
+        date: d,
+        count: 0,
+        totalKg: 0,
+        stockingDate: r.stocking_date || assignedPonds[0]?.stocking_date || '2026-08-10'
+      };
+      existing.count += 1;
+      existing.totalKg += parseFloat(r.amount_kg) || 0;
+      dateMap.set(d, existing);
+    });
+    return Array.from(dateMap.values()).sort((a, b) => b.date.localeCompare(a.date));
+  }, [records, assignedPonds]);
+
   const selectedDateRecords = records.filter((r) => (r.record_date || r.created_at || '').slice(0, 10) === selectedDate);
   const todayRecords = selectedDateRecords;
   const filteredTodayRecords = selectedDateRecords.filter((r) => {
@@ -206,7 +234,7 @@ export default function CaretakerDashboard() {
               ● CARETAKER CONSOLE
             </span>
             <span className="text-muted extra-small">
-              {assignedPonds.length} Assigned Basins • Telemetry Verification
+              {assignedPonds.length} Assigned {assignedPonds.length === 1 ? 'Basin' : 'Basins'} • Telemetry Verification
             </span>
           </div>
           <h2 className="fw-extrabold mb-0 mt-1 tracking-tight text-dark" style={{ fontSize: '1.75rem', letterSpacing: '-0.03em' }}>
@@ -253,13 +281,19 @@ export default function CaretakerDashboard() {
               title="Quick jump to Culture Day (DOC)"
             >
               <option value={todayStr}>Today ({todayStr})</option>
-              <option value="2026-08-10">Aug 10 • DOC #1 (1.50 kg)</option>
-              <option value="2026-08-11">Aug 11 • DOC #2 (3.25 kg)</option>
-              <option value="2026-08-12">Aug 12 • DOC #3 (3.50 kg)</option>
-              <option value="2026-08-13">Aug 13 • DOC #4 (3.75 kg)</option>
-              <option value="2026-08-14">Aug 14 • DOC #5 (4.00 kg)</option>
-              <option value="2026-08-15">Aug 15 • DOC #6 (4.25 kg)</option>
-              <option value="2026-08-16">Aug 16 • DOC #7 (4.50 kg)</option>
+              {availableDates.map((item) => {
+                const pondObj = assignedPonds[0];
+                const sDate = item.stockingDate || pondObj?.stocking_date;
+                const doc = computeDoc(sDate, item.date);
+                const isNursery = doc !== null && doc <= 19;
+                const dateFormatted = new Date(item.date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                const stageBadge = doc ? (isNursery ? `DOC #${doc} Nursery` : `DOC #${doc} Grow-out`) : item.date;
+                return (
+                  <option key={item.date} value={item.date}>
+                    {dateFormatted} • {stageBadge} ({item.totalKg.toFixed(2)} kg)
+                  </option>
+                );
+              })}
             </select>
           </div>
 
@@ -326,7 +360,7 @@ export default function CaretakerDashboard() {
             <div>
               <div className="d-flex align-items-center gap-2.5 flex-wrap">
                 <h6 className="fw-bold mb-0 text-white" style={{ fontSize: '1rem', letterSpacing: '-0.01em' }}>
-                  Daily Water Quality Verification Protocol
+                  Pre-Stocking Water Quality Verification
                 </h6>
                 <span
                   className="d-inline-flex align-items-center gap-1.5 px-3 py-1 rounded-pill"
@@ -351,13 +385,13 @@ export default function CaretakerDashboard() {
                       backgroundColor: waterQualityChecklist.is_all_completed ? '#10B981' : '#F59E0B',
                     }}
                   />
-                  {waterQualityChecklist.verified_count} / {assignedPonds.length} Ponds Verified Today
+                  {waterQualityChecklist.verified_count} / {assignedPonds.length} Ponds Verified (Baseline)
                 </span>
               </div>
               <p className="text-white text-opacity-80 extra-small mb-0 mt-1" style={{ maxWidth: 640 }}>
                 {waterQualityChecklist.is_all_completed
-                  ? 'All assigned ponds verified for today. Monitoring and feeding records are fully unlocked.'
-                  : 'Mandatory O&B Aqua Farm Protocol: Verify DO, Temp, pH, and Salinity via Dual-Mode OCR before logging feeding records.'}
+                  ? 'All assigned ponds have verified baseline water quality on record. Monitoring and feeding records are fully unlocked.'
+                  : 'O&B Aqua Farm Protocol: Verify DO, Temp, pH, and Salinity via Dual-Mode OCR once before initiating pond monitoring and stocking.'}
               </p>
             </div>
           </div>
@@ -428,7 +462,7 @@ export default function CaretakerDashboard() {
                         {pond.stocking_date && (() => {
                           const doc = computeDoc(pond.stocking_date, selectedDate);
                           if (!doc) return null;
-                          const isNursery = doc >= 1 && doc <= 25;
+                          const isNursery = doc >= 1 && doc <= 19;
                           return (
                             <span
                               className="badge rounded-pill px-2 py-0.5 extra-small fw-bold"
@@ -492,7 +526,7 @@ export default function CaretakerDashboard() {
                         ) : (
                           <span className="text-danger fw-medium d-inline-flex align-items-center gap-1" style={{ fontSize: '0.74rem' }}>
                             <FaLock size={9} className="text-danger opacity-75" />
-                            <span>Monitoring & Feeding Locked</span>
+                            <span>Pre-Stocking Scan Required</span>
                           </span>
                         )}
                       </div>
@@ -891,7 +925,7 @@ export default function CaretakerDashboard() {
                         const sDate = r.stocking_date || pondObj?.stocking_date;
                         const d = computeDoc(sDate, r.record_date || selectedDate);
                         if (!d) return <span className="text-muted extra-small">—</span>;
-                        const isNur = d >= 1 && d <= 25;
+                        const isNur = d >= 1 && d <= 19;
                         return (
                           <span
                             className={`badge rounded-pill extra-small fw-bold ${

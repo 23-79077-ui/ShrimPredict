@@ -134,18 +134,18 @@ export default function FeedingPage() {
     return todayYMD;
   }, [dateFilter, customDate, todayYMD]);
 
-  // Count active basins in Nursery (Days 1–25) vs Grow-out (Day 26+) on effectiveFilterDate
+  // Count active basins in Nursery (Days 1–19) vs Grow-out (Day 20+) on effectiveFilterDate
   const nurseryPondsCount = useMemo(() => {
     return ponds.filter((p) => {
       const d = computeDoc(p.stocking_date, effectiveFilterDate);
-      return d !== null && d >= 1 && d <= 25;
+      return d !== null && d >= 1 && d <= 19;
     }).length;
   }, [ponds, effectiveFilterDate]);
 
   const growoutPondsCount = useMemo(() => {
     return ponds.filter((p) => {
       const d = computeDoc(p.stocking_date, effectiveFilterDate);
-      return d !== null && d >= 26;
+      return d !== null && d >= 20;
     }).length;
   }, [ponds, effectiveFilterDate]);
 
@@ -158,10 +158,10 @@ export default function FeedingPage() {
         const stocking = r.stocking_date || pondObj?.stocking_date;
         const doc = computeDoc(stocking, rDate);
         const isNursery = doc !== null
-          ? (doc >= 1 && doc <= 25)
+          ? (doc >= 1 && doc <= 19)
           : String(r.feed_type || r.product_code).toLowerCase().includes('starter');
         const isGrowout = doc !== null
-          ? (doc >= 26)
+          ? (doc >= 20)
           : String(r.feed_type || r.product_code).toLowerCase().includes('grower');
         return {
           ...r,
@@ -433,8 +433,8 @@ export default function FeedingPage() {
       const originalPond = ponds.find((p) => String(p.id) === String(item.pond_id) || p.pond_name === item.pond_name);
       const stockingDate = originalPond?.stocking_date || item.records[0]?.stocking_date || null;
       const doc = computeDoc(stockingDate, effectiveFilterDate);
-      const isNursery = doc !== null ? (doc >= 1 && doc <= 25) : false;
-      const isGrowout = doc !== null ? (doc >= 26) : false;
+      const isNursery = doc !== null ? (doc >= 1 && doc <= 19) : false;
+      const isGrowout = doc !== null ? (doc >= 20) : false;
       const stage = isNursery ? 'nursery' : (isGrowout ? 'growout' : 'prestock');
       const expectedFeed = isGrowout ? 'Grower' : 'Starter';
 
@@ -1005,12 +1005,12 @@ export default function FeedingPage() {
               }}
               onClick={() => setStageFilter('growout')}
             >
-              🌊 Grow-out Basins (Day 26+ • Grower Feed) ({growoutPondsCount})
+              🌊 Grow-out Basins (Day 20+ • Grower Feed) ({growoutPondsCount})
             </button>
           </div>
 
           <div className="extra-small text-muted">
-            SOP Transition: <strong>Days 1–25 Nursery (Starter)</strong> ➔ <strong>Day 26+ Grow-out (Grower)</strong>
+            SOP Transition: <strong>Days 1–19 Nursery (Starter)</strong> ➔ <strong>Day 20+ Grow-out (Grower)</strong>
           </div>
         </div>
 
@@ -1184,14 +1184,14 @@ export default function FeedingPage() {
                             className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1"
                             style={{ background: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0', fontSize: '0.78rem' }}
                           >
-                            🌱 {p.doc ? `Day ${p.doc}` : 'DOC 1-25'} • Nursery
+                            🌱 {p.doc ? `Day ${p.doc}` : 'DOC 1-19'} • Nursery
                           </span>
                         ) : p.isGrowout ? (
                           <span
                             className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1"
                             style={{ background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', fontSize: '0.78rem' }}
                           >
-                            🌊 {p.doc ? `Day ${p.doc}` : 'DOC 26+'} • Grow-out
+                            🌊 {p.doc ? `Day ${p.doc}` : 'DOC 20+'} • Grow-out
                           </span>
                         ) : (
                           <span className="badge bg-light text-muted border extra-small">Pre-Stocking</span>
@@ -1349,14 +1349,14 @@ export default function FeedingPage() {
                             className="badge rounded-pill px-2 py-0.5 fw-bold extra-small mt-1"
                             style={{ background: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0', fontSize: '0.68rem' }}
                           >
-                            🌱 {r.doc ? `Day ${r.doc}` : 'DOC 1-25'} • Nursery
+                            🌱 {r.doc ? `Day ${r.doc}` : 'DOC 1-19'} • Nursery
                           </span>
                         ) : r.isGrowout ? (
                           <span
                             className="badge rounded-pill px-2 py-0.5 fw-bold extra-small mt-1"
                             style={{ background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', fontSize: '0.68rem' }}
                           >
-                            🌊 {r.doc ? `Day ${r.doc}` : 'DOC 26+'} • Grow-out
+                            🌊 {r.doc ? `Day ${r.doc}` : 'DOC 20+'} • Grow-out
                           </span>
                         ) : null}
                       </td>

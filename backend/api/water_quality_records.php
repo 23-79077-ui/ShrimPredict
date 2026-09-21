@@ -172,17 +172,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             exit;
         }
 
-        // Mode A: Fetch single pond's status for the specified date
+        // Mode A: Fetch single pond's status (One-time pre-stocking baseline check)
         if ($pondId > 0 && !$fetchAll) {
-            $stmt = $conn->prepare('
-                SELECT wqr.*, p.pond_name
-                FROM water_quality_records wqr
-                LEFT JOIN ponds p ON wqr.pond_id = p.id
-                WHERE wqr.pond_id = :pond_id AND wqr.record_date = :record_date
-                ORDER BY wqr.id DESC
-                LIMIT 1
-            ');
-            $stmt->execute([':pond_id' => $pondId, ':record_date' => $date]);
+            $hasStrictDate = isset($_GET['strict_date']) && $_GET['strict_date'] == '1';
+            if ($hasStrictDate) {
+                $stmt = $conn->prepare('
+                    SELECT wqr.*, p.pond_name
+                    FROM water_quality_records wqr
+                    LEFT JOIN ponds p ON wqr.pond_id = p.id
+                    WHERE wqr.pond_id = :pond_id AND wqr.record_date = :record_date
+                    ORDER BY wqr.id DESC
+                    LIMIT 1
+                ');
+                $stmt->execute([':pond_id' => $pondId, ':record_date' => $date]);
+            } else {
+                $stmt = $conn->prepare('
+                    SELECT wqr.*, p.pond_name
+                    FROM water_quality_records wqr
+                    LEFT JOIN ponds p ON wqr.pond_id = p.id
+                    WHERE wqr.pond_id = :pond_id
+                    ORDER BY wqr.id DESC
+                    LIMIT 1
+                ');
+                $stmt->execute([':pond_id' => $pondId]);
+            }
             $record = $stmt->fetch(PDO::FETCH_ASSOC);
 
             echo json_encode([
@@ -195,7 +208,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             exit;
         }
 
-        // Mode B: Fetch checklist status for all ponds assigned to a caretaker
+        // Mode B: Fetch checklist status for all ponds assigned to a caretaker (One-time baseline verification)
         if ($caretakerId > 0 && !$fetchAll) {
             // Find all ponds assigned to this caretaker
             $pondStmt = $conn->prepare('
@@ -221,7 +234,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 }
             }
 
-            // For each assigned pond, check if a water quality record exists for today
+            // For each assigned pond, check if a water quality record exists (one-time pre-stocking baseline verification)
             $checklist = [];
             $verifiedCount = 0;
 
@@ -229,26 +242,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 $pid = (int)$pond['id'];
                 $checkStmt = $conn->prepare('
                     SELECT * FROM water_quality_records
-                    WHERE pond_id = :pid AND record_date = :rdate
+                    WHERE pond_id = :pid
                     ORDER BY id DESC LIMIT 1
                 ');
-                $checkStmt->execute([':pid' => $pid, ':rdate' => $date]);
-                $todayRecord = $checkStmt->fetch(PDO::FETCH_ASSOC);
+                $checkStmt->execute([':pid' => $pid]);
+                $latestRecord = $checkStmt->fetch(PDO::FETCH_ASSOC);
 
-                $isVerified = !empty($todayRecord);
+                $isVerified = !empty($latestRecord);
                 if ($isVerified) $verifiedCount++;
 
                 $checklist[] = [
                     'pond_id' => $pid,
                     'pond_name' => $pond['pond_name'],
                     'current_status' => $pond['status'],
+                    'is_verified' => $isVerified,
                     'is_verified_today' => $isVerified,
-                    'today_record' => $todayRecord ?: null,
+                    'record' => $latestRecord ?: null,
+                    'today_record' => $latestRecord ?: null,
                     'latest_readings' => [
-                        'dissolved_oxygen' => $todayRecord ? (float)$todayRecord['dissolved_oxygen'] : (float)$pond['dissolved_oxygen'],
-                        'temperature' => $todayRecord ? (float)$todayRecord['temperature'] : (float)$pond['temperature'],
-                        'ph_level' => $todayRecord ? (float)$todayRecord['ph_level'] : (float)$pond['ph_level'],
-                        'salinity' => $todayRecord ? (float)$todayRecord['salinity'] : (float)$pond['salinity'],
+                        'dissolved_oxygen' => $latestRecord ? (float)$latestRecord['dissolved_oxygen'] : (float)$pond['dissolved_oxygen'],
+                        'temperature' => $latestRecord ? (float)$latestRecord['temperature'] : (float)$pond['temperature'],
+                        'ph_level' => $latestRecord ? (float)$latestRecord['ph_level'] : (float)$pond['ph_level'],
+                        'salinity' => $latestRecord ? (float)$latestRecord['salinity'] : (float)$pond['salinity'],
                     ],
                 ];
             }
@@ -256,7 +271,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             echo json_encode([
                 'success' => true,
                 'caretaker_id' => $caretakerId,
-                'date' => $date,
                 'total_assigned' => count($assignedPonds),
                 'verified_count' => $verifiedCount,
                 'is_all_completed' => count($assignedPonds) > 0 && $verifiedCount === count($assignedPonds),

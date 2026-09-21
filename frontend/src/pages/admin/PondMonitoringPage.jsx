@@ -189,8 +189,8 @@ export default function PondMonitoringPage() {
   const pondsWithDoc = useMemo(() => {
     return ponds.map((p) => {
       const doc = computeDoc(p.stocking_date, filterDate);
-      const isNursery = doc !== null && doc >= 1 && doc <= 25;
-      const isGrowout = doc !== null && doc >= 26;
+      const isNursery = doc !== null && doc >= 1 && doc <= 19;
+      const isGrowout = doc !== null && doc >= 20;
       const stageLabel = isNursery
         ? 'Nursery (Starter Feed)'
         : isGrowout
@@ -448,11 +448,11 @@ export default function PondMonitoringPage() {
                   }}
                   onClick={() => setStageFilter('Growout')}
                 >
-                  🌊 Grow-out Basins (Day 26+ • Grower Feed) ({growoutCount})
+                  🌊 Grow-out Basins (Day 20+ • Grower Feed) ({growoutCount})
                 </button>
               </div>
               <div className="extra-small text-muted">
-                Target Feed: <strong>Days 1–25 Nursery (Starter)</strong> ➔ <strong>Day 26+ Grow-out (Grower)</strong>
+                Target Feed: <strong>Days 1–19 Nursery (Starter)</strong> ➔ <strong>Day 20+ Grow-out (Grower)</strong>
               </div>
             </div>
 
@@ -667,13 +667,13 @@ export default function PondMonitoringPage() {
                                     </span>
                                     <small className="d-block text-muted extra-small mt-0.5">Feed: <strong>Tateh - Starter</strong></small>
                                   </div>
-                                ) : pond.docOnFilterDate === 26 ? (
+                                ) : pond.docOnFilterDate === 20 ? (
                                   <div>
                                     <span
                                       className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1"
                                       style={{ background: '#FEF3C7', color: '#B45309', border: '1px solid #FCD34D', fontSize: '0.78rem' }}
                                     >
-                                      ⚡ Day 26 • Transfer Day
+                                      ⚡ Day 20 • Transfer Day
                                     </span>
                                     <small className="d-block text-muted extra-small mt-0.5">Feed: <strong>Tateh - Grower</strong></small>
                                   </div>
@@ -872,8 +872,8 @@ export default function PondMonitoringPage() {
                 {/* Culture Stage & Recommended Feed formulation Banner */}
                 {(() => {
                   const selDoc = computeDoc(selectedPond.stocking_date, filterDate);
-                  const isNursery = selDoc !== null && selDoc >= 1 && selDoc <= 25;
-                  const isGrowout = selDoc !== null && selDoc >= 26;
+                  const isNursery = selDoc !== null && selDoc >= 1 && selDoc <= 19;
+                  const isGrowout = selDoc !== null && selDoc >= 20;
                   const feedType = isNursery ? 'Tateh - Starter' : isGrowout ? 'Tateh - Grower' : '-';
 
                   return (
@@ -895,8 +895,8 @@ export default function PondMonitoringPage() {
                               {selDoc !== null
                                 ? isNursery
                                   ? `🌱 Nursery Pond Stage (Day ${selDoc} of Culture)`
-                                  : selDoc === 26
-                                    ? `⚡ Transfer Milestone Day (Day 26 of Culture)`
+                                  : selDoc === 20
+                                    ? `⚡ Transfer Milestone Day (Day 20 of Culture)`
                                     : `🌊 Grow-out Pond Stage (Day ${selDoc} of Culture)`
                                 : 'Unstocked / Pre-Stocking Phase'}
                             </h6>
@@ -905,7 +905,7 @@ export default function PondMonitoringPage() {
                             </span>
                           </div>
                           <p className="text-muted extra-small mb-0 mt-1">
-                            Required Feed Formulation: <strong className="text-dark">{feedType}</strong> • Protocol: Starter (Days 1–25 Nursery) ➔ Grower (Day 26+ Grow-out)
+                            Required Feed Formulation: <strong className="text-dark">{feedType}</strong> • Protocol: Starter (Days 1–19 Nursery) ➔ Grower (Day 20+ Grow-out)
                           </p>
                         </div>
                       </div>
@@ -1037,7 +1037,7 @@ export default function PondMonitoringPage() {
         </div>
       )}
 
-      {/* 📅 POND CYCLE CALENDAR MODAL (DAYS 1-25 NURSERY / STARTER & DAY 26+ GROW-OUT / GROWER) */}
+      {/* 📅 POND CYCLE CALENDAR MODAL (DAYS 1-19 NURSERY / STARTER & DAY 20+ GROW-OUT / GROWER) */}
       {calendarModalPond && (
         <div
           className="modal fade show d-block"

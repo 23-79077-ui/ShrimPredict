@@ -304,10 +304,10 @@ export default function FeedingHistoryPage() {
       const stocking = r.stocking_date || pondObj?.stocking_date;
       const doc = computeDoc(stocking, rDate);
       const isNursery = doc !== null
-        ? (doc >= 1 && doc <= 25)
+        ? (doc >= 1 && doc <= 19)
         : (String(r.product_code || r.feed_type).toLowerCase().includes('starter'));
       const isGrowout = doc !== null
-        ? (doc >= 26)
+        ? (doc >= 20)
         : (String(r.product_code || r.feed_type).toLowerCase().includes('grower'));
       const stage = isNursery ? 'nursery' : (isGrowout ? 'growout' : 'other');
 
@@ -904,7 +904,7 @@ export default function FeedingHistoryPage() {
                 }}
                 onClick={() => setStageFilter('growout')}
               >
-                🌊 Grow-out (Day 26+ • Grower) ({growoutRecordsCount})
+                🌊 Grow-out (Day 20+ • Grower) ({growoutRecordsCount})
               </button>
             </div>
 
@@ -1007,14 +1007,14 @@ export default function FeedingHistoryPage() {
                                   className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1"
                                   style={{ background: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0' }}
                                 >
-                                  🌱 {item.doc ? `Day ${item.doc}` : 'DOC 1-25'} • Nursery
+                                  🌱 {item.doc ? `Day ${item.doc}` : 'DOC 1-19'} • Nursery
                                 </span>
                               ) : item.isGrowout ? (
                                 <span
                                   className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1"
                                   style={{ background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE' }}
                                 >
-                                  🌊 {item.doc ? `Day ${item.doc}` : 'DOC 26+'} • Grow-out
+                                  🌊 {item.doc ? `Day ${item.doc}` : 'DOC 20+'} • Grow-out
                                 </span>
                               ) : (
                                 <span className="badge bg-light text-muted border">General</span>
@@ -1118,14 +1118,14 @@ export default function FeedingHistoryPage() {
                                   className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1"
                                   style={{ background: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0' }}
                                 >
-                                  🌱 {record.doc ? `Day ${record.doc}` : 'DOC 1-25'} • Nursery
+                                  🌱 {record.doc ? `Day ${record.doc}` : 'DOC 1-19'} • Nursery
                                 </span>
                               ) : record.isGrowout ? (
                                 <span
                                   className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1"
                                   style={{ background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE' }}
                                 >
-                                  🌊 {record.doc ? `Day ${record.doc}` : 'DOC 26+'} • Grow-out
+                                  🌊 {record.doc ? `Day ${record.doc}` : 'DOC 20+'} • Grow-out
                                 </span>
                               ) : (
                                 <span className="badge bg-light text-muted border">General</span>
