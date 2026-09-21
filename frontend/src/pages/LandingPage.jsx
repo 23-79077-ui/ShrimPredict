@@ -420,14 +420,14 @@ export default function LandingPage() {
 
                     <div className="mb-3 p-3 bg-danger bg-opacity-10 rounded-3 border border-danger border-opacity-20">
                       <div className="fw-bold text-danger extra-small text-uppercase mb-1">
-                        ⚠️ Challenge
+                        Challenge
                       </div>
                       <p className="text-dark small mb-0">{item.challenge}</p>
                     </div>
 
                     <div className="p-3 bg-success bg-opacity-10 rounded-3 border border-success border-opacity-20">
                       <div className="fw-bold text-success extra-small text-uppercase mb-1">
-                        💡 ShrimPredict Solution
+                        ShrimPredict Solution
                       </div>
                       <p className="text-dark small mb-0">{item.solution}</p>
                     </div>
@@ -745,7 +745,7 @@ export default function LandingPage() {
             <span className="text-white-50 d-none d-md-inline">|</span>
             <span className="text-white-75 extra-small">O&amp;B Aqua Farm, Sitio Carbonan Rd, Brgy. Balitoc, Calatagan, 4215 Batangas</span>
             <span className="text-white-50 d-none d-md-inline">|</span>
-            <span className="text-white-75 extra-small">📞 +63 962 231 6169</span>
+            <span className="text-white-75 extra-small">+63 962 231 6169</span>
           </div>
           <p className="text-white-50 tiny mb-0">
             © 2026 ShrimPredict: Shrimp Feed Monitoring and Disease Detection System Utilizing Image Processing. All rights reserved.

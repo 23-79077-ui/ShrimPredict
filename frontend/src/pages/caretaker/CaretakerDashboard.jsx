@@ -473,7 +473,7 @@ export default function CaretakerDashboard() {
                                 fontSize: '0.66rem',
                               }}
                             >
-                              {isNursery ? `🌱 Day ${doc} Nursery (DOC #${doc})` : `🌊 Day ${doc} Grow-out (DOC #${doc})`}
+                              {isNursery ? `Day ${doc} Nursery (DOC #${doc})` : `Day ${doc} Grow-out (DOC #${doc})`}
                             </span>
                           );
                         })()}
@@ -934,7 +934,7 @@ export default function CaretakerDashboard() {
                                 : 'bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25'
                             }`}
                           >
-                            {isNur ? `🌱 Day ${d} Nursery (DOC #${d})` : `🌊 Day ${d} Grow-out (DOC #${d})`}
+                            {isNur ? `Day ${d} Nursery (DOC #${d})` : `Day ${d} Grow-out (DOC #${d})`}
                           </span>
                         );
                       })()}
@@ -946,7 +946,7 @@ export default function CaretakerDashboard() {
                     </td>
                     <td>
                       {parseFloat(r.amount_kg) === 0 ? (
-                        <span className="badge bg-light text-muted border">0 g (Wala pang pakain)</span>
+                        <span className="badge bg-light text-muted border">0 g (No feed logged)</span>
                       ) : (
                         <div>
                           <strong className="text-dark d-block">

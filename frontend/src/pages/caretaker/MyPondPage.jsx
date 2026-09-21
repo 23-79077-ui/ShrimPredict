@@ -754,7 +754,7 @@ export default function MyPondPage() {
           <div style="text-align:left">
             <p><strong>${grams} g (${formatKg(amount)} kg)</strong> of <strong>${payload.product_code}</strong> saved for ${selectedPond.pond_name} on <strong>${todayDateStr}</strong> (${form.feedingTime}).</p>
             ${isNurseryStage
-              ? '<p class="mb-0 text-success">🌱 <strong>Nursery Mode:</strong> 100% Broadcast into basin (No trays required).</p>'
+              ? '<p class="mb-0 text-success"><strong>Nursery Mode:</strong> 100% Broadcast into basin (No trays required).</p>'
               : `<p class="mb-1">Tray feed: <strong>${formatKg(trayFeedGrams)}g</strong> per tray x ${feedingTrayCount} = <strong>${formatKg(totalTrayFeedGrams)}g</strong></p>
                  <p class="mb-0">Broadcast to pond: <strong>${formatKg(broadcastFeedKg)} kg</strong></p>`
             }
@@ -896,7 +896,7 @@ export default function MyPondPage() {
             }}
             onClick={() => setStageFilter('nursery')}
           >
-            🌱 Nursery Basins (Days 1–25 • Starter Feed) ({nurseryCount})
+            Nursery Basins (Days 1–19 • Starter Feed) ({nurseryCount})
           </button>
 
           <button
@@ -918,7 +918,7 @@ export default function MyPondPage() {
         </div>
       </div>
 
-      {/* 🌟 POND SELECTOR PILL TABS */}
+      {/* POND SELECTOR PILL TABS */}
       <div className="d-flex align-items-center gap-2 mb-3 flex-wrap">
         {filteredPonds.length === 0 ? (
           <div className="alert alert-warning py-2 px-3 mb-0 rounded-pill small w-100">
@@ -970,7 +970,7 @@ export default function MyPondPage() {
                     fontWeight: 700,
                   }}
                 >
-                  {isNursery ? `🌱 Day ${pond.doc} • Nursery` : `🌊 Day ${pond.doc} • Grow-out`}
+                  {isNursery ? `Day ${pond.doc} • Nursery` : `Day ${pond.doc} • Grow-out`}
                 </span>
 
                 {isVerified ? (
@@ -1006,7 +1006,7 @@ export default function MyPondPage() {
         )}
       </div>
 
-      {/* 🌟 ACTIVE BASIN CULTURE STAGE BANNER */}
+      {/* ACTIVE BASIN CULTURE STAGE BANNER */}
       {selectedPond && (
         <div
           className="p-3 rounded-4 mb-4 border d-flex justify-content-between align-items-center flex-wrap gap-2"
@@ -1070,7 +1070,7 @@ export default function MyPondPage() {
         </div>
       )}
 
-      {/* 🌟 WATER QUALITY GATE PROTOCOL CARD OR VERIFIED STATUS BANNER */}
+      {/* WATER QUALITY GATE PROTOCOL CARD OR VERIFIED STATUS BANNER */}
       {!isPondWqVerified ? (
         <div
           className="asymmetric-card mb-4 overflow-hidden"
@@ -1215,7 +1215,7 @@ export default function MyPondPage() {
         </div>
       )}
 
-      {/* 🌟 PAST DATE FEEDING BACKFILL MODE BANNER */}
+      {/* PAST DATE FEEDING BACKFILL MODE BANNER */}
       {isPastDate && (
         <div
           className="p-3 mb-4 rounded-4 border d-flex justify-content-between align-items-center flex-wrap gap-2 shadow-xs"
@@ -1237,7 +1237,7 @@ export default function MyPondPage() {
                   Historical Feeding Backfill: {new Date(todayDateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' })}
                 </h6>
                 <span className="badge bg-primary text-white rounded-pill extra-small fw-bold">
-                  ✓ Past Entry Unlocked
+                  Past Entry Unlocked
                 </span>
               </div>
               <p className="extra-small text-muted mb-0 mt-0.5">
@@ -1293,7 +1293,7 @@ export default function MyPondPage() {
                 </div>
                 {isNurseryStage ? (
                   <>
-                    <h5 className="fw-bold text-success mb-1">🌱 Not Required</h5>
+                    <h5 className="fw-bold text-success mb-1">Not Required</h5>
                     <p className="extra-small text-muted mb-0">
                       Shrimp are in Nursery phase (DOC 1–19). Weekly weight sampling starts in Grow-out (Day 20+).
                     </p>
@@ -1316,7 +1316,7 @@ export default function MyPondPage() {
                 <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
                   <div>
                     <span className="small fw-bold text-primary">
-                      {isNurseryStage ? '🌱 Nursery Feed Broadcasting (100% Broadcast)' : 'Feeding tray computation'}
+                      {isNurseryStage ? 'Nursery Feed Broadcasting (100% Broadcast)' : 'Feeding tray computation'}
                     </span>
                     <p className="extra-small text-muted mb-0">
                       {isNurseryStage
@@ -1458,7 +1458,7 @@ export default function MyPondPage() {
           <div className="row g-3 mb-3">
             <div className="col-md-4">
               <label className="form-label fw-semibold text-dark">
-                Amount (grams) <span className="text-muted fw-normal">/ Pakain sa grams</span>
+                Amount (grams)
               </label>
               <input
                 type="number"
@@ -1467,7 +1467,7 @@ export default function MyPondPage() {
                 className="form-control form-control-lg fs-6"
                 value={currentForm.amountGrams ?? ''}
                 onChange={(event) => handleChange('amountGrams', event.target.value)}
-                placeholder="e.g. 500 (or 0 if wala pang pakain)"
+                placeholder="e.g. 500 (or 0 for no feed)"
                 disabled={submitting || (allSlotsCompleted && !editingRecord)}
               />
               <div className="d-flex justify-content-between align-items-center mt-1 extra-small">

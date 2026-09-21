@@ -752,7 +752,7 @@ export default function PondCycleCalendar({
                           </td>
                           <td>
                             {isZeroFeed ? (
-                              <span className="badge bg-light text-muted border">0 g (Wala pang pakain)</span>
+                              <span className="badge bg-light text-muted border">0 g (No feed logged)</span>
                             ) : (
                               <div>
                                 <strong className="text-dark font-mono">{g.toLocaleString()} g</strong>
@@ -774,7 +774,7 @@ export default function PondCycleCalendar({
                             )}
                           </td>
                           <td>
-                            <span className="text-secondary extra-small">{log.notes || (isZeroFeed ? 'Wala pang pakain (0g)' : 'Nominal feed')}</span>
+                            <span className="text-secondary extra-small">{log.notes || (isZeroFeed ? 'No feed logged (0g)' : 'Nominal feed')}</span>
                           </td>
                           <td className="pe-3">
                             <span className="badge bg-light text-dark border extra-small">{log.recorded_by_name || log.recorded_by || 'Caretaker'}</span>

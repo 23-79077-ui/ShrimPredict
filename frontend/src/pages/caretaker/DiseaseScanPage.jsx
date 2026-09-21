@@ -431,7 +431,7 @@ export default function DiseaseScanPage() {
                         }`}
                         onClick={() => setSelectedPond(pName)}
                       >
-                        {isSelected && <FaCheck size={10} />} 🌊 {pName}
+                        {isSelected && <FaCheck size={10} />} {pName}
                       </button>
                     );
                   })}

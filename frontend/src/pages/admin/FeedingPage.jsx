@@ -622,7 +622,7 @@ export default function FeedingPage() {
     `;
 
     Swal.fire({
-      title: `<div style="display: flex; align-items: center; gap: 8px; font-family: 'Poppins', sans-serif;"><span style="color: #0284C7;">🌊</span> <span style="color: #0B2C5F; font-weight: 800; font-size: 1.25rem;">Pond Feeding Logs: ${pondName}</span></div>`,
+      title: `<div style="display: flex; align-items: center; gap: 8px; font-family: 'Poppins', sans-serif;"><span style="color: #0B2C5F; font-weight: 800; font-size: 1.25rem;">Pond Feeding Logs: ${pondName}</span></div>`,
       html: logHtml,
       width: 820,
       showCloseButton: true,
@@ -992,7 +992,7 @@ export default function FeedingPage() {
               }}
               onClick={() => setStageFilter('nursery')}
             >
-              🌱 Nursery Basins (Days 1–25 • Starter Feed) ({nurseryPondsCount})
+              Nursery Basins (Days 1–25 • Starter Feed) ({nurseryPondsCount})
             </button>
             <button
               type="button"
@@ -1136,7 +1136,7 @@ export default function FeedingPage() {
           </div>
         </div>
 
-        {/* 🌟 VIEW 1: PER-POND FLEET MATRIX TABLE */}
+        {/* VIEW 1: PER-POND FLEET MATRIX TABLE */}
         {activeTab === 'fleet' && (
           <div className="table-responsive rounded-4 border" style={{ maxHeight: '520px', overflowY: 'auto' }}>
             <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.85rem' }}>
@@ -1301,7 +1301,7 @@ export default function FeedingPage() {
           </div>
         )}
 
-        {/* 🌟 VIEW 2: GRANULAR FEEDING LOGS STREAM TABLE */}
+        {/* VIEW 2: GRANULAR FEEDING LOGS STREAM TABLE */}
         {activeTab === 'stream' && (
           <div className="table-responsive rounded-4 border" style={{ maxHeight: '520px', overflowY: 'auto' }}>
             <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.85rem' }}>

@@ -435,7 +435,7 @@ export default function PondMonitoringPage() {
                   }}
                   onClick={() => setStageFilter('Nursery')}
                 >
-                  🌱 Nursery Basins (Days 1–25 • Starter Feed) ({nurseryCount})
+                  Nursery Basins (Days 1–19 • Starter Feed) ({nurseryCount})
                 </button>
                 <button
                   type="button"
@@ -663,7 +663,7 @@ export default function PondMonitoringPage() {
                                       className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1"
                                       style={{ background: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0', fontSize: '0.78rem' }}
                                     >
-                                      🌱 Day {pond.docOnFilterDate} • Nursery
+                                      Day {pond.docOnFilterDate} • Nursery
                                     </span>
                                     <small className="d-block text-muted extra-small mt-0.5">Feed: <strong>Tateh - Starter</strong></small>
                                   </div>
@@ -683,7 +683,7 @@ export default function PondMonitoringPage() {
                                       className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1"
                                       style={{ background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', fontSize: '0.78rem' }}
                                     >
-                                      🌊 Day {pond.docOnFilterDate} • Grow-out
+                                      Day {pond.docOnFilterDate} • Grow-out
                                     </span>
                                     <small className="d-block text-muted extra-small mt-0.5">Feed: <strong>Tateh - Grower</strong></small>
                                   </div>

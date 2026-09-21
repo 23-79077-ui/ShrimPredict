@@ -913,7 +913,7 @@ export default function AdminDashboard() {
                           ) : (
                             <div>
                               <span className="badge bg-light text-muted border">0 kg (0 g)</span>
-                              <span className="text-muted extra-small d-block">Wala pang pakain</span>
+                              <span className="text-muted extra-small d-block">No feed logged</span>
                             </div>
                           )}
                         </td>

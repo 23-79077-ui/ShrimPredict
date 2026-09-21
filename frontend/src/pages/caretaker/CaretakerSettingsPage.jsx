@@ -31,6 +31,7 @@ import {
   FaEyeSlash,
   FaSignOutAlt
 } from 'react-icons/fa';
+import { useSearchParams } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -38,9 +39,17 @@ import { applyAppTheme } from '../../main';
 
 export default function CaretakerSettingsPage() {
   const { user: authUser, updateUser, logout } = useAuth();
+  const [searchParams] = useSearchParams();
   const fileInputRef = useRef(null);
 
-  const [activeTab, setActiveTab] = useState('profile');
+  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'profile');
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

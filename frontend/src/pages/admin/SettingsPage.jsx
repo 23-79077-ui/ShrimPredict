@@ -39,6 +39,7 @@ import {
   FaStar,
   FaUtensils
 } from 'react-icons/fa';
+import { useSearchParams } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -46,7 +47,15 @@ import { applyAppTheme } from '../../main';
 
 export default function SettingsPage() {
   const { user: authUser, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState('profile');
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'profile');
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -623,49 +632,49 @@ export default function SettingsPage() {
       id: 'profile',
       label: 'Profile',
       icon: FaUser,
-      desc: 'Pamahalaan ang impormasyon ng administrator.',
+      desc: 'Manage administrator profile information and contact details.',
       keywords: 'profile, picture, admin, email, phone, position, last login, full name, profile picture'
     },
     {
       id: 'security',
       label: 'Security',
       icon: FaLock,
-      desc: 'Palitan ang password at pamahalaan ang account security.',
+      desc: 'Change password and manage account security credentials.',
       keywords: 'security, password, current password, new password, confirm password, 2fa, two-factor, logout, authentication'
     },
     {
       id: 'pond',
       label: 'Pond Settings',
       icon: FaWater,
-      desc: 'Default pond configuration (hal. max ponds, auto numbering).',
+      desc: 'Default pond configuration (e.g. maximum ponds, auto-numbering).',
       keywords: 'pond, maximum number of ponds, 30, default pond status, healthy, auto assign pond number'
     },
     {
       id: 'harvest',
       label: 'Harvest Settings',
       icon: FaFish,
-      desc: 'Itakda ang target harvest age at readiness threshold na ginagamit ng system.',
+      desc: 'Set target harvest age and readiness thresholds used by the system.',
       keywords: 'harvest, target harvest age, 120 days, harvest ready percentage, 95%, prediction refresh, upcoming harvest, ready to harvest'
     },
     {
       id: 'notification',
       label: 'Notification Settings',
       icon: FaBell,
-      desc: 'Piliin kung aling alerts ang matatanggap ng admin.',
+      desc: 'Select notification alerts delivered to administrators.',
       keywords: 'notification, disease alerts, harvest alerts, feeding alerts, caretaker activity alerts, email notifications'
     },
     {
       id: 'preference',
       label: 'System Preferences',
       icon: FaSlidersH,
-      desc: 'Theme, language, at date/time format.',
+      desc: 'Theme, language, and date/time formatting preferences.',
       keywords: 'preferences, theme, light, dark, language, english, date format, time format'
     },
     {
       id: 'backup',
       label: 'Backup & Restore',
       icon: FaDatabase,
-      desc: 'Gumawa o mag-restore ng backup ng system data.',
+      desc: 'Create or restore system data backups.',
       keywords: 'backup, restore, last backup, automatic backup, backup frequency, weekly, backup now, restore backup'
     },
     {
@@ -679,7 +688,7 @@ export default function SettingsPage() {
       id: 'about',
       label: 'About System',
       icon: FaInfoCircle,
-      desc: 'Impormasyon tungkol sa system at development team.',
+      desc: 'Information regarding system build and development team.',
       keywords: 'about, shrimpredict, version 1.0, team shrimpredict, batangas state university, 2026'
     }
   ];
@@ -799,8 +808,8 @@ export default function SettingsPage() {
                     <FaUser size={20} />
                   </div>
                   <div>
-                    <h4 className="fw-bold mb-0 text-dark">👤 Admin Profile</h4>
-                    <small className="text-muted">Impormasyon at detalye ng administrator account.</small>
+                    <h4 className="fw-bold mb-0 text-dark">Admin Profile</h4>
+                    <small className="text-muted">Administrator account details and profile information.</small>
                   </div>
                 </div>
                 <span className="badge bg-success bg-opacity-10 text-success rounded-pill px-3.5 py-1.5 extra-small fw-bold">
@@ -1052,8 +1061,8 @@ export default function SettingsPage() {
                   <FaLock size={20} />
                 </div>
                 <div>
-                  <h4 className="fw-bold mb-0 text-dark">🔐 Account Security</h4>
-                  <small className="text-muted">Palitan ang password at pamahalaan ang account security.</small>
+                  <h4 className="fw-bold mb-0 text-dark">Account Security</h4>
+                  <small className="text-muted">Change password and manage account security credentials.</small>
                 </div>
               </div>
               <div className="card-body p-4">
@@ -1154,8 +1163,8 @@ export default function SettingsPage() {
                   <FaWater size={20} />
                 </div>
                 <div>
-                  <h4 className="fw-bold mb-0 text-dark">🏞 Pond Settings</h4>
-                  <small className="text-muted">Default pond configuration (hal. max ponds, auto numbering).</small>
+                  <h4 className="fw-bold mb-0 text-dark">Pond Settings</h4>
+                  <small className="text-muted">Default pond configuration (e.g. maximum ponds, auto-numbering).</small>
                 </div>
               </div>
               <div className="card-body p-4">
@@ -1253,7 +1262,7 @@ export default function SettingsPage() {
                     <div>
                       <strong className="d-block text-dark mb-1 fs-6">Harvest Readiness Rule Guidance</strong>
                       <p className="mb-0 text-dark small">
-                        <strong>📌 Note:</strong> Kapag umabot ng <strong>95%</strong>, magiging <span className="badge bg-warning text-dark px-2.5 py-1 rounded-pill">Upcoming Harvest</span>. Kapag <strong>100%</strong>, magiging <span className="badge bg-success px-2.5 py-1 rounded-pill">Ready to Harvest</span>.
+                        <strong>Note:</strong> Reaching <strong>95%</strong> triggers <span className="badge bg-warning text-dark px-2.5 py-1 rounded-pill">Upcoming Harvest</span>. Reaching <strong>100%</strong> triggers <span className="badge bg-success px-2.5 py-1 rounded-pill">Ready to Harvest</span>.
                       </p>
                     </div>
                   </div>
@@ -1324,8 +1333,8 @@ export default function SettingsPage() {
                   <FaBell size={20} />
                 </div>
                 <div>
-                  <h4 className="fw-bold mb-0 text-dark">🔔 Notification Settings</h4>
-                  <small className="text-muted">Piliin kung aling alerts ang matatanggap ng admin.</small>
+                  <h4 className="fw-bold mb-0 text-dark">Notification Settings</h4>
+                  <small className="text-muted">Select notification alerts delivered to administrators.</small>
                 </div>
               </div>
               <div className="card-body p-4">
@@ -1592,8 +1601,8 @@ export default function SettingsPage() {
                   <FaDatabase size={20} />
                 </div>
                 <div>
-                  <h4 className="fw-bold mb-0 text-dark">💾 Backup & Restore</h4>
-                  <small className="text-muted">Gumawa o mag-restore ng backup ng system data.</small>
+                  <h4 className="fw-bold mb-0 text-dark">Backup & Restore</h4>
+                  <small className="text-muted">Create or restore system data backups.</small>
                 </div>
               </div>
               <div className="card-body p-4">
@@ -1850,8 +1859,8 @@ export default function SettingsPage() {
                   <FaInfoCircle size={20} />
                 </div>
                 <div>
-                  <h4 className="fw-bold mb-0 text-dark">ℹ About System</h4>
-                  <small className="text-muted">Impormasyon tungkol sa system at development team.</small>
+                  <h4 className="fw-bold mb-0 text-dark">About System</h4>
+                  <small className="text-muted">Information regarding system build and development team.</small>
                 </div>
               </div>
               <div className="card-body p-4">

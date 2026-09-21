@@ -5029,30 +5029,31 @@ body.dark-theme .saas-layout-canvas {
   color: #F0F6FF;
 }
 
-/* 🌟 FLOATING TOP NAVIGATION DOCK BAR (Executive 2-Tier Architecture) */
+/* 🌟 SOLID TOP NAVIGATION HEADER (Executive 2-Tier Architecture) */
 .top-dock-bar {
   position: sticky;
-  top: 14px;
+  top: 0;
+  left: 0;
+  right: 0;
   z-index: 1040;
-  margin: 0 auto 1.5rem auto;
-  max-width: 1480px;
-  width: calc(100% - 2rem);
-  background: rgba(255, 255, 255, 0.96);
+  margin: 0 0 1.5rem 0;
+  width: 100%;
+  background: #FFFFFF;
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(11, 44, 95, 0.08);
-  border-radius: 20px;
-  box-shadow: 0 10px 32px rgba(11, 44, 95, 0.06), 0 2px 8px rgba(11, 44, 95, 0.03);
-  padding: 0.75rem 1.25rem 0.65rem 1.25rem;
+  border-bottom: 1px solid rgba(11, 44, 95, 0.10);
+  border-radius: 0;
+  box-shadow: 0 4px 20px rgba(11, 44, 95, 0.05);
+  padding: 0.75rem 1.5rem 0.65rem 1.5rem;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   font-family: 'Poppins', sans-serif;
 }
 
 [data-theme="dark"] .top-dock-bar,
 body.dark-theme .top-dock-bar {
-  background: rgba(10, 19, 38, 0.94);
-  border: 1px solid rgba(56, 189, 248, 0.20);
-  box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.55);
+  background: #0A1326;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.20);
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.55);
 }
 
 /* Tier 1 Header Line */

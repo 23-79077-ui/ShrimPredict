@@ -220,7 +220,7 @@ export default function FeedingHistoryPage() {
         vitamin_name: vit,
         has_vitamin: vit && vit !== 'None' ? 1 : 0,
         record_date: backfillForm.record_date,
-        notes: backfillForm.notes || (grams === 0 ? 'Wala pang pakain (0g)' : ''),
+        notes: backfillForm.notes || (grams === 0 ? 'No feed logged (0g)' : ''),
         recorded_by: user?.full_name || 'Caretaker',
         recorded_by_name: user?.full_name || 'Caretaker',
         user_id: Number(user?.id || 0),
@@ -891,17 +891,15 @@ export default function FeedingHistoryPage() {
                 }}
                 onClick={() => setStageFilter('nursery')}
               >
-                🌱 Nursery (Days 1–25 • Starter) ({nurseryRecordsCount})
+                Nursery (Days 1–19 • Starter) ({nurseryRecordsCount})
               </button>
               <button
                 type="button"
-                className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all ${stageFilter === 'growout' ? 'text-white' : 'border text-dark'
-                  }`}
-                style={{
-                  backgroundColor: stageFilter === 'growout' ? '#2563EB' : '#EFF6FF',
-                  color: stageFilter === 'growout' ? '#ffffff' : '#1E40AF',
-                  borderColor: '#BFDBFE',
-                }}
+                className={`btn btn-sm rounded-pill px-3 py-1.5 extra-small fw-bold transition-all ${
+                  stageFilter === 'growout'
+                    ? 'btn-primary'
+                    : (theme === 'dark' ? 'btn-outline-light border-opacity-20' : 'btn-outline-secondary')
+                }`}
                 onClick={() => setStageFilter('growout')}
               >
                 🌊 Grow-out (Day 20+ • Grower) ({growoutRecordsCount})
@@ -910,26 +908,25 @@ export default function FeedingHistoryPage() {
 
             <div className="d-flex align-items-center gap-2 flex-wrap">
               {/* View Mode Toggle: Daily Total vs Per Slot */}
-              <div className="btn-group btn-group-sm rounded-pill p-0.5 bg-light border shadow-xs">
+              <div className="d-flex align-items-center gap-1.5 border rounded-pill p-1 bg-light">
                 <button
                   type="button"
-                  className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all ${
-                    viewMode === 'daily' ? 'btn-primary text-white shadow-xs' : 'btn-light border-0 text-muted'
+                  className={`btn btn-xs rounded-pill px-3 py-1 extra-small fw-bold transition-all ${
+                    viewMode === 'daily' ? 'btn-dark text-white' : 'btn-link text-muted text-decoration-none'
                   }`}
                   onClick={() => setViewMode('daily')}
-                  title="Display combined total kilograms per day"
                 >
-                  📊 Daily Total View
+                  Daily Total View
                 </button>
                 <button
                   type="button"
-                  className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all ${
-                    viewMode === 'slots' ? 'btn-primary text-white shadow-xs' : 'btn-light border-0 text-muted'
+                  className={`btn btn-xs rounded-pill px-3 py-1 extra-small fw-bold transition-all ${
+                    viewMode === 'slot' ? 'btn-dark text-white' : 'btn-link text-muted text-decoration-none'
                   }`}
-                  onClick={() => setViewMode('slots')}
+                  onClick={() => setViewMode('slot')}
                   title="Display each individual feeding time slot"
                 >
-                  🕒 Per Slot View
+                  Per Slot View
                 </button>
               </div>
 
@@ -1017,7 +1014,9 @@ export default function FeedingHistoryPage() {
                                   🌊 {item.doc ? `Day ${item.doc}` : 'DOC 20+'} • Grow-out
                                 </span>
                               ) : (
-                                <span className="badge bg-light text-muted border">General</span>
+                                <span className="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-2.5 py-1 extra-small fw-bold">
+                                  Pre-Stocking
+                                </span>
                               )}
                             </td>
                             <td>
@@ -1128,7 +1127,9 @@ export default function FeedingHistoryPage() {
                                   🌊 {record.doc ? `Day ${record.doc}` : 'DOC 20+'} • Grow-out
                                 </span>
                               ) : (
-                                <span className="badge bg-light text-muted border">General</span>
+                                <span className="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-2.5 py-1 extra-small fw-bold">
+                                  Pre-Stocking
+                                </span>
                               )}
                             </td>
                             <td>
@@ -1137,24 +1138,24 @@ export default function FeedingHistoryPage() {
                                 {record.feeding_time || '-'}
                               </span>
                             </td>
-                            <td>
-                              <div className="d-flex flex-column">
-                                {Number(record.amount_kg || 0) > 0 || (record.amount_grams && Number(record.amount_grams) > 0) ? (
-                                  <>
-                                    <strong>{Number(record.amount_kg || 0).toFixed(2)} kg</strong>
-                                    <span className="extra-small text-muted">
-                                      {Math.round(record.amount_grams ?? (Number(record.amount_kg || 0) * 1000)).toLocaleString()} g • {record.feed_type || record.product_code || 'Starter'}
-                                    </span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <strong className="text-muted">0 kg (0 g)</strong>
-                                    <span className="extra-small text-muted">
-                                      Wala pang pakain • {record.feed_type || record.product_code || 'Starter'}
-                                    </span>
-                                  </>
-                                )}
-                              </div>
+                            <td className="align-middle">
+                              {Number(record.amount_grams) > 0 ? (
+                                <div>
+                                  <span className="fw-bold text-dark font-mono">
+                                    {record.amount_grams} g ({formatKg(record.amount_grams)} kg)
+                                  </span>
+                                  <span className="extra-small text-muted d-block font-mono">
+                                    {record.feed_type || record.product_code || 'Starter Feed'}
+                                  </span>
+                                </div>
+                              ) : (
+                                <div>
+                                  <span className="fw-bold text-muted font-mono">0 g (0.00 kg)</span>
+                                  <span className="extra-small text-muted d-block font-mono">
+                                    No feed logged • {record.feed_type || record.product_code || 'Starter'}
+                                  </span>
+                                </div>
+                              )}
                             </td>
                             <td>
                               {record.vitamin_name && record.vitamin_name !== 'None' ? (
@@ -1647,7 +1648,7 @@ export default function FeedingHistoryPage() {
                         min="0"
                         step="1"
                         className="form-control form-control-sm fw-bold"
-                        placeholder="e.g. 500 (or 0 if wala pang pakain)"
+                        placeholder="e.g. 500 (or 0 for no feed)"
                         value={backfillForm.amount_grams}
                         onChange={(e) => {
                           const gVal = e.target.value;
@@ -1656,9 +1657,9 @@ export default function FeedingHistoryPage() {
                         }}
                         required
                       />
-                      <div className="form-text extra-small text-muted">
-                        Enter in grams (e.g. 500g). Use 0 for "Wala pang pakain".
-                      </div>
+                      <small className="extra-small text-muted mt-1 d-block">
+                        Enter in grams (e.g. 500g). Use 0 for "No feed logged".
+                      </small>
                     </div>
 
                     <div className="col-md-6">

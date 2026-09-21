@@ -12,6 +12,8 @@ import {
   FaBars,
   FaTimes,
   FaShieldAlt,
+  FaCog,
+  FaSlidersH
 } from 'react-icons/fa';
 import CaretakerAssistantChatHead from '../components/CaretakerAssistantChatHead';
 
@@ -217,9 +219,10 @@ export default function CaretakerLayout() {
 
   return (
     <div className="saas-layout-canvas">
-      {/* 🌟 FLOATING TOP NAVIGATION DOCK BAR (Executive 2-Tier Architecture) */}
+      {/* 🌟 TOP NAVIGATION HEADER (Executive 2-Tier Architecture) */}
       <header className="top-dock-bar">
-        {/* Tier 1: Brand & Executive Utilities Bar */}
+        <div className="top-dock-inner" style={{ maxWidth: 1480, margin: '0 auto', width: '100%' }}>
+          {/* Tier 1: Brand & Executive Utilities Bar */}
         <div className="top-dock-topbar d-flex align-items-center justify-content-between w-100">
           {/* 1. Brand Logo & Farm Identity */}
           <div className="d-flex align-items-center gap-2.5 gap-md-3 flex-shrink-0">
@@ -463,9 +466,16 @@ export default function CaretakerLayout() {
                     <div className="fw-bold small text-truncate">{user?.full_name || 'Caretaker'}</div>
                     <div className="extra-small text-muted">{user?.email || 'caretaker@shrimpredict.io'}</div>
                   </div>
-                  <NavLink to="/caretaker/settings" className="dropdown-item rounded-2 small py-1.5" onClick={() => setShowUserMenu(false)}>
-                    Account Settings
-                  </NavLink>
+                  <button
+                    type="button"
+                    className="dropdown-item rounded-2 small py-1.5 fw-semibold d-flex align-items-center gap-2"
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      navigate('/caretaker/settings');
+                    }}
+                  >
+                    <FaCog size={12} className="text-primary" /> Settings &amp; Preferences
+                  </button>
                   <button
                     type="button"
                     className="dropdown-item rounded-2 small py-1.5 text-danger d-flex align-items-center gap-2"
@@ -538,6 +548,7 @@ export default function CaretakerLayout() {
             </div>
           </div>
         )}
+        </div>
       </header>
 
       {/* 🌟 MAIN PAGE CONTENT (Max Width 1480px, Spacious Padding) */}
