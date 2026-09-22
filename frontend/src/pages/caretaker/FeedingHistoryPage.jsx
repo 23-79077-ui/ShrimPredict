@@ -541,47 +541,38 @@ export default function FeedingHistoryPage() {
 
   return (
     <div className="caretaker-history-hub">
-      {/* 🌟 HERO CONTROL STRIP: BREADCRUMB, STATUS BADGE & EXPORT BUTTON */}
+      {/* 🌟 HERO CONTROL STRIP: TITLE & ACTION BUTTONS */}
       <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
         <div>
-          <div className="d-flex align-items-center gap-2">
-            <span
-              className="badge rounded-pill fw-bold extra-small"
-              style={{ backgroundColor: '#F0F9FF', color: '#0284C7', border: '1px solid #BAE6FD' }}
-            >
-              ● FEEDING CONSUMPTION TELEMETRY
-            </span>
-            <span className="text-muted extra-small">
-              Historical Log Records • Tray & Broadcast Distribution
-            </span>
-          </div>
-          <h2 className="fw-extrabold mb-0 mt-1 tracking-tight text-dark" style={{ fontSize: '1.75rem', letterSpacing: '-0.03em' }}>
+          <h2 className="fw-extrabold mb-0 tracking-tight text-dark" style={{ fontSize: '1.75rem', letterSpacing: '-0.03em' }}>
             Feeding History & Activity
           </h2>
         </div>
 
-        <div className="d-flex align-items-center gap-2 flex-wrap">
+        <div className="d-flex align-items-center gap-2.5 flex-wrap">
           <button
             type="button"
-            className="btn btn-sm rounded-pill bg-white border text-dark fw-semibold px-3 py-1.5 d-flex align-items-center gap-1.5 shadow-xs"
-            style={{ height: 36, fontSize: '0.8rem' }}
+            className="btn btn-sm rounded-pill bg-white border border-slate-200 text-dark fw-bold px-3.5 py-2 d-inline-flex align-items-center gap-2 shadow-xs transition-all hover-shadow"
+            style={{ fontSize: '0.84rem', color: '#1E293B' }}
             onClick={() => loadHistory(true)}
             disabled={refreshing}
           >
-            <FaSync size={11} className={refreshing ? 'fa-spin text-primary' : 'text-primary'} /> Refresh
+            <FaSync size={12} className={refreshing ? 'fa-spin text-primary' : 'text-primary'} />
+            <span>Refresh</span>
           </button>
+
           <button
             type="button"
-            className="btn btn-sm rounded-pill px-3.5 py-1.5 d-flex align-items-center gap-2 fw-bold text-white shadow-xs"
+            className="btn btn-sm rounded-pill px-4 py-2 d-inline-flex align-items-center gap-2 fw-bold text-white shadow-sm transition-all hover-shadow"
             style={{
-              height: 36,
-              fontSize: '0.8rem',
-              background: 'linear-gradient(135deg, #0B2C5F 0%, #0284C7 100%)',
-              border: 'none',
+              fontSize: '0.84rem',
+              backgroundColor: '#0B2C5F',
+              borderColor: '#0B2C5F',
             }}
             onClick={handleExportCSV}
           >
-            <FaFileDownload size={12} /> Export CSV
+            <FaFileDownload size={13} />
+            <span>Export CSV</span>
           </button>
         </div>
       </div>
