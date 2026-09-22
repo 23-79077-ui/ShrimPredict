@@ -391,11 +391,8 @@ export default function CaretakerSettingsPage() {
                         <Icon size={16} />
                       </div>
                       <div className="text-truncate flex-grow-1">
-                        <div className="fw-bold fs-6 lh-1 mb-1" style={{ color: isActive ? '#0B2C5F' : '#1E293B', fontSize: '0.88rem' }}>
+                        <div className="fw-bold lh-1" style={{ color: isActive ? '#0B2C5F' : '#1E293B', fontSize: '0.88rem' }}>
                           {t.label}
-                        </div>
-                        <div className="text-muted extra-small text-truncate" style={{ fontSize: '0.72rem' }}>
-                          {t.desc}
                         </div>
                       </div>
                     </button>
