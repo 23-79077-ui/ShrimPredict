@@ -72,38 +72,27 @@ export default function LoginPage() {
   };
 
   return (
-    <div
-      className="min-vh-100 w-100 d-flex align-items-center justify-content-center py-4 py-md-5 px-3 position-relative overflow-hidden"
-      style={{
-        backgroundColor: '#040710',
-        backgroundImage: `
-          radial-gradient(circle at 15% 20%, rgba(14, 165, 233, 0.16) 0%, transparent 50%),
-          radial-gradient(circle at 85% 50%, rgba(14, 165, 233, 0.08) 0%, transparent 50%),
-          linear-gradient(90deg, #0A1326 0%, #0A1326 50%, #040710 50%, #040710 100%)
-        `,
-        fontFamily: "'Poppins', sans-serif",
-      }}
-    >
-      <div className="container-fluid" style={{ maxWidth: '1180px' }}>
-        {/* Back to Home Pill Button (Top Left) */}
-        <div className="mb-4">
-          <Link
-            to="/"
-            className="btn rounded-pill px-3.5 py-2 d-inline-flex align-items-center gap-2 fw-medium text-white text-decoration-none transition-all"
-            style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.08)',
-              border: '1px solid rgba(255, 255, 255, 0.16)',
-              backdropFilter: 'blur(12px)',
-              fontSize: '0.88rem',
-            }}
-          >
-            <FaArrowLeft size={13} /> Back to Home
-          </Link>
-        </div>
+    <div className="login-page-container">
+      <div className="container-fluid px-3 px-lg-5 h-100" style={{ maxWidth: '1280px' }}>
+        <div className="row g-4 g-lg-5 login-split-row align-items-center">
+          {/* 🌟 LEFT PANEL: BRANDING & ROLE CAPABILITIES (SCROLLABLE, SCROLLBAR HIDDEN) */}
+          <div className="col-lg-6 login-left-panel pe-lg-4 text-white">
+            {/* Back to Home Pill Button (Top Left) */}
+            <div className="mb-4">
+              <Link
+                to="/"
+                className="btn rounded-pill px-3.5 py-2 d-inline-flex align-items-center gap-2 fw-medium text-white text-decoration-none transition-all"
+                style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                  border: '1px solid rgba(255, 255, 255, 0.16)',
+                  backdropFilter: 'blur(12px)',
+                  fontSize: '0.88rem',
+                }}
+              >
+                <FaArrowLeft size={13} /> Back to Home
+              </Link>
+            </div>
 
-        <div className="row g-4 lg-g-5 align-items-center">
-          {/* 🌟 LEFT PANEL: BRANDING & ROLE CAPABILITIES */}
-          <div className="col-lg-6 pe-lg-4 text-white">
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -210,13 +199,13 @@ export default function LoginPage() {
             </motion.div>
           </div>
 
-          {/* ⚡ RIGHT PANEL: GLOWING LOGIN FORM CARD */}
-          <div className="col-lg-6 ps-lg-4">
+          {/* ⚡ RIGHT PANEL: GLOWING LOGIN FORM CARD (FIXED / STICKY) */}
+          <div className="col-lg-6 login-right-panel ps-lg-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.5, delay: 0.1 }}
-              className="mx-auto"
+              className="w-100 mx-auto"
               style={{ maxWidth: '500px' }}
             >
               <div

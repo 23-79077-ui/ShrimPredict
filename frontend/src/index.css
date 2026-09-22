@@ -5822,3 +5822,62 @@ body.dark-theme .highlighted-report-card {
   border-color: #cbd5e1 !important;
   pointer-events: none;
 }
+
+/* ==========================================================================
+   🌟 LOGIN PAGE SPLIT LAYOUT (FIXED RIGHT FORM & INDEPENDENTLY SCROLLABLE LEFT PANEL WITH HIDDEN SCROLLBAR)
+   ========================================================================== */
+.login-page-container {
+  min-height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+  background-color: #040710;
+  background-image: 
+    radial-gradient(circle at 15% 20%, rgba(14, 165, 233, 0.16) 0%, transparent 50%),
+    radial-gradient(circle at 85% 50%, rgba(14, 165, 233, 0.08) 0%, transparent 50%),
+    linear-gradient(90deg, #0A1326 0%, #0A1326 50%, #040710 50%, #040710 100%);
+  font-family: 'Poppins', sans-serif;
+}
+
+@media (min-width: 992px) {
+  .login-page-container {
+    height: 100vh;
+    max-height: 100vh;
+  }
+
+  .login-split-row {
+    height: 100vh;
+    max-height: 100vh;
+    overflow: hidden;
+  }
+
+  .login-left-panel {
+    height: 100vh;
+    max-height: 100vh;
+    overflow-y: auto;
+    padding-top: 2.5rem;
+    padding-bottom: 3.5rem;
+    /* Hide scrollbar completely while maintaining full scrollability */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE / Edge */
+  }
+
+  .login-left-panel::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+    width: 0;
+    height: 0;
+  }
+
+  .login-right-panel {
+    height: 100vh;
+    max-height: 100vh;
+    position: sticky;
+    top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+  }
+}
