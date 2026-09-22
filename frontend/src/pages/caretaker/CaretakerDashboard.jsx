@@ -226,18 +226,7 @@ export default function CaretakerDashboard() {
       {/* 🌟 HERO CONTROL STRIP: STATUS BADGE, TITLE & SLEEK PILL FILTERS */}
       <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
         <div>
-          <div className="d-flex align-items-center gap-2">
-            <span
-              className="badge rounded-pill fw-bold extra-small"
-              style={{ backgroundColor: '#FFF7ED', color: '#EA580C', border: '1px solid #FFEDD5' }}
-            >
-              ● CARETAKER CONSOLE
-            </span>
-            <span className="text-muted extra-small">
-              {assignedPonds.length} Assigned {assignedPonds.length === 1 ? 'Basin' : 'Basins'} • Telemetry Verification
-            </span>
-          </div>
-          <h2 className="fw-extrabold mb-0 mt-1 tracking-tight text-dark" style={{ fontSize: '1.75rem', letterSpacing: '-0.03em' }}>
+          <h2 className="fw-extrabold mb-0 tracking-tight text-dark" style={{ fontSize: '1.75rem', letterSpacing: '-0.03em' }}>
             Field Operations Hub
           </h2>
         </div>

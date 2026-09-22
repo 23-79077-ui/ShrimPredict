@@ -291,18 +291,7 @@ export default function ReportsPage() {
       {/* 🌟 HERO CONTROL STRIP: BREADCRUMB, STATUS BADGE & ACTION TABS */}
       <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
         <div>
-          <div className="d-flex align-items-center gap-2">
-            <span
-              className="badge rounded-pill fw-bold extra-small"
-              style={{ backgroundColor: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}
-            >
-              ● INCIDENT REPORTING
-            </span>
-            <span className="text-muted extra-small">
-              Direct Admin Dispatch • Media Proof & Equipment Logging
-            </span>
-          </div>
-          <h2 className="fw-extrabold mb-0 mt-1 tracking-tight text-dark" style={{ fontSize: '1.75rem', letterSpacing: '-0.03em' }}>
+          <h2 className="fw-extrabold mb-0 tracking-tight text-dark" style={{ fontSize: '1.75rem', letterSpacing: '-0.03em' }}>
             Pond Issue & Incident Reports
           </h2>
         </div>
