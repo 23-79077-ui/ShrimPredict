@@ -406,12 +406,15 @@ export default function CaretakerSettingsPage() {
           </div>
         </div>
 
-        {/* RIGHT MAIN CONTENT AREA */}
+        {/* RIGHT MAIN CONTENT AREA (Independently Scrollable Panel) */}
         <div className="col-12 col-lg-8 col-xl-9">
-          <div className="settings-card bg-white shadow-sm border border-slate-200 rounded-4 overflow-hidden">
+          <div
+            className="settings-card bg-white shadow-sm border border-slate-200 rounded-4 overflow-hidden d-flex flex-column"
+            style={{ maxHeight: 'calc(100vh - 160px)', minHeight: '520px' }}
+          >
             
-            {/* HEADER BANNER */}
-            <div className="settings-card-header p-4 border-bottom bg-slate-50 d-flex align-items-center justify-content-between flex-wrap gap-3">
+            {/* HEADER BANNER (Pinned at top of right card) */}
+            <div className="settings-card-header p-4 border-bottom bg-slate-50 d-flex align-items-center justify-content-between flex-wrap gap-3 flex-shrink-0">
               <div className="d-flex align-items-center gap-3">
                 <div className="settings-icon-badge p-3 rounded-4 bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center">
                   <ActiveTabIcon size={20} />
@@ -426,7 +429,8 @@ export default function CaretakerSettingsPage() {
               </span>
             </div>
 
-            <div className="card-body p-4 p-md-4">
+            {/* CARD BODY (Scrolls internally while left menu stays 100% fixed) */}
+            <div className="card-body p-4 p-md-4 overflow-y-auto flex-grow-1" style={{ overflowY: 'auto' }}>
               {loading ? (
                 <div className="text-center py-5 text-muted">
                   <div className="spinner-border text-primary spinner-border-sm me-2" role="status"></div>
