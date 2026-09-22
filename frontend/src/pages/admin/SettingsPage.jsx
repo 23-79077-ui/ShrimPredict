@@ -727,10 +727,10 @@ export default function SettingsPage() {
   return (
     <div className="container-fluid px-0 px-md-3 pb-5">
       {/* Main Settings Body */}
-      <div className="row g-4">
-        {/* Left Navigation Sidebar / Tabs */}
-        <div className="col-12 col-lg-4 col-xl-3">
-          <div className="settings-card bg-white p-3 rounded-4 border border-slate-200 shadow-xs sticky-top" style={{ top: 20, zIndex: 10 }}>
+      <div className="row g-4 align-items-start">
+        {/* Left Navigation Sidebar / Tabs (Fixed/Sticky on Scroll) */}
+        <div className="col-12 col-lg-4 col-xl-3 sticky-top" style={{ top: 135, zIndex: 100 }}>
+          <div className="settings-card bg-white p-3 rounded-4 border border-slate-200 shadow-xs">
             {/* Settings Menu Header + Integrated Search Bar */}
             <div className="px-1 pb-3 mb-2 border-bottom">
               <div className="d-flex align-items-center justify-content-between mb-2">

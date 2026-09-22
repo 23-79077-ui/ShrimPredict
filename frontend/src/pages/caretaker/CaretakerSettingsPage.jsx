@@ -344,10 +344,10 @@ export default function CaretakerSettingsPage() {
         </div>
       </div>
 
-      <div className="row g-4">
-        {/* LEFT SETTINGS MENU SIDEBAR */}
-        <div className="col-12 col-lg-4 col-xl-3">
-          <div className="settings-card bg-white p-3 rounded-4 border border-slate-200 shadow-xs sticky-top" style={{ top: 20, zIndex: 10 }}>
+      <div className="row g-4 align-items-start">
+        {/* LEFT SETTINGS MENU SIDEBAR (Fixed/Sticky on Scroll) */}
+        <div className="col-12 col-lg-4 col-xl-3 sticky-top" style={{ top: 135, zIndex: 100 }}>
+          <div className="settings-card bg-white p-3 rounded-4 border border-slate-200 shadow-xs">
             {/* Header + Integrated Search */}
             <div className="px-1 pb-3 mb-2 border-bottom">
               <div className="d-flex align-items-center justify-content-between mb-2">
