@@ -317,53 +317,29 @@ export default function CaretakerSettingsPage() {
     .toUpperCase();
 
   return (
-    <div className="caretaker-settings-hub pb-5">
-      {/* 🌟 HERO CONTROL STRIP */}
-      <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-        <div>
-          <div className="d-flex align-items-center gap-2">
-            <span
-              className="badge rounded-pill fw-bold extra-small"
-              style={{ backgroundColor: '#F0F9FF', color: '#0284C7', border: '1px solid #BAE6FD' }}
-            >
-              ● OPERATOR PREFERENCES
-            </span>
-            <span className="text-muted extra-small">
-              Caretaker Profile, Security, Feeding Preferences & Alerts
-            </span>
-          </div>
-          <h2 className="fw-extrabold mb-0 mt-1 tracking-tight text-dark" style={{ fontSize: '1.75rem', letterSpacing: '-0.03em' }}>
-            Account & System Settings
-          </h2>
-        </div>
-
-        <div className="d-flex align-items-center gap-2 flex-wrap">
-          <span className="badge bg-success bg-opacity-10 text-success rounded-pill px-3 py-1.5 extra-small fw-bold border border-success border-opacity-25">
-            <FaUserCheck className="me-1" /> Active Caretaker Session
-          </span>
-        </div>
-      </div>
-
+    <div className="caretaker-settings-hub pb-5 pt-2">
       <div className="row g-4 align-items-start">
         {/* LEFT SETTINGS MENU SIDEBAR (Fixed/Sticky on Scroll) */}
-        <div className="col-12 col-lg-4 col-xl-3 sticky-top" style={{ top: 135, zIndex: 100 }}>
-          <div className="settings-card bg-white p-3 rounded-4 border border-slate-200 shadow-xs">
+        <div className="col-12 col-lg-4 col-xl-3 sticky-top" style={{ top: 130, zIndex: 100, alignSelf: 'flex-start' }}>
+          <div className="settings-card bg-white p-3 p-md-3.5 rounded-4 border border-slate-200 shadow-sm" style={{ backdropFilter: 'blur(10px)' }}>
             {/* Header + Integrated Search */}
             <div className="px-1 pb-3 mb-2 border-bottom">
               <div className="d-flex align-items-center justify-content-between mb-2">
-                <span className="text-uppercase fw-bold text-muted extra-small tracking-wider">SETTINGS MENU</span>
-                <span className="badge bg-primary bg-opacity-10 text-primary extra-small rounded-pill fw-semibold">
+                <span className="text-uppercase fw-extrabold text-muted extra-small" style={{ letterSpacing: '0.6px', fontSize: '0.72rem', color: '#64748B' }}>
+                  SETTINGS MENU
+                </span>
+                <span className="badge bg-primary bg-opacity-10 text-primary extra-small rounded-pill fw-bold px-2.5 py-1">
                   {filteredTabs.length} Tabs
                 </span>
               </div>
 
-              <div className="position-relative mt-2">
+              <div className="position-relative mt-2.5">
                 <FaSearch className="position-absolute top-50 translate-middle-y text-primary" style={{ left: 14, fontSize: '0.82rem' }} />
                 <input
                   type="text"
                   className="form-control form-control-sm ps-5 pe-4 py-2.5 rounded-3 border-slate-200 shadow-xs"
                   placeholder="Search Settings..."
-                  style={{ fontSize: '0.84rem' }}
+                  style={{ fontSize: '0.84rem', backgroundColor: '#F8FAFC' }}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -392,25 +368,35 @@ export default function CaretakerSettingsPage() {
                     <button
                       key={t.id}
                       onClick={() => setActiveTab(t.id)}
-                      className={`settings-nav-item nav-link text-start d-flex align-items-center gap-3 py-2.5 px-3 border-0 transition-all ${
-                        isActive ? 'active' : 'text-dark'
+                      className={`settings-nav-item nav-link text-start d-flex align-items-center gap-3 py-2.5 px-3 border-0 rounded-3 transition-all ${
+                        isActive ? 'active shadow-xs' : 'text-dark'
                       }`}
-                      style={{ cursor: 'pointer' }}
+                      style={{
+                        cursor: 'pointer',
+                        backgroundColor: isActive ? '#EFF6FF' : 'transparent',
+                        borderLeft: isActive ? '3.5px solid #0B2C5F' : '3.5px solid transparent',
+                        transform: isActive ? 'translateX(2px)' : 'none',
+                      }}
                     >
                       <div
-                        className="settings-nav-icon p-2 rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                        className="settings-nav-icon p-2 rounded-3 d-flex align-items-center justify-content-center flex-shrink-0 transition-all"
                         style={{
-                          width: 36,
-                          height: 36,
-                          backgroundColor: isActive ? 'rgba(11, 44, 95, 0.12)' : 'rgba(11, 44, 95, 0.05)',
-                          color: isActive ? '#0B2C5F' : '#64748B'
+                          width: 38,
+                          height: 38,
+                          backgroundColor: isActive ? '#0B2C5F' : '#F1F5F9',
+                          color: isActive ? '#FFFFFF' : '#64748B',
+                          boxShadow: isActive ? '0 3px 8px rgba(11, 44, 95, 0.25)' : 'none',
                         }}
                       >
-                        <Icon size={15} />
+                        <Icon size={16} />
                       </div>
                       <div className="text-truncate flex-grow-1">
-                        <div className="fw-bold fs-6 lh-1 mb-1">{t.label}</div>
-                        <div className="text-muted extra-small text-truncate">{t.desc}</div>
+                        <div className="fw-bold fs-6 lh-1 mb-1" style={{ color: isActive ? '#0B2C5F' : '#1E293B', fontSize: '0.88rem' }}>
+                          {t.label}
+                        </div>
+                        <div className="text-muted extra-small text-truncate" style={{ fontSize: '0.72rem' }}>
+                          {t.desc}
+                        </div>
                       </div>
                     </button>
                   );
