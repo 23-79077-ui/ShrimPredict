@@ -114,12 +114,11 @@ export default function LoginPage() {
                 <img
                   src="/shrimp_predict_logo.png"
                   alt="ShrimPredict Official Logo"
-                  className="mx-auto d-block"
+                  className="mx-auto d-block logo-glow-intense"
                   style={{
                     height: '165px',
                     width: 'auto',
                     objectFit: 'contain',
-                    filter: 'drop-shadow(0 0 25px rgba(14, 165, 233, 0.45))',
                   }}
                 />
               </div>
