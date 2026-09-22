@@ -856,8 +856,8 @@ export default function MyPondPage() {
       </div>
 
       {/* 🌟 STAGE FILTER TABS: All Ponds | Nursery Basins (Starter) | Grow-out Basins (Grower) */}
-      <div className="p-3.5 rounded-4 bg-white border shadow-xs mb-3">
-        <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2.5">
+      <div className="p-3 p-md-4 rounded-4 bg-white border shadow-xs mb-3">
+        <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
           <div className="d-flex align-items-center gap-2">
             <FaFilter size={13} style={{ color: '#0B2C5F' }} />
             <span className="fw-extrabold text-uppercase extra-small" style={{ color: '#0B2C5F', letterSpacing: '0.4px', fontSize: '0.78rem' }}>
