@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   FaChartLine,
@@ -7,82 +7,80 @@ import {
   FaShieldAlt,
   FaBullseye,
   FaArrowRight,
-  FaCheckCircle,
   FaCamera,
   FaRobot,
   FaExclamationTriangle,
+  FaCheckCircle,
   FaMicroscope,
-  FaUserShield,
-  FaUserCog,
-  FaInfoCircle,
   FaEnvelope,
   FaMapMarkerAlt,
   FaPhoneAlt,
-  FaPlay,
   FaClipboardList,
   FaUtensils,
   FaBell,
   FaVial,
+  FaInfoCircle,
 } from 'react-icons/fa';
-
-const stats = [
-  { label: 'Dataset Trained', value: '1,802', detail: 'Real shrimp photos evaluated', icon: <FaMicroscope /> },
-  { label: 'AI Accuracy', value: '99.45%', detail: 'Zero false positive rate', icon: <FaShieldAlt /> },
-  { label: 'Active Ponds Monitored', value: '24 Ponds', detail: 'Real-time caretaker sync', icon: <FaWater /> },
-  { label: 'Disease Response Time', value: '< 1.5 sec', detail: 'Instant image processing', icon: <FaBullseye /> },
-];
 
 const problemSolutions = [
   {
-    title: 'White Spot Disease (WSD) Outbreak Prevention',
-    challenge: 'WSD can cause 80% to 100% mortality in shrimp populations within days if left unmonitored.',
-    solution: 'Rapid visual screening via mobile capture, analyzed by CNN models to identify lesions early and trigger isolation protocols.',
-    icon: <FaExclamationTriangle className="text-danger fs-2" />,
-    badge: 'Disease Prevention',
-    borderColor: 'border-danger',
-    accentBg: 'bg-danger-soft',
+    title: 'The Problem',
+    description: 'Shrimp farming heavily relies on manual monitoring, where subtle behavioral changes and deadly infections like White Spot Disease (WSD) go unnoticed until massive mortality (up to 80–100%) occurs. Meanwhile, existing smart aquaculture tools are too expensive and complex for small- to medium-scale farms.',
+    icon: <FaExclamationTriangle className="text-warning fs-3" />,
+    badge: 'Aquaculture Challenge',
+    accent: 'warning',
   },
   {
-    title: 'Feed Ration Optimization',
-    challenge: 'Overfeeding deteriorates pond water quality, while underfeeding stunts growth and lowers survival rates.',
-    solution: 'Digital logging of feeding frequency, amounts, and tray behaviors to evaluate feed conversion and minimize waste.',
-    icon: <FaUtensils className="text-warning fs-2" />,
-    badge: 'Feed Efficiency',
-    borderColor: 'border-warning',
-    accentBg: 'bg-warning-soft',
+    title: 'The Solution',
+    description: 'ShrimPredict provides an affordable, AI-powered web and mobile platform that uses standard smartphone cameras to track feed consumption and detect early signs of WSD via OpenCV and CNN. It delivers instant disease alerts and harvest predictions, empowering farmers to act fast and minimize crop loss.',
+    icon: <FaCheckCircle className="text-primary fs-3" />,
+    badge: 'ShrimPredict AI Platform',
+    accent: 'primary',
   },
 ];
 
 const features = [
   {
-    title: 'Image-Based WSD Detection',
-    description: 'Capture shrimp photos directly at pond trays for automated visual analysis using OpenCV and convolutional neural networks.',
+    title: 'CNN-Based White Spot Disease (WSD) Detection',
+    description: 'Employs deep learning models to inspect shrimp images for visual markers such as shell spots and discoloration, enabling early isolation before widespread contagion.',
     icon: <FaMicroscope className="text-primary fs-3" />,
-    badge: 'Computer Vision',
+    badge: 'Computer Vision AI',
+    accent: 'primary',
   },
   {
-    title: 'Digital Feed & Behavior Logs',
-    description: 'Eliminate manual, paper-based records with structured digital entries for feeding times, quantities, and consumption rates.',
-    icon: <FaClipboardList className="text-info fs-3" />,
-    badge: 'Digital Logbook',
+    title: 'Automated Feed Consumption & Behavior Tracking',
+    description: 'Analyzes feeding metrics and frequency to identify early declines in appetite, providing vital insights into shrimp health and pond balance.',
+    icon: <FaUtensils className="text-warning fs-3" />,
+    badge: 'Feed Intelligence',
+    accent: 'warning',
   },
   {
-    title: 'Harvest Yield Prediction',
-    description: 'Data-driven forecast models estimate optimal harvest windows and harvest volume based on feeding trends and culture days.',
-    icon: <FaChartLine className="text-success fs-3" />,
+    title: 'Harvest Readiness Prediction',
+    description: 'Computes estimated harvest readiness windows by processing cumulative feeding patterns, culture days, and historical farm logs.',
+    icon: <FaChartLine className="text-primary fs-3" />,
     badge: 'Yield Forecasting',
+    accent: 'primary',
   },
   {
-    title: 'Water Quality & Supplement Records',
-    description: 'Dedicated digital log sheets to track temperature, dissolved oxygen, pH, salinity, and vitamin treatments for historical reference.',
+    title: 'Farm Health Dashboard & Analytics',
+    description: 'Provides farm administrators with a centralized web dashboard featuring real-time overview charts, automated detection histories, and exportable PDF reports.',
+    icon: <FaClipboardList className="text-warning fs-3" />,
+    badge: 'Central Analytics',
+    accent: 'warning',
+  },
+  {
+    title: 'Digital Water Quality & Operation Logs',
+    description: 'Offers mobile-friendly data entry for reference parameters—including dissolved oxygen (DO), temperature, pH, salinity, vitamins, and maintenance tasks.',
     icon: <FaVial className="text-primary fs-3" />,
-    badge: 'Water & Health Log',
+    badge: 'Digital Logbook',
+    accent: 'primary',
   },
   {
-    title: 'Automated Threat Alerts',
-    description: 'Push notifications immediately inform the farm owner whenever abnormal feeding patterns or disease symptoms are detected.',
+    title: 'Instant Automated Disease Alerts',
+    description: 'Dispatches immediate notifications across web and mobile interfaces upon detecting abnormal indicators, prompting rapid on-site biosecurity measures.',
     icon: <FaBell className="text-warning fs-3" />,
     badge: 'Real-Time Alerts',
+    accent: 'warning',
   },
 ];
 
@@ -90,52 +88,59 @@ const steps = [
   {
     step: '01',
     badge: 'STEP ONE',
-    title: 'Field Image Capture',
-    description: 'Pond caretakers photograph sampled shrimp from feeding trays using an Android device.',
-    icon: <FaCamera className="fs-3 text-primary" />,
+    title: 'Capture & Upload',
+    description: 'Pond caretakers use an Android mobile device to photograph shrimp from feeding trays or ponds and input routine feeding quantities.',
+    icon: <FaCamera className="fs-4 text-primary" />,
     accent: 'primary',
   },
   {
     step: '02',
     badge: 'STEP TWO',
-    title: 'AI-Driven Processing',
-    description: 'The backend runs image enhancement and CNN classification to identify symptomatic white spots and shell abnormalities.',
-    icon: <FaRobot className="fs-3 text-info" />,
-    accent: 'info',
+    title: 'Cloud Preprocessing & Feature Extraction',
+    description: 'Images are preprocessed via OpenCV to filter noise, enhance image contrast, and isolate morphological features.',
+    icon: <FaMicroscope className="fs-4 text-warning" />,
+    accent: 'warning',
   },
   {
     step: '03',
     badge: 'STEP THREE',
-    title: 'Instant Diagnosis & Alerting',
-    description: 'Caretakers receive immediate on-screen results while the system flags potential infections to the farm owner.',
-    icon: <FaCheckCircle className="fs-3 text-success" />,
-    accent: 'success',
+    title: 'CNN Image Analysis',
+    description: 'The trained Convolutional Neural Network inspects the preprocessed imagery to classify health status and identify visual indicators of White Spot Disease.',
+    icon: <FaRobot className="fs-4 text-primary" />,
+    accent: 'primary',
   },
   {
     step: '04',
     badge: 'STEP FOUR',
-    title: 'Data Analytics & Production Planning',
-    description: 'The system aggregates feed intake and pond logs to project harvest readiness and generate exportable reports.',
-    icon: <FaChartLine className="fs-3 text-warning" />,
+    title: 'Data Analytics & Yield Modeling',
+    description: 'The platform cross-references recent feeding behavior and historical culture metrics to update growth tracking and harvest timing models.',
+    icon: <FaChartLine className="fs-4 text-warning" />,
     accent: 'warning',
+  },
+  {
+    step: '05',
+    badge: 'STEP FIVE',
+    title: 'Real-Time Notification & Reporting',
+    description: 'Processed findings, risk alerts, and performance summaries are instantly published to both the caretaker\'s mobile view and the farm owner\'s web dashboard for swift operational decisions.',
+    icon: <FaBell className="fs-4 text-primary" />,
+    accent: 'primary',
   },
 ];
 
 export default function LandingPage() {
   const navigate = useNavigate();
   const [activeNav, setActiveNav] = useState('home');
-  const [showDemoModal, setShowDemoModal] = useState(false);
-  const [demoState, setDemoState] = useState({
-    image: null,
-    analyzing: false,
-    result: null,
-  });
+  const isManualScroll = useRef(false);
 
   // Track active section on scroll
   useEffect(() => {
     const handleScroll = () => {
+      if (isManualScroll.current) return;
+
       const sections = ['home', 'problem-solution', 'features', 'how-it-works', 'contact'];
-      const scrollPosition = window.scrollY + 140;
+      const headerEl = document.querySelector('.landing-header');
+      const headerHeight = headerEl ? headerEl.offsetHeight : 80;
+      const scrollPosition = window.scrollY + headerHeight + 40;
 
       for (const sectionId of sections) {
         const el = document.getElementById(sectionId);
@@ -156,57 +161,53 @@ export default function LandingPage() {
 
   const scrollToSection = (id) => {
     setActiveNav(id);
+    isManualScroll.current = true;
+
     const element = document.getElementById(id);
     if (element) {
-      const headerOffset = 80;
-      const elementPosition = element.getBoundingClientRect().top;
-      const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
-
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: 'smooth',
-      });
-    }
-  };
-
-  const runSampleDemo = (type) => {
-    setDemoState({ image: null, analyzing: true, result: null });
-    setTimeout(() => {
-      if (type === 'healthy') {
-        setDemoState({
-          image: 'https://images.unsplash.com/photo-1559742811-822873691df8?w=500&auto=format&fit=crop&q=60',
-          analyzing: false,
-          result: {
-            disease: 'Healthy Shrimp',
-            confidence: 85.0,
-            risk: 'Low Risk',
-            color: 'success',
-            notes: 'No WSD lesions or abnormal spot contrast detected. Shell texture uniform and clear.',
-          },
-        });
+      if (id === 'home') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
-        setDemoState({
-          image: 'https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?w=500&auto=format&fit=crop&q=60',
-          analyzing: false,
-          result: {
-            disease: 'White Spot Disease (WSD)',
-            confidence: 82.0,
-            risk: 'High Risk',
-            color: 'danger',
-            notes: 'Dense white spot lesions detected on carapace via CNN classification. Immediate pond isolation recommended.',
-          },
+        const headerEl = document.querySelector('.landing-header');
+        const headerHeight = headerEl ? headerEl.offsetHeight : 80;
+        const elementPosition = element.getBoundingClientRect().top;
+        const offsetPosition = elementPosition + window.pageYOffset - (headerHeight + 20);
+
+        window.scrollTo({
+          top: Math.max(0, offsetPosition),
+          behavior: 'smooth',
         });
       }
-    }, 1000);
+    }
+
+    setTimeout(() => {
+      isManualScroll.current = false;
+    }, 800);
   };
 
   return (
     <div className="landing-page-wrapper bg-light min-vh-100 d-flex flex-column">
       {/* Header Navigation */}
       <header className="landing-header sticky-top">
-        <div className="container d-flex align-items-center justify-content-between gap-3">
-          <Link to="/" className="brand d-flex align-items-center gap-2 text-decoration-none text-dark fw-bold fs-4">
-            <span className="fw-extrabold text-dark tracking-tight fs-3">ShrimPredict</span>
+        <div className="container d-flex align-items-center justify-content-between py-2.5">
+          <Link to="/" className="brand d-flex align-items-center gap-2.5 text-decoration-none">
+            <img
+              src="/shrimp_predict_logo.png"
+              alt="ShrimpPredict Official Logo"
+              style={{
+                height: '42px',
+                width: 'auto',
+                objectFit: 'contain',
+              }}
+            />
+            <div className="d-flex flex-column justify-content-center">
+              <span className="fw-extrabold tracking-tight d-block" style={{ fontSize: '1.28rem', letterSpacing: '-0.02em', lineHeight: 1.15, color: '#0F172A' }}>
+                Shrimp<span style={{ color: '#FF7B38' }}>Predict</span>
+              </span>
+              <span className="d-block" style={{ fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.06em', lineHeight: 1, marginTop: '2px', color: '#64748B' }}>
+                O &amp; B AQUAFARM
+              </span>
+            </div>
           </Link>
 
           <nav className="landing-nav d-none d-lg-flex align-items-center">
@@ -241,23 +242,6 @@ export default function LandingPage() {
               Contact
             </button>
           </nav>
-
-          <div className="d-flex align-items-center gap-2.5">
-            <button
-              onClick={() => navigate('/login?type=admin')}
-              className="btn btn-outline-primary rounded-pill px-4 py-2.5 fw-bold d-inline-flex align-items-center gap-2 shadow-xs transition-all hover-lift"
-              style={{ fontSize: '0.88rem' }}
-            >
-              <FaUserShield className="text-primary" /> Admin Login
-            </button>
-            <button
-              onClick={() => navigate('/login?type=caretaker')}
-              className="btn btn-primary rounded-pill px-4 py-2.5 fw-bold d-inline-flex align-items-center gap-2 shadow-md text-white transition-all hover-lift"
-              style={{ fontSize: '0.88rem', backgroundColor: '#0b2c5f', borderColor: '#0b2c5f' }}
-            >
-              <FaUserCog /> Caretaker Login
-            </button>
-          </div>
         </div>
       </header>
 
@@ -270,14 +254,9 @@ export default function LandingPage() {
 
           <div className="container py-lg-5 position-relative z-1">
             <div className="row align-items-center gy-5">
-              {/* Left Column: Thesis Title & Hero Copy */}
+              {/* Left Column: Title & Hero Copy */}
               <div className="col-lg-6">
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-                  <div className="hero-thesis-badge mb-3">
-                    <FaRobot className="text-warning fs-6" />
-                    <span>THESIS SYSTEM • AI AQUACULTURE INTELLIGENCE</span>
-                  </div>
-
                   {/* THESIS TITLE */}
                   <h1 className="display-5 fw-extrabold text-white mb-3 lh-sm">
                     <span className="text-warning">ShrimPredict:</span> Shrimp Feed Monitoring and Disease Detection System{' '}
@@ -290,38 +269,18 @@ export default function LandingPage() {
                     Empowering shrimp caretakers and farm operators with real-time digital feed monitoring, automated harvest yield predictions, and instant AI-powered White Spot Disease (WSD) diagnosis via image processing.
                   </p>
 
-                  <div className="d-flex flex-wrap gap-3 mb-4">
+                  <div className="d-flex flex-wrap gap-3 mb-2">
                     <button
                       onClick={() => navigate('/login')}
                       className="btn btn-warning btn-lg text-dark fw-extrabold d-flex align-items-center gap-2 px-4 py-3 shadow rounded-3"
                     >
                       Get Started Now <FaArrowRight />
                     </button>
-                    <button
-                      onClick={() => setShowDemoModal(true)}
-                      className="btn btn-outline-light btn-lg text-white fw-bold d-flex align-items-center gap-2 px-4 py-3 rounded-3"
-                      style={{ borderColor: 'rgba(255,255,255,0.3)', backgroundColor: 'rgba(255,255,255,0.06)' }}
-                    >
-                      <FaPlay className="text-warning" /> Try AI Scanner Demo
-                    </button>
-                  </div>
-
-                  {/* Quick Highlight Pills */}
-                  <div className="d-flex flex-wrap align-items-center gap-3 text-white small fw-medium">
-                    <div className="d-flex align-items-center gap-2 bg-white bg-opacity-10 px-3 py-1.5 rounded-pill border border-white border-opacity-10">
-                      <FaCheckCircle className="text-success fs-6" /> <span className="fw-semibold">1,802 Dataset Trained</span>
-                    </div>
-                    <div className="d-flex align-items-center gap-2 bg-white bg-opacity-10 px-3 py-1.5 rounded-pill border border-white border-opacity-10">
-                      <FaCheckCircle className="text-info fs-6" /> <span className="fw-semibold">99.45% Accuracy</span>
-                    </div>
-                    <div className="d-flex align-items-center gap-2 bg-white bg-opacity-10 px-3 py-1.5 rounded-pill border border-white border-opacity-10">
-                      <FaCheckCircle className="text-warning fs-6" /> <span className="fw-semibold">Zero False Positive</span>
-                    </div>
                   </div>
                 </motion.div>
               </div>
 
-              {/* Right Column: Hero Visual Showcase with Large Glowing Logo */}
+              {/* Right Column: Hero Visual Showcase with Animated Slowmo Heartbeat Logo */}
               <div className="col-lg-6">
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
@@ -345,11 +304,19 @@ export default function LandingPage() {
                     }}
                   ></div>
 
-                  {/* Large Centered Intense Glowing Logo */}
+                  {/* Large Centered Glowing Logo with Slowmo Pulse (Zoom In / Zoom Out Heartbeat) */}
                   <div className="position-relative z-1 my-3 text-center">
-                    <img
+                    <motion.img
                       src="/shrimp_predict_logo.png"
                       alt="ShrimPredict Official Logo"
+                      animate={{
+                        scale: [1, 1.07, 1],
+                      }}
+                      transition={{
+                        duration: 3.8,
+                        repeat: Infinity,
+                        ease: 'easeInOut',
+                      }}
                       style={{
                         maxHeight: '350px',
                         width: 'auto',
@@ -364,73 +331,44 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Stats Bar */}
-        <section className="bg-white py-4 border-top border-bottom shadow-xs">
-          <div className="container">
-            <div className="row g-4 text-center">
-              {stats.map((stat, idx) => (
-                <div key={idx} className="col-6 col-md-3">
-                  <motion.div
-                    whileHover={{ y: -5 }}
-                    transition={{ duration: 0.2 }}
-                    className="stat-box-modern h-100"
-                  >
-                    <div className="icon-circle-gradient mx-auto mb-2.5">{stat.icon}</div>
-                    <div className="display-6 fw-extrabold text-dark tracking-tight mb-0">{stat.value}</div>
-                    <div className="fw-bold text-dark small">{stat.label}</div>
-                    <div className="text-muted tiny fw-medium mt-0.5">{stat.detail}</div>
-                  </motion.div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
+
 
         {/* Problem & Solution Overview Section */}
         <section id="problem-solution" className="py-5 bg-white border-bottom">
           <div className="container py-lg-4">
-            <div className="text-center mx-auto mb-5" style={{ maxWidth: '720px' }}>
-              <span className="badge bg-primary-soft text-primary px-3 py-2 rounded-pill fw-bold text-uppercase mb-2 d-inline-flex align-items-center gap-1.5">
-                <FaInfoCircle /> Problem &amp; Solution Overview
-              </span>
-              <h2 className="display-6 fw-bold text-dark mb-3">Solving Critical Aquaculture Challenges</h2>
-              <p className="lead text-secondary fs-6">
-                Addressing high mortality rates from disease outbreaks and feed management inefficiencies in commercial shrimp farming.
+            <div className="text-center mx-auto mb-4" style={{ maxWidth: '720px' }}>
+              <h2 className="display-6 fw-extrabold text-dark mb-2">Problem &amp; Solution</h2>
+              <p className="lead text-secondary small mb-0" style={{ fontSize: '0.95rem' }}>
+                Transforming manual aquaculture risks into intelligent, data-driven farm protection.
               </p>
             </div>
 
-            <div className="row g-4">
+            <div className="row g-4 justify-content-center">
               {problemSolutions.map((item, idx) => (
                 <div key={idx} className="col-md-6">
                   <motion.div
                     whileHover={{ y: -6 }}
                     transition={{ duration: 0.25 }}
-                    className="card h-100 border-0 shadow-sm rounded-4 p-4 bg-white hover-shadow"
-                    style={{ background: 'linear-gradient(180deg, #f8fafc 0%, #ffffff 100%)', border: '1px solid #e2e8f0' }}
+                    className={`card h-100 border border-${item.accent} border-opacity-25 shadow-sm rounded-4 p-4 bg-white position-relative overflow-hidden transition-all`}
                   >
-                    <div className="d-flex align-items-center justify-content-between mb-3 border-bottom pb-3">
+                    {/* Top Accent Line */}
+                    <div className={`position-absolute top-0 start-0 end-0 bg-${item.accent}`} style={{ height: 4 }} />
+
+                    <div className="d-flex align-items-center justify-content-between mb-3.5 border-bottom pb-3">
                       <div className="d-flex align-items-center gap-3">
-                        <div className="p-3 bg-light rounded-3 shadow-xs">{item.icon}</div>
-                        <h5 className="fw-bold text-dark mb-0 fs-5">{item.title}</h5>
+                        <div className={`p-3 bg-${item.accent} bg-opacity-10 rounded-3 shadow-xs d-inline-flex align-items-center justify-content-center`}>
+                          {item.icon}
+                        </div>
+                        <h4 className="fw-bold text-dark mb-0 fs-5">{item.title}</h4>
                       </div>
-                      <span className="badge bg-primary text-white extra-small px-3 py-1.5 rounded-pill fw-bold">
+                      <span className={`badge bg-${item.accent} bg-opacity-10 text-${item.accent} border border-${item.accent} border-opacity-25 extra-small px-3 py-1.5 rounded-pill fw-bold`}>
                         {item.badge}
                       </span>
                     </div>
 
-                    <div className="mb-3 p-3 bg-danger bg-opacity-10 rounded-3 border border-danger border-opacity-20">
-                      <div className="fw-bold text-danger extra-small text-uppercase mb-1">
-                        Challenge
-                      </div>
-                      <p className="text-dark small mb-0">{item.challenge}</p>
-                    </div>
-
-                    <div className="p-3 bg-success bg-opacity-10 rounded-3 border border-success border-opacity-20">
-                      <div className="fw-bold text-success extra-small text-uppercase mb-1">
-                        ShrimPredict Solution
-                      </div>
-                      <p className="text-dark small mb-0">{item.solution}</p>
-                    </div>
+                    <p className="text-secondary small mb-0 lh-relaxed" style={{ fontSize: '0.92rem', lineHeight: '1.7' }}>
+                      {item.description}
+                    </p>
                   </motion.div>
                 </div>
               ))}
@@ -438,33 +376,47 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Core System Features Section */}
-        <section id="features" className="py-5 bg-light border-top border-bottom">
-          <div className="container py-lg-4">
-            <div className="text-center mx-auto mb-5" style={{ maxWidth: '700px' }}>
-              <span className="badge bg-primary-soft text-primary px-3 py-2 rounded-pill fw-bold text-uppercase mb-2">
-                Core System Features
-              </span>
-              <h2 className="display-6 fw-bold text-dark mb-3">Comprehensive Aquaculture Intelligence</h2>
-              <p className="lead text-secondary fs-6">
-                Designed for field caretakers and commercial farm administrators to monitor health, feeding, and yields.
+        {/* System Core Features Section */}
+        <section id="features" className="py-4 py-lg-4.5 bg-white">
+          <div className="container py-lg-2">
+            <div className="text-center mx-auto mb-3.5" style={{ maxWidth: '750px' }}>
+              <h2 className="display-6 fw-extrabold text-dark mb-1.5">System Core Features</h2>
+              <p className="lead text-secondary small mb-0" style={{ fontSize: '0.92rem' }}>
+                An integrated aquaculture intelligence platform uniting deep-learning disease detection, digital feeding logs, and predictive harvest analytics.
               </p>
             </div>
 
-            <div className="row g-4 justify-content-center">
+            <div className="row g-3 justify-content-center">
               {features.map((item, idx) => (
                 <div key={idx} className="col-md-6 col-lg-4">
                   <motion.div
-                    whileHover={{ y: -8 }}
-                    transition={{ duration: 0.25 }}
-                    className="feature-card-ultra h-100 p-4 bg-white shadow-xs"
+                    whileHover={{ y: -5 }}
+                    transition={{ duration: 0.2 }}
+                    className={`card h-100 border border-${item.accent} border-opacity-30 shadow-xs rounded-3 p-3 bg-white position-relative overflow-hidden transition-all`}
                   >
-                    <div className="d-flex align-items-center justify-content-between mb-3">
-                      <div className="p-2.5 bg-light rounded-3">{item.icon}</div>
-                      <span className="badge bg-light text-dark border extra-small fw-semibold">{item.badge}</span>
+                    {/* Top Glowing Accent Line */}
+                    <div className={`position-absolute top-0 start-0 end-0 bg-${item.accent}`} style={{ height: 3 }} />
+
+                    <div className="card-body d-flex flex-column p-0 justify-content-between">
+                      <div>
+                        <div className="d-flex align-items-center justify-content-between mb-2.5">
+                          <div
+                            className={`p-2 bg-${item.accent} bg-opacity-10 rounded-2 d-inline-flex align-items-center justify-content-center shadow-xs`}
+                          >
+                            {item.icon}
+                          </div>
+                          <span
+                            className={`badge bg-${item.accent} bg-opacity-10 text-${item.accent === 'warning' ? 'dark' : item.accent} border border-${item.accent} border-opacity-25 tiny fw-bold px-2 py-1 rounded-pill`}
+                          >
+                            {item.badge}
+                          </span>
+                        </div>
+                        <h6 className="fw-bold text-dark mb-1.5 fs-6 lh-sm">{item.title}</h6>
+                        <p className="text-secondary tiny mb-0 lh-relaxed" style={{ fontSize: '0.83rem' }}>
+                          {item.description}
+                        </p>
+                      </div>
                     </div>
-                    <h5 className="fw-bold text-dark mb-2 fs-6">{item.title}</h5>
-                    <p className="text-muted extra-small mb-0">{item.description}</p>
                   </motion.div>
                 </div>
               ))}
@@ -474,42 +426,45 @@ export default function LandingPage() {
 
         {/* How ShrimPredict Works Section */}
         <section id="how-it-works" className="py-5 bg-white border-top">
-          <div className="container py-lg-4">
-            <div className="text-center mx-auto mb-5" style={{ maxWidth: '700px' }}>
-              <span className="badge bg-warning bg-opacity-10 text-warning-emphasis px-3 py-2 rounded-pill fw-bold text-uppercase mb-2 border border-warning border-opacity-25">
-                4-Step Workflow
-              </span>
-              <h2 className="display-6 fw-bold text-dark mb-3">How ShrimPredict Works</h2>
-              <p className="lead text-secondary fs-6">From pond-side photo capture to executive production analytics.</p>
+          <div className="container-fluid px-lg-4 py-lg-4">
+            <div className="text-center mx-auto mb-4" style={{ maxWidth: '750px' }}>
+              <h2 className="display-6 fw-extrabold text-dark mb-2">How ShrimPredict Works</h2>
+              <p className="lead text-secondary small mb-0" style={{ fontSize: '0.95rem' }}>
+                From pond-side photo capture to AI classification, predictive yield modeling, and real-time dashboard alerts.
+              </p>
             </div>
 
-            <div className="row g-4 justify-content-center align-items-stretch">
+            <div className="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-2.5 justify-content-center align-items-stretch">
               {steps.map((s, idx) => (
-                <div key={idx} className="col-md-6 col-lg-3">
+                <div key={idx} className="col">
                   <motion.div
-                    whileHover={{ y: -8 }}
-                    transition={{ duration: 0.25 }}
-                    className={`card h-100 border border-${s.accent} border-opacity-25 shadow-xs rounded-4 p-4 text-center bg-white position-relative overflow-hidden`}
+                    whileHover={{ y: -5 }}
+                    transition={{ duration: 0.2 }}
+                    className={`card h-100 border border-${s.accent} border-opacity-25 shadow-xs rounded-3 p-3 bg-white position-relative overflow-hidden transition-all`}
                   >
-                    {/* Top Accent Bar */}
-                    <div className={`position-absolute top-0 start-0 end-0 bg-${s.accent}`} style={{ height: 4 }} />
+                    {/* Top Glowing Accent Line */}
+                    <div className={`position-absolute top-0 start-0 end-0 bg-${s.accent}`} style={{ height: 3 }} />
 
-                    <div className="card-body d-flex flex-column align-items-center p-2">
-                      <div className="d-flex align-items-center justify-content-between w-100 mb-3">
-                        <span className={`badge bg-${s.accent} bg-opacity-10 text-${s.accent} border border-${s.accent} border-opacity-25 px-2.5 py-1 rounded-pill extra-small fw-bold`}>
+                    <div className="card-body d-flex flex-column p-0">
+                      <div className="d-flex align-items-center justify-content-between w-100 mb-2.5">
+                        <span className={`badge bg-${s.accent} bg-opacity-10 text-${s.accent === 'warning' ? 'dark' : s.accent} border border-${s.accent} border-opacity-25 px-2 py-1 rounded-pill tiny fw-bold`}>
                           {s.badge}
                         </span>
-                        <span className={`display-6 fw-extrabold text-${s.accent} opacity-25 font-mono`}>
+                        <span className={`fs-5 fw-extrabold text-${s.accent} opacity-35 font-mono lh-1`}>
                           {s.step}
                         </span>
                       </div>
 
-                      <div className={`p-4 rounded-circle bg-${s.accent} bg-opacity-10 mb-3 d-flex align-items-center justify-content-center shadow-xs`} style={{ width: 68, height: 68 }}>
-                        {s.icon}
+                      <div className="d-flex align-items-center gap-2 mb-2">
+                        <div className={`p-2 rounded-2 bg-${s.accent} bg-opacity-10 d-inline-flex align-items-center justify-content-center shadow-xs`}>
+                          {s.icon}
+                        </div>
+                        <h6 className="fw-bold text-dark mb-0 extra-small lh-sm">{s.title}</h6>
                       </div>
 
-                      <h5 className="fw-bold text-dark mb-2 fs-6">{s.title}</h5>
-                      <p className="text-muted extra-small mb-0">{s.description}</p>
+                      <p className="text-secondary tiny mb-0 lh-relaxed" style={{ fontSize: '0.81rem' }}>
+                        {s.description}
+                      </p>
                     </div>
                   </motion.div>
                 </div>
@@ -523,9 +478,6 @@ export default function LandingPage() {
           <div className="container py-lg-4">
             <div className="mx-auto" style={{ maxWidth: '900px' }}>
               <div className="text-center mb-4">
-                <span className="badge bg-primary-soft text-primary px-3 py-2 rounded-pill fw-bold text-uppercase mb-2">
-                  <FaEnvelope /> Contact &amp; Partner Location
-                </span>
                 <h2 className="display-6 fw-bold text-dark mb-2">O&amp;B Aqua Farm &amp; System Support</h2>
                 <p className="text-muted extra-small mb-0">
                   Official contact details for O&amp;B Aqua Farm commercial grow-out operations, wholesale seafood inquiries, and ShrimPredict AI platform support.
@@ -606,141 +558,20 @@ export default function LandingPage() {
         </section>
       </main>
 
-      {/* AI Scanner Demo Modal */}
-      <AnimatePresence>
-        {showDemoModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="modal fade show d-block"
-            style={{ backgroundColor: 'rgba(0,0,0,0.65)', zIndex: 1050 }}
-          >
-            <div className="modal-dialog modal-dialog-centered modal-lg">
-              <motion.div
-                initial={{ scale: 0.9, y: 20 }}
-                animate={{ scale: 1, y: 0 }}
-                exit={{ scale: 0.9, y: 20 }}
-                className="modal-content rounded-4 border-0 shadow-lg overflow-hidden"
-              >
-                <div className="modal-header bg-primary text-white p-4 border-0">
-                  <div className="d-flex align-items-center gap-2">
-                    <FaMicroscope className="fs-4 text-warning" />
-                    <h5 className="modal-title fw-bold text-white mb-0">Live AI Image Processing Simulator</h5>
-                  </div>
-                  <button
-                    onClick={() => setShowDemoModal(false)}
-                    className="btn-close btn-close-white"
-                  ></button>
-                </div>
-
-                <div className="modal-body p-4">
-                  <p className="text-muted extra-small mb-4">
-                    Test our image processing classifier model live. Select a sample shrimp image below to evaluate spot contrast ratio and WSD probability:
-                  </p>
-
-                  <div className="row g-3 mb-4">
-                    <div className="col-6">
-                      <button
-                        onClick={() => runSampleDemo('healthy')}
-                        className="btn btn-outline-success w-100 p-3 text-start rounded-3 d-flex align-items-center gap-3"
-                      >
-                        <FaCheckCircle className="fs-3 text-success" />
-                        <div>
-                          <div className="fw-bold text-dark">Test Healthy Shrimp</div>
-                          <span className="tiny text-muted">Clean shell texture</span>
-                        </div>
-                      </button>
-                    </div>
-
-                    <div className="col-6">
-                      <button
-                        onClick={() => runSampleDemo('wssv')}
-                        className="btn btn-outline-danger w-100 p-3 text-start rounded-3 d-flex align-items-center gap-3"
-                      >
-                        <FaExclamationTriangle className="fs-3 text-danger" />
-                        <div>
-                          <div className="fw-bold text-dark">Test WSD Infected</div>
-                          <span className="tiny text-muted">Dense white spot lesions</span>
-                        </div>
-                      </button>
-                    </div>
-                  </div>
-
-                  {demoState.analyzing && (
-                    <div className="text-center py-4">
-                      <div className="spinner-border text-primary mb-2" role="status"></div>
-                      <div className="fw-semibold text-primary">Running HSV Spatial &amp; Feature Analysis...</div>
-                    </div>
-                  )}
-
-                  {demoState.result && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className={`p-4 rounded-3 bg-${demoState.result.color}-soft border border-${demoState.result.color}`}
-                    >
-                      <div className="d-flex align-items-center justify-content-between mb-3">
-                        <div className="d-flex align-items-center gap-2">
-                          <span className={`badge bg-${demoState.result.color} text-white fs-6 px-3 py-2`}>
-                            {demoState.result.disease}
-                          </span>
-                        </div>
-                        <span className={`fw-bold text-${demoState.result.color}`}>
-                          {demoState.result.risk}
-                        </span>
-                      </div>
-
-                      <div className="mb-3">
-                        <div className="d-flex justify-content-between text-dark small mb-1">
-                          <span>Confidence Score</span>
-                          <span className="fw-bold">{demoState.result.confidence}%</span>
-                        </div>
-                        <div className="progress" style={{ height: '10px' }}>
-                          <div
-                            className={`progress-bar bg-${demoState.result.color}`}
-                            style={{ width: `${demoState.result.confidence}%` }}
-                          ></div>
-                        </div>
-                      </div>
-
-                      <div className="small text-dark">
-                        <strong>AI Observation:</strong> {demoState.result.notes}
-                      </div>
-                    </motion.div>
-                  )}
-                </div>
-
-                <div className="modal-footer bg-light p-3 border-0">
-                  <button
-                    onClick={() => setShowDemoModal(false)}
-                    className="btn btn-secondary px-4 rounded-3 text-white"
-                  >
-                    Close Demo
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowDemoModal(false);
-                      navigate('/login');
-                    }}
-                    className="btn btn-primary px-4 rounded-3 fw-bold text-white"
-                  >
-                    Go to Portal Login <FaArrowRight />
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* Footer */}
       <footer className="bg-dark text-white py-4 mt-auto border-top border-secondary border-opacity-25">
         <div className="container text-center">
           <div className="d-flex align-items-center justify-content-center gap-3 flex-wrap mb-2">
-            <div className="d-inline-flex align-items-center gap-2">
-              <img src="/shrimp_predict_logo.png" alt="ShrimPredict Logo" style={{ height: '42px', width: 'auto', objectFit: 'contain' }} className="logo-glow-orange" />
-              <span className="fw-bold text-white fs-5">ShrimPredict</span>
+            <div className="d-inline-flex align-items-center gap-2.5">
+              <img src="/shrimp_predict_logo.png" alt="ShrimpPredict Official Logo" style={{ height: '42px', width: 'auto', objectFit: 'contain' }} className="logo-glow-orange" />
+              <div className="text-start">
+                <span className="fw-extrabold tracking-tight d-block text-white" style={{ fontSize: '1.25rem', letterSpacing: '-0.02em', lineHeight: 1.15 }}>
+                  Shrimp<span style={{ color: '#FF7B38' }}>Predict</span>
+                </span>
+                <span className="d-block text-white-50" style={{ fontSize: '0.64rem', fontWeight: 800, letterSpacing: '0.06em', lineHeight: 1, marginTop: '2px' }}>
+                  O &amp; B AQUAFARM
+                </span>
+              </div>
             </div>
             <span className="text-white-50 d-none d-md-inline">|</span>
             <span className="text-white-75 extra-small">O&amp;B Aqua Farm, Sitio Carbonan Rd, Brgy. Balitoc, Calatagan, 4215 Batangas</span>

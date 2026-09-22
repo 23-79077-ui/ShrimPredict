@@ -5,7 +5,6 @@ import { useAuth } from '../context/AuthContext';
 import Swal from 'sweetalert2';
 import {
   FaArrowLeft,
-  FaEnvelope,
   FaLock,
   FaUserShield,
   FaUserCog,
@@ -74,24 +73,24 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="login-page-container">
-      <div className="container-fluid px-3 px-lg-5 h-100" style={{ maxWidth: '1280px' }}>
-        <div className="row g-4 g-lg-5 login-split-row align-items-center">
-          {/* 🌟 LEFT PANEL: BRANDING & ROLE CAPABILITIES (SCROLLABLE, SCROLLBAR HIDDEN) */}
+    <div className="login-page-container min-vh-100 d-flex align-items-center py-2 py-lg-3" style={{ backgroundColor: '#071022' }}>
+      <div className="container-fluid px-3 px-lg-5" style={{ maxWidth: '1260px' }}>
+        <div className="row g-3 g-lg-4 align-items-center">
+          {/* 🌟 LEFT PANEL: BRANDING & ROLE CAPABILITIES */}
           <div className="col-lg-6 login-left-panel pe-lg-4 text-white">
-            {/* Back to Home Pill Button (Top Left) */}
-            <div className="mb-4">
+            {/* Back Button (Top Left) */}
+            <div className="mb-2">
               <Link
                 to="/"
-                className="btn rounded-pill px-3.5 py-2 d-inline-flex align-items-center gap-2 fw-medium text-white text-decoration-none transition-all"
+                className="btn rounded-pill px-3.5 py-1.5 d-inline-flex align-items-center gap-2 fw-medium text-white text-decoration-none transition-all shadow-xs"
                 style={{
                   backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                  border: '1px solid rgba(255, 255, 255, 0.16)',
+                  border: '1px solid rgba(255, 255, 255, 0.18)',
                   backdropFilter: 'blur(12px)',
-                  fontSize: '0.88rem',
+                  fontSize: '0.85rem',
                 }}
               >
-                <FaArrowLeft size={13} /> Back to Home
+                <FaArrowLeft size={13} /> Back
               </Link>
             </div>
 
@@ -100,14 +99,14 @@ export default function LoginPage() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5 }}
             >
-              {/* Center Logo with Soft Back Glow */}
-              <div className="d-flex justify-content-center align-items-center w-100 mb-3.5">
+              {/* Center Logo with Soft Glow */}
+              <div className="d-flex justify-content-center align-items-center w-100 mb-2">
                 <img
                   src="/shrimp_predict_logo.png"
                   alt="ShrimPredict Official Logo"
                   className="mx-auto d-block logo-glow-intense"
                   style={{
-                    height: '165px',
+                    height: '130px',
                     width: 'auto',
                     objectFit: 'contain',
                   }}
@@ -115,45 +114,46 @@ export default function LoginPage() {
               </div>
 
               {/* Title & Subtitle */}
-              <div className="text-center mb-4">
-                <h1 className="fw-bold mb-2 lh-sm text-white" style={{ fontSize: 'clamp(1.4rem, 2.2vw, 2.0rem)' }}>
+              <div className="text-center mb-3">
+                <h2 className="fw-bold mb-1 lh-sm text-white" style={{ fontSize: 'clamp(1.2rem, 1.7vw, 1.45rem)' }}>
                   <span style={{ color: '#FF7B38' }}>ShrimpPredict:</span> Shrimp Feed Monitoring and Disease Detection System
-                </h1>
-                <p className="fw-semibold mb-0" style={{ color: '#38BDF8', fontSize: '1.05rem', letterSpacing: '0.2px' }}>
+                </h2>
+                <p className="fw-semibold mb-0" style={{ color: '#38BDF8', fontSize: '0.92rem', letterSpacing: '0.3px' }}>
                   Utilizing Image Processing
                 </p>
               </div>
 
-              {/* ROLE-BASED SYSTEM CAPABILITIES BADGE */}
-              <div className="mb-3">
-                <div className="extra-small fw-bold text-uppercase tracking-wider mb-3 d-flex align-items-center gap-2" style={{ color: '#94A3B8', letterSpacing: '1px' }}>
+              {/* ROLE-BASED SYSTEM CAPABILITIES BADGES */}
+              <div>
+                <div className="extra-small fw-bold text-uppercase tracking-wider mb-2.5 d-flex align-items-center gap-2" style={{ color: '#94A3B8', letterSpacing: '1px', fontSize: '0.78rem' }}>
                   <span className="p-1 rounded-circle" style={{ backgroundColor: '#38BDF8' }}></span> ROLE-BASED SYSTEM CAPABILITIES
                 </div>
 
                 {/* Card 1: For Farm Owners */}
                 <div
-                  className="p-3.5 p-md-4 rounded-4 mb-3 position-relative overflow-hidden transition-all"
+                  className="p-3 rounded-3 position-relative overflow-hidden transition-all"
                   style={{
-                    backgroundColor: 'rgba(15, 23, 42, 0.70)',
-                    border: '1.5px solid rgba(56, 189, 248, 0.45)',
+                    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+                    border: '1.5px solid rgba(56, 189, 248, 0.65)',
+                    boxShadow: '0 0 22px rgba(56, 189, 248, 0.35), 0 8px 24px rgba(0, 0, 0, 0.4)',
                     backdropFilter: 'blur(16px)',
-                    boxShadow: '0 8px 30px rgba(0, 0, 0, 0.3)',
+                    marginBottom: '18px',
                   }}
                 >
-                  <div className="d-flex align-items-center gap-2.5 mb-2.5">
-                    <div className="p-2 rounded-3 text-info d-flex align-items-center justify-content-center" style={{ backgroundColor: 'rgba(56, 189, 248, 0.15)', width: 34, height: 34 }}>
-                      <FaLaptop size={16} />
+                  <div className="d-flex align-items-center gap-2 mb-2">
+                    <div className="p-1.5 rounded-2 text-info d-flex align-items-center justify-content-center" style={{ backgroundColor: 'rgba(56, 189, 248, 0.15)', width: 30, height: 30 }}>
+                      <FaLaptop size={15} />
                     </div>
-                    <h6 className="fw-bold text-white mb-0" style={{ fontSize: '0.96rem' }}>
+                    <h6 className="fw-bold text-white mb-0" style={{ fontSize: '0.92rem' }}>
                       For Farm Owners (Web Portal)
                     </h6>
                   </div>
-                  <ul className="list-unstyled mb-0" style={{ color: '#CBD5E1', fontSize: '0.875rem' }}>
-                    <li className="d-flex align-items-start gap-2 mb-1.5">
+                  <ul className="list-unstyled mb-0" style={{ color: '#CBD5E1', fontSize: '0.84rem' }}>
+                    <li className="d-flex align-items-start gap-2 mb-1">
                       <FaCheck className="mt-1 flex-shrink-0" style={{ color: '#38BDF8', fontSize: '12px' }} />
                       <span>Centralized dashboard covering nursery and grow-out ponds.</span>
                     </li>
-                    <li className="d-flex align-items-start gap-2 mb-1.5">
+                    <li className="d-flex align-items-start gap-2 mb-1">
                       <FaCheck className="mt-1 flex-shrink-0" style={{ color: '#38BDF8', fontSize: '12px' }} />
                       <span>Predictive analytics for harvest planning and feeding deviation.</span>
                     </li>
@@ -166,28 +166,28 @@ export default function LoginPage() {
 
                 {/* Card 2: For Pond Caretakers */}
                 <div
-                  className="p-3.5 p-md-4 rounded-4 position-relative overflow-hidden transition-all"
+                  className="p-3 rounded-3 position-relative overflow-hidden transition-all"
                   style={{
-                    backgroundColor: 'rgba(15, 23, 42, 0.70)',
-                    border: '1.5px solid rgba(245, 158, 11, 0.45)',
+                    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+                    border: '1.5px solid rgba(245, 158, 11, 0.65)',
+                    boxShadow: '0 0 22px rgba(245, 158, 11, 0.35), 0 8px 24px rgba(0, 0, 0, 0.4)',
                     backdropFilter: 'blur(16px)',
-                    boxShadow: '0 8px 30px rgba(0, 0, 0, 0.3)',
                   }}
                 >
-                  <div className="d-flex align-items-center gap-2.5 mb-2.5">
-                    <div className="p-2 rounded-3 text-warning d-flex align-items-center justify-content-center" style={{ backgroundColor: 'rgba(245, 158, 11, 0.15)', width: 34, height: 34 }}>
-                      <FaMobileAlt size={16} />
+                  <div className="d-flex align-items-center gap-2 mb-2">
+                    <div className="p-1.5 rounded-2 text-warning d-flex align-items-center justify-content-center" style={{ backgroundColor: 'rgba(245, 158, 11, 0.15)', width: 30, height: 30 }}>
+                      <FaMobileAlt size={15} />
                     </div>
-                    <h6 className="fw-bold text-white mb-0" style={{ fontSize: '0.96rem' }}>
+                    <h6 className="fw-bold text-white mb-0" style={{ fontSize: '0.92rem' }}>
                       For Pond Caretakers (Mobile View)
                     </h6>
                   </div>
-                  <ul className="list-unstyled mb-0" style={{ color: '#CBD5E1', fontSize: '0.875rem' }}>
-                    <li className="d-flex align-items-start gap-2 mb-1.5">
+                  <ul className="list-unstyled mb-0" style={{ color: '#CBD5E1', fontSize: '0.84rem' }}>
+                    <li className="d-flex align-items-start gap-2 mb-1">
                       <FaCheck className="mt-1 flex-shrink-0" style={{ color: '#F59E0B', fontSize: '12px' }} />
-                      <span>Sunlight-readable, step-by-step camera diagnostic scanner.</span>
+                      <span>Sunlight-readable camera diagnostic scanner.</span>
                     </li>
-                    <li className="d-flex align-items-start gap-2 mb-1.5">
+                    <li className="d-flex align-items-start gap-2 mb-1">
                       <FaCheck className="mt-1 flex-shrink-0" style={{ color: '#F59E0B', fontSize: '12px' }} />
                       <span>Quick-entry forms for daily feed logs and water quality.</span>
                     </li>
@@ -201,27 +201,27 @@ export default function LoginPage() {
             </motion.div>
           </div>
 
-          {/* ⚡ RIGHT PANEL: GLOWING LOGIN FORM CARD (FIXED / STICKY) */}
+          {/* ⚡ RIGHT PANEL: GLOWING LOGIN FORM CARD */}
           <div className="col-lg-6 login-right-panel ps-lg-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.5, delay: 0.1 }}
               className="w-100 mx-auto"
-              style={{ maxWidth: '500px' }}
+              style={{ maxWidth: '460px' }}
             >
               <div
-                className="p-4 p-md-5 rounded-4 position-relative overflow-hidden"
+                className="p-4 rounded-4 position-relative overflow-hidden"
                 style={{
                   backgroundColor: '#0F172A',
                   border: '1.5px solid #0EA5E9',
-                  boxShadow: '0 0 35px rgba(14, 165, 233, 0.45), 0 15px 50px rgba(0, 0, 0, 0.6)',
-                  borderRadius: '24px',
+                  boxShadow: '0 0 35px rgba(14, 165, 233, 0.35), 0 15px 50px rgba(0, 0, 0, 0.6)',
+                  borderRadius: '20px',
                 }}
               >
                 {/* 🎛️ ROLE TOGGLE PILL SWITCHER BAR */}
                 <div
-                  className="p-1 rounded-pill d-flex mb-4"
+                  className="p-1 rounded-pill d-flex mb-3"
                   style={{
                     backgroundColor: '#1E293B',
                     border: '1px solid rgba(255, 255, 255, 0.08)',
@@ -229,7 +229,7 @@ export default function LoginPage() {
                 >
                   <button
                     type="button"
-                    className={`btn flex-fill rounded-pill py-2.5 px-3 fw-bold d-flex align-items-center justify-content-center gap-2 transition-all ${
+                    className={`btn flex-fill rounded-pill py-2 px-3 fw-bold d-flex align-items-center justify-content-center gap-2 transition-all ${
                       activeTab === 'admin'
                         ? 'text-white shadow-sm'
                         : 'text-secondary border-0'
@@ -237,7 +237,7 @@ export default function LoginPage() {
                     style={{
                       backgroundColor: activeTab === 'admin' ? '#0EA5E9' : 'transparent',
                       color: activeTab === 'admin' ? '#FFFFFF' : '#94A3B8',
-                      fontSize: '0.88rem',
+                      fontSize: '0.85rem',
                     }}
                     onClick={() => handleTabChange('admin')}
                   >
@@ -245,7 +245,7 @@ export default function LoginPage() {
                   </button>
                   <button
                     type="button"
-                    className={`btn flex-fill rounded-pill py-2.5 px-3 fw-bold d-flex align-items-center justify-content-center gap-2 transition-all ${
+                    className={`btn flex-fill rounded-pill py-2 px-3 fw-bold d-flex align-items-center justify-content-center gap-2 transition-all ${
                       activeTab === 'caretaker'
                         ? 'text-white shadow-sm'
                         : 'text-secondary border-0'
@@ -253,7 +253,7 @@ export default function LoginPage() {
                     style={{
                       backgroundColor: activeTab === 'caretaker' ? '#0EA5E9' : 'transparent',
                       color: activeTab === 'caretaker' ? '#FFFFFF' : '#94A3B8',
-                      fontSize: '0.88rem',
+                      fontSize: '0.85rem',
                     }}
                     onClick={() => handleTabChange('caretaker')}
                   >
@@ -262,11 +262,11 @@ export default function LoginPage() {
                 </div>
 
                 {/* FORM TITLE & SUBTITLE */}
-                <div className="text-center mb-4">
-                  <h3 className="fw-bold text-white mb-2" style={{ fontSize: '1.45rem' }}>
+                <div className="text-center mb-3">
+                  <h4 className="fw-bold text-white mb-1" style={{ fontSize: '1.25rem' }}>
                     {activeTab === 'admin' ? 'Farm Owner & Admin Portal' : 'Pond Caretaker Portal'}
-                  </h3>
-                  <p className="mb-0" style={{ color: '#94A3B8', fontSize: '0.875rem', lineHeight: '1.5' }}>
+                  </h4>
+                  <p className="mb-0 text-muted extra-small" style={{ color: '#94A3B8', fontSize: '0.82rem', lineHeight: '1.4' }}>
                     {activeTab === 'admin'
                       ? 'Sign in to access pond management dashboards, harvest forecasts, and biosecurity settings.'
                       : 'Sign in to log daily feed records, perform AI disease scans, and view pond status.'}
@@ -276,8 +276,8 @@ export default function LoginPage() {
                 {/* LOGIN FORM */}
                 <form onSubmit={handleSubmit}>
                   {/* Email / Username Field */}
-                  <div className="mb-3">
-                    <label className="form-label small fw-semibold mb-1.5" style={{ color: '#CBD5E1' }}>
+                  <div className="mb-2.5">
+                    <label className="form-label extra-small fw-semibold mb-1" style={{ color: '#CBD5E1' }}>
                       {activeTab === 'admin' ? 'Email Address' : 'Caretaker Username / Email'}
                     </label>
                     <div className="input-group">
@@ -289,15 +289,15 @@ export default function LoginPage() {
                           color: '#94A3B8',
                         }}
                       >
-                        <FaAt size={14} />
+                        <FaAt size={13} />
                       </span>
                       <input
                         type="email"
-                        className="form-control border-start-0 rounded-end-3 py-2.5 text-white"
+                        className="form-control border-start-0 rounded-end-3 py-2 text-white"
                         style={{
                           backgroundColor: '#1E293B',
                           borderColor: '#334155',
-                          fontSize: '0.9rem',
+                          fontSize: '0.85rem',
                         }}
                         placeholder={activeTab === 'admin' ? 'admin@shrimpredict.com' : 'cj@gmail.com'}
                         value={email}
@@ -308,8 +308,8 @@ export default function LoginPage() {
                   </div>
 
                   {/* Password Field */}
-                  <div className="mb-4">
-                    <label className="form-label small fw-semibold mb-1.5" style={{ color: '#CBD5E1' }}>
+                  <div className="mb-3">
+                    <label className="form-label extra-small fw-semibold mb-1" style={{ color: '#CBD5E1' }}>
                       Password
                     </label>
                     <div className="input-group">
@@ -321,15 +321,15 @@ export default function LoginPage() {
                           color: '#94A3B8',
                         }}
                       >
-                        <FaLock size={13} />
+                        <FaLock size={12} />
                       </span>
                       <input
                         type={showPassword ? 'text' : 'password'}
-                        className="form-control border-start-0 border-end-0 py-2.5 text-white"
+                        className="form-control border-start-0 border-end-0 py-2 text-white"
                         style={{
                           backgroundColor: '#1E293B',
                           borderColor: '#334155',
-                          fontSize: '0.9rem',
+                          fontSize: '0.85rem',
                         }}
                         placeholder="••••••••"
                         value={password}
@@ -346,7 +346,7 @@ export default function LoginPage() {
                         }}
                         onClick={() => setShowPassword(!showPassword)}
                       >
-                        {showPassword ? <FaEyeSlash size={14} /> : <FaEye size={14} />}
+                        {showPassword ? <FaEyeSlash size={13} /> : <FaEye size={13} />}
                       </button>
                     </div>
                   </div>
@@ -355,13 +355,13 @@ export default function LoginPage() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="btn w-100 py-3 rounded-3 fw-bold text-white shadow-lg d-flex align-items-center justify-content-center gap-2 mb-3.5"
+                    className="btn w-100 py-2.5 rounded-3 fw-bold text-white shadow-md d-flex align-items-center justify-content-center gap-2 mb-2.5"
                     style={{
                       backgroundColor: '#0EA5E9',
                       border: 'none',
-                      fontSize: '1rem',
-                      borderRadius: '12px',
-                      boxShadow: '0 4px 20px rgba(14, 165, 233, 0.45)',
+                      fontSize: '0.92rem',
+                      borderRadius: '10px',
+                      boxShadow: '0 4px 18px rgba(14, 165, 233, 0.4)',
                       transition: 'all 0.25s ease',
                     }}
                   >
@@ -377,12 +377,12 @@ export default function LoginPage() {
 
                   {/* DEMO AUTO-FILL CREDENTIALS LINK */}
                   <div className="text-center">
-                    <span style={{ color: '#94A3B8', fontSize: '0.83rem' }}>Testing system functions?</span>{' '}
+                    <span style={{ color: '#94A3B8', fontSize: '0.8rem' }}>Testing system functions?</span>{' '}
                     <button
                       type="button"
                       onClick={() => handleTabChange(activeTab)}
                       className="btn btn-link p-0 fw-semibold text-decoration-none ms-1"
-                      style={{ color: '#38BDF8', fontSize: '0.83rem' }}
+                      style={{ color: '#38BDF8', fontSize: '0.8rem' }}
                     >
                       Auto-fill demo credentials
                     </button>
@@ -396,4 +396,3 @@ export default function LoginPage() {
     </div>
   );
 }
-

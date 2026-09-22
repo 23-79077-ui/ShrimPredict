@@ -275,22 +275,22 @@ export default function AdminLayout() {
             </NavLink>
 
             <span
-              className="badge rounded-pill extra-small fw-semibold d-none d-sm-inline-block"
+              className="badge rounded-pill extra-small fw-bold d-none d-sm-inline-block px-2.5 py-1"
               style={{
-                backgroundColor: 'rgba(11, 44, 95, 0.05)',
-                color: '#0B2C5F',
-                border: '1px solid rgba(11, 44, 95, 0.12)',
-                fontSize: '0.68rem',
-                letterSpacing: '0.04em'
+                backgroundColor: 'rgba(11, 44, 95, 0.08)',
+                color: theme === 'dark' ? '#38BDF8' : '#0B2C5F',
+                border: theme === 'dark' ? '1px solid rgba(56, 189, 248, 0.3)' : '1px solid rgba(11, 44, 95, 0.2)',
+                fontSize: '0.72rem',
+                letterSpacing: '0.06em'
               }}
             >
-              AQUACULTURE OS
+              ADMIN
             </span>
 
             {/* Live Operational Pulse Indicator */}
             <span className="dock-live-indicator d-none d-md-inline-flex align-items-center gap-1.5">
               <span className="pulse-dot"></span>
-              <span>Farm Telemetry Active</span>
+              <span>Admin Active</span>
             </span>
           </div>
 

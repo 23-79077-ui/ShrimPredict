@@ -793,11 +793,11 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* 🌟 ASYMMETRICAL MASONRY GRID ROW 2: FEEDING WAVE-LINE CHART (8 cols) + DISEASE RISK ANALYSIS (4 cols) */}
-      <div className="row g-4">
-        {/* WIDGET 3: FEEDING LOGS & TRENDS (Smooth Wave-Line Chart + Log Table) */}
+      {/* 🌟 VISUAL ANALYTICS & CHARTS SECTION (GRAPHS FIRST - MATCHES DISEASE REPORTS PAGE ORDER) */}
+      <div className="row g-4 mb-4">
+        {/* WIDGET 3: FEEDING LOGS & TRENDS (Smooth Wave-Line Chart) */}
         <div className="col-12 col-xl-8">
-          <div className="asymmetric-card p-4 mb-4">
+          <div className="asymmetric-card p-4 h-100">
             {/* Chart Header with High-Contrast Numerical Highlights */}
             <div className="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
               <div>
@@ -843,9 +843,79 @@ export default function AdminDashboard() {
               <Line data={feedChart} options={feedChartOptions} />
             </div>
           </div>
+        </div>
 
-          {/* Recent Feeding Logs Compact Table */}
-          <div className="asymmetric-card p-4">
+        {/* WIDGET 4: DISEASE RISK ANALYSIS (Minimalist Donut Chart + Clean Legend Tags) */}
+        <div className="col-12 col-xl-4">
+          <div className="asymmetric-card p-4 h-100">
+            {(() => {
+              const activeDiseaseReports = filteredDiseaseReports.length > 0 ? filteredDiseaseReports : allDiseaseReports;
+              const safeCount = activeDiseaseReports.filter(r => (r.risk_level || '').toLowerCase() === 'low' || (r.disease_name || '').toLowerCase() === 'healthy').length;
+              const modCount = activeDiseaseReports.filter(r => ['moderate', 'medium', 'warning'].includes((r.risk_level || '').toLowerCase())).length;
+              const critCount = activeDiseaseReports.filter(r => ['high', 'critical'].includes((r.risk_level || '').toLowerCase())).length;
+              const totalCount = activeDiseaseReports.length || 1;
+              const safePct = Math.round((safeCount / totalCount) * 100);
+              const modPct = Math.round((modCount / totalCount) * 100);
+              const critPct = Math.max(0, 100 - safePct - modPct);
+
+              return (
+                <>
+                  <div className="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                      <h5 className="fw-extrabold mb-0 text-dark tracking-tight">Disease Risk Breakdown</h5>
+                      <p className="text-muted mb-0 small" style={{ fontSize: '0.8rem' }}>AI Biosecurity Health Index</p>
+                    </div>
+                    <span className="tag-green-safe">● {safePct}% Bio-Safe</span>
+                  </div>
+
+                  {/* Minimalist Donut Chart */}
+                  <div className="position-relative d-flex justify-content-center align-items-center my-3" style={{ height: 210 }}>
+                    <Doughnut
+                      data={{
+                        labels: ['Safe', 'Moderate Risk', 'Critical Alert'],
+                        datasets: [
+                          {
+                            data: [safeCount || 1, modCount, critCount],
+                            backgroundColor: ['#16A34A', '#0284C7', '#FF7A00'],
+                            borderWidth: 3,
+                            borderColor: '#FFFFFF',
+                            hoverOffset: 4
+                          }
+                        ]
+                      }}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        cutout: '78%'
+                      }}
+                    />
+                    <div className="position-absolute text-center">
+                      <span className="extra-small text-muted d-block" style={{ fontSize: '0.72rem' }}>Fleet Risk</span>
+                      <strong className="fw-extrabold text-dark" style={{ fontSize: '1.25rem' }}>
+                        {critCount > 0 ? 'HIGH' : modCount > 0 ? 'MOD' : 'LOW'}
+                      </strong>
+                    </div>
+                  </div>
+
+                  {/* Clean Legend Tags: Critical, Moderate, Safe */}
+                  <div className="d-flex justify-content-center gap-2 mb-2 flex-wrap">
+                    <span className="tag-green-safe">● Safe ({safePct}%)</span>
+                    {modPct > 0 && <span className="tag-cyan-active">● Moderate ({modPct}%)</span>}
+                    {critPct > 0 && <span className="tag-orange-maintenance">● Critical ({critPct}%)</span>}
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      </div>
+
+      {/* 🌟 DETAILED RECORDS & DIAGNOSTIC LISTS SECTION (LISTS AFTER GRAPHS) */}
+      <div className="row g-4">
+        {/* Recent Feeding Logs Compact Table */}
+        <div className="col-12 col-xl-8">
+          <div className="asymmetric-card p-4 h-100">
             <div className="d-flex justify-content-between align-items-center mb-3">
               <div>
                 <h6 className="fw-extrabold mb-0 text-dark">Recent Feeder Dispersal Records</h6>
@@ -854,7 +924,7 @@ export default function AdminDashboard() {
               <FaUtensils size={14} style={{ color: '#0284C7' }} />
             </div>
 
-            <div className="table-responsive" style={{ maxHeight: 280, overflowY: 'auto' }}>
+            <div className="table-responsive" style={{ maxHeight: 320, overflowY: 'auto' }}>
               <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.82rem' }}>
                 <thead className="sticky-top bg-white">
                   <tr className="text-muted extra-small text-uppercase">
@@ -933,71 +1003,11 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* WIDGET 4: DISEASE RISK ANALYSIS (Minimalist Donut Chart + Clean Legend Tags) */}
+        {/* Live Diagnostic Stream List */}
         <div className="col-12 col-xl-4">
-          <div className="asymmetric-card p-4 mb-4">
-            {(() => {
-              const activeDiseaseReports = filteredDiseaseReports.length > 0 ? filteredDiseaseReports : allDiseaseReports;
-              const safeCount = activeDiseaseReports.filter(r => (r.risk_level || '').toLowerCase() === 'low' || (r.disease_name || '').toLowerCase() === 'healthy').length;
-              const modCount = activeDiseaseReports.filter(r => ['moderate', 'medium', 'warning'].includes((r.risk_level || '').toLowerCase())).length;
-              const critCount = activeDiseaseReports.filter(r => ['high', 'critical'].includes((r.risk_level || '').toLowerCase())).length;
-              const totalCount = activeDiseaseReports.length || 1;
-              const safePct = Math.round((safeCount / totalCount) * 100);
-              const modPct = Math.round((modCount / totalCount) * 100);
-              const critPct = Math.max(0, 100 - safePct - modPct);
-
-              return (
-                <>
-                  <div className="d-flex justify-content-between align-items-center mb-2">
-                    <div>
-                      <h5 className="fw-extrabold mb-0 text-dark tracking-tight">Disease Risk Breakdown</h5>
-                      <p className="text-muted mb-0 small" style={{ fontSize: '0.8rem' }}>AI Biosecurity Health Index</p>
-                    </div>
-                    <span className="tag-green-safe">● {safePct}% Bio-Safe</span>
-                  </div>
-
-                  {/* Minimalist Donut Chart */}
-                  <div className="position-relative d-flex justify-content-center align-items-center my-3" style={{ height: 190 }}>
-                    <Doughnut
-                      data={{
-                        labels: ['Safe', 'Moderate Risk', 'Critical Alert'],
-                        datasets: [
-                          {
-                            data: [safeCount || 1, modCount, critCount],
-                            backgroundColor: ['#16A34A', '#0284C7', '#FF7A00'],
-                            borderWidth: 3,
-                            borderColor: '#FFFFFF',
-                            hoverOffset: 4
-                          }
-                        ]
-                      }}
-                      options={{
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
-                        cutout: '78%'
-                      }}
-                    />
-                    <div className="position-absolute text-center">
-                      <span className="extra-small text-muted d-block" style={{ fontSize: '0.72rem' }}>Fleet Risk</span>
-                      <strong className="fw-extrabold text-dark" style={{ fontSize: '1.25rem' }}>
-                        {critCount > 0 ? 'HIGH' : modCount > 0 ? 'MOD' : 'LOW'}
-                      </strong>
-                    </div>
-                  </div>
-
-                  {/* Clean Legend Tags: Critical, Moderate, Safe */}
-                  <div className="d-flex justify-content-center gap-2 mb-3 flex-wrap">
-                    <span className="tag-green-safe">● Safe ({safePct}%)</span>
-                    {modPct > 0 && <span className="tag-cyan-active">● Moderate ({modPct}%)</span>}
-                    {critPct > 0 && <span className="tag-orange-maintenance">● Critical ({critPct}%)</span>}
-                  </div>
-                </>
-              );
-            })()}
-
+          <div className="asymmetric-card p-4 h-100">
             {/* Priority Filter Tabs */}
-            <div className="d-flex justify-content-between align-items-center mb-2.5 pt-2 border-top">
+            <div className="d-flex justify-content-between align-items-center mb-2.5">
               <span className="fw-bold extra-small text-dark">Live Diagnostic Stream</span>
               <div className="d-flex gap-1">
                 {['all', 'critical', 'moderate', 'safe'].map((lvl) => (
@@ -1017,7 +1027,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* Prioritized Diagnostic Items */}
-            <div className="d-flex flex-column gap-2" style={{ maxHeight: 240, overflowY: 'auto' }}>
+            <div className="d-flex flex-column gap-2" style={{ maxHeight: 320, overflowY: 'auto' }}>
               {diseaseItems.length > 0 ? (
                 diseaseItems.map((item) => (
                   <div
