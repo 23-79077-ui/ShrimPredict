@@ -328,9 +328,6 @@ export default function CaretakerSettingsPage() {
                 <span className="text-uppercase fw-extrabold text-muted extra-small" style={{ letterSpacing: '0.6px', fontSize: '0.72rem', color: '#64748B' }}>
                   SETTINGS MENU
                 </span>
-                <span className="badge bg-primary bg-opacity-10 text-primary extra-small rounded-pill fw-bold px-2.5 py-1">
-                  {filteredTabs.length} Tabs
-                </span>
               </div>
 
               <div className="position-relative mt-2.5">
@@ -421,9 +418,6 @@ export default function CaretakerSettingsPage() {
                   <small className="text-muted">{activeTabInfo.desc}</small>
                 </div>
               </div>
-              <span className="badge bg-success bg-opacity-10 text-success rounded-pill px-3.5 py-1.5 extra-small fw-bold border border-success border-opacity-25">
-                <FaUserCheck className="me-1" /> Active Caretaker
-              </span>
             </div>
 
             {/* CARD BODY (Scrolls internally while left menu stays 100% fixed) */}
