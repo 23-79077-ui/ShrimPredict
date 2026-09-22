@@ -319,8 +319,8 @@ export default function CaretakerSettingsPage() {
   return (
     <div className="caretaker-settings-hub pb-5 pt-2">
       <div className="row g-4 align-items-start">
-        {/* LEFT SETTINGS MENU SIDEBAR (Fixed/Sticky on Scroll) */}
-        <div className="col-12 col-lg-4 col-xl-3 sticky-top" style={{ top: 130, zIndex: 100, alignSelf: 'flex-start' }}>
+        {/* LEFT SETTINGS MENU SIDEBAR (Fixed/Sticky on Scroll below top dock bar) */}
+        <div className="col-12 col-lg-4 col-xl-3" style={{ position: 'sticky', top: '155px', zIndex: 100, alignSelf: 'flex-start' }}>
           <div className="settings-card bg-white p-3 p-md-3.5 rounded-4 border border-slate-200 shadow-sm" style={{ backdropFilter: 'blur(10px)' }}>
             {/* Header + Integrated Search */}
             <div className="px-1 pb-3 mb-2 border-bottom">
