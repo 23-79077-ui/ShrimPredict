@@ -855,65 +855,100 @@ export default function MyPondPage() {
         </div>
       </div>
 
-      {/* 🌟 STAGE FILTER TABS: All | Nursery (Starter) | Grow-out (Grower) */}
-      <div className="p-3 rounded-4 bg-white border shadow-xs mb-3">
-        <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+      {/* 🌟 STAGE FILTER TABS: All Ponds | Nursery Basins (Starter) | Grow-out Basins (Grower) */}
+      <div className="p-3.5 rounded-4 bg-white border shadow-xs mb-3">
+        <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2.5">
           <div className="d-flex align-items-center gap-2">
-            <FaFilter size={12} style={{ color: '#0284C7' }} />
-            <span className="extra-small fw-bold text-uppercase text-muted" style={{ letterSpacing: '0.5px' }}>
-              Pond Stage Filter on {new Date(todayDateStr + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}:
+            <FaFilter size={13} style={{ color: '#0B2C5F' }} />
+            <span className="fw-extrabold text-uppercase extra-small" style={{ color: '#0B2C5F', letterSpacing: '0.4px', fontSize: '0.78rem' }}>
+              ACTIVE FILTERS (Pond Stage on {new Date(todayDateStr + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}):
             </span>
           </div>
-          <span className="extra-small text-muted">
-            Days 1–19 = <strong>Nursery (Starter)</strong> • Day 20+ = <strong>Grow-out (Grower)</strong>
-          </span>
+
+          <div className="text-end ms-auto">
+            <span className="extra-small text-muted fw-bold text-uppercase d-block mb-0.5" style={{ fontSize: '0.68rem', letterSpacing: '0.5px' }}>
+              STAGE DEFINITIONS:
+            </span>
+            <span className="extra-small text-muted" style={{ fontSize: '0.76rem' }}>
+              <strong>Nursery:</strong> Days 1–19 • <strong>Grow-out:</strong> Day 20+
+            </span>
+          </div>
         </div>
 
         <div className="d-flex align-items-center gap-2 flex-wrap">
+          {/* All Ponds Filter Button */}
           <button
             type="button"
-            className={`btn btn-sm rounded-pill px-3 py-1.5 extra-small fw-bold d-inline-flex align-items-center gap-1.5 transition-all ${
-              stageFilter === 'all'
-                ? 'btn-dark text-white shadow-xs'
-                : 'btn-light border text-dark'
-            }`}
+            className="btn btn-sm rounded-pill px-3 py-1.5 extra-small fw-bold d-inline-flex align-items-center gap-2 transition-all"
+            style={{
+              backgroundColor: stageFilter === 'all' ? '#1E293B' : '#F1F5F9',
+              borderColor: '#E2E8F0',
+              color: stageFilter === 'all' ? '#FFFFFF' : '#334155',
+            }}
             onClick={() => setStageFilter('all')}
           >
-            All Assigned Ponds ({assignedPonds.length})
+            <span>All Ponds</span>
+            <span
+              className="badge rounded-circle px-2 py-1"
+              style={{
+                backgroundColor: stageFilter === 'all' ? 'rgba(255,255,255,0.25)' : '#CBD5E1',
+                color: stageFilter === 'all' ? '#FFFFFF' : '#1E293B',
+                fontSize: '0.72rem',
+                minWidth: '20px',
+              }}
+            >
+              {assignedPonds.length}
+            </span>
           </button>
 
+          {/* Nursery Basins (Starter) Filter Button */}
           <button
             type="button"
-            className={`btn btn-sm rounded-pill px-3 py-1.5 extra-small fw-bold d-inline-flex align-items-center gap-1.5 transition-all ${
-              stageFilter === 'nursery'
-                ? 'shadow-xs text-white'
-                : 'border text-dark'
-            }`}
+            className="btn btn-sm rounded-pill px-3 py-1.5 extra-small fw-bold d-inline-flex align-items-center gap-2 transition-all"
             style={{
               backgroundColor: stageFilter === 'nursery' ? '#059669' : '#ECFDF5',
-              color: stageFilter === 'nursery' ? '#ffffff' : '#065F46',
-              borderColor: '#A7F3D0',
+              color: stageFilter === 'nursery' ? '#FFFFFF' : '#065F46',
+              border: '1px solid #A7F3D0',
             }}
             onClick={() => setStageFilter('nursery')}
           >
-            Nursery Basins (Days 1–19 • Starter Feed) ({nurseryCount})
+            <span>Nursery Basins (Starter)</span>
+            <span
+              className="badge rounded-circle px-2 py-1"
+              style={{
+                backgroundColor: stageFilter === 'nursery' ? '#FFFFFF' : '#059669',
+                color: stageFilter === 'nursery' ? '#059669' : '#FFFFFF',
+                fontSize: '0.72rem',
+                minWidth: '20px',
+              }}
+            >
+              {nurseryCount}
+            </span>
           </button>
 
+          {/* Grow-out Basins (Grower) Filter Button (WITHOUT FISH EMOJI) */}
           <button
             type="button"
-            className={`btn btn-sm rounded-pill px-3 py-1.5 extra-small fw-bold d-inline-flex align-items-center gap-1.5 transition-all ${
-              stageFilter === 'growout'
-                ? 'shadow-xs text-white'
-                : 'border text-dark'
-            }`}
+            className="btn btn-sm rounded-pill px-3 py-1.5 extra-small fw-bold d-inline-flex align-items-center gap-2 transition-all"
             style={{
               backgroundColor: stageFilter === 'growout' ? '#2563EB' : '#EFF6FF',
-              color: stageFilter === 'growout' ? '#ffffff' : '#1E40AF',
-              borderColor: '#BFDBFE',
+              color: stageFilter === 'growout' ? '#FFFFFF' : '#1D4ED8',
+              border: '1px solid #BFDBFE',
             }}
             onClick={() => setStageFilter('growout')}
           >
-            🌊 Grow-out Basins (Day 20+ • Grower Feed) ({growoutCount})
+            <span>Grow-out Basins (Grower)</span>
+            <span
+              className="badge rounded-circle px-2 py-1"
+              style={{
+                backgroundColor: stageFilter === 'growout' ? '#FFFFFF' : '#2563EB',
+                color: stageFilter === 'growout' ? '#2563EB' : '#FFFFFF',
+                fontSize: '0.72rem',
+                minWidth: '20px',
+              }}
+            >
+              {growoutCount}
+            </span>
           </button>
         </div>
       </div>
