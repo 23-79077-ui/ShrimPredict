@@ -86,7 +86,7 @@ export default function FeedingHistoryPage() {
     amount_grams: '',
     amount_kg: '',
     product_code: 'Starter',
-    vitamin_name: 'None',
+    vitamin_name: 'Sanolife PRO-2, Sano Top-S',
     notes: '',
   });
   const [savingBackfill, setSavingBackfill] = useState(false);
@@ -172,7 +172,7 @@ export default function FeedingHistoryPage() {
         amount_grams: grams,
         amount_kg: kg,
         product_code: recordToEdit.product_code || (String(recordToEdit.feed_type).toLowerCase().includes('grower') ? 'Grower' : 'Starter'),
-        vitamin_name: recordToEdit.vitamin_name || 'None',
+        vitamin_name: recordToEdit.vitamin_name || 'Sanolife PRO-2, Sano Top-S',
         notes: recordToEdit.notes || '',
       });
     } else {
@@ -184,7 +184,7 @@ export default function FeedingHistoryPage() {
         amount_grams: '',
         amount_kg: '',
         product_code: 'Starter',
-        vitamin_name: 'None',
+        vitamin_name: 'Sanolife PRO-2, Sano Top-S',
         notes: '',
       });
     }
@@ -1674,15 +1674,16 @@ export default function FeedingHistoryPage() {
                     </div>
 
                     <div className="col-md-6">
-                      <label className="form-label extra-small fw-bold text-dark mb-1">Vitamins & Supplements</label>
+                      <label className="form-label extra-small fw-bold text-dark mb-1">Vitamins &amp; Supplements</label>
                       <select
                         className="form-select form-select-sm fw-semibold"
                         value={backfillForm.vitamin_name}
                         onChange={(e) => setBackfillForm({ ...backfillForm, vitamin_name: e.target.value })}
                       >
-                        <option value="None">None (No Vitamin)</option>
+                        <option value="Sanolife PRO-2, Sano Top-S">Sanolife PRO-2, Sano Top-S (Both Consumed • Standard)</option>
                         <option value="Sanolife PRO-2">Sanolife PRO-2</option>
                         <option value="Sano Top-S">Sano Top-S</option>
+                        <option value="None">None (No Vitamin)</option>
                       </select>
                     </div>
 

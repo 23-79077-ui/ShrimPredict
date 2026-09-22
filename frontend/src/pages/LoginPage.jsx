@@ -23,9 +23,11 @@ export default function LoginPage() {
   const [activeTab, setActiveTab] = useState(defaultTab);
 
   const [email, setEmail] = useState(
-    defaultTab === 'admin' ? 'admin@shrimpredict.com' : 'caretaker@shrimpredict.com'
+    defaultTab === 'admin' ? 'admin@shrimpredict.com' : 'cj@gmail.com'
   );
-  const [password, setPassword] = useState('admin123');
+  const [password, setPassword] = useState(
+    defaultTab === 'admin' ? 'admin123' : 'cj12345'
+  );
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -38,8 +40,8 @@ export default function LoginPage() {
       setEmail('admin@shrimpredict.com');
       setPassword('admin123');
     } else {
-      setEmail('caretaker@shrimpredict.com');
-      setPassword('caretaker123');
+      setEmail('cj@gmail.com');
+      setPassword('cj12345');
     }
   };
 
@@ -297,7 +299,7 @@ export default function LoginPage() {
                           borderColor: '#334155',
                           fontSize: '0.9rem',
                         }}
-                        placeholder={activeTab === 'admin' ? 'admin@shrimpredict.com' : 'caretaker@shrimpredict.com'}
+                        placeholder={activeTab === 'admin' ? 'admin@shrimpredict.com' : 'cj@gmail.com'}
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required

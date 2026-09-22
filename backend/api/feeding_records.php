@@ -27,13 +27,13 @@ $ensureFeedingTable = function ($conn): void {
             feeding_time VARCHAR(20) DEFAULT NULL,
             product_code VARCHAR(20) DEFAULT NULL,
             has_vitamin TINYINT(1) DEFAULT 0,
-            vitamin_name VARCHAR(100) DEFAULT NULL,
+            vitamin_name VARCHAR(150) DEFAULT NULL,
             shrimp_weight_grams DECIMAL(8,2) DEFAULT NULL,
             tray_count INT DEFAULT 4,
             tray_feed_grams DECIMAL(10,2) DEFAULT NULL,
             total_tray_feed_grams DECIMAL(10,2) DEFAULT NULL,
             broadcast_feed_kg DECIMAL(10,3) DEFAULT NULL,
-            tray_monitoring_status VARCHAR(50) DEFAULT NULL,
+            tray_monitoring_status VARCHAR(150) DEFAULT NULL,
             record_date DATE NOT NULL,
             notes TEXT,
             recorded_by_name VARCHAR(100) DEFAULT NULL,
@@ -56,14 +56,14 @@ $ensureFeedingTable = function ($conn): void {
         ['feeding_time', "ALTER TABLE feeding_records ADD COLUMN feeding_time VARCHAR(20) DEFAULT NULL"],
         ['product_code', "ALTER TABLE feeding_records ADD COLUMN product_code VARCHAR(20) DEFAULT NULL"],
         ['has_vitamin', "ALTER TABLE feeding_records ADD COLUMN has_vitamin TINYINT(1) DEFAULT 0"],
-        ['vitamin_name', "ALTER TABLE feeding_records ADD COLUMN vitamin_name VARCHAR(100) DEFAULT NULL"],
+        ['vitamin_name', "ALTER TABLE feeding_records ADD COLUMN vitamin_name VARCHAR(150) DEFAULT NULL"],
         ['shrimp_weight_grams', "ALTER TABLE feeding_records ADD COLUMN shrimp_weight_grams DECIMAL(8,2) DEFAULT NULL"],
         ['tray_count', "ALTER TABLE feeding_records ADD COLUMN tray_count INT DEFAULT 4"],
         ['tray_feed_grams', "ALTER TABLE feeding_records ADD COLUMN tray_feed_grams DECIMAL(10,2) DEFAULT NULL"],
         ['total_tray_feed_grams', "ALTER TABLE feeding_records ADD COLUMN total_tray_feed_grams DECIMAL(10,2) DEFAULT NULL"],
         ['broadcast_feed_kg', "ALTER TABLE feeding_records ADD COLUMN broadcast_feed_kg DECIMAL(10,3) DEFAULT NULL"],
         ['amount_grams', "ALTER TABLE feeding_records ADD COLUMN amount_grams DECIMAL(10,2) DEFAULT NULL"],
-        ['tray_monitoring_status', "ALTER TABLE feeding_records ADD COLUMN tray_monitoring_status VARCHAR(50) DEFAULT NULL"],
+        ['tray_monitoring_status', "ALTER TABLE feeding_records ADD COLUMN tray_monitoring_status VARCHAR(150) DEFAULT NULL"],
         ['record_date', "ALTER TABLE feeding_records ADD COLUMN record_date DATE NOT NULL DEFAULT (CURRENT_DATE)"],
         ['recorded_by_name', "ALTER TABLE feeding_records ADD COLUMN recorded_by_name VARCHAR(100) DEFAULT NULL"],
         ['user_id', "ALTER TABLE feeding_records ADD COLUMN user_id INT DEFAULT NULL"],
@@ -78,6 +78,14 @@ $ensureFeedingTable = function ($conn): void {
                 // Ignore if the column already exists or SQL is not supported.
             }
         }
+    }
+
+    // Ensure column widths are adequate for detailed status strings
+    try {
+        $conn->exec("ALTER TABLE feeding_records MODIFY COLUMN tray_monitoring_status VARCHAR(150) DEFAULT NULL");
+        $conn->exec("ALTER TABLE feeding_records MODIFY COLUMN vitamin_name VARCHAR(150) DEFAULT NULL");
+    } catch (Throwable $e) {
+        // Ignore if modify is not needed or fails
     }
 };
 

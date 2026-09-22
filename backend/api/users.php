@@ -110,10 +110,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $phone = isset($data['phone']) ? trim((string)$data['phone']) : '09123456789';
         $status = isset($data['status']) ? trim((string)$data['status']) : 'Active';
         $selectedPonds = isset($data['selected_ponds']) && is_array($data['selected_ponds']) ? $data['selected_ponds'] : [];
+        $newPassword = isset($data['password']) ? trim((string)$data['password']) : '';
 
         if ($userId <= 0 || empty($fullName) || empty($email)) {
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => 'User ID, Full Name, and Email are required.']);
+            exit;
+        }
+
+        if (!empty($newPassword) && strlen($newPassword) < 6) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Password must be at least 6 characters.']);
             exit;
         }
 
@@ -132,19 +139,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $firstPondId = !empty($selectedPonds) ? (int)$selectedPonds[0] : null;
 
             // Update basic user info
-            $up = $conn->prepare('
-                UPDATE users 
-                SET full_name = :full_name, email = :email, phone = :phone, status = :status, pond_id = :pond_id
-                WHERE id = :id
-            ');
-            $up->execute([
-                ':full_name' => $fullName,
-                ':email' => $email,
-                ':phone' => $phone,
-                ':status' => $status,
-                ':pond_id' => $firstPondId,
-                ':id' => $userId
-            ]);
+            if (!empty($newPassword)) {
+                $up = $conn->prepare('
+                    UPDATE users 
+                    SET full_name = :full_name, email = :email, phone = :phone, status = :status, pond_id = :pond_id, password_hash = :password_hash
+                    WHERE id = :id
+                ');
+                $up->execute([
+                    ':full_name' => $fullName,
+                    ':email' => $email,
+                    ':phone' => $phone,
+                    ':status' => $status,
+                    ':pond_id' => $firstPondId,
+                    ':password_hash' => password_hash($newPassword, PASSWORD_BCRYPT),
+                    ':id' => $userId
+                ]);
+            } else {
+                $up = $conn->prepare('
+                    UPDATE users 
+                    SET full_name = :full_name, email = :email, phone = :phone, status = :status, pond_id = :pond_id
+                    WHERE id = :id
+                ');
+                $up->execute([
+                    ':full_name' => $fullName,
+                    ':email' => $email,
+                    ':phone' => $phone,
+                    ':status' => $status,
+                    ':pond_id' => $firstPondId,
+                    ':id' => $userId
+                ]);
+            }
 
             // Update assigned ponds in caretaker_ponds
             $delPonds = $conn->prepare('DELETE FROM caretaker_ponds WHERE user_id = :user_id');

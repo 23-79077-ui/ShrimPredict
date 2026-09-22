@@ -49,14 +49,20 @@ const resolveImageUrl = (url) => {
 
 const feedingTimes = ['6:00 AM', '9:00 AM', '12:00 PM', '3:00 PM', '6:00 PM'];
 const productCodes = ['Starter', 'Grower'];
-const vitaminOptions = ['None', 'Sanolife PRO-2', 'Sano Top-S'];
+const defaultVitamins = 'Sanolife PRO-2, Sano Top-S';
+const vitaminOptions = [
+  'Sanolife PRO-2, Sano Top-S',
+  'Sanolife PRO-2',
+  'Sano Top-S',
+  'None'
+];
 const feedingTrayCount = 4;
 const emptyForm = {
   feedingTime: '6:00 AM',
   amountGrams: '',
   amountKg: '',
   productCode: 'Starter',
-  vitaminName: 'None',
+  vitaminName: defaultVitamins,
   notes: '',
 };
 
@@ -78,7 +84,7 @@ function formatKg(value) {
 }
 
 function normalizeTime(value) {
-  return String(value || '').trim().toUpperCase();
+  return String(value || '').trim().toUpperCase().replace(/^0(\d:)/, '$1');
 }
 
 function computeDoc(stockingDateStr, targetDateStr) {
@@ -95,6 +101,7 @@ export default function MyPondPage() {
   const navigate = useNavigate();
   const suppressAutoTrayPromptRef = useRef(false);
   const trayPromptOpenRef = useRef(false);
+  const justSubmittedRef = useRef(false);
 
   const [dbPonds, setDbPonds] = useState([]);
   const [selectedPondId, setSelectedPondId] = useState('');
@@ -102,6 +109,7 @@ export default function MyPondPage() {
   const [submitting, setSubmitting] = useState(false);
   const [todayLogs, setTodayLogs] = useState([]);
   const [weeklySampling, setWeeklySampling] = useState(null);
+  const [previousDayLastFeed, setPreviousDayLastFeed] = useState(null);
   const [trayMonitoringBySlot, setTrayMonitoringBySlot] = useState({});
   const [editingRecord, setEditingRecord] = useState(null);
 
@@ -222,7 +230,8 @@ export default function MyPondPage() {
   const autoProductCode = currentDoc >= 20 ? 'Grower' : 'Starter';
 
   const currentForm = formState[selectedPondId] || emptyForm;
-  const samplingKey = selectedPondId ? getSamplingStorageKey(user?.id, selectedPondId, todayDateStr) : '';
+  const samplingStorageKey = selectedPondId ? `shrim-abw-sampling-pond-${selectedPondId}` : '';
+  const legacySamplingKey = selectedPondId ? getSamplingStorageKey(user?.id, selectedPondId, todayDateStr) : '';
 
   // Current selected pond water quality status
   const currentPondWq = selectedPondId ? waterQualityStatus[selectedPondId] : null;
@@ -230,18 +239,43 @@ export default function MyPondPage() {
   const activeWqRecord = currentPondWq?.record;
 
   useEffect(() => {
-    if (!samplingKey) {
+    if (!selectedPondId) {
       setWeeklySampling(null);
       return;
     }
 
     try {
-      const stored = JSON.parse(localStorage.getItem(samplingKey) || 'null');
-      setWeeklySampling(stored?.shrimpWeightGrams ? stored : null);
+      const stored = JSON.parse(localStorage.getItem(samplingStorageKey) || 'null');
+      if (stored?.shrimpWeightGrams) {
+        setWeeklySampling(stored);
+        return;
+      }
+      const legacyStored = JSON.parse(localStorage.getItem(legacySamplingKey) || 'null');
+      if (legacyStored?.shrimpWeightGrams) {
+        setWeeklySampling({
+          ...legacyStored,
+          sampledDate: legacyStored.sampledDate || todayDateStr,
+          sampledDoc: legacyStored.sampledDoc || currentDoc,
+        });
+        return;
+      }
+      setWeeklySampling(null);
     } catch (e) {
       setWeeklySampling(null);
     }
-  }, [samplingKey]);
+  }, [samplingStorageKey, legacySamplingKey, selectedPondId, todayDateStr, currentDoc]);
+
+  const daysSinceSample = useMemo(() => {
+    if (!weeklySampling?.sampledDate) return Infinity;
+    const s = new Date(weeklySampling.sampledDate + 'T00:00:00');
+    const t = new Date(todayDateStr + 'T00:00:00');
+    if (isNaN(s.getTime()) || isNaN(t.getTime())) return Infinity;
+    const diffDays = Math.floor((t - s) / 86400000);
+    return Math.max(0, diffDays);
+  }, [weeklySampling?.sampledDate, todayDateStr]);
+
+  const isDoc35Plus = currentDoc >= 35;
+  const isSamplingDue = Boolean(isDoc35Plus && (!weeklySampling?.shrimpWeightGrams || daysSinceSample >= 7));
 
   // Fetch today's feeding logs for the active pond
   const fetchTodayLogs = useCallback(async (pondId) => {
@@ -264,11 +298,85 @@ export default function MyPondPage() {
     }
   }, [todayDateStr]);
 
+  // Fetch previous day's last feeding (prioritizing 6:00 PM) for the active pond
+  const fetchPreviousDayLastFeed = useCallback(async (pondId, targetDateStr) => {
+    if (!pondId) {
+      setPreviousDayLastFeed(null);
+      return null;
+    }
+    try {
+      const res = await api.get('/feeding_records.php', {
+        params: { pond_id: pondId },
+      });
+      if (Array.isArray(res.data)) {
+        const pastRecords = res.data.filter((r) => {
+          const rDate = r.record_date || (r.created_at ? r.created_at.split(' ')[0] : '');
+          return rDate && rDate < targetDateStr;
+        });
+
+        if (pastRecords.length > 0) {
+          pastRecords.sort((a, b) => {
+            const dA = a.record_date || '';
+            const dB = b.record_date || '';
+            return dB.localeCompare(dA);
+          });
+
+          const latestPastDate = pastRecords[0].record_date;
+          const recordsOnLatestPastDate = pastRecords.filter((r) => r.record_date === latestPastDate);
+          const sixPmLog = recordsOnLatestPastDate.find((r) => normalizeTime(r.feeding_time) === '6:00 PM');
+          const lastLog = sixPmLog || recordsOnLatestPastDate[0];
+          setPreviousDayLastFeed(lastLog);
+
+          // Immediately populate into formState for 6:00 AM
+          if (lastLog) {
+            const rawG = lastLog.amount_grams !== null && lastLog.amount_grams !== undefined
+              ? parseFloat(lastLog.amount_grams)
+              : Math.round((parseFloat(lastLog.amount_kg) || 0) * 1000);
+            const pG = String(rawG);
+            const pK = String(lastLog.amount_kg || (rawG / 1000).toFixed(3));
+            setFormState((prev) => {
+              const current = prev[pondId] || emptyForm;
+              if (normalizeTime(current.feedingTime) === '6:00 AM') {
+                return {
+                  ...prev,
+                  [pondId]: {
+                    ...current,
+                    amountGrams: pG,
+                    amountKg: pK,
+                  },
+                };
+              }
+              return prev;
+            });
+          }
+
+          return lastLog;
+        }
+      }
+      setPreviousDayLastFeed(null);
+      return null;
+    } catch (e) {
+      console.error('Error fetching previous day last feed:', e);
+      setPreviousDayLastFeed(null);
+      return null;
+    }
+  }, []);
+
   useEffect(() => {
     if (!selectedPondId) return;
     setTrayMonitoringBySlot({});
+    setEditingRecord(null);
+    setFormState((prev) => ({
+      ...prev,
+      [selectedPondId]: {
+        ...emptyForm,
+        productCode: autoProductCode,
+        feedingTime: '6:00 AM',
+      },
+    }));
     fetchTodayLogs(selectedPondId);
     fetchWaterQualityStatus(selectedPondId);
+    fetchPreviousDayLastFeed(selectedPondId, todayDateStr);
 
     const handleUpdate = (event) => {
       const { pond_id, record } = event?.detail || {};
@@ -287,6 +395,7 @@ export default function MyPondPage() {
 
       fetchTodayLogs(selectedPondId);
       fetchWaterQualityStatus(selectedPondId);
+      fetchPreviousDayLastFeed(selectedPondId, todayDateStr);
     };
 
     window.addEventListener('shrim-feed-updated', handleUpdate);
@@ -298,7 +407,36 @@ export default function MyPondPage() {
       window.removeEventListener('shrim-water-quality-updated', handleUpdate);
       window.removeEventListener('storage', handleUpdate);
     };
-  }, [selectedPondId, todayDateStr, fetchTodayLogs, fetchWaterQualityStatus]);
+  }, [selectedPondId, todayDateStr, fetchTodayLogs, fetchWaterQualityStatus, fetchPreviousDayLastFeed]);
+
+  // When previous day last feed is loaded and 6:00 AM is unlogged, auto-fill 6:00 AM feed amount
+  useEffect(() => {
+    if (!previousDayLastFeed || !selectedPondId) return;
+    const isSixAmLogged = todayLogs.some((l) => normalizeTime(l.feeding_time) === '6:00 AM');
+    if (isSixAmLogged) return;
+
+    setFormState((prev) => {
+      const current = prev[selectedPondId] || emptyForm;
+      if (normalizeTime(current.feedingTime) === '6:00 AM') {
+        const rawG = previousDayLastFeed.amount_grams !== null && previousDayLastFeed.amount_grams !== undefined
+          ? parseFloat(previousDayLastFeed.amount_grams)
+          : Math.round((parseFloat(previousDayLastFeed.amount_kg) || 0) * 1000);
+        const prevGrams = String(rawG);
+        const prevKg = String(previousDayLastFeed.amount_kg || (rawG / 1000).toFixed(3));
+
+        return {
+          ...prev,
+          [selectedPondId]: {
+            ...current,
+            feedingTime: '6:00 AM',
+            amountGrams: prevGrams,
+            amountKg: prevKg,
+          },
+        };
+      }
+      return prev;
+    });
+  }, [previousDayLastFeed, todayLogs, selectedPondId]);
 
   // Extract list of feeding_time strings logged today for the active pond
   const loggedTimesForPond = useMemo(() => {
@@ -429,7 +567,69 @@ export default function MyPondPage() {
     });
   };
 
-  const handleSelectSlot = (time) => {
+  // Reset tray prompt suppression whenever pond, date, or feeding time changes
+  useEffect(() => {
+    if (!justSubmittedRef.current) {
+      suppressAutoTrayPromptRef.current = false;
+    }
+  }, [recordDate, selectedPondId, currentForm.feedingTime]);
+
+  const requestWeeklySampling = async (isMandatory = false) => {
+    const { value, isConfirmed } = await Swal.fire({
+      title: 'Weekly Shrimp Sampling',
+      text: 'Weekly shrimp sampling is required before you can log feeding. Please enter the average shrimp weight in grams:',
+      input: 'number',
+      inputValue: weeklySampling?.shrimpWeightGrams || '',
+      inputPlaceholder: 'Average shrimp weight in grams (e.g. 15.0)',
+      inputAttributes: {
+        min: '0.5',
+        step: '0.1',
+      },
+      showCancelButton: true,
+      confirmButtonText: 'Save Sample',
+      cancelButtonText: 'Cancel',
+      customClass: {
+        popup: 'shrim-swal-popup',
+        title: 'shrim-swal-title',
+        confirmButton: 'btn btn-gold-glow px-4 py-2.5 rounded-3 fw-bold me-2 shadow-sm',
+        cancelButton: 'btn btn-outline-light px-3 py-2 rounded-3 text-secondary',
+      },
+      buttonsStyling: false,
+      inputValidator: (inputValue) => {
+        const grams = Number(inputValue);
+        if (!grams || grams <= 0) return 'Please enter a valid weight in grams.';
+        return null;
+      },
+    });
+
+    if (!isConfirmed || !value) return null;
+
+    const nextSampling = {
+      shrimpWeightGrams: Number(value),
+      pondId: selectedPondId,
+      pondName: selectedPond?.pond_name || '',
+      sampledDate: todayDateStr,
+      sampledDoc: currentDoc,
+      sampledAt: new Date().toISOString(),
+    };
+
+    if (samplingStorageKey) {
+      localStorage.setItem(samplingStorageKey, JSON.stringify(nextSampling));
+    }
+    setWeeklySampling(nextSampling);
+
+    Swal.fire({
+      icon: 'success',
+      title: 'ABW Sample Recorded',
+      text: `Average Body Weight set to ${value}g for ${selectedPond?.pond_name || 'this pond'}. Valid for the next 7 days.`,
+      timer: 2000,
+      showConfirmButton: false,
+    });
+
+    return nextSampling;
+  };
+
+  const handleSelectSlot = async (time) => {
     const matchingLog = todayLogs.find((log) => normalizeTime(log.feeding_time) === normalizeTime(time));
     if (matchingLog) {
       setEditingRecord(matchingLog);
@@ -443,18 +643,48 @@ export default function MyPondPage() {
           amountKg: String(matchingLog.amount_kg || ''),
           feedingTime: matchingLog.feeding_time,
           productCode: matchingLog.product_code || autoProductCode,
-          vitaminName: matchingLog.vitamin_name || 'None',
+          vitaminName: matchingLog.vitamin_name || defaultVitamins,
           notes: matchingLog.notes || '',
         },
       }));
     } else {
+      // If DOC >= 35 and sampling is due (not set or >= 7 days), prompt for ABW sample before selecting slot
+      if (isDoc35Plus && isSamplingDue) {
+        const sample = await requestWeeklySampling(true);
+        if (!sample) return;
+      }
+
       setEditingRecord(null);
-      handleChange('feedingTime', time);
+      suppressAutoTrayPromptRef.current = false;
+
+      // If selecting 6:00 AM (first feeding of the day) and unlogged, auto-fill from previous day's 6:00 PM feed
+      if (normalizeTime(time) === '6:00 AM' && previousDayLastFeed) {
+        const rawG = previousDayLastFeed.amount_grams !== null && previousDayLastFeed.amount_grams !== undefined
+          ? parseFloat(previousDayLastFeed.amount_grams)
+          : Math.round((parseFloat(previousDayLastFeed.amount_kg) || 0) * 1000);
+        const prevG = String(rawG);
+        const prevK = String(previousDayLastFeed.amount_kg || (rawG / 1000).toFixed(3));
+        setFormState((prev) => {
+          const current = prev[selectedPondId] || emptyForm;
+          return {
+            ...prev,
+            [selectedPondId]: {
+              ...current,
+              feedingTime: '6:00 AM',
+              amountGrams: prevG,
+              amountKg: prevK,
+            },
+          };
+        });
+      } else {
+        handleChange('feedingTime', time);
+      }
     }
   };
 
   const handleCancelEdit = () => {
     setEditingRecord(null);
+    suppressAutoTrayPromptRef.current = false;
     const unloggedTime = feedingTimes.find((t) => !loggedTimesForPond.includes(t)) || '6:00 AM';
     setFormState((prev) => ({
       ...prev,
@@ -512,51 +742,46 @@ export default function MyPondPage() {
     }
   };
 
-  const requestWeeklySampling = async () => {
-    const { value, isConfirmed } = await Swal.fire({
-      icon: 'question',
-      title: 'Weekly shrimp sampling',
-      text: `Enter the average shrimp weight in grams for ${selectedPond?.pond_name || 'this pond'} before logging feed.`,
-      input: 'number',
-      inputPlaceholder: 'Example: 3',
-      inputAttributes: {
-        min: '0.1',
-        step: '0.1',
-      },
-      showCancelButton: true,
-      confirmButtonText: 'Use sample weight',
-      inputValidator: (inputValue) => {
-        const grams = Number(inputValue);
-        if (!grams || grams <= 0) return 'Please enter a valid shrimp weight in grams.';
-        return null;
-      },
-    });
-
-    if (!isConfirmed) return null;
-
-    const nextSampling = {
-      shrimpWeightGrams: Number(value),
-      pondId: selectedPondId,
-      pondName: selectedPond?.pond_name || '',
-      week: getWeekKey(),
-      sampledAt: new Date().toISOString(),
-    };
-    localStorage.setItem(samplingKey, JSON.stringify(nextSampling));
-    setWeeklySampling(nextSampling);
-    return nextSampling;
-  };
-
   const requestTrayMonitoring = async () => {
     if (!selectedSlotRequiresMonitoring) return 'first_feeding';
     if (trayMonitoringKey && trayMonitoringBySlot[trayMonitoringKey]) {
       return trayMonitoringBySlot[trayMonitoringKey];
     }
 
-    const previousAmount = Number(previousFeedingLogForSelectedSlot?.amount_kg || 0);
-    const previousTime = previousFeedingLogForSelectedSlot?.feeding_time || 'previous feeding';
-    const nextAmount = previousAmount > 0 ? previousAmount + 2 : 0;
+    const prevGrams = Number(
+      previousFeedingLogForSelectedSlot?.amount_grams !== null && previousFeedingLogForSelectedSlot?.amount_grams !== undefined
+        ? previousFeedingLogForSelectedSlot.amount_grams
+        : (Number(previousFeedingLogForSelectedSlot?.amount_kg || 0) * 1000)
+    );
+    const prevKg = Number(previousFeedingLogForSelectedSlot?.amount_kg || (prevGrams / 1000));
+    const previousTime = previousFeedingLogForSelectedSlot?.feeding_time || 'previous';
+
+    let amountIfConsumedGrams = 14;
+    let amountIfConsumedKg = 14.0;
+    let amountIfLeftoverGrams = 11;
+    let amountIfLeftoverKg = 11.0;
+
+    if (prevGrams > 0 && prevGrams <= 100) {
+      // User entered unit amount directly into the form (e.g. 13g -> 14g, or 14g)
+      amountIfConsumedGrams = Number((prevGrams + 1).toFixed(2));
+      amountIfConsumedKg = prevKg >= 1 ? Number((prevKg + 1.0).toFixed(2)) : Number((amountIfConsumedGrams / 1000).toFixed(3));
+      amountIfLeftoverGrams = Math.max(1, Number((prevGrams - 2).toFixed(2)));
+      amountIfLeftoverKg = prevKg >= 1 ? Math.max(0.5, Number((prevKg - 2.0).toFixed(2))) : Number((amountIfLeftoverGrams / 1000).toFixed(3));
+    } else if (prevGrams > 100) {
+      // User entered full gram amount (e.g. 13000g -> 14000g)
+      amountIfConsumedGrams = Math.round(prevGrams + 1000);
+      amountIfConsumedKg = Number((prevKg + 1.0).toFixed(2));
+      amountIfLeftoverGrams = Math.max(100, Math.round(prevGrams - 2000));
+      amountIfLeftoverKg = Math.max(0.5, Number((prevKg - 2.0).toFixed(2)));
+    } else {
+      amountIfConsumedGrams = 14;
+      amountIfConsumedKg = 14.0;
+      amountIfLeftoverGrams = 11;
+      amountIfLeftoverKg = 11.0;
+    }
+
     const { value, isConfirmed } = await Swal.fire({
-      title: '🍽 Feeding Tray Monitoring',
+      title: 'Feeding Tray Inspection',
       customClass: {
         popup: 'shrim-swal-popup',
         title: 'shrim-swal-title',
@@ -567,20 +792,22 @@ export default function MyPondPage() {
       html: `
         <div style="text-align:left; font-family: inherit;">
           <p class="text-secondary small mb-3">
-            Two hours have elapsed since the <strong>${previousTime}</strong> feeding. Inspect all 4 feeding trays in <strong>${selectedPond?.pond_name || 'this pond'}</strong>:
+            Inspect all 4 check trays in <strong>${selectedPond?.pond_name || 'this pond'}</strong> following the <strong>${previousTime}</strong> feeding session:
           </p>
           <div class="tray-options d-flex flex-column gap-2 mb-3">
-            <label class="p-2.5 rounded-3 border d-flex align-items-center gap-2 cursor-pointer bg-white text-dark shadow-xs" style="cursor: pointer;">
-              <input type="radio" name="tray_status" value="empty" checked />
-              <span><strong>Trays are completely empty:</strong> Shrimp consumed all feed rapidly. Increase next feeding by 2kg (${nextAmount ? `${nextAmount} kg` : 'recommended'}).</span>
+            <label class="p-3 rounded-3 border d-flex align-items-start gap-2.5 cursor-pointer bg-white text-dark shadow-xs" style="cursor: pointer;">
+              <input type="radio" name="tray_status" value="consumed" checked style="margin-top: 3px;" />
+              <div>
+                <strong class="d-block text-dark">Completely Consumed (Empty)</strong>
+                <span class="text-muted extra-small">All feed on the 4 check trays has been fully consumed.</span>
+              </div>
             </label>
-            <label class="p-2.5 rounded-3 border d-flex align-items-center gap-2 cursor-pointer bg-white text-dark shadow-xs" style="cursor: pointer;">
-              <input type="radio" name="tray_status" value="normal" />
-              <span><strong>Normal consumption:</strong> Normal trace amounts remain. Maintain planned schedule.</span>
-            </label>
-            <label class="p-2.5 rounded-3 border d-flex align-items-center gap-2 cursor-pointer bg-white text-dark shadow-xs" style="cursor: pointer;">
-              <input type="radio" name="tray_status" value="leftover" />
-              <span><strong>Substantial leftover:</strong> Satiation or water quality stress. Reduce feed and report.</span>
+            <label class="p-3 rounded-3 border d-flex align-items-start gap-2.5 cursor-pointer bg-white text-dark shadow-xs" style="cursor: pointer;">
+              <input type="radio" name="tray_status" value="leftover" style="margin-top: 3px;" />
+              <div>
+                <strong class="d-block text-dark">Leftover Feed Detected (Unconsumed)</strong>
+                <span class="text-muted extra-small">Feed residue remains on the check trays indicating slow feeding or satiation.</span>
+              </div>
             </label>
           </div>
         </div>
@@ -590,23 +817,32 @@ export default function MyPondPage() {
       cancelButtonText: 'Skip Inspection',
       preConfirm: () => {
         const checked = document.querySelector('input[name="tray_status"]:checked');
-        return checked ? checked.value : 'normal';
+        return checked ? checked.value : 'consumed';
       },
     });
 
     if (!isConfirmed) return null;
 
-    let monitoringResult = value;
-    if (value === 'empty' && nextAmount > 0) {
-      monitoringResult = {
-        status: 'empty',
-        suggestedAmountKg: nextAmount,
-      };
+    let suggestedGrams = amountIfConsumedGrams;
+    let suggestedKg = amountIfConsumedKg;
+    let statusLabel = 'Completely Consumed (Empty)';
+
+    if (value === 'leftover') {
+      suggestedGrams = amountIfLeftoverGrams;
+      suggestedKg = amountIfLeftoverKg;
+      statusLabel = 'Leftover Feed Detected';
     } else {
-      monitoringResult = {
-        status: value,
-      };
+      suggestedGrams = amountIfConsumedGrams;
+      suggestedKg = amountIfConsumedKg;
+      statusLabel = 'Completely Consumed (Empty)';
     }
+
+    const monitoringResult = {
+      status: statusLabel,
+      trayStatusValue: value,
+      suggestedAmountKg: suggestedKg,
+      suggestedAmountGrams: suggestedGrams,
+    };
 
     if (trayMonitoringKey) {
       setTrayMonitoringBySlot((prev) => ({
@@ -615,19 +851,33 @@ export default function MyPondPage() {
       }));
     }
 
+    // Automatically update the form input fields with the calculated amount
+    setFormState((prev) => {
+      const current = prev[selectedPondId] || emptyForm;
+      return {
+        ...prev,
+        [selectedPondId]: {
+          ...current,
+          amountKg: String(suggestedKg),
+          amountGrams: String(suggestedGrams),
+        },
+      };
+    });
+
     return monitoringResult;
   };
 
   useEffect(() => {
+    if (justSubmittedRef.current) return;
     if (!selectedSlotRequiresMonitoring || !trayMonitoringKey || trayMonitoringBySlot[trayMonitoringKey]) return;
     if (suppressAutoTrayPromptRef.current || submitting || trayPromptOpenRef.current) return;
-    if (isPastDate || editingRecord) return; // Skip automatic tray modal popup when backfilling past dates
+    if (editingRecord) return; // Only skip auto prompt if user is actively clicking to edit an existing record
 
     trayPromptOpenRef.current = true;
     requestTrayMonitoring().finally(() => {
       trayPromptOpenRef.current = false;
     });
-  }, [selectedSlotRequiresMonitoring, trayMonitoringKey, trayMonitoringBySlot, submitting, isPastDate, editingRecord]);
+  }, [selectedSlotRequiresMonitoring, trayMonitoringKey, trayMonitoringBySlot, submitting, editingRecord]);
 
   const handleSubmit = async () => {
     if (!selectedPond) return;
@@ -652,7 +902,7 @@ export default function MyPondPage() {
 
     const form = formState[selectedPondId] || emptyForm;
     const rawGrams = form.amountGrams !== undefined && form.amountGrams !== '' ? parseFloat(form.amountGrams) : (parseFloat(form.amountKg) * 1000);
-    const grams = isNaN(rawGrams) ? 0 : rawGrams;
+    let grams = isNaN(rawGrams) ? 0 : rawGrams;
     let amount = parseFloat((grams / 1000).toFixed(3));
 
     if (isNaN(grams) || grams < 0) {
@@ -671,26 +921,45 @@ export default function MyPondPage() {
       return;
     }
 
-    let sampling = null;
+    let sampling = weeklySampling;
     let trayMonitoring = null;
 
     if (isNurseryStage) {
       // Nursery stage (DOC 1-19): No sampling, no tray monitoring (100% broadcast)
       sampling = null;
       trayMonitoring = { status: 'Nursery (No Trays • 100% Broadcast)' };
-    } else if (isPastDate || editingRecord) {
-      // Fast historical backfill / edit mode: bypass modal prompt blockers
+    } else if (editingRecord) {
+      // Edit mode: keep existing status
       sampling = weeklySampling?.shrimpWeightGrams ? weeklySampling : { shrimpWeightGrams: 3.0 };
-      trayMonitoring = { status: editingRecord ? (editingRecord.tray_monitoring_status || 'Manual Entry') : 'Farm Log Backfill' };
+      trayMonitoring = { status: editingRecord.tray_monitoring_status || 'Manual Entry' };
     } else {
-      sampling = weeklySampling?.shrimpWeightGrams ? weeklySampling : await requestWeeklySampling();
-      if (!sampling) return;
+      // For DOC >= 35, weekly ABW sampling is strictly required every 7 days before logging
+      if (isDoc35Plus && isSamplingDue) {
+        sampling = await requestWeeklySampling(true);
+        if (!sampling) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Sampling Required',
+            text: 'Weekly shrimp sampling is required before you can log feeding.',
+          });
+          return;
+        }
+      } else {
+        sampling = weeklySampling?.shrimpWeightGrams ? weeklySampling : (isDoc35Plus ? null : { shrimpWeightGrams: 3.0 });
+      }
 
-      trayMonitoring = await requestTrayMonitoring();
-      if (!trayMonitoring) return;
+      if (selectedSlotRequiresMonitoring) {
+        trayMonitoring = await requestTrayMonitoring();
+        if (!trayMonitoring) return;
 
-      if (trayMonitoring?.suggestedAmountKg) {
-        amount = trayMonitoring.suggestedAmountKg;
+        if (trayMonitoring?.suggestedAmountKg !== undefined) {
+          amount = trayMonitoring.suggestedAmountKg;
+        }
+        if (trayMonitoring?.suggestedAmountGrams !== undefined) {
+          grams = trayMonitoring.suggestedAmountGrams;
+        }
+      } else {
+        trayMonitoring = { status: 'First Feeding (Maintained)' };
       }
     }
 
@@ -739,6 +1008,7 @@ export default function MyPondPage() {
       if (!responseData.success) throw new Error('Unable to save feeding record.');
 
       suppressAutoTrayPromptRef.current = true;
+      justSubmittedRef.current = true;
 
       if (typeof window !== 'undefined') {
         localStorage.setItem('shrim-feed-updated', String(Date.now()));
@@ -749,36 +1019,16 @@ export default function MyPondPage() {
 
       await Swal.fire({
         icon: 'success',
-        title: editingRecord ? 'Feeding Log Updated!' : (isPastDate ? 'Historical Feeding Saved!' : 'Feeding Logged!'),
-        html: `
-          <div style="text-align:left">
-            <p><strong>${grams} g (${formatKg(amount)} kg)</strong> of <strong>${payload.product_code}</strong> saved for ${selectedPond.pond_name} on <strong>${todayDateStr}</strong> (${form.feedingTime}).</p>
-            ${isNurseryStage
-              ? '<p class="mb-0 text-success"><strong>Nursery Mode:</strong> 100% Broadcast into basin (No trays required).</p>'
-              : `<p class="mb-1">Tray feed: <strong>${formatKg(trayFeedGrams)}g</strong> per tray x ${feedingTrayCount} = <strong>${formatKg(totalTrayFeedGrams)}g</strong></p>
-                 <p class="mb-0">Broadcast to pond: <strong>${formatKg(broadcastFeedKg)} kg</strong></p>`
-            }
-          </div>
-        `,
+        title: editingRecord ? 'Feeding Log Updated!' : 'Feeding Logged Successfully!',
+        text: `${grams}g (${formatKg(amount)}kg) recorded for ${selectedPond.pond_name} on ${todayDateStr} (${form.feedingTime}). Returning to dashboard...`,
+        timer: 1600,
+        showConfirmButton: false,
       });
 
-      const wasEditing = Boolean(editingRecord);
       setEditingRecord(null);
 
-      // Reset form and pick next available unlogged slot
-      const nextUnlogged = feedingTimes.find((t) => t !== form.feedingTime && !loggedTimesForPond.includes(t)) || '6:00 AM';
-      setFormState((prev) => ({
-        ...prev,
-        [selectedPond.id]: { ...emptyForm, amountKg: '', notes: '', feedingTime: nextUnlogged },
-      }));
-
-      fetchTodayLogs(selectedPond.id);
-
-      // If logging for today and not backfilling/editing, take them to dashboard.
-      // If backfilling past dates, STAY on this date so they can keep backfilling!
-      if (!isPastDate && !wasEditing) {
-        navigate('/caretaker/dashboard', { replace: true });
-      }
+      // Automatically return to dashboard after logging
+      navigate('/caretaker/dashboard', { replace: true });
     } catch (error) {
       const backendMessage = error.response?.data?.message || error.response?.data?.error || error.message || 'Unable to save feeding record.';
       console.error('Feeding save error', error);
@@ -1300,35 +1550,56 @@ export default function MyPondPage() {
               <div className="p-3 rounded-4 bg-light border h-100">
                 <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
                   <span className="small fw-bold text-dark">Weekly shrimp sample</span>
-                  {isNurseryStage ? (
-                    <span className="badge rounded-pill bg-success bg-opacity-10 text-success border border-success border-opacity-25 extra-small fw-bold">
-                      Nursery • Day {currentDoc}
+                  {!isDoc35Plus ? (
+                    <span className="badge rounded-pill bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 extra-small fw-bold">
+                      DOC {currentDoc} • Not Required
                     </span>
+                  ) : isSamplingDue ? (
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-danger px-2.5 py-1 extra-small fw-bold text-white shadow-xs"
+                      onClick={() => requestWeeklySampling(false)}
+                      disabled={!selectedPondId || allSlotsCompleted}
+                    >
+                      Sample Now
+                    </button>
                   ) : (
                     <button
                       type="button"
-                      className="btn btn-sm btn-outline-primary"
-                      onClick={requestWeeklySampling}
+                      className="btn btn-sm btn-outline-primary px-2.5 py-1 extra-small fw-bold"
+                      onClick={() => requestWeeklySampling(false)}
                       disabled={!selectedPondId || allSlotsCompleted}
                     >
-                      {weeklySampling?.shrimpWeightGrams ? 'Update' : 'Set'}
+                      Update
                     </button>
                   )}
                 </div>
-                {isNurseryStage ? (
+                {!isDoc35Plus ? (
                   <>
-                    <h5 className="fw-bold text-success mb-1">Not Required</h5>
+                    <h5 className="fw-bold text-secondary mb-1">Not Required</h5>
                     <p className="extra-small text-muted mb-0">
-                      Shrimp are in Nursery phase (DOC 1–19). Weekly weight sampling starts in Grow-out (Day 20+).
+                      Weekly sampling starts at DOC 35.
+                    </p>
+                  </>
+                ) : isSamplingDue ? (
+                  <>
+                    <h5 className="fw-bold text-danger mb-1">Sampling Required</h5>
+                    <p className="extra-small text-danger mb-0">
+                      Record shrimp weight in grams before logging feed.
                     </p>
                   </>
                 ) : (
                   <>
-                    <h4 className="fw-bold text-primary mb-1">
-                      {weeklySampling?.shrimpWeightGrams ? `${weeklySampling.shrimpWeightGrams}g` : '-'}
-                    </h4>
+                    <div className="d-flex align-items-baseline gap-2 mb-1">
+                      <h4 className="fw-bold text-primary mb-0">
+                        {weeklySampling?.shrimpWeightGrams ? `${weeklySampling.shrimpWeightGrams}g` : '-'}
+                      </h4>
+                      <span className="badge rounded-pill bg-success bg-opacity-10 text-success border border-success border-opacity-25 extra-small fw-bold">
+                        Active • {Math.max(0, 7 - daysSinceSample)}d left
+                      </span>
+                    </div>
                     <p className="extra-small text-muted mb-0">
-                      Required once per week before feeding logs. Example: 3g average shrimp.
+                      Current average shrimp weight.
                     </p>
                   </>
                 )}
@@ -1502,6 +1773,11 @@ export default function MyPondPage() {
                     : (currentForm.amountKg ? `${parseFloat(currentForm.amountKg).toFixed(3)} kg` : '0.000 kg')}
                 </strong>
               </div>
+              {normalizeTime(currentForm.feedingTime) === '6:00 AM' && previousDayLastFeed && !editingRecord && (
+                <div className="mt-1 extra-small text-success fw-semibold d-flex align-items-center gap-1">
+                  <span>⚡ Auto-carried over from previous 6:00 PM feed ({parseFloat(previousDayLastFeed.amount_grams || 0) || (parseFloat(previousDayLastFeed.amount_kg || 0) * 1000)}g)</span>
+                </div>
+              )}
             </div>
 
             <div className="col-md-4">
@@ -1547,18 +1823,18 @@ export default function MyPondPage() {
               </div>
               <select
                 className="form-select form-select-lg fs-6"
-                value={currentForm.vitaminName || 'None'}
+                value={currentForm.vitaminName || defaultVitamins}
                 onChange={(event) => handleChange('vitaminName', event.target.value)}
                 disabled={submitting || (allSlotsCompleted && !editingRecord)}
               >
                 {vitaminOptions.map((vit) => (
                   <option key={vit} value={vit}>
-                    {vit === 'None' ? 'None (No Vitamin)' : vit}
+                    {vit === 'None' ? 'None (No Vitamin)' : vit === defaultVitamins ? `${vit} (Both Consumed • Standard)` : vit}
                   </option>
                 ))}
               </select>
               <small className="text-muted extra-small d-block mt-1">
-                Sanolife PRO-2 or Sano Top-S (administered with feed).
+                Both Sanolife PRO-2 &amp; Sano Top-S are automatically administered with feed.
               </small>
             </div>
           </div>

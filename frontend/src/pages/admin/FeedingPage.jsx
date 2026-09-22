@@ -40,8 +40,10 @@ import {
   FaClock,
   FaCapsules,
   FaUserCheck,
-  FaBoxes
+  FaBoxes,
+  FaPlus,
 } from 'react-icons/fa';
+import { useAuth } from '../../context/AuthContext';
 import api, { safeArray } from '../../services/api';
 import PondCycleCalendar from '../../components/PondCycleCalendar';
 
@@ -67,6 +69,7 @@ function computeDoc(stockingDateStr, targetDateStr) {
 }
 
 export default function FeedingPage() {
+  const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const targetPond = searchParams.get('pond');
 
@@ -85,6 +88,21 @@ export default function FeedingPage() {
   const [stageFilter, setStageFilter] = useState('all'); // 'all' | 'nursery' | 'growout'
   const [calendarModalPond, setCalendarModalPond] = useState(null);
   const [sortBy, setSortBy] = useState('date-desc'); // 'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc' | 'pond-asc'
+
+  // Admin Log Feeding Modal State
+  const [showLogModal, setShowLogModal] = useState(false);
+  const [savingLog, setSavingLog] = useState(false);
+  const [adminLogForm, setAdminLogForm] = useState({
+    pond_id: '',
+    record_date: new Date().toISOString().split('T')[0],
+    feeding_time: '6:00 AM',
+    amount_kg: '',
+    amount_grams: '',
+    product_code: 'Grower',
+    vitamin_name: 'Sanolife PRO-2, Sano Top-S',
+    tray_monitoring_status: '',
+    notes: '',
+  });
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -517,6 +535,293 @@ export default function FeedingPage() {
     return finalList;
   }, [ponds, filteredRecords, searchTerm, effectiveFilterDate, stageFilter]);
 
+  // Open Admin Log Feeding Modal
+  const handleOpenLogModal = () => {
+    const initialPondId = ponds[0]?.id ? String(ponds[0].id) : '';
+    const initialDate = effectiveFilterDate || todayYMD;
+    const targetPondObj = ponds.find((p) => String(p.id) === String(initialPondId));
+    const doc = computeDoc(targetPondObj?.stocking_date, initialDate);
+    const initialProductCode = (doc !== null && doc >= 20) ? 'Grower' : 'Starter';
+
+    setAdminLogForm({
+      pond_id: initialPondId,
+      record_date: initialDate,
+      feeding_time: '6:00 AM',
+      amount_kg: '',
+      amount_grams: '',
+      product_code: initialProductCode,
+      vitamin_name: 'Sanolife PRO-2, Sano Top-S',
+      tray_monitoring_status: '',
+      notes: '',
+    });
+    setShowLogModal(true);
+  };
+
+  const handleAdminFormPondChange = (pondId) => {
+    const targetPondObj = ponds.find((p) => String(p.id) === String(pondId));
+    const doc = computeDoc(targetPondObj?.stocking_date, adminLogForm.record_date);
+    const code = (doc !== null && doc >= 20) ? 'Grower' : 'Starter';
+    setAdminLogForm((prev) => ({
+      ...prev,
+      pond_id: pondId,
+      product_code: code,
+    }));
+  };
+
+  const handleAdminFormDateChange = (dateVal) => {
+    const targetPondObj = ponds.find((p) => String(p.id) === String(adminLogForm.pond_id));
+    const doc = computeDoc(targetPondObj?.stocking_date, dateVal);
+    const code = (doc !== null && doc >= 20) ? 'Grower' : 'Starter';
+    setAdminLogForm((prev) => ({
+      ...prev,
+      record_date: dateVal,
+      product_code: code,
+    }));
+  };
+
+  const promptAdminTrayMonitoring = async (targetSlot, currentPondId, currentDate) => {
+    const targetPondObj = ponds.find((p) => String(p.id) === String(currentPondId));
+    const doc = computeDoc(targetPondObj?.stocking_date, currentDate);
+    const isGrowout = doc !== null ? (doc >= 20) : adminLogForm.product_code === 'Grower';
+    const normSlot = String(targetSlot || '').trim().toUpperCase().replace(/^0(\d:)/, '$1');
+
+    if (!isGrowout || normSlot === '6:00 AM') {
+      return null;
+    }
+
+    const feedingTimes = ['6:00 AM', '9:00 AM', '12:00 PM', '3:00 PM', '6:00 PM'];
+    const slotIndex = feedingTimes.findIndex((t) => t.toUpperCase() === normSlot);
+    let prevRecord = null;
+    if (slotIndex > 0) {
+      for (let i = slotIndex - 1; i >= 0; i--) {
+        const checkTime = feedingTimes[i];
+        const found = records.find(
+          (r) =>
+            String(r.pond_id) === String(currentPondId) &&
+            formatYMD(r.record_date || r.created_at) === currentDate &&
+            String(r.feeding_time || '').trim().toUpperCase().replace(/^0(\d:)/, '$1') === checkTime
+        );
+        if (found) {
+          prevRecord = found;
+          break;
+        }
+      }
+    }
+
+    const rawPrevGrams = prevRecord?.amount_grams !== null && prevRecord?.amount_grams !== undefined
+      ? Number(prevRecord.amount_grams)
+      : (Number(prevRecord?.amount_kg || 0) * 1000);
+    const rawPrevKg = Number(prevRecord?.amount_kg || (rawPrevGrams / 1000));
+    const prevTime = prevRecord?.feeding_time || 'previous';
+
+    let amountIfConsumedGrams = 14;
+    let amountIfConsumedKg = 14.0;
+    let amountIfLeftoverGrams = 11;
+    let amountIfLeftoverKg = 11.0;
+
+    if (rawPrevGrams > 0 && rawPrevGrams <= 100) {
+      // User entered unit amount directly into the form (e.g. 13g -> 14g, or 14g)
+      amountIfConsumedGrams = Number((rawPrevGrams + 1).toFixed(2));
+      amountIfConsumedKg = rawPrevKg >= 1 ? Number((rawPrevKg + 1.0).toFixed(2)) : Number((amountIfConsumedGrams / 1000).toFixed(3));
+      amountIfLeftoverGrams = Math.max(1, Number((rawPrevGrams - 2).toFixed(2)));
+      amountIfLeftoverKg = rawPrevKg >= 1 ? Math.max(0.5, Number((rawPrevKg - 2.0).toFixed(2))) : Number((amountIfLeftoverGrams / 1000).toFixed(3));
+    } else if (rawPrevGrams > 100) {
+      // User entered full gram amount (e.g. 13000g -> 14000g)
+      amountIfConsumedGrams = Math.round(rawPrevGrams + 1000);
+      amountIfConsumedKg = Number((rawPrevKg + 1.0).toFixed(2));
+      amountIfLeftoverGrams = Math.max(100, Math.round(rawPrevGrams - 2000));
+      amountIfLeftoverKg = Math.max(0.5, Number((rawPrevKg - 2.0).toFixed(2)));
+    } else {
+      amountIfConsumedGrams = 14;
+      amountIfConsumedKg = 14.0;
+      amountIfLeftoverGrams = 11;
+      amountIfLeftoverKg = 11.0;
+    }
+
+    const { value, isConfirmed } = await Swal.fire({
+      title: 'Feeding Tray Inspection',
+      customClass: {
+        popup: 'shrim-swal-popup',
+        title: 'shrim-swal-title',
+        confirmButton: 'btn btn-gold-glow px-4 py-2.5 rounded-3 fw-bold me-2 shadow-sm',
+        cancelButton: 'btn btn-outline-light px-3 py-2 rounded-3 text-secondary',
+      },
+      buttonsStyling: false,
+      html: `
+        <div style="text-align:left; font-family: inherit;">
+          <p class="text-secondary small mb-3">
+            Inspect all 4 check trays in <strong>${targetPondObj?.pond_name || 'this pond'}</strong> following the <strong>${prevTime}</strong> feeding session:
+          </p>
+          <div class="tray-options d-flex flex-column gap-2 mb-3">
+            <label class="p-3 rounded-3 border d-flex align-items-start gap-2.5 cursor-pointer bg-white text-dark shadow-xs" style="cursor: pointer;">
+              <input type="radio" name="admin_tray_status" value="consumed" checked style="margin-top: 3px;" />
+              <div>
+                <strong class="d-block text-dark">Completely Consumed (Empty)</strong>
+                <span class="text-muted extra-small">All feed on the 4 check trays has been fully consumed.</span>
+              </div>
+            </label>
+            <label class="p-3 rounded-3 border d-flex align-items-start gap-2.5 cursor-pointer bg-white text-dark shadow-xs" style="cursor: pointer;">
+              <input type="radio" name="admin_tray_status" value="leftover" style="margin-top: 3px;" />
+              <div>
+                <strong class="d-block text-dark">Leftover Feed Detected (Unconsumed)</strong>
+                <span class="text-muted extra-small">Feed residue remains on the check trays indicating slow feeding or satiation.</span>
+              </div>
+            </label>
+          </div>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: 'Confirm Tray Inspection',
+      cancelButtonText: 'Skip Inspection',
+      preConfirm: () => {
+        const checked = document.querySelector('input[name="admin_tray_status"]:checked');
+        return checked ? checked.value : 'consumed';
+      },
+    });
+
+    if (isConfirmed && value) {
+      let suggestedGrams = amountIfConsumedGrams;
+      let suggestedKg = amountIfConsumedKg;
+      let statusLabel = 'Completely Consumed (Empty)';
+
+      if (value === 'leftover') {
+        suggestedGrams = amountIfLeftoverGrams;
+        suggestedKg = amountIfLeftoverKg;
+        statusLabel = 'Leftover Feed Detected';
+      } else {
+        suggestedGrams = amountIfConsumedGrams;
+        suggestedKg = amountIfConsumedKg;
+        statusLabel = 'Completely Consumed (Empty)';
+      }
+
+      setAdminLogForm((prev) => ({
+        ...prev,
+        amount_kg: String(suggestedKg),
+        amount_grams: String(suggestedGrams),
+        tray_monitoring_status: statusLabel,
+      }));
+      return { status: statusLabel, amount_grams: suggestedGrams, amount_kg: suggestedKg };
+    }
+    return null;
+  };
+
+  const handleAdminSlotChange = async (timeSlot) => {
+    setAdminLogForm((prev) => ({ ...prev, feeding_time: timeSlot }));
+    if (timeSlot === '6:00 AM') {
+      const pastRecords = records.filter((r) => {
+        const rDate = r.record_date || (r.created_at ? r.created_at.split(' ')[0] : '');
+        return String(r.pond_id) === String(adminLogForm.pond_id) && rDate && rDate < adminLogForm.record_date;
+      });
+      if (pastRecords.length > 0) {
+        pastRecords.sort((a, b) => (b.record_date || '').localeCompare(a.record_date || ''));
+        const latestDate = pastRecords[0].record_date;
+        const onDate = pastRecords.filter((r) => r.record_date === latestDate);
+        const prev6pm = onDate.find((r) => normalizeTime(r.feeding_time) === '6:00 PM') || onDate[0];
+        if (prev6pm) {
+          const g = prev6pm.amount_grams !== null && prev6pm.amount_grams !== undefined
+            ? String(prev6pm.amount_grams)
+            : String(Math.round((parseFloat(prev6pm.amount_kg) || 0) * 1000));
+          const kg = String(prev6pm.amount_kg || (parseFloat(g) / 1000).toFixed(3));
+          setAdminLogForm((prev) => ({
+            ...prev,
+            amount_grams: g,
+            amount_kg: kg,
+          }));
+        }
+      }
+    } else {
+      await promptAdminTrayMonitoring(timeSlot, adminLogForm.pond_id, adminLogForm.record_date);
+    }
+  };
+
+  const handleSaveAdminLog = async (e) => {
+    e?.preventDefault();
+    const pid = Number(adminLogForm.pond_id);
+
+    if (!pid) {
+      Swal.fire({ icon: 'warning', title: 'Pond Required', text: 'Please select a pond basin.' });
+      return;
+    }
+
+    const targetPondObj = ponds.find((p) => Number(p.id) === pid);
+    const doc = computeDoc(targetPondObj?.stocking_date, adminLogForm.record_date);
+    const isNursery = doc !== null ? (doc >= 1 && doc <= 19) : adminLogForm.product_code === 'Starter';
+    const normSlot = String(adminLogForm.feeding_time || '').trim().toUpperCase().replace(/^0(\d:)/, '$1');
+
+    let currentTrayStatus = adminLogForm.tray_monitoring_status;
+    let grams = adminLogForm.amount_grams !== '' ? parseFloat(adminLogForm.amount_grams) : (parseFloat(adminLogForm.amount_kg) * 1000 || 0);
+    let amt = adminLogForm.amount_kg !== '' ? parseFloat(adminLogForm.amount_kg) : (grams / 1000);
+
+    if (!isNursery && normSlot !== '6:00 AM' && !currentTrayStatus) {
+      const promptResult = await promptAdminTrayMonitoring(adminLogForm.feeding_time, pid, adminLogForm.record_date);
+      if (!promptResult) return;
+      currentTrayStatus = promptResult.status;
+      grams = promptResult.amount_grams;
+      amt = promptResult.amount_kg;
+    }
+
+    if (isNaN(amt) || amt < 0 || isNaN(grams) || grams < 0) {
+      Swal.fire({ icon: 'warning', title: 'Invalid Amount', text: 'Please enter a valid amount in grams (0 or greater).' });
+      return;
+    }
+
+    const shrimpWeightGrams = isNursery ? null : 3.0;
+    const trayCount = isNursery ? 0 : 4;
+    const trayFeedGrams = isNursery ? 0 : amt * (shrimpWeightGrams || 3.0);
+    const totalTrayFeedGrams = isNursery ? 0 : trayFeedGrams * trayCount;
+    const broadcastFeedKg = isNursery ? amt : Math.max(0, amt - (totalTrayFeedGrams / 1000));
+
+    const vit = adminLogForm.vitamin_name || 'Sanolife PRO-2, Sano Top-S';
+
+    setSavingLog(true);
+    try {
+      const payload = {
+        action: 'insert',
+        pond_id: pid,
+        amount_kg: amt,
+        amount_grams: grams,
+        feeding_time: adminLogForm.feeding_time,
+        product_code: adminLogForm.product_code,
+        vitamin_name: vit,
+        has_vitamin: vit && vit !== 'None' ? 1 : 0,
+        shrimp_weight_grams: shrimpWeightGrams,
+        tray_count: trayCount,
+        tray_feed_grams: Number(trayFeedGrams.toFixed(2)),
+        total_tray_feed_grams: Number(totalTrayFeedGrams.toFixed(2)),
+        broadcast_feed_kg: Number(broadcastFeedKg.toFixed(3)),
+        tray_monitoring_status: adminLogForm.tray_monitoring_status || (isNursery ? 'Nursery (100% Broadcast)' : 'First Feeding (Maintained)'),
+        record_date: adminLogForm.record_date,
+        notes: adminLogForm.notes || (grams === 0 ? 'No feed logged (0g)' : ''),
+        recorded_by: user?.full_name || 'Administrator',
+        recorded_by_name: user?.full_name || 'Administrator',
+        user_id: Number(user?.id || 9),
+      };
+
+      const res = await api.post('/feeding_records.php', payload);
+      if (res.data?.success) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Feeding Record Saved!',
+          text: `${grams}g (${amt.toFixed(1)}kg) of ${adminLogForm.product_code} on ${adminLogForm.record_date} (${adminLogForm.feeding_time}) recorded.`,
+          timer: 2000,
+          showConfirmButton: false,
+        });
+        setShowLogModal(false);
+        loadData();
+      } else {
+        throw new Error(res.data?.message || 'Failed to save record.');
+      }
+    } catch (err) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Save Failed',
+        text: err.response?.data?.message || err.message || 'Could not save feeding record.',
+      });
+    } finally {
+      setSavingLog(false);
+    }
+  };
+
   // View Logs Action Handler: Opens SweetAlert2 Modal Card with Pond Feeding Logs & Breakdown
   const handleViewPondLogs = (pondName, pondId) => {
     const targetPondObj = ponds.find(
@@ -679,8 +984,22 @@ export default function FeedingPage() {
           </div>
         </div>
 
-        {/* Action Controls: Refresh & CSV Export */}
+        {/* Action Controls: Log Feeding, Refresh & CSV Export */}
         <div className="d-flex align-items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            className="btn btn-sm rounded-pill px-3.5 py-2 d-flex align-items-center gap-1.5 fw-bold text-white shadow-xs"
+            style={{
+              height: 40,
+              fontSize: '0.82rem',
+              background: 'linear-gradient(135deg, #16A34A 0%, #15803D 100%)',
+              border: 'none'
+            }}
+            onClick={handleOpenLogModal}
+          >
+            <FaPlus size={12} /> Log Feeding
+          </button>
+
           <button
             type="button"
             className="btn btn-sm rounded-pill bg-white border text-dark fw-semibold px-3 py-2 d-flex align-items-center gap-1.5 shadow-xs"
@@ -1469,6 +1788,251 @@ export default function FeedingPage() {
           </div>
         </div>
       </div>
+
+      {/* 🌟 6. ADMIN LOG FEEDING MODAL */}
+      {showLogModal && (
+        <div
+          className="modal fade show d-block"
+          style={{ backgroundColor: 'rgba(7, 23, 51, 0.72)', zIndex: 1055 }}
+          tabIndex="-1"
+        >
+          <div className="modal-dialog modal-dialog-centered modal-lg">
+            <div className="modal-content border-0 rounded-4 overflow-hidden shadow-2xl">
+              <div
+                className="modal-header p-4 border-0 text-white"
+                style={{ background: 'linear-gradient(135deg, #0B2C5F 0%, #0284C7 100%)' }}
+              >
+                <div className="d-flex align-items-center gap-3">
+                  <div
+                    className="rounded-circle p-2.5 d-flex align-items-center justify-content-center bg-white text-primary shadow-sm"
+                    style={{ width: 44, height: 44 }}
+                  >
+                    <FaUtensils size={18} />
+                  </div>
+                  <div>
+                    <h5 className="modal-title fw-extrabold text-white mb-0">Log Feeding Session</h5>
+                    <span className="extra-small text-white-50">Admin Feeding Operations &amp; Rations Recording</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn-close btn-close-white"
+                  onClick={() => setShowLogModal(false)}
+                  disabled={savingLog}
+                />
+              </div>
+
+              <form onSubmit={handleSaveAdminLog}>
+                <div className="modal-body p-4 bg-white">
+                  <div className="row g-3">
+                    {/* Pond Selection */}
+                    <div className="col-md-6">
+                      <label className="form-label extra-small fw-bold text-dark mb-1">Pond Basin</label>
+                      <select
+                        className="form-select form-select-sm fw-semibold"
+                        value={adminLogForm.pond_id}
+                        onChange={(e) => handleAdminFormPondChange(e.target.value)}
+                        required
+                      >
+                        <option value="">Select Pond...</option>
+                        {ponds.map((p) => {
+                          const name = p.pond_name || p.name || `Pond #${p.id}`;
+                          return <option key={p.id} value={p.id}>{name}</option>;
+                        })}
+                      </select>
+                    </div>
+
+                    {/* Date Selection */}
+                    <div className="col-md-6">
+                      <label className="form-label extra-small fw-bold text-dark mb-1">Feeding Date</label>
+                      <input
+                        type="date"
+                        className="form-control form-control-sm fw-semibold"
+                        value={adminLogForm.record_date}
+                        onChange={(e) => handleAdminFormDateChange(e.target.value)}
+                        required
+                      />
+                    </div>
+
+                    {/* Culture Stage / DOC Info Badge */}
+                    {adminLogForm.pond_id && (
+                      <div className="col-12">
+                        <div className="p-2.5 rounded-3 bg-light border d-flex align-items-center justify-content-between flex-wrap gap-2">
+                          {(() => {
+                            const pObj = ponds.find((p) => String(p.id) === String(adminLogForm.pond_id));
+                            const doc = computeDoc(pObj?.stocking_date, adminLogForm.record_date);
+                            const isGrowout = doc !== null ? (doc >= 20) : adminLogForm.product_code === 'Grower';
+                            return (
+                              <>
+                                <div className="d-flex align-items-center gap-2">
+                                  <span
+                                    className="badge rounded-pill px-2.5 py-1 fw-bold extra-small"
+                                    style={{
+                                      background: isGrowout ? '#EFF6FF' : '#ECFDF5',
+                                      color: isGrowout ? '#1D4ED8' : '#047857',
+                                      border: isGrowout ? '1px solid #BFDBFE' : '1px solid #A7F3D0'
+                                    }}
+                                  >
+                                    {isGrowout ? `🌊 DOC Day ${doc || 20}+ • Grow-out Stage` : `🌱 DOC Day ${doc || 1} • Nursery Stage`}
+                                  </span>
+                                  <span className="extra-small text-muted">
+                                    Recommended: <strong>{isGrowout ? 'Grower Feed' : 'Starter Feed'}</strong>
+                                  </span>
+                                </div>
+                                <span className="extra-small text-secondary">
+                                  Target: <strong>{Number(pObj?.target_feed_kg || 45).toFixed(1)} kg/day</strong>
+                                </span>
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Feeding Slot Buttons */}
+                    <div className="col-12">
+                      <label className="form-label extra-small fw-bold text-dark mb-1">
+                        Feeding Time Slot &amp; Daily Schedule
+                        <span className="text-muted ms-1 extra-small fw-normal">(Trays monitored after 6:00 AM)</span>
+                      </label>
+                      <div className="d-flex flex-wrap gap-2">
+                        {['6:00 AM', '9:00 AM', '12:00 PM', '3:00 PM', '6:00 PM'].map((t) => {
+                          const isSelected = adminLogForm.feeding_time === t;
+                          const logged = records.find(
+                            (r) =>
+                              String(r.pond_id) === String(adminLogForm.pond_id) &&
+                              formatYMD(r.record_date || r.created_at) === adminLogForm.record_date &&
+                              String(r.feeding_time || '').trim().toUpperCase().replace(/^0(\d:)/, '$1') === t.toUpperCase()
+                          );
+                          return (
+                            <button
+                              key={t}
+                              type="button"
+                              className={`btn btn-sm rounded-pill px-3 py-1.5 extra-small fw-bold transition-all d-flex align-items-center gap-1.5 ${
+                                isSelected
+                                  ? 'btn-primary shadow-sm text-white'
+                                  : logged
+                                    ? 'bg-success bg-opacity-10 text-success border border-success border-opacity-25'
+                                    : 'bg-light text-dark border'
+                              }`}
+                              onClick={() => handleAdminSlotChange(t)}
+                            >
+                              {logged ? <FaCheckCircle size={10} className="text-success" /> : <FaClock size={10} />}
+                              <span>{t}</span>
+                              {logged && <span className="badge bg-success text-white extra-small ms-1">{logged.amount_kg}kg</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Amount in grams & kg */}
+                    <div className="col-md-6">
+                      <label className="form-label extra-small fw-bold text-dark mb-1">
+                        Feed Amount (grams)
+                        {adminLogForm.amount_grams !== '' && !isNaN(parseFloat(adminLogForm.amount_grams)) && (
+                          <span className="text-success ms-1 fw-bold">
+                            ≈ {(parseFloat(adminLogForm.amount_grams) / 1000).toFixed(1)} kg
+                          </span>
+                        )}
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        className="form-control form-control-sm fw-bold"
+                        placeholder="e.g. 13000 (13 kg)"
+                        value={adminLogForm.amount_grams}
+                        onChange={(e) => {
+                          const gVal = e.target.value;
+                          const kgVal = gVal === '' ? '' : (parseFloat(gVal) / 1000).toString();
+                          setAdminLogForm({ ...adminLogForm, amount_grams: gVal, amount_kg: kgVal });
+                        }}
+                        required
+                      />
+                      <small className="extra-small text-muted mt-1 d-block">
+                        Auto-adjusted based on 4-tray monitoring inspection.
+                      </small>
+                    </div>
+
+                    {/* Product Code */}
+                    <div className="col-md-6">
+                      <label className="form-label extra-small fw-bold text-dark mb-1">Feed Formulation</label>
+                      <select
+                        className="form-select form-select-sm fw-semibold"
+                        value={adminLogForm.product_code}
+                        onChange={(e) => setAdminLogForm({ ...adminLogForm, product_code: e.target.value })}
+                      >
+                        <option value="Starter">Starter (Tateh Feed - Nursery)</option>
+                        <option value="Grower">Grower (Tateh Feed - Grow-out)</option>
+                      </select>
+                    </div>
+
+                    {/* Vitamins & Supplements */}
+                    <div className="col-md-6">
+                      <label className="form-label extra-small fw-bold text-dark mb-1">Vitamins &amp; Supplements</label>
+                      <select
+                        className="form-select form-select-sm fw-semibold"
+                        value={adminLogForm.vitamin_name}
+                        onChange={(e) => setAdminLogForm({ ...adminLogForm, vitamin_name: e.target.value })}
+                      >
+                        <option value="Sanolife PRO-2, Sano Top-S">Sanolife PRO-2, Sano Top-S (Both Consumed • Standard)</option>
+                        <option value="Sanolife PRO-2">Sanolife PRO-2</option>
+                        <option value="Sano Top-S">Sano Top-S</option>
+                        <option value="None">None (No Vitamin)</option>
+                      </select>
+                      <small className="extra-small text-muted mt-1 d-block">
+                        Both vitamins are pre-selected by default.
+                      </small>
+                    </div>
+
+                    {/* Tray Monitoring Status Display */}
+                    {adminLogForm.tray_monitoring_status && (
+                      <div className="col-12">
+                        <div className="p-2.5 rounded-3 bg-light border d-flex align-items-center gap-2">
+                          <span className="badge rounded-pill bg-primary px-2.5 py-1 extra-small">Tray Status</span>
+                          <span className="extra-small fw-bold text-dark">{adminLogForm.tray_monitoring_status}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Notes */}
+                    <div className="col-12">
+                      <label className="form-label extra-small fw-bold text-dark mb-1">Notes / Remarks (Optional)</label>
+                      <textarea
+                        className="form-control form-control-sm"
+                        rows="2"
+                        placeholder="e.g. Session supervised by Admin"
+                        value={adminLogForm.notes}
+                        onChange={(e) => setAdminLogForm({ ...adminLogForm, notes: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="modal-footer p-3 bg-light border-top d-flex justify-content-end gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-secondary rounded-pill px-3.5 py-1.5 extra-small fw-bold"
+                    onClick={() => setShowLogModal(false)}
+                    disabled={savingLog}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn btn-sm rounded-pill px-4 py-1.5 extra-small fw-bold text-white shadow-sm"
+                    style={{ background: 'linear-gradient(135deg, #16A34A 0%, #15803D 100%)', border: 'none' }}
+                    disabled={savingLog}
+                  >
+                    {savingLog ? 'Saving...' : 'Save Feeding Record'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 🌟 POND CULTURE CYCLE CALENDAR MODAL (ADMIN) */}
       {calendarModalPond && (

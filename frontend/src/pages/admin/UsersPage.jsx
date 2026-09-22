@@ -298,6 +298,15 @@ export default function UsersPage() {
         Swal.fire({ icon: 'error', title: 'Weak Password', text: 'Password must be at least 6 characters.', confirmButtonColor: '#0B2C5F' });
         return;
       }
+    } else if (formData.password) {
+      if (formData.password !== formData.confirm_password) {
+        Swal.fire({ icon: 'error', title: 'Password Mismatch', text: 'New passwords do not match. Please verify.', confirmButtonColor: '#0B2C5F' });
+        return;
+      }
+      if (formData.password.length < 6) {
+        Swal.fire({ icon: 'error', title: 'Weak Password', text: 'New password must be at least 6 characters.', confirmButtonColor: '#0B2C5F' });
+        return;
+      }
     }
 
     setIsSaving(true);
@@ -310,6 +319,7 @@ export default function UsersPage() {
           full_name: toTitleCase(formData.full_name),
           email: formData.email.trim(),
           phone: formData.phone.trim(),
+          password: formData.password ? formData.password.trim() : undefined,
           status: formData.status,
           selected_ponds: formData.selected_ponds
         });
@@ -1108,7 +1118,7 @@ export default function UsersPage() {
                       </div>
                     ) : (
                       <div className="row g-3">
-                        <div className="col-12 col-md-6">
+                        <div className="col-12 col-md-4">
                           <label className="form-label small fw-bold text-dark mb-1">Account Operational Status</label>
                           <select
                             className="form-select form-control"
@@ -1119,6 +1129,34 @@ export default function UsersPage() {
                             <option value="Active">Active Operational 🟢</option>
                             <option value="Inactive">Inactive Suspended 🔴</option>
                           </select>
+                        </div>
+                        <div className="col-12 col-md-4">
+                          <label className="form-label small fw-bold text-dark mb-1">New Password (Optional)</label>
+                          <div className="input-icon-group">
+                            <input
+                              type="password"
+                              className="form-control"
+                              placeholder="Leave blank to keep current"
+                              value={formData.password}
+                              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                              minLength={6}
+                            />
+                            <FaLock className="input-icon" />
+                          </div>
+                        </div>
+                        <div className="col-12 col-md-4">
+                          <label className="form-label small fw-bold text-dark mb-1">Confirm New Password</label>
+                          <div className="input-icon-group">
+                            <input
+                              type="password"
+                              className="form-control"
+                              placeholder="Repeat new password"
+                              value={formData.confirm_password}
+                              onChange={(e) => setFormData({ ...formData, confirm_password: e.target.value })}
+                              minLength={6}
+                            />
+                            <FaKey className="input-icon" />
+                          </div>
                         </div>
                       </div>
                     )}
