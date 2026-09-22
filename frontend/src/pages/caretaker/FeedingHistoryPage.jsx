@@ -39,6 +39,12 @@ function computeDoc(stockingDateStr, targetDateStr) {
   return Math.floor(diffTime / 86400000) + 1;
 }
 
+function formatKg(gramsOrKg) {
+  const num = parseFloat(gramsOrKg) || 0;
+  const kg = num > 50 ? num / 1000 : num;
+  return kg.toFixed(2);
+}
+
 export default function FeedingHistoryPage() {
   const { user } = useAuth();
 
