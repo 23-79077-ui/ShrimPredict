@@ -901,11 +901,13 @@ export default function FeedingHistoryPage() {
               </button>
               <button
                 type="button"
-                className={`btn btn-sm rounded-pill px-3 py-1.5 extra-small fw-bold transition-all ${
-                  stageFilter === 'growout'
-                    ? 'btn-primary'
-                    : (theme === 'dark' ? 'btn-outline-light border-opacity-20' : 'btn-outline-secondary')
-                }`}
+                className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all ${stageFilter === 'growout' ? 'text-white' : 'border text-dark'
+                  }`}
+                style={{
+                  backgroundColor: stageFilter === 'growout' ? '#2563EB' : '#EFF6FF',
+                  color: stageFilter === 'growout' ? '#ffffff' : '#1D4ED8',
+                  borderColor: '#BFDBFE',
+                }}
                 onClick={() => setStageFilter('growout')}
               >
                 🌊 Grow-out (Day 20+ • Grower) ({growoutRecordsCount})
