@@ -12,19 +12,17 @@ def main():
     DATA_DIR = ROOT_DIR / "data" / "shrimp_disease_dataset"
     ARTIFACTS_DIR = ROOT_DIR / "ml" / "artifacts" / "unified_model"
     ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
-    
-    MODEL_PATH = ARTIFACTS_DIR / "unified_disease_model.keras"
-    LABELS_PATH = ARTIFACTS_DIR / "labels.json"
-    
-    if not DATA_DIR.exists():
+
+MODEL_PATH = ARTIFACTS_DIR / "unified_disease_model.keras"
+LABELS_PATH = ARTIFACTS_DIR / "labels.json"
+
+EXPECTED_CLASSES = ["Healthy", "Black Gill", "White Spot Syndrome Virus (WSSV)", "Cooked Shrimp"]
+
+if not DATA_DIR.exists():
         print(f"Error: Dataset directory {DATA_DIR} not found.")
         print("Please place your images in data/shrimp_disease_dataset/ with subfolders for each class:")
-        print(" - Healthy")
-        print(" - Black_Gill")
-        print(" - White_Spot_Syndrome_Virus")
-        return
-
-    # 2. Hyperparameters
+        for class_name in EXPECTED_CLASSES:
+            print(f" - {class_name.replace(' ', '_')}")
     IMG_SIZE = 224
     BATCH_SIZE = 32
     EPOCHS = 20
@@ -53,9 +51,9 @@ def main():
 
     class_names = train_ds.class_names
     print(f"Detected classes: {class_names}")
-    
-    if len(class_names) != 3:
-        print(f"Warning: Expected exactly 3 classes (Healthy, Black_Gill, White_Spot_Syndrome_Virus), but found {len(class_names)}")
+
+    if len(class_names) != 4:
+        print(f"Warning: Expected 4 classes ({EXPECTED_CLASSES}), but found {len(class_names)}: {class_names}")
 
     # Save labels mapping
     with open(LABELS_PATH, "w") as f:

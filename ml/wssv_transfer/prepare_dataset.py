@@ -14,7 +14,7 @@ from sklearn.model_selection import train_test_split
 
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
-LABELS = ["Healthy", "White Spot Syndrome Virus (WSSV)"]
+LABELS = ["Healthy", "White Spot Syndrome Virus (WSSV)", "Black Gill", "Cooked Shrimp"]
 
 
 @dataclass(frozen=True)
@@ -29,6 +29,10 @@ def normalize_label(path: Path) -> str | None:
     joined = " ".join(parts)
     if "wssv" in joined or "white spot" in joined:
         return "White Spot Syndrome Virus (WSSV)"
+    if "black gill" in joined or "blackgill" in joined:
+        return "Black Gill"
+    if "cooked" in joined and "shrimp" in joined:
+        return "Cooked Shrimp"
     if "healthy" in joined:
         return "Healthy"
     return None

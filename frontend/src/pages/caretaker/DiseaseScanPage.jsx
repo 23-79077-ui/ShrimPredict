@@ -53,15 +53,18 @@ export default function DiseaseScanPage() {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
+      const isCooked = Boolean(response?.data?.is_cooked === true || response?.data?.is_cooked === 1 || response?.data?.is_cooked === '1' || response?.data?.is_cooked === 'true');
       const detected = [response?.data?.shrimp_detected, response?.data?.valid_shrimp_present]
         .some((value) => value === true || value === 1 || value === '1' || value === 'true')
-        || response?.data?.status === 'success';
+        || response?.data?.status === 'success'
+        || response?.data?.status === 'cooked_shrimp';
       const parsedCount = Number(response?.data?.shrimp_count);
       const count = detected ? Math.max(1, Number.isFinite(parsedCount) ? parsedCount : 1) : 0;
       setPreviewCount({
         count,
         detected,
-        status: detected ? 'Ready for Scan' : 'No shrimp detected',
+        is_cooked: isCooked,
+        status: isCooked ? 'Unavailable to scan: Cooked Shrimp' : (detected ? 'Ready for Scan' : 'No shrimp detected'),
         message: response?.data?.message || 'Preview result unavailable.',
       });
     } catch (error) {
@@ -198,7 +201,13 @@ export default function DiseaseScanPage() {
     event.preventDefault();
   }, []);
 
-  const scanReady = Boolean(image && !scanning && !previewLoading && (previewCount?.detected || !imageFile));
+  const scanReady = Boolean(
+    image
+    && !scanning
+    && !previewLoading
+    && (!imageFile || (previewCount?.detected && !previewCount?.is_cooked))
+    && !previewCount?.is_cooked
+  );
 
   useEffect(() => {
     if (!imageFile) {
@@ -230,6 +239,15 @@ export default function DiseaseScanPage() {
       return;
     }
 
+    if (previewCount?.is_cooked) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Unavailable to scan',
+        text: 'Shrimp was detected, but it appears to be cooked. Please upload raw uncooked shrimp for diagnosis.',
+      });
+      return;
+    }
+
     setScanning(true);
     setResult(null);
 
@@ -245,6 +263,22 @@ export default function DiseaseScanPage() {
       const response = await api.post('/disease_scan.php', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
+
+      const isCookedResult = Boolean(response.data?.is_cooked === true || response.data?.is_cooked === 1 || response.data?.is_cooked === '1' || response.data?.is_cooked === 'true');
+      if (isCookedResult) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Unavailable to scan',
+          text: 'Shrimp was detected, but it appears to be cooked. Please upload raw uncooked shrimp for diagnosis.',
+        });
+        setResult({
+          shrimp_detected: true,
+          is_cooked: true,
+          status: 'Error',
+          message: 'Shrimp was detected, but it appears to be cooked.',
+        });
+        return;
+      }
 
       const prediction = response.data?.prediction;
       if (!prediction) {
@@ -375,6 +409,48 @@ export default function DiseaseScanPage() {
   const isPrimaryResult = isPrimaryDiagnosisLabel(resultName);
   const shouldShowAdditionalPrompt = Boolean(result && !additionalScanEnabled && (showAdditionalPrompt || !isPrimaryResult));
 
+  const renderedProbabilities = (() => {
+    const entries = Object.entries(probabilities).filter(([diseaseName]) => {
+      const label = String(diseaseName || '').trim().toLowerCase();
+      return !label.includes('black gill');
+    });
+
+    if (entries.length === 0) return [];
+
+    const lowerResultName = String(result?.prediction || result?.disease_name || '').trim().toLowerCase();
+    const isWssvResult = lowerResultName.includes('white spot') || lowerResultName.includes('wssv');
+    const isHealthyResult = lowerResultName.includes('healthy');
+
+    const wssvKey = entries.find(([diseaseName]) => {
+      const label = String(diseaseName || '').trim().toLowerCase();
+      return label.includes('white spot') || label.includes('wssv');
+    });
+
+    const healthyKey = entries.find(([diseaseName]) => {
+      const label = String(diseaseName || '').trim().toLowerCase();
+      return label.includes('healthy');
+    });
+
+    if ((wssvKey || healthyKey) && (isWssvResult || isHealthyResult)) {
+      const safeConfidence = Math.min(100, Math.max(0, Number(confidence || 0)));
+      const wssvValue = isWssvResult ? safeConfidence : Math.max(0, 100 - safeConfidence);
+      const healthyValue = isHealthyResult ? safeConfidence : Math.max(0, 100 - safeConfidence);
+
+      return entries.map(([diseaseName, probScore]) => {
+        const label = String(diseaseName || '').trim().toLowerCase();
+        if (label.includes('white spot') || label.includes('wssv')) {
+          return [diseaseName, wssvValue];
+        }
+        if (label.includes('healthy')) {
+          return [diseaseName, healthyValue];
+        }
+        return [diseaseName, Number(probScore)];
+      });
+    }
+
+    return entries;
+  })();
+
   const getStatusBadgeClass = (status) => {
     if (status === 'Healthy') return 'badge-success';
     if (status === 'Diseased') return 'badge-danger';
@@ -455,10 +531,10 @@ export default function DiseaseScanPage() {
                     </div>
                     <div className="position-absolute bottom-0 start-0 end-0 p-3 bg-dark bg-opacity-60 text-white d-flex justify-content-between align-items-center gap-2">
                       <span className="small fw-semibold">
-                        {previewLoading ? 'Counting shrimp…' : 'Detected Shrimp'}
+                        {previewLoading ? 'Counting shrimp…' : (previewCount?.is_cooked ? 'Cooked shrimp detected' : 'Detected Shrimp')}
                       </span>
-                      <span className={`badge ${previewCount?.detected ? 'bg-success' : 'bg-warning text-dark'}`}>
-                        {previewLoading ? 'Checking…' : (previewCount?.status || 'No shrimp detected')}
+                      <span className={`badge ${previewCount?.is_cooked ? 'bg-danger' : (previewCount?.detected ? 'bg-success' : 'bg-warning text-dark')}`}>
+                        {previewLoading ? 'Checking…' : (previewCount?.is_cooked ? 'Unavailable to scan: Cooked Shrimp' : (previewCount?.status || 'No shrimp detected'))}
                       </span>
                     </div>
                   </div>
@@ -672,11 +748,11 @@ export default function DiseaseScanPage() {
                   )}
 
                   {/* Disease Class Probabilities Breakdown */}
-                  {Object.keys(probabilities).length > 0 && (
+                  {renderedProbabilities.length > 0 && (
                     <div className="card disease-probability-card mb-3">
                       <div className="card-body p-3">
                         <h6 className="fw-bold small text-uppercase text-muted mb-2">Class Probability Breakdown</h6>
-                        {Object.entries(probabilities).map(([diseaseName, probScore]) => (
+                        {renderedProbabilities.map(([diseaseName, probScore]) => (
                           <div key={diseaseName} className="mb-2">
                             <div className="d-flex justify-content-between small mb-1">
                               <span className="fw-semibold">{diseaseName}</span>

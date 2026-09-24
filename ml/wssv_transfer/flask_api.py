@@ -36,7 +36,7 @@ if str(SCRIPT_DIR) not in sys.path:
 
 from black_gill_specialist import predict_black_gill
 from desktop_shrimp import is_desktop_model_ready, predict_desktop_shrimp
-from quality_validator import validate_image_quality
+from quality_validator import detect_cooked_orange_shrimp, validate_image_quality
 from shrimp_detector import count_shrimp_in_image, detect_shrimp
 
 MODEL_DIR = Path(os.getenv("SHRIMP_WSSV_MODEL_DIR", REPO_ROOT / "ml" / "artifacts" / "wssv_transfer" / "efficientnetb0"))
@@ -636,11 +636,11 @@ def count_preview_endpoint():
         result = count_shrimp_in_image(temp_path)
         response = {
             "success": True,
-            "status": "success" if result.get("shrimp_detected", False) else "no_shrimp",
+            "status": "success" if result.get("shrimp_detected", False) and not result.get("is_cooked", False) else ("cooked_shrimp" if result.get("is_cooked", False) else "no_shrimp"),
             "shrimp_detected": result.get("shrimp_detected", False),
             "shrimp_count": int(result.get("shrimp_count", 0)),
             "valid_shrimp_present": bool(result.get("valid_shrimp_present", False)),
-            "status": result.get("status", "No shrimp detected"),
+            "is_cooked": bool(result.get("is_cooked", False)),
             "message": result.get("message", "No shrimp were detected in the uploaded photo."),
             "confidence": result.get("confidence", 0.0),
         }
@@ -891,6 +891,24 @@ def predict_endpoint():
                 "stage1_details": stage1_res,
             })
 
+        if stage1_res.get("is_cooked", False):
+            print("[STAGE 1 FAILED] Cooked shrimp detected before ML inference.", file=sys.stderr)
+            return jsonify({
+                "success": True,
+                "shrimp_detected": True,
+                "is_cooked": True,
+                "content_category": stage1_res.get("content_category", "Shrimp"),
+                "image_quality": "N/A",
+                "prediction": None,
+                "disease_name": None,
+                "status": "Error",
+                "confidence": 0,
+                "confidence_score": 0,
+                "risk_level": "None",
+                "message": "Shrimp was detected, but it appears to be cooked.",
+                "stage1_details": stage1_res,
+            })
+
         # ==========================================
         # STAGE 2: Image Quality Validation
         # ==========================================
@@ -911,6 +929,16 @@ def predict_endpoint():
                 "message": stage2_res.get("message", "Please upload a clearer image of a shrimp."),
                 "stage2_details": stage2_res,
             })
+
+        # ==========================================
+        # STAGE 2B: Cooked Shrimp Safety Guard
+        # ==========================================
+        if detect_cooked_orange_shrimp(temp_path, threshold=0.55):
+            print("[COOKED SHIMP GUARD] Bright orange/red pixels exceeded threshold before ML inference.", file=sys.stderr)
+            return jsonify({
+                "status": "Error",
+                "message": "Shrimp was detected, but it appears to be cooked.",
+            }), 400
 
         # ==========================================
         # STAGE 3 & 4: Multi-Model Healthy vs. Diseased & Disease Classification

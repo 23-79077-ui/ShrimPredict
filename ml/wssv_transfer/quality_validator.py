@@ -3,8 +3,46 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
+
+import cv2
 import numpy as np
 from PIL import Image, ImageOps
+
+
+def detect_cooked_orange_shrimp(image, threshold: float = 0.55) -> bool:
+    """Return True only when a high concentration of strongly saturated orange/red pixels
+    is detected. This ignores brown/orange shell tones and white-spot lesions that are
+    common in WSSV-positive shrimp.
+    """
+    if image is None:
+        return False
+
+    if isinstance(image, (str, Path)):
+        img = cv2.imread(str(image), cv2.IMREAD_COLOR)
+        if img is None:
+            return False
+    elif isinstance(image, np.ndarray):
+        img = image
+    else:
+        try:
+            img = np.asarray(image)
+        except Exception:
+            return False
+
+    if img.size == 0 or img.ndim != 3:
+        return False
+
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+
+    # Restrict to strongly saturated orange/red tones. Natural shrimp browns and
+    # white-spot lesions are not bright enough to satisfy this guard.
+    mask1 = cv2.inRange(hsv, np.array([5, 150, 110], dtype=np.uint8), np.array([30, 255, 255], dtype=np.uint8))
+    mask2 = cv2.inRange(hsv, np.array([0, 150, 110], dtype=np.uint8), np.array([12, 255, 255], dtype=np.uint8))
+    mask3 = cv2.inRange(hsv, np.array([160, 150, 110], dtype=np.uint8), np.array([180, 255, 255], dtype=np.uint8))
+    bright_orange_mask = cv2.bitwise_or(cv2.bitwise_or(mask1, mask2), mask3)
+
+    bright_orange_ratio = float(np.mean(bright_orange_mask > 0)) if bright_orange_mask.size else 0.0
+    return bright_orange_ratio >= threshold
 
 
 def validate_image_quality(image_path: Path) -> dict:

@@ -73,10 +73,11 @@ $shrimpCount = isset($decoded['shrimp_count']) ? (int)$decoded['shrimp_count'] :
 
 echo json_encode([
     'success' => true,
-    'status' => $shrimpDetected ? 'success' : 'no_shrimp',
+    'status' => $shrimpDetected && !($decoded['is_cooked'] ?? false) ? 'success' : (($decoded['is_cooked'] ?? false) ? 'cooked_shrimp' : 'no_shrimp'),
     'shrimp_detected' => $shrimpDetected,
     'shrimp_count' => max(0, $shrimpDetected ? max(1, $shrimpCount) : $shrimpCount),
     'valid_shrimp_present' => (bool)($decoded['valid_shrimp_present'] ?? $shrimpDetected),
+    'is_cooked' => (bool)($decoded['is_cooked'] ?? false),
     'message' => $decoded['message'] ?? ($shrimpDetected ? 'Shrimp detected.' : 'No shrimp detected.'),
     'confidence' => (float)($decoded['confidence'] ?? 0.0),
 ]);

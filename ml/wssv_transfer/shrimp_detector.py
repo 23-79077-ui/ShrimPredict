@@ -13,6 +13,30 @@ except ImportError:
     from .content_validator import validate_image_content
 
 
+def detect_cooked_shrimp_in_bbox(image: np.ndarray, bbox: tuple[int, int, int, int], threshold: float = 0.55) -> bool:
+    """Return True only when a detected shrimp crop contains a high percentage of
+    strongly saturated orange/red pixels. This avoids flagging white-spot shrimp.
+    """
+    if image is None or image.size == 0 or image.ndim != 3:
+        return False
+
+    x, y, w, h = bbox
+    if w <= 0 or h <= 0:
+        return False
+
+    roi = image[y:y + h, x:x + w]
+    if roi.size == 0:
+        return False
+
+    hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+    orange_mask_1 = cv2.inRange(hsv, np.array([5, 150, 110], dtype=np.uint8), np.array([35, 255, 255], dtype=np.uint8))
+    orange_mask_2 = cv2.inRange(hsv, np.array([0, 150, 110], dtype=np.uint8), np.array([12, 255, 255], dtype=np.uint8))
+    orange_mask_3 = cv2.inRange(hsv, np.array([160, 150, 110], dtype=np.uint8), np.array([180, 255, 255], dtype=np.uint8))
+    orange_mask = cv2.bitwise_or(cv2.bitwise_or(orange_mask_1, orange_mask_2), orange_mask_3)
+    orange_ratio = float(np.count_nonzero(orange_mask) / max(1, orange_mask.size))
+    return orange_ratio >= threshold
+
+
 def count_shrimp_in_image(image_path: Path) -> dict:
     """Count shrimp for preview, using the same content detector as the main scan."""
     detector_result = validate_image_content(image_path)
@@ -68,6 +92,7 @@ def count_shrimp_in_image(image_path: Path) -> dict:
 
     num_labels, _, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
     shrimp_count = 0
+    is_cooked = False
     min_area = max(350, int((height * width) * 0.0008))
 
     for idx in range(1, num_labels):
@@ -79,18 +104,24 @@ def count_shrimp_in_image(image_path: Path) -> dict:
         aspect = w / max(h, 1)
         if 0.2 <= aspect <= 4.5:
             shrimp_count += 1
+            if detect_cooked_shrimp_in_bbox(image, (x, y, w, h), threshold=0.55):
+                is_cooked = True
 
     # The main detector has already confirmed shrimp content. Contours can
     # under-count a shrimp overlapping a hand, so never report zero here.
     shrimp_count = max(1, shrimp_count)
     confidence = min(99.0, max(55.0, shrimp_count * 18.0))
 
+    status = "cooked_shrimp" if is_cooked else "success"
+    message = "Shrimp was detected, but it appears to be cooked." if is_cooked else f"Detected {shrimp_count} shrimp in the preview image."
+
     return {
         "shrimp_detected": True,
         "shrimp_count": int(shrimp_count),
         "valid_shrimp_present": True,
-        "status": "success",
-        "message": f"Detected {shrimp_count} shrimp in the preview image.",
+        "is_cooked": bool(is_cooked),
+        "status": status,
+        "message": message,
         "confidence": round(float(confidence), 2),
     }
 
@@ -100,6 +131,18 @@ def detect_shrimp(image_path: Path) -> dict:
     result = validate_image_content(image_path)
     result["shrimp_count"] = 1 if result.get("shrimp_detected", False) else 0
     result["valid_shrimp_present"] = bool(result.get("shrimp_detected", False))
+    if result.get("shrimp_detected", False):
+        image = cv2.imread(str(image_path), cv2.IMREAD_COLOR)
+        if image is not None:
+            hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+            orange_mask_1 = cv2.inRange(hsv, np.array([5, 80, 90], dtype=np.uint8), np.array([35, 255, 255], dtype=np.uint8))
+            orange_mask_2 = cv2.inRange(hsv, np.array([0, 80, 90], dtype=np.uint8), np.array([12, 255, 255], dtype=np.uint8))
+            orange_mask_3 = cv2.inRange(hsv, np.array([160, 80, 90], dtype=np.uint8), np.array([180, 255, 255], dtype=np.uint8))
+            orange_mask = cv2.bitwise_or(cv2.bitwise_or(orange_mask_1, orange_mask_2), orange_mask_3)
+            orange_ratio = float(np.count_nonzero(orange_mask) / max(1, orange_mask.size))
+            result["is_cooked"] = bool(orange_ratio >= 0.55)
+            if result["is_cooked"]:
+                result["message"] = "Shrimp was detected, but it appears to be cooked."
     return result
 
 

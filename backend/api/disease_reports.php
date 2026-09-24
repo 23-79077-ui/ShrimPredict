@@ -30,6 +30,12 @@ function ensureDiseaseReportsSchema($conn) {
         )
     ");
 
+    try {
+        $conn->exec("ALTER TABLE disease_reports MODIFY COLUMN id INT NOT NULL AUTO_INCREMENT");
+    } catch (Throwable $e) {
+        error_log('Disease report auto_increment repair warning: ' . $e->getMessage());
+    }
+
     $columns = $conn->query("SHOW COLUMNS FROM disease_reports")->fetchAll(PDO::FETCH_COLUMN);
     $alterations = [
         'user_id' => "ALTER TABLE disease_reports ADD COLUMN user_id INT DEFAULT NULL AFTER id",
@@ -39,7 +45,11 @@ function ensureDiseaseReportsSchema($conn) {
 
     foreach ($alterations as $column => $sql) {
         if (!in_array($column, $columns, true)) {
-            $conn->exec($sql);
+            try {
+                $conn->exec($sql);
+            } catch (Throwable $e) {
+                error_log('Disease report schema migration warning: ' . $e->getMessage());
+            }
         }
     }
 }

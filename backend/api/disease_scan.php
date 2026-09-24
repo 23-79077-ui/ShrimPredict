@@ -33,6 +33,7 @@ function callShrimpCountApi($imagePath) {
         CURLOPT_POST => true,
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT => 60,
+        CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
         CURLOPT_POSTFIELDS => ['image' => $file],
     ]);
 
@@ -47,6 +48,8 @@ function callShrimpCountApi($imagePath) {
             'success' => false,
             'message' => $decoded['message'] ?? ($curlError ?: 'Shrimp count preview is unavailable.'),
             'http_code' => $httpCode,
+            'curl_error' => $curlError,
+            'raw_response' => $response ?: null,
         ];
     }
 
@@ -95,6 +98,7 @@ curl_setopt_array($curl, [
     CURLOPT_POST => true,
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_TIMEOUT => 120,
+    CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
     CURLOPT_POSTFIELDS => [
         'image' => $file,
         'enable_additional' => $enableAdditional ? 'true' : 'false',
@@ -113,17 +117,44 @@ if ($aiResponse === false || $httpCode >= 400) {
     echo json_encode([
         'success' => false,
         'message' => $errorMsg,
-        'ai_response' => $parsedAi
+        'curl_error' => $curlError,
+        'http_code' => $httpCode,
+        'ai_response' => $parsedAi,
+        'raw_response' => $aiResponse ?: null,
     ]);
     exit;
 }
 
 $prediction = json_decode($aiResponse, true);
-if (!$prediction || empty($prediction['success'])) {
+$prediction = is_array($prediction) ? $prediction : [];
+
+if (empty($prediction) || (isset($prediction['success']) && $prediction['success'] === false)) {
     http_response_code(502);
-    echo json_encode(['success' => false, 'message' => 'Invalid AI model response.', 'ai_response' => $prediction]);
+    echo json_encode([
+        'success' => false,
+        'message' => 'Invalid AI model response from the Flask API.',
+        'ai_response' => $prediction,
+        'raw_response' => $aiResponse,
+    ]);
     exit;
 }
+
+$prediction = array_merge([
+    'success' => true,
+    'prediction' => null,
+    'disease_name' => null,
+    'confidence' => 0,
+    'confidence_score' => 0,
+    'status' => 'Pending',
+    'risk_level' => 'Low',
+    'recommendation' => 'Monitor closely.',
+    'description' => 'Shrimp scan evaluated.',
+    'model_used' => 'Desktop/Shrimp Trained Model',
+    'health_status' => 'Pending',
+    'message' => 'Flask model completed successfully.',
+    'is_cooked' => false,
+    'is_cooked_or_invalid' => false,
+], $prediction);
 
 $uploadDir = __DIR__ . '/../uploads/disease_scans/';
 if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
@@ -133,8 +164,6 @@ $targetPath = $uploadDir . $targetName;
 $imagePath = 'uploads/disease_scans/' . $targetName;
 
 if (!$previewResult['success']) {
-    // Allow scan flow to continue even if preview detection is slightly unavailable,
-    // but include the preview error in the response for the UI to display.
     $previewResult['warning'] = $previewResult['message'];
 }
 
@@ -169,6 +198,12 @@ function ensureDiseaseReportsSchema($conn) {
         )
     ");
 
+    try {
+        $conn->exec("ALTER TABLE disease_reports MODIFY COLUMN id INT NOT NULL AUTO_INCREMENT");
+    } catch (Exception $e) {
+        error_log('Disease report auto_increment repair warning: ' . $e->getMessage());
+    }
+
     $columns = $conn->query("SHOW COLUMNS FROM disease_reports")->fetchAll(PDO::FETCH_COLUMN);
     $alterations = [
         'user_id' => "ALTER TABLE disease_reports ADD COLUMN user_id INT DEFAULT NULL AFTER id",
@@ -183,63 +218,79 @@ function ensureDiseaseReportsSchema($conn) {
         if (!in_array($column, $columns, true)) {
             try {
                 $conn->exec($sql);
-            } catch (Exception $e) {}
+            } catch (Exception $e) {
+                error_log('Disease report schema migration warning: ' . $e->getMessage());
+            }
         }
     }
 }
 
-ensureDiseaseReportsSchema($conn);
+try {
+    ensureDiseaseReportsSchema($conn);
 
-$diseaseName = $prediction['prediction'] ?? $prediction['disease_name'] ?? 'Unknown Disease';
-$confidenceScore = isset($prediction['confidence_score']) ? (float)$prediction['confidence_score'] : (isset($prediction['confidence']) ? (float)$prediction['confidence'] : 0);
-$riskLevel = $prediction['risk_level'] ?? 'Low';
-$recommendation = $prediction['recommendation'] ?? 'Monitor closely.';
-$status = $_POST['status'] ?? 'Pending';
-$modelUsed = $prediction['model_used'] ?? 'Desktop/Shrimp Trained Model';
-$healthStatus = $prediction['status'] ?? ($riskLevel === 'Low' ? 'Healthy' : 'Diseased');
-$description = $prediction['description'] ?? "Shrimp scan evaluated with {$confidenceScore}% confidence.";
-$userId = isset($_POST['user_id']) && is_numeric($_POST['user_id']) ? (int)$_POST['user_id'] : null;
-$caretakerName = $_POST['caretaker_name'] ?? 'Caretaker';
-$pondName = $_POST['pond_name'] ?? 'Assigned Pond';
+    $diseaseName = $prediction['prediction'] ?? $prediction['disease_name'] ?? 'Unknown Disease';
+    $confidenceScore = isset($prediction['confidence_score']) ? (float)$prediction['confidence_score'] : (isset($prediction['confidence']) ? (float)$prediction['confidence'] : 0);
+    $riskLevel = $prediction['risk_level'] ?? 'Low';
+    $recommendation = $prediction['recommendation'] ?? 'Monitor closely.';
+    $status = $_POST['status'] ?? 'Pending';
+    $modelUsed = $prediction['model_used'] ?? 'Desktop/Shrimp Trained Model';
+    $healthStatus = $prediction['status'] ?? ($riskLevel === 'Low' ? 'Healthy' : 'Diseased');
+    $description = $prediction['description'] ?? "Shrimp scan evaluated with {$confidenceScore}% confidence.";
+    $userId = isset($_POST['user_id']) && is_numeric($_POST['user_id']) ? (int)$_POST['user_id'] : null;
+    $caretakerName = $_POST['caretaker_name'] ?? 'Caretaker';
+    $pondName = $_POST['pond_name'] ?? 'Assigned Pond';
 
-$stmt = $conn->prepare('INSERT INTO disease_reports (user_id, caretaker_name, pond_name, disease_name, confidence_score, risk_level, recommendation, status, model_used, health_status, description, image_path, created_at) VALUES (:user_id, :caretaker_name, :pond_name, :disease_name, :confidence_score, :risk_level, :recommendation, :status, :model_used, :health_status, :description, :image_path, NOW())');
-$stmt->execute([
-    ':user_id' => $userId,
-    ':caretaker_name' => $caretakerName,
-    ':pond_name' => $pondName,
-    ':disease_name' => $diseaseName,
-    ':confidence_score' => $confidenceScore,
-    ':risk_level' => $riskLevel,
-    ':recommendation' => $recommendation,
-    ':status' => $status,
-    ':model_used' => $modelUsed,
-    ':health_status' => $healthStatus,
-    ':description' => $description,
-    ':image_path' => $imagePath
-]);
+    $stmt = $conn->prepare('INSERT INTO disease_reports (user_id, caretaker_name, pond_name, disease_name, confidence_score, risk_level, recommendation, status, model_used, health_status, description, image_path, created_at) VALUES (:user_id, :caretaker_name, :pond_name, :disease_name, :confidence_score, :risk_level, :recommendation, :status, :model_used, :health_status, :description, :image_path, NOW())');
+    $stmt->execute([
+        ':user_id' => $userId,
+        ':caretaker_name' => $caretakerName,
+        ':pond_name' => $pondName,
+        ':disease_name' => $diseaseName,
+        ':confidence_score' => $confidenceScore,
+        ':risk_level' => $riskLevel,
+        ':recommendation' => $recommendation,
+        ':status' => $status,
+        ':model_used' => $modelUsed,
+        ':health_status' => $healthStatus,
+        ':description' => $description,
+        ':image_path' => $imagePath
+    ]);
 
-$reportId = $conn->lastInsertId();
-$notifMsg = "{$caretakerName} scanned for disease: {$diseaseName} ({$healthStatus}) using {$modelUsed} with {$confidenceScore}% confidence.";
-createNotification($conn, 'Disease Scan Submitted', $notifMsg, $caretakerName, 'disease_scan', $pondName, $userId, $reportId);
+    $reportId = $conn->lastInsertId();
+    $notifMsg = "{$caretakerName} scanned for disease: {$diseaseName} ({$healthStatus}) using {$modelUsed} with {$confidenceScore}% confidence.";
+    createNotification($conn, 'Disease Scan Submitted', $notifMsg, $caretakerName, 'disease_scan', $pondName, $userId, $reportId);
 
-echo json_encode([
-    'success' => true,
-    'message' => 'Disease scan completed and saved.',
-    'preview' => $previewResult,
-    'prediction' => $prediction,
-    'report' => [
-        'id' => $reportId,
-        'disease_name' => $diseaseName,
-        'confidence_score' => $confidenceScore,
-        'risk_level' => $riskLevel,
-        'recommendation' => $recommendation,
-        'status' => $status,
-        'model_used' => $modelUsed,
-        'health_status' => $healthStatus,
-        'description' => $description,
-        'user_id' => $userId,
-        'caretaker_name' => $caretakerName,
-        'pond_name' => $pondName,
-        'image_path' => $imagePath
-    ]
-]);
+    echo json_encode([
+        'success' => true,
+        'message' => 'Disease scan completed and saved.',
+        'preview' => $previewResult,
+        'prediction' => $prediction,
+        'report' => [
+            'id' => $reportId,
+            'disease_name' => $diseaseName,
+            'confidence_score' => $confidenceScore,
+            'risk_level' => $riskLevel,
+            'recommendation' => $recommendation,
+            'status' => $status,
+            'model_used' => $modelUsed,
+            'health_status' => $healthStatus,
+            'description' => $description,
+            'user_id' => $userId,
+            'caretaker_name' => $caretakerName,
+            'pond_name' => $pondName,
+            'image_path' => $imagePath,
+        ],
+    ]);
+    exit;
+} catch (Throwable $e) {
+    error_log('Disease scan DB save failed: ' . $e->getMessage());
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'message' => 'AI prediction was received, but the disease report could not be saved to the database.',
+        'error' => $e->getMessage(),
+        'prediction' => $prediction,
+        'preview' => $previewResult,
+    ]);
+    exit;
+}
