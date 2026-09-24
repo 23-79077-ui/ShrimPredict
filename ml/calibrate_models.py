@@ -19,9 +19,13 @@ from pathlib import Path
 import numpy as np
 from scipy.optimize import minimize
 from sklearn.metrics import brier_score_loss
+import sys
 import tensorflow as tf
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
 ARTIFACTS_DIR = ROOT_DIR / "ml" / "artifacts"
 MODEL_PATH = ARTIFACTS_DIR / "efficientnet_v2_disease.keras"
 VAL_CSV_PATH = ARTIFACTS_DIR / "val_clean.csv"

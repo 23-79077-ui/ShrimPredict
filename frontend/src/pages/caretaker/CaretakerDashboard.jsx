@@ -582,149 +582,191 @@ export default function CaretakerDashboard() {
         </div>
       </div>
 
-      {/* 🌟 KPI TELEMETRY CARDS (SPACIOUS LUXURY AQUACULTURE TELEMETRY STYLE) */}
-      <div className="row g-3 g-xl-4 mb-4">
-        {/* KPI 1: Assigned Ponds */}
-        <div className="col-12 col-sm-6 col-xl-3">
-          <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
+      {/* 🌟 KEY PERFORMANCE INDICATORS (KPI) HEADER & 4 TELEMETRY CARDS */}
+      <div className="mb-4">
+        <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+          <div className="d-flex align-items-center gap-2.5">
+            <span
+              className="badge rounded-pill px-3 py-1.5 fw-extrabold text-white extra-small shadow-xs"
+              style={{ background: 'linear-gradient(135deg, #FF7A00 0%, #EA580C 100%)', letterSpacing: '0.06em' }}
+            >
+              KPI
+            </span>
             <div>
-              <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Assigned Ponds</span>
-                <div
-                  className="feeding-kpi-icon-wrap"
-                  style={{ background: 'rgba(2, 132, 199, 0.12)', color: '#0284C7' }}
-                >
-                  <FaWater size={18} />
-                </div>
-              </div>
-              <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
-                {assignedPonds.length}
-              </h2>
+              <h5 className="fw-extrabold mb-0 text-dark tracking-tight" style={{ fontSize: '1.1rem', letterSpacing: '-0.02em' }}>
+                Key Performance Indicators (KPI)
+              </h5>
+              <span className="text-muted extra-small">Daily Field Operations, Feeding Adherence & Water Telemetry Benchmarks</span>
             </div>
-            <div>
-              <div className="feeding-progress-track my-2.5">
-                <div
-                  className="feeding-progress-bar"
-                  style={{ width: '100%', background: 'linear-gradient(90deg, #0284C7, #38BDF8)' }}
-                />
+          </div>
+          <span className="badge bg-white text-secondary border extra-small px-3 py-1.5 rounded-pill shadow-xs">
+            ● Daily Field Benchmarks
+          </span>
+        </div>
+
+        <div className="row g-3 g-xl-4">
+          {/* KPI 1: Assigned Ponds */}
+          <div className="col-12 col-sm-6 col-xl-3">
+            <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
+              <div>
+                <div className="d-flex align-items-center justify-content-between mb-3">
+                  <div className="d-flex align-items-center gap-2">
+                    <span className="badge rounded-pill extra-small fw-bold px-2 py-0.5" style={{ backgroundColor: 'rgba(2, 132, 199, 0.1)', color: '#0284C7' }}>
+                      KPI 1
+                    </span>
+                    <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Assigned Ponds</span>
+                  </div>
+                  <div
+                    className="feeding-kpi-icon-wrap"
+                    style={{ background: 'rgba(2, 132, 199, 0.12)', color: '#0284C7' }}
+                  >
+                    <FaWater size={18} />
+                  </div>
+                </div>
+                <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+                  {assignedPonds.length}
+                </h2>
               </div>
-              <div className="d-flex justify-content-between align-items-center">
-                <span className="text-muted extra-small text-truncate" style={{ maxWidth: 130 }}>
-                  {selectedPondFilter === 'all' ? 'All basins active' : `Focused: ${selectedPondObj?.pond_name || 'Active'}`}
-                </span>
-                <span className="tag-cyan-active">Active</span>
+              <div>
+                <div className="feeding-progress-track my-2.5">
+                  <div
+                    className="feeding-progress-bar"
+                    style={{ width: '100%', background: 'linear-gradient(90deg, #0284C7, #38BDF8)' }}
+                  />
+                </div>
+                <div className="d-flex justify-content-between align-items-center">
+                  <span className="text-muted extra-small text-truncate" style={{ maxWidth: 130 }}>
+                    {selectedPondFilter === 'all' ? 'All basins active' : `Focused: ${selectedPondObj?.pond_name || 'Active'}`}
+                  </span>
+                  <span className="tag-cyan-active">Active</span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* KPI 2: Today's Feeding Logs */}
-        <div className="col-12 col-sm-6 col-xl-3">
-          <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
-            <div>
-              <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Today's Logs</span>
-                <div
-                  className="feeding-kpi-icon-wrap"
-                  style={{ background: 'rgba(22, 163, 74, 0.12)', color: '#16A34A' }}
-                >
-                  <FaUtensils size={18} />
+          {/* KPI 2: Today's Feeding Logs */}
+          <div className="col-12 col-sm-6 col-xl-3">
+            <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
+              <div>
+                <div className="d-flex align-items-center justify-content-between mb-3">
+                  <div className="d-flex align-items-center gap-2">
+                    <span className="badge rounded-pill extra-small fw-bold px-2 py-0.5" style={{ backgroundColor: 'rgba(22, 163, 74, 0.1)', color: '#16A34A' }}>
+                      KPI 2
+                    </span>
+                    <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Today's Logs</span>
+                  </div>
+                  <div
+                    className="feeding-kpi-icon-wrap"
+                    style={{ background: 'rgba(22, 163, 74, 0.12)', color: '#16A34A' }}
+                  >
+                    <FaUtensils size={18} />
+                  </div>
                 </div>
+                <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+                  {filteredTodayRecords.length}
+                </h2>
               </div>
-              <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
-                {filteredTodayRecords.length}
-              </h2>
-            </div>
-            <div>
-              <div className="feeding-progress-track my-2.5">
-                <div
-                  className="feeding-progress-bar"
-                  style={{
-                    width: `${Math.min(100, Math.max(10, (filteredTodayRecords.length / Math.max(1, assignedPonds.length * 4)) * 100))}%`,
-                    background: 'linear-gradient(90deg, #16A34A, #4ADE80)',
-                  }}
-                />
-              </div>
-              <div className="d-flex justify-content-between align-items-center">
-                <span className="text-muted extra-small text-truncate" style={{ maxWidth: 140 }}>
-                  {currentScope}
-                </span>
-                <span className="tag-green-safe">Logged</span>
+              <div>
+                <div className="feeding-progress-track my-2.5">
+                  <div
+                    className="feeding-progress-bar"
+                    style={{
+                      width: `${Math.min(100, Math.max(10, (filteredTodayRecords.length / Math.max(1, assignedPonds.length * 4)) * 100))}%`,
+                      background: 'linear-gradient(90deg, #16A34A, #4ADE80)',
+                    }}
+                  />
+                </div>
+                <div className="d-flex justify-content-between align-items-center">
+                  <span className="text-muted extra-small text-truncate" style={{ maxWidth: 140 }}>
+                    {currentScope}
+                  </span>
+                  <span className="tag-green-safe">Logged</span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* KPI 3: Total Feed */}
-        <div className="col-12 col-sm-6 col-xl-3">
-          <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
-            <div>
-              <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">
-                  Total Feed ({selectedDate === todayStr ? 'Today' : selectedDate})
-                </span>
-                <div
-                  className="feeding-kpi-icon-wrap"
-                  style={{ background: 'rgba(255, 122, 0, 0.12)', color: '#FF7A00' }}
-                >
-                  <FaCheckCircle size={18} />
+          {/* KPI 3: Total Feed */}
+          <div className="col-12 col-sm-6 col-xl-3">
+            <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
+              <div>
+                <div className="d-flex align-items-center justify-content-between mb-3">
+                  <div className="d-flex align-items-center gap-2">
+                    <span className="badge rounded-pill extra-small fw-bold px-2 py-0.5" style={{ backgroundColor: 'rgba(255, 122, 0, 0.1)', color: '#FF7A00' }}>
+                      KPI 3
+                    </span>
+                    <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">
+                      Total Feed ({selectedDate === todayStr ? 'Today' : selectedDate})
+                    </span>
+                  </div>
+                  <div
+                    className="feeding-kpi-icon-wrap"
+                    style={{ background: 'rgba(255, 122, 0, 0.12)', color: '#FF7A00' }}
+                  >
+                    <FaCheckCircle size={18} />
+                  </div>
+                </div>
+                <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+                  {totalAmountToday.toFixed(2)} <small className="fs-6 text-muted fw-normal">kg</small>
+                </h2>
+                <div className="extra-small text-muted fw-semibold">
+                  Total grams: <strong className="text-dark font-mono">{Math.round(totalGramsToday).toLocaleString()} g</strong>
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
-                {totalAmountToday.toFixed(2)} <small className="fs-6 text-muted fw-normal">kg</small>
-              </h2>
-              <div className="extra-small text-muted fw-semibold">
-                Total grams: <strong className="text-dark font-mono">{Math.round(totalGramsToday).toLocaleString()} g</strong>
-              </div>
-            </div>
-            <div>
-              <div className="feeding-progress-track my-2.5">
-                <div
-                  className="feeding-progress-bar"
-                  style={{
-                    width: `${Math.min(100, Math.max(12, (totalAmountToday / Math.max(1, assignedPonds.length * 35)) * 100))}%`,
-                    background: 'linear-gradient(90deg, #FF7A00, #FBBF24)',
-                  }}
-                />
-              </div>
-              <div className="d-flex justify-content-between align-items-center">
-                <span className="text-muted extra-small">Distributed across 5 slots</span>
-                <span className="tag-orange-maintenance">5 Feedings</span>
+              <div>
+                <div className="feeding-progress-track my-2.5">
+                  <div
+                    className="feeding-progress-bar"
+                    style={{
+                      width: `${Math.min(100, Math.max(12, (totalAmountToday / Math.max(1, assignedPonds.length * 35)) * 100))}%`,
+                      background: 'linear-gradient(90deg, #FF7A00, #FBBF24)',
+                    }}
+                  />
+                </div>
+                <div className="d-flex justify-content-between align-items-center">
+                  <span className="text-muted extra-small">Distributed across 5 slots</span>
+                  <span className="tag-orange-maintenance">5 Feedings</span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* KPI 4: Feeding Schedule Progress */}
-        <div className="col-12 col-sm-6 col-xl-3">
-          <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
-            <div>
-              <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Feeding Schedule</span>
-                <div
-                  className="feeding-kpi-icon-wrap"
-                  style={{ background: 'rgba(14, 165, 233, 0.12)', color: '#0EA5E9' }}
-                >
-                  <FaClock size={18} />
+          {/* KPI 4: Feeding Schedule Progress */}
+          <div className="col-12 col-sm-6 col-xl-3">
+            <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
+              <div>
+                <div className="d-flex align-items-center justify-content-between mb-3">
+                  <div className="d-flex align-items-center gap-2">
+                    <span className="badge rounded-pill extra-small fw-bold px-2 py-0.5" style={{ backgroundColor: 'rgba(14, 165, 233, 0.1)', color: '#0EA5E9' }}>
+                      KPI 4
+                    </span>
+                    <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Feeding Schedule</span>
+                  </div>
+                  <div
+                    className="feeding-kpi-icon-wrap"
+                    style={{ background: 'rgba(14, 165, 233, 0.12)', color: '#0EA5E9' }}
+                  >
+                    <FaClock size={18} />
+                  </div>
                 </div>
+                <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+                  {feedingCompletion}%
+                </h2>
               </div>
-              <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
-                {feedingCompletion}%
-              </h2>
-            </div>
-            <div>
-              <div className="feeding-progress-track my-2.5">
-                <div
-                  className="feeding-progress-bar"
-                  style={{
-                    width: `${Math.max(5, feedingCompletion)}%`,
-                    background: 'linear-gradient(90deg, #0284C7, #38BDF8)',
-                  }}
-                />
-              </div>
-              <div className="d-flex justify-content-between align-items-center">
-                <span className="text-muted extra-small font-mono fw-semibold">{completedFeedingSlots}/5 Slots Logged</span>
-                <span className="tag-cyan-active">{feedingCompletion === 100 ? 'Complete' : 'In Progress'}</span>
+              <div>
+                <div className="feeding-progress-track my-2.5">
+                  <div
+                    className="feeding-progress-bar"
+                    style={{
+                      width: `${Math.max(5, feedingCompletion)}%`,
+                      background: 'linear-gradient(90deg, #0284C7, #38BDF8)',
+                    }}
+                  />
+                </div>
+                <div className="d-flex justify-content-between align-items-center">
+                  <span className="text-muted extra-small font-mono fw-semibold">{completedFeedingSlots}/5 Slots Logged</span>
+                  <span className="tag-cyan-active">{feedingCompletion === 100 ? 'Complete' : 'In Progress'}</span>
+                </div>
               </div>
             </div>
           </div>
