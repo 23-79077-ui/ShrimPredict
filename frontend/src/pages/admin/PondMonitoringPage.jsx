@@ -35,6 +35,8 @@ import PondCycleCalendar from '../../components/PondCycleCalendar';
 import WaterQualityHistoryModal from '../../components/WaterQualityHistoryModal';
 import WaterQualityOcrModal from '../../components/WaterQualityOcrModal';
 
+import AdminFilterToolbar from '../../components/AdminFilterToolbar';
+
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 function computeDoc(stockingDateStr, targetDateStr) {
@@ -435,7 +437,7 @@ export default function PondMonitoringPage() {
                   }}
                   onClick={() => setStageFilter('Nursery')}
                 >
-                  🌱 Nursery Basins (Days 1–19) ({nurseryCount})
+                  Nursery Basins (Days 1–19 • Starter Feed) ({nurseryCount})
                 </button>
                 <button
                   type="button"
@@ -448,11 +450,11 @@ export default function PondMonitoringPage() {
                   }}
                   onClick={() => setStageFilter('Growout')}
                 >
-                  🌊 Grow-out Basins (Day 20+) ({growoutCount})
+                  🌊 Grow-out Basins (Day 20+ • Grower Feed) ({growoutCount})
                 </button>
               </div>
               <div className="extra-small text-muted">
-                Target Feed: <strong>Days 1–19 Nursery</strong> ➔ <strong>Day 20+ Grow-out</strong>
+                Target Feed: <strong>Days 1–19 Nursery (Starter)</strong> ➔ <strong>Day 20+ Grow-out (Grower)</strong>
               </div>
             </div>
 

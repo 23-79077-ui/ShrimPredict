@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import AdminFilterToolbar from '../../components/AdminFilterToolbar';
 import {
   FaUsers,
   FaUserShield,
@@ -533,7 +534,7 @@ export default function UsersPage() {
       <div className="row g-3 mb-4">
         {/* Card 1: Total Users */}
         <div className="col-12 col-sm-6 col-md-3">
-          <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
+          <div className="card stat-card-cyan shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
                 <span className="text-muted extra-small text-uppercase fw-bold tracking-wider">Total Directory</span>
@@ -565,13 +566,13 @@ export default function UsersPage() {
 
         {/* Card 2: Admins */}
         <div className="col-12 col-sm-6 col-md-3">
-          <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
+          <div className="card stat-card-purple shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
                 <span className="text-muted extra-small text-uppercase fw-bold tracking-wider">System Admins</span>
                 <div
                   className="feeding-kpi-icon-wrap"
-                  style={{ background: 'rgba(11, 44, 95, 0.10)', color: '#0B2C5F' }}
+                  style={{ background: 'rgba(168, 85, 247, 0.12)', color: '#A855F7' }}
                 >
                   <FaUserShield />
                 </div>
@@ -584,7 +585,7 @@ export default function UsersPage() {
               <div className="feeding-progress-track my-2">
                 <div
                   className="feeding-progress-bar"
-                  style={{ width: '40%', background: 'linear-gradient(90deg, #0B2C5F, #0284C7)' }}
+                  style={{ width: '40%', background: 'linear-gradient(90deg, #A855F7, #C084FC)' }}
                 ></div>
               </div>
               <div className="d-flex justify-content-between align-items-center">
@@ -597,7 +598,7 @@ export default function UsersPage() {
 
         {/* Card 3: Caretakers */}
         <div className="col-12 col-sm-6 col-md-3">
-          <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
+          <div className="card stat-card-orange shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
                 <span className="text-muted extra-small text-uppercase fw-bold tracking-wider">Field Caretakers</span>
@@ -621,7 +622,7 @@ export default function UsersPage() {
               </div>
               <div className="d-flex justify-content-between align-items-center">
                 <span className="tag-orange-maintenance">Field Operations</span>
-                <span className="text-muted extra-small">Basin Supervisors</span>
+                <span className="text-muted extra-small">Pond Supervisors</span>
               </div>
             </div>
           </div>
@@ -629,7 +630,7 @@ export default function UsersPage() {
 
         {/* Card 4: Active Accounts */}
         <div className="col-12 col-sm-6 col-md-3">
-          <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
+          <div className="card stat-card-green shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
                 <span className="text-muted extra-small text-uppercase fw-bold tracking-wider">Operational Health</span>
@@ -661,118 +662,71 @@ export default function UsersPage() {
       </div>
 
       {/* 🌟 3. UNIFIED SEARCH, FILTER & SORT CONTROL STRIP */}
-      <div className="asymmetric-card p-4 mb-4">
-        <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-3 pb-3 border-bottom">
-          {/* Quick Search */}
-          <div className="position-relative flex-grow-1" style={{ maxWidth: 420 }}>
-            <input
-              type="text"
-              className="form-control form-control-sm rounded-pill ps-4 pe-4"
-              style={{ fontSize: '0.82rem', height: 38, background: '#F8FAFC', border: '1px solid #E2E8F0' }}
-              placeholder="Search user name, email, or phone..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <FaSearch
-              size={12}
-              className="position-absolute text-muted"
-              style={{ left: 14, top: '50%', transform: 'translateY(-50%)' }}
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                className="btn btn-link p-0 position-absolute text-muted"
-                style={{ right: 12, top: '50%', transform: 'translateY(-50%)', textDecoration: 'none' }}
-                onClick={() => setSearchQuery('')}
-              >
-                <FaTimes size={11} />
-              </button>
-            )}
-          </div>
-
-          {/* Pill Role Quick Filters */}
-          <div className="d-flex align-items-center gap-1.5 flex-wrap">
-            <button
-              type="button"
-              className={`pill-filter-btn ${roleFilter === 'All' ? 'active' : ''}`}
-              onClick={() => setRoleFilter('All')}
-            >
-              All Personnel ({users.length})
-            </button>
-            <button
-              type="button"
-              className={`pill-filter-btn ${roleFilter === 'admin' ? 'active' : ''}`}
-              onClick={() => setRoleFilter('admin')}
-            >
-              Admins ({summary.admin_count})
-            </button>
-            <button
-              type="button"
-              className={`pill-filter-btn ${roleFilter === 'caretaker' ? 'active' : ''}`}
-              onClick={() => setRoleFilter('caretaker')}
-            >
-              Caretakers ({summary.caretaker_count})
-            </button>
-          </div>
-        </div>
-
-        {/* Dropdown Filters Grid */}
-        <div className="row g-3">
-          {/* Filter 1: Status */}
-          <div className="col-12 col-sm-6 col-md-4">
-            <label className="form-label extra-small fw-bold text-muted text-uppercase mb-1 tracking-wider">
-              Status Filter
-            </label>
-            <select
-              className="form-select form-select-sm rounded-pill"
-              style={{ fontSize: '0.82rem', height: 36, background: '#F8FAFC', border: '1px solid #E2E8F0' }}
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="All">All Statuses</option>
-              <option value="Active">🟢 Active</option>
-              <option value="Inactive">🔴 Inactive</option>
-            </select>
-          </div>
-
-          {/* Filter 2: Assigned Pond */}
-          <div className="col-12 col-sm-6 col-md-4">
-            <label className="form-label extra-small fw-bold text-muted text-uppercase mb-1 tracking-wider">
-              Assigned Basin
-            </label>
-            <select
-              className="form-select form-select-sm rounded-pill"
-              style={{ fontSize: '0.82rem', height: 36, background: '#F8FAFC', border: '1px solid #E2E8F0' }}
-              value={pondFilter}
-              onChange={(e) => setPondFilter(e.target.value)}
-            >
-              <option value="All">All Assigned Basins</option>
-              {ponds.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.pond_name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Filter 3: Sort By */}
-          <div className="col-12 col-sm-6 col-md-4">
-            <label className="form-label extra-small fw-bold text-muted text-uppercase mb-1 tracking-wider">
-              Sort Order
-            </label>
-            <select
-              className="form-select form-select-sm rounded-pill"
-              style={{ fontSize: '0.82rem', height: 36, background: '#F8FAFC', border: '1px solid #E2E8F0' }}
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-            >
-              <option value="newest">Newest First ⬇</option>
-              <option value="name">Name (A - Z)</option>
-              <option value="role">Role Classification</option>
-            </select>
-          </div>
-        </div>
-      </div>
+      <AdminFilterToolbar
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="Search user name, email, or phone..."
+        showFilters={true}
+        onExportCSV={handleExportCSV}
+        onRefresh={loadUsers}
+        loading={loading}
+        tabs={[
+          { id: 'All', label: 'All Personnel', count: users.length },
+          { id: 'admin', label: 'Admins', count: summary.admin_count },
+          { id: 'caretaker', label: 'Caretakers', count: summary.caretaker_count }
+        ]}
+        activeTab={roleFilter}
+        onTabChange={setRoleFilter}
+        metaRight={
+          <>
+            Access Control: <strong>Enterprise User Management</strong>
+          </>
+        }
+        filterFields={[
+          {
+            label: 'Account Status',
+            type: 'select',
+            value: statusFilter,
+            onChange: setStatusFilter,
+            colClass: 'col-12 col-md-3',
+            options: [
+              { value: 'All', label: 'All Statuses' },
+              { value: 'Active', label: '🟢 Active' },
+              { value: 'Inactive', label: '🔴 Inactive' }
+            ]
+          },
+          {
+            label: 'Assigned Pond',
+            type: 'select',
+            value: pondFilter,
+            onChange: setPondFilter,
+            colClass: 'col-12 col-md-3',
+            options: [
+              { value: 'All', label: 'All Assigned Ponds' },
+              ...ponds.map((p) => ({ value: p.id, label: p.pond_name }))
+            ]
+          },
+          {
+            label: 'Sort Sequence',
+            type: 'select',
+            value: sortBy,
+            onChange: setSortBy,
+            colClass: 'col-12 col-md-3',
+            options: [
+              { value: 'newest', label: 'Newest First ⬇' },
+              { value: 'name', label: 'Name (A - Z)' },
+              { value: 'role', label: 'Role Classification' }
+            ]
+          }
+        ]}
+        onResetFilters={() => {
+          setSearchQuery('');
+          setRoleFilter('All');
+          setStatusFilter('All');
+          setPondFilter('All');
+          setSortBy('newest');
+        }}
+      />
 
       {/* 🌟 4. USERS TABLE MATRIX */}
       <div className="asymmetric-card p-4">
@@ -1167,10 +1121,10 @@ export default function UsersPage() {
                     <div className="d-flex justify-content-between align-items-center mb-2">
                       <div>
                         <span className="extra-small text-muted text-uppercase fw-bold tracking-wider d-block">
-                          3. Basin Fleet Assignments
+                          3. Pond Assignments
                         </span>
                         <p className="text-muted extra-small mb-0">
-                          Select up to 3 active production basins this caretaker will monitor daily.
+                          Select up to 3 active production ponds this caretaker will monitor daily.
                         </p>
                       </div>
                       <span

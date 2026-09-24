@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import AdminFilterToolbar from '../../components/AdminFilterToolbar';
 import {
   FaExclamationTriangle,
   FaExclamationCircle,
@@ -323,144 +324,91 @@ export default function AlertsPage() {
   return (
     <div className="pb-5">
       {/* 🛠 1. UNIFIED CONTROL & FILTER TOOLBAR (TOP SECTION) */}
-      <div className="card border-0 shadow-sm rounded-4 bg-white p-4 mb-4">
-        <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-3 pb-3 border-bottom">
-          {/* Quick Search */}
-          <div className="position-relative flex-grow-1" style={{ maxWidth: 450 }}>
-            <FaSearch className="position-absolute top-50 translate-middle-y text-primary" style={{ left: 16 }} size={14} />
-            <input
-              type="text"
-              className="form-control ps-5 pe-4 py-2.5 rounded-pill shadow-xs"
-              placeholder="Search Alert Title, Message, Pond, or Caretaker..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ fontSize: '0.92rem' }}
-            />
-            {searchQuery && (
-              <button
-                className="btn btn-sm btn-link position-absolute top-50 translate-middle-y text-muted text-decoration-none"
-                style={{ right: 12 }}
-                onClick={() => setSearchQuery('')}
-              >
-                ✕
-              </button>
-            )}
-          </div>
-
-          {/* Action Buttons */}
-          <div className="d-flex align-items-center gap-2">
-            <button
-              type="button"
-              className="btn btn-outline-success btn-sm px-3.5 py-2 rounded-3 d-flex align-items-center gap-2 fw-semibold shadow-xs"
-              onClick={handleExportCSV}
-            >
-              <FaFileCsv size={15} /> Export CSV
-            </button>
-
-            <button
-              type="button"
-              className="btn btn-light btn-sm px-3 py-2 border rounded-3 d-flex align-items-center gap-1.5 text-muted shadow-xs"
-              onClick={loadAlerts}
-              title="Refresh Queue"
-            >
-              <FaSync size={13} /> Refresh
-            </button>
-          </div>
-        </div>
-
-        {/* 5 Filter Dropdowns Grid */}
-        <div className="row g-3">
-          {/* Filter 1: Severity */}
-          <div className="col-12 col-sm-6 col-md-4 col-xl-2">
-            <label className="form-label extra-small fw-bold text-muted text-uppercase mb-1.5 tracking-wider">
-              Severity
-            </label>
-            <select
-              className="form-select rounded-3 py-2 shadow-xs"
-              value={severityFilter}
-              onChange={(e) => setSeverityFilter(e.target.value)}
-            >
-              <option value="All">All Severities</option>
-              <option value="Critical">Critical 🔴</option>
-              <option value="High">High Risk 🟠</option>
-              <option value="Medium">Warning 🟡</option>
-              <option value="Low">Low Priority 🔵</option>
-            </select>
-          </div>
-
-          {/* Filter 2: Alert Type / Category */}
-          <div className="col-12 col-sm-6 col-md-4 col-xl-2.4" style={{ width: '20%' }}>
-            <label className="form-label extra-small fw-bold text-muted text-uppercase mb-1.5 tracking-wider">
-              Alert Type
-            </label>
-            <select
-              className="form-select rounded-3 py-2 shadow-xs"
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-            >
-              <option value="All">All Alert Types</option>
-              <option value="Disease">Disease Alert 🦠</option>
-              <option value="Harvest">Harvest Alert 🦐</option>
-              <option value="Feeding">Feeding Alert 🥣</option>
-              <option value="Image Upload">Image Upload 📷</option>
-              <option value="Caretaker Activity">Caretaker Activity 👨‍🌾</option>
-              <option value="Pond Status">Pond Status 🟢</option>
-            </select>
-          </div>
-
-          {/* Filter 3: Pond */}
-          <div className="col-12 col-sm-6 col-md-4 col-xl-2">
-            <label className="form-label extra-small fw-bold text-muted text-uppercase mb-1.5 tracking-wider">
-              Pond
-            </label>
-            <select
-              className="form-select rounded-3 py-2 shadow-xs"
-              value={pondFilter}
-              onChange={(e) => setPondFilter(e.target.value)}
-            >
-              <option value="All">All Ponds</option>
-              {ponds.map((p) => (
-                <option key={p.id} value={p.pond_name}>
-                  {p.pond_name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Filter 4: Status */}
-          <div className="col-12 col-sm-6 col-md-4 col-xl-2">
-            <label className="form-label extra-small fw-bold text-muted text-uppercase mb-1.5 tracking-wider">
-              Status
-            </label>
-            <select
-              className="form-select rounded-3 py-2 shadow-xs"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="All">All Statuses</option>
-              <option value="Pending">Pending ⏳</option>
-              <option value="In Progress">In Progress 🔄</option>
-              <option value="Resolved">Resolved ✅</option>
-            </select>
-          </div>
-
-          {/* Filter 5: Date */}
-          <div className="col-12 col-sm-6 col-md-4 col-xl-2">
-            <label className="form-label extra-small fw-bold text-muted text-uppercase mb-1.5 tracking-wider">
-              Date
-            </label>
-            <select
-              className="form-select rounded-3 py-2 shadow-xs"
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-            >
-              <option value="All">All Time</option>
-              <option value="Today">Today</option>
-              <option value="This Week">This Week</option>
-            </select>
-          </div>
-        </div>
-      </div>
+      <AdminFilterToolbar
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="Search Alert Title, Message, Pond, or Caretaker..."
+        showFilters={true}
+        onExportCSV={handleExportCSV}
+        onRefresh={loadAlerts}
+        loading={loading}
+        tabs={[
+          { id: 'All', label: 'All Severities', count: alerts.length },
+          { id: 'Critical', label: 'Critical 🔴', count: summary.critical_alerts },
+          { id: 'High', label: 'High Risk 🟠' },
+          { id: 'Medium', label: 'Warning 🟡', count: summary.warnings },
+          { id: 'Low', label: 'Low Priority 🔵' }
+        ]}
+        activeTab={severityFilter}
+        onTabChange={setSeverityFilter}
+        metaRight={
+          <>
+            Action Center Queue: <strong>Real-time Telemetry Alerts</strong>
+          </>
+        }
+        filterFields={[
+          {
+            label: 'Alert Type',
+            type: 'select',
+            value: categoryFilter,
+            onChange: setCategoryFilter,
+            colClass: 'col-12 col-md-3',
+            options: [
+              { value: 'All', label: 'All Alert Types' },
+              { value: 'Disease', label: 'Disease Alert 🦠' },
+              { value: 'Harvest', label: 'Harvest Alert 🦐' },
+              { value: 'Feeding', label: 'Feeding Alert 🥣' },
+              { value: 'Image Upload', label: 'Image Upload 📷' },
+              { value: 'Caretaker Activity', label: 'Caretaker Activity 👨‍🌾' },
+              { value: 'Pond Status', label: 'Pond Status 🟢' }
+            ]
+          },
+          {
+            label: 'Pond Select',
+            type: 'select',
+            value: pondFilter,
+            onChange: setPondFilter,
+            colClass: 'col-12 col-md-2',
+            options: [
+              { value: 'All', label: 'All Ponds' },
+              ...ponds.map((p) => ({ value: p.pond_name, label: p.pond_name }))
+            ]
+          },
+          {
+            label: 'Status',
+            type: 'select',
+            value: statusFilter,
+            onChange: setStatusFilter,
+            colClass: 'col-12 col-md-2',
+            options: [
+              { value: 'All', label: 'All Statuses' },
+              { value: 'Pending', label: 'Pending ⏳' },
+              { value: 'In Progress', label: 'In Progress 🔄' },
+              { value: 'Resolved', label: 'Resolved ✅' }
+            ]
+          },
+          {
+            label: 'Date Window',
+            type: 'select',
+            value: dateFilter,
+            onChange: setDateFilter,
+            colClass: 'col-12 col-md-3',
+            options: [
+              { value: 'All', label: 'All Time' },
+              { value: 'Today', label: 'Today' },
+              { value: 'This Week', label: 'This Week' }
+            ]
+          }
+        ]}
+        onResetFilters={() => {
+          setSearchQuery('');
+          setSeverityFilter('All');
+          setCategoryFilter('All');
+          setPondFilter('All');
+          setStatusFilter('All');
+          setDateFilter('All');
+        }}
+      />
 
       {/* 📊 2. SUMMARY CARDS (MIDDLE SECTION) */}
       <div className="row g-3 mb-4">

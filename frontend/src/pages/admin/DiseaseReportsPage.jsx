@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import AdminFilterToolbar from '../../components/AdminFilterToolbar';
 import { Bar, Doughnut, Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -387,7 +388,7 @@ export default function DiseaseReportsPage() {
       <div className="row g-3 mb-4">
         {/* Card 1: Total Scans */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
+          <div className="card stat-card-cyan shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
                 <span className="text-muted extra-small text-uppercase fw-bold tracking-wider">Total AI Inferences</span>
@@ -410,19 +411,19 @@ export default function DiseaseReportsPage() {
                 ></div>
               </div>
               <div className="d-flex justify-content-between align-items-center">
-                <span className="tag-cyan-active">Verified Telemetry</span>
+                <span className="tag-cyan-active">Verified Mobile Logs</span>
                 <span className="text-muted extra-small">Inference Logs</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Card 2: High Risk */}
+        {/* Card 2: High Risk WSD */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
+          <div className="card stat-card-red shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small text-uppercase fw-bold tracking-wider">High Risk Pathogens</span>
+                <span className="text-muted extra-small text-uppercase fw-bold tracking-wider">High Risk WSD Cases</span>
                 <div
                   className="feeding-kpi-icon-wrap"
                   style={{ background: 'rgba(225, 29, 72, 0.12)', color: '#E11D48' }}
@@ -454,10 +455,10 @@ export default function DiseaseReportsPage() {
 
         {/* Card 3: Model Accuracy */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
+          <div className="card stat-card-green shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small text-uppercase fw-bold tracking-wider">Detection Confidence</span>
+                <span className="text-muted extra-small text-uppercase fw-bold tracking-wider">CNN Model Confidence</span>
                 <div
                   className="feeding-kpi-icon-wrap"
                   style={{ background: 'rgba(22, 163, 74, 0.12)', color: '#16A34A' }}
@@ -477,19 +478,19 @@ export default function DiseaseReportsPage() {
                 ></div>
               </div>
               <div className="d-flex justify-content-between align-items-center">
-                <span className="tag-green-safe">Vision Accuracy</span>
+                <span className="tag-green-safe">CNN WSD Accuracy</span>
                 <span className="text-muted extra-small">F1-Score 0.96</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Card 4: Basin Scope */}
+        {/* Card 4: Pond Scope */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
+          <div className="card stat-card-orange shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small text-uppercase fw-bold tracking-wider">Active Basin Scope</span>
+                <span className="text-muted extra-small text-uppercase fw-bold tracking-wider">Active Ponds Scope</span>
                 <div
                   className="feeding-kpi-icon-wrap"
                   style={{ background: 'rgba(255, 122, 0, 0.12)', color: '#FF7A00' }}
@@ -498,7 +499,7 @@ export default function DiseaseReportsPage() {
                 </div>
               </div>
               <h2 className="fw-extrabold mb-1 text-dark" style={{ letterSpacing: '-0.03em' }}>
-                {pondFilter === 'all' ? `${pondOptions.length || 6} Basins` : pondFilter}
+                {pondFilter === 'all' ? `${pondOptions.length || 30} Ponds` : pondFilter}
               </h2>
             </div>
             <div>
@@ -509,7 +510,7 @@ export default function DiseaseReportsPage() {
                 ></div>
               </div>
               <div className="d-flex justify-content-between align-items-center">
-                <span className="tag-orange-maintenance">{pondFilter === 'all' ? 'Fleet Wide' : 'Isolated Basin'}</span>
+                <span className="tag-orange-maintenance">{pondFilter === 'all' ? 'Farm Wide' : 'Isolated Pond'}</span>
                 <span className="text-muted extra-small">Biosecurity Grid</span>
               </div>
             </div>
@@ -606,7 +607,7 @@ export default function DiseaseReportsPage() {
             </div>
 
             <div className="pt-2 border-top d-flex justify-content-between text-muted extra-small">
-              <span>Sampling Rhythm: <strong className="text-dark">Continuous Telemetry</strong></span>
+              <span>Sampling Rhythm: <strong className="text-dark">Daily Farm Monitoring</strong></span>
               <span className="text-primary fw-bold">Mobile Sync OK</span>
             </div>
           </div>
@@ -614,106 +615,59 @@ export default function DiseaseReportsPage() {
       </div>
 
       {/* 🌟 4. MULTI-FILTER TOOLBAR & SEARCH STRIP */}
-      <div className="asymmetric-card p-4 mb-4">
-        <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-3 pb-3 border-bottom">
-          {/* Quick Search */}
-          <div className="position-relative flex-grow-1" style={{ maxWidth: 420 }}>
-            <input
-              type="text"
-              className="form-control form-control-sm rounded-pill ps-4 pe-4"
-              style={{ fontSize: '0.82rem', height: 38, background: '#F8FAFC', border: '1px solid #E2E8F0' }}
-              placeholder="Search pathogen, basin, caretaker, protocol..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <FaSearch
-              size={12}
-              className="position-absolute text-muted"
-              style={{ left: 14, top: '50%', transform: 'translateY(-50%)' }}
-            />
-            {search && (
-              <button
-                type="button"
-                className="btn btn-link p-0 position-absolute text-muted"
-                style={{ right: 12, top: '50%', transform: 'translateY(-50%)', textDecoration: 'none' }}
-                onClick={() => setSearch('')}
-              >
-                <FaTimes size={11} />
-              </button>
-            )}
-          </div>
-
-          {/* Quick Risk Pill Filters */}
-          <div className="d-flex align-items-center gap-1.5 flex-wrap">
-            <button
-              type="button"
-              className={`pill-filter-btn ${riskFilter === 'all' ? 'active' : ''}`}
-              onClick={() => setRiskFilter('all')}
-            >
-              All Risks ({filteredReports.length})
-            </button>
-            <button
-              type="button"
-              className={`pill-filter-btn ${riskFilter === 'High' ? 'active' : ''}`}
-              onClick={() => setRiskFilter('High')}
-            >
-              High Risk 🔴
-            </button>
-            <button
-              type="button"
-              className={`pill-filter-btn ${riskFilter === 'Medium' ? 'active' : ''}`}
-              onClick={() => setRiskFilter('Medium')}
-            >
-              Medium 🟠
-            </button>
-            <button
-              type="button"
-              className={`pill-filter-btn ${riskFilter === 'Low' ? 'active' : ''}`}
-              onClick={() => setRiskFilter('Low')}
-            >
-              Low / Safe 🟢
-            </button>
-          </div>
-        </div>
-
-        {/* Dropdown Filters Grid */}
-        <div className="row g-3">
-          {/* Pond Basin Filter */}
-          <div className="col-12 col-sm-6 col-md-6">
-            <label className="form-label extra-small fw-bold text-muted text-uppercase mb-1 tracking-wider">
-              Basin Filter
-            </label>
-            <select
-              className="form-select form-select-sm rounded-pill"
-              style={{ fontSize: '0.82rem', height: 36, background: '#F8FAFC', border: '1px solid #E2E8F0' }}
-              value={pondFilter}
-              onChange={(e) => setPondFilter(e.target.value)}
-            >
-              <option value="all">All Production Basins</option>
-              {pondOptions.map((p) => (
-                <option key={p} value={p}>{p}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Sort By Filter */}
-          <div className="col-12 col-sm-6 col-md-6">
-            <label className="form-label extra-small fw-bold text-muted text-uppercase mb-1 tracking-wider">
-              Sort Sequence
-            </label>
-            <select
-              className="form-select form-select-sm rounded-pill"
-              style={{ fontSize: '0.82rem', height: 36, background: '#F8FAFC', border: '1px solid #E2E8F0' }}
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-            >
-              <option value="newest">Newest Scans First ⬇</option>
-              <option value="confidence-desc">Highest Confidence % ⬇</option>
-              <option value="name-asc">Pathogen Name (A - Z)</option>
-            </select>
-          </div>
-        </div>
-      </div>
+      <AdminFilterToolbar
+        searchQuery={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search WSD, pathogen, pond, caretaker, protocol..."
+        showFilters={true}
+        onExportCSV={handleExportCSV}
+        onRefresh={loadReports}
+        loading={loading}
+        tabs={[
+          { id: 'all', label: 'All Risks', count: filteredReports.length },
+          { id: 'High', label: 'High Risk 🔴' },
+          { id: 'Medium', label: 'Medium 🟠' },
+          { id: 'Low', label: 'Low / Safe 🟢' }
+        ]}
+        activeTab={riskFilter}
+        onTabChange={setRiskFilter}
+        metaRight={
+          <>
+            Active Screening: <strong>CNN WSD Image Classifier</strong>
+          </>
+        }
+        filterFields={[
+          {
+            label: 'Production Pond',
+            type: 'select',
+            value: pondFilter,
+            onChange: setPondFilter,
+            colClass: 'col-12 col-md-4',
+            options: [
+              { value: 'all', label: 'All Production Ponds' },
+              ...pondOptions.map((p) => ({ value: p, label: p }))
+            ]
+          },
+          {
+            label: 'Sort Sequence',
+            type: 'select',
+            value: sortBy,
+            onChange: setSortBy,
+            colClass: 'col-12 col-md-4',
+            options: [
+              { value: 'newest', label: 'Newest Scans First ⬇' },
+              { value: 'confidence-desc', label: 'Highest Confidence % ⬇' },
+              { value: 'name-asc', label: 'Pathogen Name (A - Z)' }
+            ]
+          }
+        ]}
+        onResetFilters={() => {
+          setSearch('');
+          setRiskFilter('all');
+          setPondFilter('all');
+          setSortBy('newest');
+        }}
+      />
 
       {/* 🌟 5. CARETAKER SCAN HISTORY MATRIX TABLE */}
       <div className="asymmetric-card p-4 mb-4">

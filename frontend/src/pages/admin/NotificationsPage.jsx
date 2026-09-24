@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import Swal from 'sweetalert2';
+import AdminFilterToolbar from '../../components/AdminFilterToolbar';
 import {
   FaBell,
   FaCheckDouble,
@@ -27,6 +28,8 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(true);
 
   // Filters state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(true);
   const [currentTab, setCurrentTab] = useState('active'); // 'active' | 'unread' | 'archived' | 'deleted'
   const [dateFilterType, setDateFilterType] = useState('all'); // 'all' | 'today' | 'yesterday' | 'last7' | 'custom'
   const [customDate, setCustomDate] = useState('');
@@ -301,108 +304,74 @@ export default function NotificationsPage() {
 
   return (
     <div>
-      {/* Action Toolbar */}
-      <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-        <div className="d-flex align-items-center gap-2">
-          <span className="badge bg-primary bg-opacity-10 text-primary px-3 py-1.5 rounded-pill fw-semibold extra-small">
-            <FaBell className="me-1" /> Real-time Caretaker Reports & System Alerts
-          </span>
-          {counts.unread > 0 && (
-            <span className="badge bg-danger rounded-pill px-3 py-1.5 extra-small fw-bold">{counts.unread} Unread</span>
-          )}
-        </div>
-
-        <div className="d-flex gap-2 align-items-center">
-          <button className="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1.5 rounded-pill px-3" onClick={loadNotifications}>
-            <FaSync /> Refresh
-          </button>
+      <AdminFilterToolbar
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="Search notification title, message, pond, caretaker..."
+        showFilters={showFilters}
+        onToggleFilters={() => setShowFilters(!showFilters)}
+        onRefresh={loadNotifications}
+        loading={loading}
+        extraActions={
           <button
-            className="btn btn-primary btn-sm d-flex align-items-center gap-2 rounded-pill px-3"
+            type="button"
+            className="btn btn-admin-filter border-primary text-primary"
             onClick={handleMarkAllRead}
             disabled={counts.unread === 0}
           >
-            <FaCheckDouble /> Mark All as Read
+            <FaCheckDouble size={13} /> Mark All as Read
           </button>
-        </div>
-      </div>
-
-      {/* Tabs and Filters Navigation */}
-      <div className="card border-0 shadow-sm mb-4">
-        <div className="card-body p-3">
-          <div className="d-flex justify-content-between align-items-center flex-wrap gap-3">
-            {/* View Tabs */}
-            <ul className="nav nav-pills gap-2">
-              <li className="nav-item">
-                <button
-                  className={`nav-link btn-sm ${currentTab === 'active' ? 'active' : ''}`}
-                  onClick={() => setCurrentTab('active')}
-                >
-                  Active <span className="badge bg-light text-dark ms-1">{counts.active}</span>
-                </button>
-              </li>
-              <li className="nav-item">
-                <button
-                  className={`nav-link btn-sm ${currentTab === 'unread' ? 'active' : ''}`}
-                  onClick={() => setCurrentTab('unread')}
-                >
-                  Unread <span className="badge bg-danger ms-1">{counts.unread}</span>
-                </button>
-              </li>
-              <li className="nav-item">
-                <button
-                  className={`nav-link btn-sm ${currentTab === 'archived' ? 'active' : ''}`}
-                  onClick={() => setCurrentTab('archived')}
-                >
-                  <FaArchive className="me-1" /> Archived{' '}
-                  <span className="badge bg-secondary ms-1">{counts.archived}</span>
-                </button>
-              </li>
-              <li className="nav-item">
-                <button
-                  className={`nav-link btn-sm ${currentTab === 'deleted' ? 'active bg-danger' : ''}`}
-                  onClick={() => setCurrentTab('deleted')}
-                >
-                  <FaTrashAlt className="me-1" /> Deleted History{' '}
-                  <span className="badge bg-dark ms-1">{counts.deleted || 0}</span>
-                </button>
-              </li>
-            </ul>
-
-            {/* Date Filter Toolbar */}
-            <div className="d-flex align-items-center gap-2 flex-wrap">
-              <span className="text-muted small fw-semibold d-flex align-items-center gap-1">
-                <FaFilter /> Filter Date:
-              </span>
-              <select
-                className="form-select form-select-sm w-auto"
-                value={dateFilterType}
-                onChange={(e) => {
-                  setDateFilterType(e.target.value);
-                  if (e.target.value !== 'custom') setCustomDate('');
-                }}
-              >
-                <option value="all">All Dates</option>
-                <option value="today">Today</option>
-                <option value="yesterday">Yesterday</option>
-                <option value="last7">Last 7 Days</option>
-                <option value="custom">Custom Date…</option>
-              </select>
-
-              {dateFilterType === 'custom' && (
-                <div className="d-flex align-items-center gap-1">
-                  <FaCalendarAlt className="text-muted" />
-                  <input
-                    type="date"
-                    className="form-control form-control-sm"
-                    value={customDate}
-                    onChange={(e) => setCustomDate(e.target.value)}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+        }
+        tabs={[
+          { id: 'active', label: 'Active', count: counts.active },
+          { id: 'unread', label: 'Unread', count: counts.unread },
+          { id: 'archived', label: 'Archived', count: counts.archived },
+          { id: 'deleted', label: 'Deleted History', count: counts.deleted || 0 }
+        ]}
+        activeTab={currentTab}
+        onTabChange={setCurrentTab}
+        metaRight={
+          <>
+            System Dispatch: <strong>Real-time Caretaker Reports & Alerts</strong>
+          </>
+        }
+        filterFields={[
+          {
+            label: 'Evaluation Date',
+            icon: <FaCalendarAlt className="me-1 text-primary" />,
+            type: 'date',
+            value: customDate,
+            onChange: (val) => {
+              setCustomDate(val);
+              setDateFilterType('custom');
+            },
+            colClass: 'col-12 col-md-4'
+          },
+          {
+            label: 'Date Range Quick Selector',
+            type: 'select',
+            value: dateFilterType,
+            onChange: (val) => {
+              setDateFilterType(val);
+              if (val !== 'custom') setCustomDate('');
+            },
+            colClass: 'col-12 col-md-4',
+            options: [
+              { value: 'all', label: 'All Dates' },
+              { value: 'today', label: 'Today' },
+              { value: 'yesterday', label: 'Yesterday' },
+              { value: 'last7', label: 'Last 7 Days' },
+              { value: 'custom', label: 'Custom Date…' }
+            ]
+          }
+        ]}
+        onResetFilters={() => {
+          setSearchQuery('');
+          setCurrentTab('active');
+          setDateFilterType('all');
+          setCustomDate('');
+        }}
+      />
 
       {/* Notifications List Container */}
       <div className="card border-0 shadow-sm" ref={dropdownRef}>
@@ -412,23 +381,31 @@ export default function NotificationsPage() {
               <div className="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
               Loading notifications…
             </div>
-          ) : notifications.length === 0 ? (
-            <div className="text-center py-5">
-              <FaBell className="text-muted opacity-50 display-4 mb-2" />
-              <h6 className="fw-semibold text-muted">No notifications found</h6>
-              <p className="small text-muted mb-0">
-                {currentTab === 'deleted'
-                  ? 'No deleted notifications in history.'
-                  : currentTab === 'archived'
-                  ? 'No archived notifications.'
-                  : currentTab === 'unread'
-                  ? 'Great! All notifications are marked as read.'
-                  : 'No caretaker activities recorded for the selected filter.'}
-              </p>
-            </div>
-          ) : (
-            <div className="list-group list-group-flush">
-              {notifications.map((notif) => (
+          ) : (() => {
+            const displayNotifs = notifications.filter((n) => {
+              if (!searchQuery.trim()) return true;
+              const q = searchQuery.toLowerCase();
+              return (
+                (n.title || '').toLowerCase().includes(q) ||
+                (n.message || '').toLowerCase().includes(q) ||
+                (n.pond_name || '').toLowerCase().includes(q) ||
+                (n.caretaker_name || '').toLowerCase().includes(q)
+              );
+            });
+
+            if (displayNotifs.length === 0) {
+              return (
+                <div className="text-center py-5">
+                  <FaBell className="text-muted opacity-50 display-4 mb-2" />
+                  <h6 className="fw-semibold text-muted">No notifications found</h6>
+                  <p className="small text-muted mb-0">No entries match your search query or selected filter.</p>
+                </div>
+              );
+            }
+
+            return (
+              <div className="list-group list-group-flush">
+                {displayNotifs.map((notif) => (
                 <div
                   key={notif.id}
                   className={`list-group-item p-3.5 d-flex align-items-start justify-content-between gap-3 border-bottom transition-all ${
@@ -583,7 +560,8 @@ export default function NotificationsPage() {
                 </div>
               ))}
             </div>
-          )}
+          );
+        })()}
         </div>
       </div>
     </div>
