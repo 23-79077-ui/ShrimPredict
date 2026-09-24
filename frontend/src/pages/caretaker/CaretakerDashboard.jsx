@@ -1,5 +1,18 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Line, Bar } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+} from 'chart.js';
 import { useAuth } from '../../context/AuthContext';
 import api, { safeArray } from '../../services/api';
 import {
@@ -20,19 +33,51 @@ import {
   FaShieldAlt,
   FaChevronRight,
   FaFileAlt,
-  FaHistory
+  FaHistory,
+  FaChartLine,
+  FaChartBar
 } from 'react-icons/fa';
 import WaterQualityOcrModal from '../../components/WaterQualityOcrModal';
 import WaterQualityHistoryModal from '../../components/WaterQualityHistoryModal';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+);
 
 const feedingTimes = ['6:00 AM', '9:00 AM', '12:00 PM', '3:00 PM', '6:00 PM'];
 
 const normalizeFeedingTime = (value = '') => String(value).trim().replace(/^0(\d:)/, '$1').toUpperCase();
 
+export const getLocalDateString = (d = new Date()) => {
+  const dateObj = d instanceof Date ? d : new Date(d);
+  if (isNaN(dateObj.getTime())) return '';
+  const year = dateObj.getFullYear();
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const day = String(dateObj.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+export const parseLocalDate = (dateStr) => {
+  if (!dateStr || typeof dateStr !== 'string') return new Date();
+  const parts = dateStr.slice(0, 10).split('-').map(Number);
+  if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+    return new Date(parts[0], parts[1] - 1, parts[2]);
+  }
+  return new Date();
+};
+
 function computeDoc(stockingDateStr, targetDateStr) {
   if (!stockingDateStr) return null;
-  const s = new Date(stockingDateStr + 'T00:00:00');
-  const t = targetDateStr ? new Date(targetDateStr + 'T00:00:00') : new Date();
+  const s = parseLocalDate(stockingDateStr);
+  const t = targetDateStr ? parseLocalDate(targetDateStr) : new Date();
   if (isNaN(s.getTime()) || isNaN(t.getTime())) return null;
   const diffTime = t.getTime() - s.getTime();
   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
@@ -63,7 +108,7 @@ export default function CaretakerDashboard() {
       : (user?.pond_id ? [{ id: user.pond_id, pond_name: 'Assigned Pond', status: 'Healthy' }] : [])
   );
 
-  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const todayStr = useMemo(() => getLocalDateString(new Date()), []);
   const [selectedDate, setSelectedDate] = useState(todayStr);
 
   const [records, setRecords] = useState([]);
@@ -88,10 +133,20 @@ export default function CaretakerDashboard() {
   const [searchFilter, setSearchFilter] = useState('');
   const [sortOption, setSortOption] = useState('latest');
 
+  // Chart control states
+  const [chartRange, setChartRange] = useState('7days'); // '7days' | '14days' | 'todaySlots'
+  const [chartType, setChartType] = useState('line'); // 'line' | 'bar'
+  const [chartUnit, setChartUnit] = useState('auto'); // 'auto' | 'kg' | 'g'
+  const [chartPondFilter, setChartPondFilter] = useState('all');
+
+  // Sync chart pond filter with main pond filter if changed
+  useEffect(() => {
+    setChartPondFilter(selectedPondFilter);
+  }, [selectedPondFilter]);
+
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const todayDateStr = new Date().toISOString().split('T')[0];
       const [feedRes, diseaseRes, alertsRes, wqRes, pondsRes] = await Promise.allSettled([
         api.get('/feeding_records.php', {
           params: {
@@ -121,13 +176,7 @@ export default function CaretakerDashboard() {
       if (feedRes.status === 'fulfilled') {
         const recs = safeArray(feedRes.value.data);
         setRecords(recs);
-        const hasToday = recs.some((r) => (r.record_date || r.created_at || '').slice(0, 10) === todayDateStr);
-        if (!hasToday && recs.length > 0) {
-          const sortedRecDates = Array.from(new Set(recs.map((r) => (r.record_date || r.created_at || '').slice(0, 10)).filter(Boolean))).sort().reverse();
-          if (sortedRecDates[0]) {
-            setSelectedDate(sortedRecDates[0]);
-          }
-        }
+        // User Rule: Always remain on today's real date by default (never auto-jump to older date)
       }
       if (diseaseRes.status === 'fulfilled') setDiseaseScans(safeArray(diseaseRes.value.data));
       if (alertsRes.status === 'fulfilled') setAlerts(safeArray(alertsRes.value.data));
@@ -221,24 +270,246 @@ export default function CaretakerDashboard() {
   const latestDisease = filteredDiseaseScans[0];
   const latestAlert = alerts[0];
 
+  // 🌟 FEEDING CONSUMPTION CHART DATA & TELEMETRY
+  const chartData = useMemo(() => {
+    // 1. Hourly Slots for Selected Date Mode
+    if (chartRange === 'todaySlots') {
+      const slots = ['6:00 AM', '9:00 AM', '12:00 PM', '3:00 PM', '6:00 PM'];
+      const slotGrams = slots.map((time) => {
+        const matching = records.filter((r) => {
+          const rDate = (r.record_date || r.created_at || '').slice(0, 10);
+          const matchesDate = rDate === selectedDate;
+          const matchesTime = normalizeFeedingTime(r.feeding_time) === normalizeFeedingTime(time);
+          const matchesPond = chartPondFilter === 'all'
+            ? assignedPonds.some((p) => String(p.id) === String(r.pond_id))
+            : String(r.pond_id) === String(chartPondFilter);
+          return matchesDate && matchesTime && matchesPond;
+        });
+        return matching.reduce((sum, r) => {
+          const grams = (r.amount_grams != null && Number(r.amount_grams) > 0)
+            ? Number(r.amount_grams)
+            : ((parseFloat(r.amount_kg) || 0) * 1000);
+          return sum + grams;
+        }, 0);
+      });
+
+      const totalGrams = slotGrams.reduce((a, b) => a + b, 0);
+      const totalKg = totalGrams / 1000;
+      const peakGrams = Math.max(0, ...slotGrams);
+      const peakIndex = slotGrams.indexOf(peakGrams);
+      const peakLabel = peakGrams > 0 ? slots[peakIndex] : 'None';
+      const peakKg = peakGrams / 1000;
+
+      const useGrams = chartUnit === 'g' || (chartUnit === 'auto' && totalKg < 1.0);
+      const displayData = useGrams
+        ? slotGrams.map((g) => Math.round(g * 10) / 10)
+        : slotGrams.map((g) => Number((g / 1000).toFixed(3)));
+
+      return {
+        labels: slots,
+        unit: useGrams ? 'g' : 'kg',
+        datasets: [
+          {
+            label: chartPondFilter === 'all'
+              ? 'All Assigned Basins'
+              : (assignedPonds.find((p) => String(p.id) === String(chartPondFilter))?.pond_name || 'Selected Basin'),
+            data: displayData,
+            borderColor: '#0B2C5F',
+            backgroundColor: chartType === 'bar' ? '#0B2C5F' : 'rgba(11, 44, 95, 0.08)',
+            pointBackgroundColor: '#EA580C',
+            pointBorderColor: '#FFFFFF',
+            pointBorderWidth: 2,
+            pointRadius: 5,
+            pointHoverRadius: 7,
+            borderWidth: 2.5,
+            tension: 0.35,
+            fill: chartType === 'line',
+          },
+        ],
+        totalKg,
+        totalGrams,
+        avgDailyKg: totalKg,
+        avgDailyGrams: totalGrams,
+        peakLabel,
+        peakKg,
+        peakGrams,
+        dataPointsCount: slotGrams.filter((v) => v > 0).length,
+      };
+    }
+
+    // 2. Multi-Day Range Mode (7 or 14 Days)
+    const daysCount = chartRange === '14days' ? 14 : 7;
+    const dateList = [];
+    const validBase = parseLocalDate(selectedDate || todayStr);
+
+    for (let i = daysCount - 1; i >= 0; i--) {
+      const d = new Date(validBase.getFullYear(), validBase.getMonth(), validBase.getDate() - i);
+      dateList.push(getLocalDateString(d));
+    }
+
+    const labels = dateList.map((dStr) => {
+      const dObj = parseLocalDate(dStr);
+      return dObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    });
+
+    const dailyGrams = dateList.map((dStr) => {
+      const matching = records.filter((r) => {
+        const rDate = (r.record_date || r.created_at || '').slice(0, 10);
+        const matchesDate = rDate === dStr;
+        const matchesPond = chartPondFilter === 'all'
+          ? assignedPonds.some((p) => String(p.id) === String(r.pond_id))
+          : String(r.pond_id) === String(chartPondFilter);
+        return matchesDate && matchesPond;
+      });
+      return matching.reduce((sum, r) => {
+        const grams = (r.amount_grams != null && Number(r.amount_grams) > 0)
+          ? Number(r.amount_grams)
+          : ((parseFloat(r.amount_kg) || 0) * 1000);
+        return sum + grams;
+      }, 0);
+    });
+
+    const totalGrams = dailyGrams.reduce((a, b) => a + b, 0);
+    const totalKg = totalGrams / 1000;
+    const nonZeroDays = dailyGrams.filter((v) => v > 0).length;
+    const avgDailyGrams = daysCount > 0 ? totalGrams / daysCount : 0;
+    const avgDailyKg = avgDailyGrams / 1000;
+    const peakGrams = Math.max(0, ...dailyGrams);
+    const peakIndex = dailyGrams.indexOf(peakGrams);
+    const peakLabel = peakGrams > 0 ? labels[peakIndex] : 'None';
+    const peakKg = peakGrams / 1000;
+
+    const useGrams = chartUnit === 'g' || (chartUnit === 'auto' && peakKg < 1.5);
+    const displayData = useGrams
+      ? dailyGrams.map((g) => Math.round(g * 10) / 10)
+      : dailyGrams.map((g) => Number((g / 1000).toFixed(3)));
+
+    return {
+      labels,
+      unit: useGrams ? 'g' : 'kg',
+      datasets: [
+        {
+          label: chartPondFilter === 'all'
+            ? 'All Assigned Basins'
+            : (assignedPonds.find((p) => String(p.id) === String(chartPondFilter))?.pond_name || 'Selected Basin'),
+          data: displayData,
+          borderColor: '#0B2C5F',
+          backgroundColor: chartType === 'bar' ? '#0B2C5F' : 'rgba(11, 44, 95, 0.08)',
+          pointBackgroundColor: '#EA580C',
+          pointBorderColor: '#FFFFFF',
+          pointBorderWidth: 2,
+          pointRadius: 5,
+          pointHoverRadius: 7,
+          borderWidth: 2.5,
+          tension: 0.35,
+          fill: chartType === 'line',
+        },
+      ],
+      totalKg,
+      totalGrams,
+      avgDailyKg,
+      avgDailyGrams,
+      peakLabel,
+      peakKg,
+      peakGrams,
+      dataPointsCount: nonZeroDays,
+    };
+  }, [chartRange, chartType, chartUnit, chartPondFilter, records, selectedDate, todayStr, assignedPonds]);
+
+  const chartOptions = useMemo(() => {
+    const isGrams = chartData.unit === 'g';
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          labels: {
+            boxWidth: 10,
+            boxHeight: 10,
+            usePointStyle: true,
+            pointStyle: 'circle',
+            font: { family: "'Poppins', sans-serif", size: 12, weight: '600' },
+            color: '#0B2C5F',
+          },
+        },
+        tooltip: {
+          backgroundColor: '#071733',
+          titleColor: '#FFFFFF',
+          bodyColor: '#FFFFFF',
+          borderColor: 'rgba(234, 88, 12, 0.5)',
+          borderWidth: 1,
+          padding: 10,
+          cornerRadius: 10,
+          titleFont: { family: "'Poppins', sans-serif", weight: 'bold', size: 12 },
+          bodyFont: { family: "'Poppins', sans-serif", size: 12 },
+          callbacks: {
+            label: (context) => {
+              const rawVal = Number(context.parsed.y || 0);
+              const grams = isGrams ? rawVal : rawVal * 1000;
+              const kg = isGrams ? rawVal / 1000 : rawVal;
+              return ` Feed: ${Math.round(grams).toLocaleString()} g (${kg.toFixed(3)} kg)`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid: {
+            display: false,
+          },
+          ticks: {
+            color: '#64748B',
+            font: { family: "'Poppins', sans-serif", size: 11, weight: '500' },
+          },
+        },
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: 'rgba(11, 44, 95, 0.05)',
+            drawBorder: false,
+          },
+          ticks: {
+            color: '#64748B',
+            font: { family: "'Poppins', sans-serif", size: 11 },
+            callback: (value) => isGrams ? `${value} g` : `${value} kg`,
+          },
+          title: {
+            display: true,
+            text: isGrams ? 'Feed Consumption (grams)' : 'Feed Consumption (kg)',
+            color: '#0B2C5F',
+            font: { family: "'Poppins', sans-serif", size: 11, weight: '600' },
+          },
+        },
+      },
+    };
+  }, [chartData.unit]);
+
   return (
     <div className="caretaker-dashboard-hub">
-      {/* 🌟 HERO CONTROL STRIP: STATUS BADGE, TITLE & SLEEK PILL FILTERS */}
-      <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+      {/* 🌟 HERO CONTROL STRIP: TITLE & SLEEK PILL FILTERS */}
+      <div className="d-flex justify-content-between align-items-center mb-4 mb-xl-5 flex-wrap gap-3">
         <div>
-          <h2 className="fw-extrabold mb-0 tracking-tight text-dark" style={{ fontSize: '1.75rem', letterSpacing: '-0.03em' }}>
+          <h2 className="fw-extrabold mb-1 tracking-tight" style={{ color: '#0B2C5F', fontSize: '1.75rem', letterSpacing: '-0.03em' }}>
             Field Operations Hub
           </h2>
+          <span className="text-muted extra-small fw-medium">
+            O&amp;B Aquafarm • Pond Caretaker Live Telemetry &amp; Daily Records
+          </span>
         </div>
 
         {/* Compact Pill-Shaped Filter Controls */}
         <div className="d-flex align-items-center gap-2 flex-wrap">
           {/* Pond Selector Pill */}
-          <div className="d-flex align-items-center gap-1.5 px-3 py-1.5 rounded-pill bg-white border shadow-xs">
-            <FaWater style={{ color: '#0284C7', fontSize: '0.8rem' }} />
+          <div
+            className="d-flex align-items-center gap-1.5 px-3 py-1.5 rounded-pill bg-white shadow-xs"
+            style={{ border: '1px solid rgba(11, 44, 95, 0.15)', height: 38 }}
+          >
+            <FaWater style={{ color: '#0B2C5F', fontSize: '0.82rem' }} />
             <select
-              className="form-select form-select-sm border-0 bg-transparent fw-semibold text-dark p-0 ps-1 cursor-pointer"
-              style={{ width: 'auto', minWidth: 155, fontSize: '0.82rem', outline: 'none' }}
+              className="form-select form-select-sm border-0 bg-transparent fw-semibold p-0 ps-1 cursor-pointer"
+              style={{ width: 'auto', minWidth: 155, fontSize: '0.82rem', outline: 'none', color: '#0B2C5F' }}
               value={selectedPondFilter}
               onChange={(e) => setSelectedPondFilter(e.target.value)}
             >
@@ -251,61 +522,82 @@ export default function CaretakerDashboard() {
             </select>
           </div>
 
-          {/* Interactive Date Selector Pill with DOC Presets */}
-          <div className="d-flex align-items-center gap-1.5 px-3 py-1.5 rounded-pill bg-white border shadow-xs text-muted extra-small">
-            <FaCalendarAlt size={12} style={{ color: '#FF7A00' }} />
+          {/* Interactive Date Selector Pill */}
+          <div
+            className="d-flex align-items-center gap-2 px-3 py-1.5 rounded-pill bg-white shadow-xs"
+            style={{ border: '1px solid rgba(11, 44, 95, 0.15)', height: 38 }}
+          >
+            <FaCalendarAlt size={12} style={{ color: '#EA580C' }} />
             <input
               type="date"
-              className="form-control form-control-sm border-0 bg-transparent fw-semibold text-dark p-0"
-              style={{ width: 110, fontSize: '0.8rem', outline: 'none' }}
+              className="form-control form-control-sm border-0 bg-transparent fw-semibold p-0"
+              style={{ width: 115, fontSize: '0.82rem', outline: 'none', color: '#0B2C5F' }}
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
               title="Select date to inspect feeding records & DOC"
             />
-            <select
-              className="form-select form-select-sm border-0 bg-transparent fw-bold text-primary p-0 ps-1"
-              style={{ width: 'auto', fontSize: '0.78rem', outline: 'none', cursor: 'pointer' }}
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              title="Quick jump to Culture Day (DOC)"
-            >
-              <option value={todayStr}>Today ({todayStr})</option>
-              {availableDates.map((item) => {
-                const pondObj = assignedPonds[0];
-                const sDate = item.stockingDate || pondObj?.stocking_date;
-                const doc = computeDoc(sDate, item.date);
-                const isNursery = doc !== null && doc <= 19;
-                const dateFormatted = new Date(item.date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-                const stageBadge = doc ? (isNursery ? `DOC #${doc} Nursery` : `DOC #${doc} Grow-out`) : item.date;
-                return (
-                  <option key={item.date} value={item.date}>
-                    {dateFormatted} • {stageBadge} ({item.totalKg.toFixed(2)} kg)
-                  </option>
-                );
-              })}
-            </select>
           </div>
+
+          {/* Quick Return to Today Button */}
+          {selectedDate !== todayStr && (
+            <button
+              type="button"
+              className="btn btn-sm btn-tri-outline px-3 py-1.5 shadow-xs"
+              style={{ height: 38, fontSize: '0.8rem' }}
+              onClick={() => setSelectedDate(todayStr)}
+              title="Return to today's real date"
+            >
+              Reset to Today
+            </button>
+          )}
+
+          {/* DOC Presets Quick Jump Dropdown */}
+          {availableDates.length > 0 && (
+            <div
+              className="d-none d-md-flex align-items-center gap-1.5 px-3 py-1.5 rounded-pill bg-white shadow-xs"
+              style={{ border: '1px solid rgba(11, 44, 95, 0.15)', height: 38 }}
+            >
+              <span className="extra-small fw-bold text-uppercase tracking-wider" style={{ color: '#EA580C', fontSize: '0.68rem' }}>DOC:</span>
+              <select
+                className="form-select form-select-sm border-0 bg-transparent fw-semibold p-0 ps-1 cursor-pointer"
+                style={{ width: 'auto', minWidth: 150, fontSize: '0.8rem', outline: 'none', color: '#0B2C5F' }}
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                title="Quick jump to Culture Day (DOC)"
+              >
+                <option value={todayStr}>Today ({todayStr})</option>
+                {availableDates.map((item) => {
+                  const pondObj = assignedPonds[0];
+                  const sDate = item.stockingDate || pondObj?.stocking_date;
+                  const doc = computeDoc(sDate, item.date);
+                  const isNursery = doc !== null && doc <= 19;
+                  const dateFormatted = new Date(item.date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                  const stageBadge = doc ? (isNursery ? `DOC #${doc} Nur` : `DOC #${doc} Grow`) : item.date;
+                  return (
+                    <option key={item.date} value={item.date}>
+                      {dateFormatted} • {stageBadge} ({item.totalKg.toFixed(1)} kg)
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+          )}
 
           {/* Sync Button */}
           <button
             type="button"
-            className="btn btn-sm rounded-pill bg-white border text-dark fw-semibold px-3 py-1.5 d-flex align-items-center gap-1.5 shadow-xs"
-            style={{ height: 36, fontSize: '0.8rem' }}
+            className="btn btn-sm btn-tri-outline px-3 py-1.5 shadow-xs"
+            style={{ height: 38, fontSize: '0.8rem' }}
             onClick={loadData}
           >
-            <FaSync size={11} className={loading ? 'fa-spin' : ''} style={{ color: '#0284C7' }} /> Sync
+            <FaSync size={11} className={loading ? 'fa-spin' : ''} style={{ color: '#0B2C5F' }} /> Sync
           </button>
 
           {/* Launch OCR Quick Action */}
           <button
             type="button"
-            className="btn btn-sm rounded-pill px-3.5 py-1.5 d-flex align-items-center gap-2 fw-bold text-white shadow-xs"
-            style={{
-              height: 36,
-              fontSize: '0.8rem',
-              background: 'linear-gradient(135deg, #FF7A00 0%, #EA580C 100%)',
-              border: 'none',
-            }}
+            className="btn btn-sm btn-tri-orange px-3.5 py-1.5 shadow-xs"
+            style={{ height: 38, fontSize: '0.8rem' }}
             onClick={() => {
               const firstUnverified = waterQualityChecklist.checklist?.find((p) => !p.is_verified_today);
               setOcrTargetPondId(
@@ -324,43 +616,38 @@ export default function CaretakerDashboard() {
       </div>
 
       {/* 🌟 DAILY WATER QUALITY VERIFICATION PROTOCOL CARD */}
-      <div className="asymmetric-card mb-4 overflow-hidden border-0 shadow-sm">
+      <div className="tri-card mb-4 mb-xl-5 overflow-hidden">
         <div
           className="p-3.5 p-md-4 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 text-white"
           style={{
-            background: waterQualityChecklist.is_all_completed
-              ? 'linear-gradient(135deg, #064E3B 0%, #059669 100%)'
-              : 'linear-gradient(135deg, #071733 0%, #0B2C5F 60%, #1E3A8A 100%)',
+            background: 'linear-gradient(135deg, #071733 0%, #0B2C5F 65%, #0E3D7D 100%)',
           }}
         >
           <div className="d-flex align-items-center gap-3">
             <div
               className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0 shadow-sm"
               style={{
-                width: 46,
-                height: 46,
-                background: waterQualityChecklist.is_all_completed ? '#10B981' : '#FF7A00',
+                width: 44,
+                height: 44,
+                background: 'rgba(255, 255, 255, 0.12)',
+                border: '1px solid rgba(255, 255, 255, 0.22)',
                 color: '#FFFFFF',
-                fontSize: '1.25rem',
+                fontSize: '1.2rem',
               }}
             >
-              {waterQualityChecklist.is_all_completed ? <FaCheckCircle /> : <FaCamera />}
+              {waterQualityChecklist.is_all_completed ? <FaCheckCircle style={{ color: '#EA580C' }} /> : <FaCamera />}
             </div>
             <div>
               <div className="d-flex align-items-center gap-2.5 flex-wrap">
-                <h6 className="fw-bold mb-0 text-white" style={{ fontSize: '1rem', letterSpacing: '-0.01em' }}>
+                <h6 className="fw-bold mb-0 text-white" style={{ fontSize: '1.02rem', letterSpacing: '-0.01em' }}>
                   Pre-Stocking Water Quality Verification
                 </h6>
                 <span
                   className="d-inline-flex align-items-center gap-1.5 px-3 py-1 rounded-pill"
                   style={{
-                    background: waterQualityChecklist.is_all_completed
-                      ? 'rgba(16, 185, 129, 0.22)'
-                      : 'rgba(255, 255, 255, 0.14)',
-                    border: waterQualityChecklist.is_all_completed
-                      ? '1px solid rgba(16, 185, 129, 0.4)'
-                      : '1px solid rgba(255, 255, 255, 0.22)',
-                    color: waterQualityChecklist.is_all_completed ? '#A7F3D0' : '#FEF3C7',
+                    background: 'rgba(255, 255, 255, 0.14)',
+                    border: '1px solid rgba(255, 255, 255, 0.25)',
+                    color: '#FFFFFF',
                     fontSize: '0.74rem',
                     fontWeight: 600,
                     letterSpacing: '0.01em',
@@ -371,7 +658,7 @@ export default function CaretakerDashboard() {
                     style={{
                       width: 6,
                       height: 6,
-                      backgroundColor: waterQualityChecklist.is_all_completed ? '#10B981' : '#F59E0B',
+                      backgroundColor: waterQualityChecklist.is_all_completed ? '#FFFFFF' : '#EA580C',
                     }}
                   />
                   {waterQualityChecklist.verified_count} / {assignedPonds.length} Ponds Verified (Baseline)
@@ -388,14 +675,8 @@ export default function CaretakerDashboard() {
           <div className="d-flex align-items-center gap-2 ms-md-auto flex-shrink-0">
             <button
               type="button"
-              className="btn btn-sm rounded-pill px-3.5 py-2 fw-bold text-white shadow-xs d-flex align-items-center gap-1.5 transition-all hover-scale"
-              style={{
-                background: waterQualityChecklist.is_all_completed
-                  ? 'rgba(255, 255, 255, 0.18)'
-                  : 'linear-gradient(135deg, #FF7A00 0%, #EA580C 100%)',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
-                fontSize: '0.82rem',
-              }}
+              className="btn btn-sm btn-tri-orange px-3.5 py-2 shadow-xs"
+              style={{ fontSize: '0.82rem' }}
               onClick={() => {
                 const firstUnverified = waterQualityChecklist.checklist?.find((p) => !p.is_verified_today);
                 setOcrTargetPondId(
@@ -413,9 +694,9 @@ export default function CaretakerDashboard() {
           </div>
         </div>
 
-        {/* Assigned Ponds Checklist Strip */}
-        <div className="p-3.5 p-md-4 border-top" style={{ backgroundColor: '#F8FAFC' }}>
-          <div className="row g-3">
+        {/* Assigned Ponds Checklist Strip - Spacious & Polished */}
+        <div className="p-3.5 p-md-4 border-top" style={{ backgroundColor: '#F8FAFD' }}>
+          <div className="row g-3 g-xl-3.5">
             {assignedPonds.map((pond) => {
               const checkItem = waterQualityChecklist.checklist?.find((c) => c.pond_id === pond.id);
               const isVerified = Boolean(checkItem?.is_verified_today);
@@ -424,155 +705,183 @@ export default function CaretakerDashboard() {
               return (
                 <div key={pond.id} className="col-12 col-md-6 col-lg-4">
                   <div
-                    className="p-3 rounded-3 bg-white border d-flex flex-column justify-content-between h-100 transition-all hover-shadow"
+                    className="p-3.5 rounded-4 bg-white border d-flex flex-column justify-content-between h-100 transition-all hover-shadow"
                     style={{
-                      borderLeft: isVerified ? '4px solid #10B981' : '4px solid #F59E0B',
-                      boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
+                      borderLeft: isVerified ? '4px solid #0B2C5F' : '4px solid #EA580C',
+                      borderColor: 'rgba(11, 44, 95, 0.09)',
+                      boxShadow: '0 2px 12px rgba(11, 44, 95, 0.04)',
+                      minHeight: 215,
                     }}
                   >
-                    {/* Top Row: Pond Name + Proportionate Status Badge */}
-                    <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
-                      <div className="d-flex align-items-center gap-2">
-                        <div
-                          className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                          style={{
-                            width: 26,
-                            height: 26,
-                            backgroundColor: isVerified ? 'rgba(16, 185, 129, 0.12)' : 'rgba(245, 158, 11, 0.12)',
-                            color: isVerified ? '#059669' : '#D97706',
-                            fontSize: '0.72rem',
-                          }}
-                        >
-                          <FaWater />
+                    <div>
+                      {/* Tier 1: Pond Name & Status Badge */}
+                      <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
+                        <div className="d-flex align-items-center gap-2">
+                          <div
+                            className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                            style={{
+                              width: 32,
+                              height: 32,
+                              backgroundColor: isVerified ? 'rgba(11, 44, 95, 0.07)' : '#FFF7ED',
+                              color: isVerified ? '#0B2C5F' : '#EA580C',
+                              fontSize: '0.82rem',
+                            }}
+                          >
+                            <FaWater />
+                          </div>
+                          <div>
+                            <strong className="d-block" style={{ color: '#0B2C5F', fontSize: '0.95rem', lineHeight: 1.2 }}>
+                              {pond.pond_name}
+                            </strong>
+                            <span className="text-muted extra-small">Production Basin</span>
+                          </div>
                         </div>
-                        <strong className="text-dark" style={{ fontSize: '0.9rem' }}>
-                          {pond.pond_name}
-                        </strong>
-                        {pond.stocking_date && (() => {
-                          const doc = computeDoc(pond.stocking_date, selectedDate);
-                          if (!doc) return null;
-                          const isNursery = doc >= 1 && doc <= 19;
-                          return (
+
+                        {/* Status badge */}
+                        {isVerified ? (
+                          <span
+                            className="d-inline-flex align-items-center gap-1 px-2.5 py-1 rounded-pill"
+                            style={{
+                              backgroundColor: 'rgba(11, 44, 95, 0.07)',
+                              border: '1px solid rgba(11, 44, 95, 0.18)',
+                              color: '#0B2C5F',
+                              fontSize: '0.72rem',
+                              fontWeight: 600,
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            <FaCheckCircle size={9} style={{ color: '#0B2C5F' }} />
+                            <span>Verified</span>
+                          </span>
+                        ) : (
+                          <span
+                            className="d-inline-flex align-items-center gap-1.5 px-2.5 py-1 rounded-pill"
+                            style={{
+                              backgroundColor: '#FFF7ED',
+                              border: '1px solid rgba(234, 88, 12, 0.28)',
+                              color: '#EA580C',
+                              fontSize: '0.72rem',
+                              fontWeight: 600,
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
                             <span
-                              className="badge rounded-pill px-2 py-0.5 extra-small fw-bold"
+                              className="rounded-circle"
+                              style={{ width: 6, height: 6, backgroundColor: '#EA580C' }}
+                            />
+                            <span>Needs Test</span>
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Tier 2: Culture Stage / DOC Pill */}
+                      {pond.stocking_date && (() => {
+                        const doc = computeDoc(pond.stocking_date, selectedDate);
+                        if (!doc) return null;
+                        const isNursery = doc >= 1 && doc <= 19;
+                        return (
+                          <div className="mb-2.5">
+                            <span
+                              className="badge rounded-pill px-2.5 py-1 extra-small fw-bold"
                               style={{
-                                backgroundColor: isNursery ? '#ECFDF5' : '#EFF6FF',
-                                color: isNursery ? '#047857' : '#1D4ED8',
-                                border: `1px solid ${isNursery ? '#A7F3D0' : '#BFDBFE'}`,
-                                fontSize: '0.66rem',
+                                backgroundColor: isNursery ? 'rgba(11, 44, 95, 0.06)' : '#FFF7ED',
+                                color: isNursery ? '#0B2C5F' : '#EA580C',
+                                border: isNursery ? '1px solid rgba(11, 44, 95, 0.14)' : '1px solid rgba(234, 88, 12, 0.22)',
+                                fontSize: '0.7rem',
                               }}
                             >
                               {isNursery ? `Day ${doc} Nursery (DOC #${doc})` : `Day ${doc} Grow-out (DOC #${doc})`}
                             </span>
-                          );
-                        })()}
-                      </div>
+                          </div>
+                        );
+                      })()}
 
-                      {/* Proportionate, subtle status badge */}
-                      {isVerified ? (
-                        <span
-                          className="d-inline-flex align-items-center gap-1 px-2.5 py-0.5 rounded-pill"
-                          style={{
-                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                            border: '1px solid rgba(16, 185, 129, 0.25)',
-                            color: '#059669',
-                            fontSize: '0.68rem',
-                            fontWeight: 600,
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          <FaCheckCircle size={8} />
-                          <span>Verified</span>
-                        </span>
-                      ) : (
-                        <span
-                          className="d-inline-flex align-items-center gap-1.5 px-2.5 py-0.5 rounded-pill"
-                          style={{
-                            backgroundColor: '#FFFBEB',
-                            border: '1px solid #FDE68A',
-                            color: '#B45309',
-                            fontSize: '0.68rem',
-                            fontWeight: 600,
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          <span
-                            className="rounded-circle"
-                            style={{ width: 6, height: 6, backgroundColor: '#F59E0B' }}
-                          />
-                          <span>Needs Test</span>
-                        </span>
-                      )}
+                      {/* Tier 3: Telemetry Cluster Strip */}
+                      <div
+                        className="p-2.5 rounded-3 mb-3"
+                        style={{
+                          backgroundColor: isVerified ? '#F8FAFD' : '#FFFBF5',
+                          border: isVerified ? '1px solid rgba(11, 44, 95, 0.07)' : '1px dashed rgba(234, 88, 12, 0.28)',
+                        }}
+                      >
+                        {isVerified ? (
+                          <div className="d-flex align-items-center justify-content-around text-center">
+                            <div>
+                              <span className="text-muted extra-small d-block" style={{ fontSize: '0.68rem' }}>DO</span>
+                              <strong style={{ color: '#0B2C5F', fontSize: '0.86rem' }}>{readings?.dissolved_oxygen ?? '—'}</strong>
+                              <small className="text-muted" style={{ fontSize: '0.62rem' }}> mg/L</small>
+                            </div>
+                            <div style={{ width: 1, height: 22, backgroundColor: 'rgba(11, 44, 95, 0.1)' }} />
+                            <div>
+                              <span className="text-muted extra-small d-block" style={{ fontSize: '0.68rem' }}>Temp</span>
+                              <strong style={{ color: '#0B2C5F', fontSize: '0.86rem' }}>{readings?.temperature ?? '—'}</strong>
+                              <small className="text-muted" style={{ fontSize: '0.62rem' }}> °C</small>
+                            </div>
+                            <div style={{ width: 1, height: 22, backgroundColor: 'rgba(11, 44, 95, 0.1)' }} />
+                            <div>
+                              <span className="text-muted extra-small d-block" style={{ fontSize: '0.68rem' }}>pH</span>
+                              <strong style={{ color: '#0B2C5F', fontSize: '0.86rem' }}>{readings?.ph_level ?? '—'}</strong>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="d-flex align-items-center gap-2 extra-small py-0.5 px-1">
+                            <FaLock size={11} style={{ color: '#EA580C', flexShrink: 0 }} />
+                            <span style={{ color: '#EA580C', fontWeight: 500, fontSize: '0.74rem' }}>
+                              Pre-stocking OCR scan required before monitoring
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Bottom Row: Metrics or Lock Notice + Action Button */}
-                    <div className="d-flex align-items-center justify-content-between gap-2 pt-2 border-top border-light-subtle">
-                      <div className="extra-small text-truncate">
-                        {isVerified ? (
-                          <span className="text-secondary" style={{ fontSize: '0.74rem' }}>
-                            DO: <strong className="text-dark">{readings?.dissolved_oxygen ?? '—'}</strong> • Temp: <strong className="text-dark">{readings?.temperature ?? '—'}</strong>°C • pH: <strong className="text-dark">{readings?.ph_level ?? '—'}</strong>
-                          </span>
-                        ) : (
-                          <span className="text-danger fw-medium d-inline-flex align-items-center gap-1" style={{ fontSize: '0.74rem' }}>
-                            <FaLock size={9} className="text-danger opacity-75" />
-                            <span>Pre-Stocking Scan Required</span>
-                          </span>
-                        )}
-                      </div>
+                    {/* Tier 4: Action Buttons Footer */}
+                    <div className="d-flex align-items-center justify-content-between gap-2 pt-2.5 border-top" style={{ borderColor: 'rgba(11, 44, 95, 0.07)' }}>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-tri-outline px-3 py-1.5 extra-small shadow-xs"
+                        style={{ fontSize: '0.74rem' }}
+                        onClick={() => {
+                          setHistoryTargetPond(pond);
+                          setIsHistoryModalOpen(true);
+                        }}
+                        title="View Water Quality Log History and past date records"
+                      >
+                        <FaHistory size={10} style={{ color: '#0B2C5F' }} />
+                        <span>History</span>
+                      </button>
 
-                      <div className="flex-shrink-0 d-flex align-items-center gap-1.5">
+                      {!isVerified ? (
                         <button
                           type="button"
-                          className="btn btn-sm btn-outline-secondary bg-white rounded-pill px-2.5 py-1 extra-small fw-semibold d-inline-flex align-items-center gap-1 shadow-xs"
-                          style={{ fontSize: '0.7rem' }}
+                          className="btn btn-sm btn-tri-orange px-3.5 py-1.5 extra-small shadow-xs"
+                          style={{ fontSize: '0.75rem' }}
                           onClick={() => {
-                            setHistoryTargetPond(pond);
-                            setIsHistoryModalOpen(true);
+                            setEditingWqRecord(null);
+                            setOcrTargetPondId(String(pond.id));
+                            setOcrTargetDate(todayStr);
+                            setIsOcrModalOpen(true);
                           }}
-                          title="View Water Quality Log History and past date records"
                         >
-                          <FaHistory size={9} className="text-info" />
-                          <span>History</span>
+                          <FaCamera size={11} />
+                          <span>Scan Readings</span>
                         </button>
-
-                        {!isVerified ? (
-                          <button
-                            type="button"
-                            className="btn btn-sm rounded-pill px-3 py-1 fw-bold d-inline-flex align-items-center gap-1.5 shadow-xs transition-all hover-scale"
-                            style={{
-                              background: 'linear-gradient(135deg, #0B2C5F 0%, #1E3A8A 100%)',
-                              color: '#FFFFFF',
-                              fontSize: '0.72rem',
-                              border: 'none',
-                            }}
-                            onClick={() => {
-                              setEditingWqRecord(null);
-                              setOcrTargetPondId(String(pond.id));
-                              setOcrTargetDate(todayStr);
-                              setIsOcrModalOpen(true);
-                            }}
-                          >
-                            <FaCamera size={9} />
-                            <span>Scan</span>
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-light border rounded-pill px-2.5 py-1 text-secondary d-inline-flex align-items-center gap-1 extra-small transition-all"
-                            style={{ fontSize: '0.7rem' }}
-                            onClick={() => {
-                              setEditingWqRecord(checkItem?.today_record || null);
-                              setOcrTargetPondId(String(pond.id));
-                              setOcrTargetDate(todayStr);
-                              setIsOcrModalOpen(true);
-                            }}
-                            title="Re-scan / Update Today's Readings"
-                          >
-                            <FaSync size={8} />
-                            <span>Re-test</span>
-                          </button>
-                        )}
-                      </div>
+                      ) : (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-tri-navy px-3.5 py-1.5 extra-small shadow-xs"
+                          style={{ fontSize: '0.75rem' }}
+                          onClick={() => {
+                            setEditingWqRecord(checkItem?.today_record || null);
+                            setOcrTargetPondId(String(pond.id));
+                            setOcrTargetDate(todayStr);
+                            setIsOcrModalOpen(true);
+                          }}
+                          title="Re-scan / Update Today's Readings"
+                        >
+                          <FaSync size={10} />
+                          <span>Re-test (OCR)</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -583,23 +892,23 @@ export default function CaretakerDashboard() {
       </div>
 
       {/* 🌟 KEY PERFORMANCE INDICATORS (KPI) HEADER & 4 TELEMETRY CARDS */}
-      <div className="mb-4">
+      <div className="mb-4 mb-xl-5">
         <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
           <div className="d-flex align-items-center gap-2.5">
             <span
-              className="badge rounded-pill px-3 py-1.5 fw-extrabold text-white extra-small shadow-xs"
-              style={{ background: 'linear-gradient(135deg, #FF7A00 0%, #EA580C 100%)', letterSpacing: '0.06em' }}
+              className="badge rounded-pill px-3 py-1.5 fw-bold text-white extra-small shadow-xs"
+              style={{ background: '#0B2C5F', letterSpacing: '0.06em' }}
             >
               KPI
             </span>
             <div>
-              <h5 className="fw-extrabold mb-0 text-dark tracking-tight" style={{ fontSize: '1.1rem', letterSpacing: '-0.02em' }}>
+              <h5 className="fw-bold mb-0 tracking-tight" style={{ color: '#0B2C5F', fontSize: '1.15rem', letterSpacing: '-0.02em' }}>
                 Key Performance Indicators (KPI)
               </h5>
-              <span className="text-muted extra-small">Daily Field Operations, Feeding Adherence & Water Telemetry Benchmarks</span>
+              <span className="text-muted extra-small">Daily Field Operations, Feeding Adherence &amp; Water Telemetry Benchmarks</span>
             </div>
           </div>
-          <span className="badge bg-white text-secondary border extra-small px-3 py-1.5 rounded-pill shadow-xs">
+          <span className="badge bg-white rounded-pill px-3 py-1.5 extra-small shadow-xs" style={{ color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.15)' }}>
             ● Daily Field Benchmarks
           </span>
         </div>
@@ -607,38 +916,34 @@ export default function CaretakerDashboard() {
         <div className="row g-3 g-xl-4">
           {/* KPI 1: Assigned Ponds */}
           <div className="col-12 col-sm-6 col-xl-3">
-            <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
+            <div className="tri-kpi-card" style={{ minHeight: 185 }}>
               <div>
                 <div className="d-flex align-items-center justify-content-between mb-3">
                   <div className="d-flex align-items-center gap-2">
-                    <span className="badge rounded-pill extra-small fw-bold px-2 py-0.5" style={{ backgroundColor: 'rgba(2, 132, 199, 0.1)', color: '#0284C7' }}>
+                    <span className="badge rounded-pill extra-small fw-bold px-2 py-0.5" style={{ backgroundColor: 'rgba(11, 44, 95, 0.08)', color: '#0B2C5F' }}>
                       KPI 1
                     </span>
                     <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Assigned Ponds</span>
                   </div>
-                  <div
-                    className="feeding-kpi-icon-wrap"
-                    style={{ background: 'rgba(2, 132, 199, 0.12)', color: '#0284C7' }}
-                  >
-                    <FaWater size={18} />
+                  <div className="tri-kpi-icon tri-kpi-icon-blue">
+                    <FaWater size={17} />
                   </div>
                 </div>
-                <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+                <h2 className="fw-extrabold mb-1" style={{ color: '#0B2C5F', fontSize: '2.2rem', letterSpacing: '-0.03em' }}>
                   {assignedPonds.length}
                 </h2>
               </div>
               <div>
-                <div className="feeding-progress-track my-2.5">
-                  <div
-                    className="feeding-progress-bar"
-                    style={{ width: '100%', background: 'linear-gradient(90deg, #0284C7, #38BDF8)' }}
-                  />
+                <div className="tri-progress-track my-2.5">
+                  <div className="tri-progress-bar" style={{ width: '100%', background: '#0B2C5F' }} />
                 </div>
-                <div className="d-flex justify-content-between align-items-center">
+                <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
                   <span className="text-muted extra-small text-truncate" style={{ maxWidth: 130 }}>
                     {selectedPondFilter === 'all' ? 'All basins active' : `Focused: ${selectedPondObj?.pond_name || 'Active'}`}
                   </span>
-                  <span className="tag-cyan-active">Active</span>
+                  <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(11, 44, 95, 0.06)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.15)' }}>
+                    Active
+                  </span>
                 </div>
               </div>
             </div>
@@ -646,41 +951,40 @@ export default function CaretakerDashboard() {
 
           {/* KPI 2: Today's Feeding Logs */}
           <div className="col-12 col-sm-6 col-xl-3">
-            <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
+            <div className="tri-kpi-card" style={{ minHeight: 185 }}>
               <div>
                 <div className="d-flex align-items-center justify-content-between mb-3">
                   <div className="d-flex align-items-center gap-2">
-                    <span className="badge rounded-pill extra-small fw-bold px-2 py-0.5" style={{ backgroundColor: 'rgba(22, 163, 74, 0.1)', color: '#16A34A' }}>
+                    <span className="badge rounded-pill extra-small fw-bold px-2 py-0.5" style={{ backgroundColor: 'rgba(11, 44, 95, 0.08)', color: '#0B2C5F' }}>
                       KPI 2
                     </span>
                     <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Today's Logs</span>
                   </div>
-                  <div
-                    className="feeding-kpi-icon-wrap"
-                    style={{ background: 'rgba(22, 163, 74, 0.12)', color: '#16A34A' }}
-                  >
-                    <FaUtensils size={18} />
+                  <div className="tri-kpi-icon tri-kpi-icon-blue">
+                    <FaUtensils size={17} />
                   </div>
                 </div>
-                <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+                <h2 className="fw-extrabold mb-1" style={{ color: '#0B2C5F', fontSize: '2.2rem', letterSpacing: '-0.03em' }}>
                   {filteredTodayRecords.length}
                 </h2>
               </div>
               <div>
-                <div className="feeding-progress-track my-2.5">
+                <div className="tri-progress-track my-2.5">
                   <div
-                    className="feeding-progress-bar"
+                    className="tri-progress-bar"
                     style={{
                       width: `${Math.min(100, Math.max(10, (filteredTodayRecords.length / Math.max(1, assignedPonds.length * 4)) * 100))}%`,
-                      background: 'linear-gradient(90deg, #16A34A, #4ADE80)',
+                      background: 'linear-gradient(90deg, #0B2C5F 0%, #1E3A8A 100%)',
                     }}
                   />
                 </div>
-                <div className="d-flex justify-content-between align-items-center">
+                <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
                   <span className="text-muted extra-small text-truncate" style={{ maxWidth: 140 }}>
                     {currentScope}
                   </span>
-                  <span className="tag-green-safe">Logged</span>
+                  <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(11, 44, 95, 0.06)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.15)' }}>
+                    Logged
+                  </span>
                 </div>
               </div>
             </div>
@@ -688,44 +992,43 @@ export default function CaretakerDashboard() {
 
           {/* KPI 3: Total Feed */}
           <div className="col-12 col-sm-6 col-xl-3">
-            <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
+            <div className="tri-kpi-card" style={{ minHeight: 185, borderColor: 'rgba(234, 88, 12, 0.15)' }}>
               <div>
                 <div className="d-flex align-items-center justify-content-between mb-3">
                   <div className="d-flex align-items-center gap-2">
-                    <span className="badge rounded-pill extra-small fw-bold px-2 py-0.5" style={{ backgroundColor: 'rgba(255, 122, 0, 0.1)', color: '#FF7A00' }}>
+                    <span className="badge rounded-pill extra-small fw-bold px-2 py-0.5" style={{ backgroundColor: '#FFF7ED', color: '#EA580C' }}>
                       KPI 3
                     </span>
                     <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">
                       Total Feed ({selectedDate === todayStr ? 'Today' : selectedDate})
                     </span>
                   </div>
-                  <div
-                    className="feeding-kpi-icon-wrap"
-                    style={{ background: 'rgba(255, 122, 0, 0.12)', color: '#FF7A00' }}
-                  >
-                    <FaCheckCircle size={18} />
+                  <div className="tri-kpi-icon tri-kpi-icon-orange">
+                    <FaCheckCircle size={17} />
                   </div>
                 </div>
-                <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+                <h2 className="fw-extrabold mb-1" style={{ color: '#EA580C', fontSize: '2.2rem', letterSpacing: '-0.03em' }}>
                   {totalAmountToday.toFixed(2)} <small className="fs-6 text-muted fw-normal">kg</small>
                 </h2>
                 <div className="extra-small text-muted fw-semibold">
-                  Total grams: <strong className="text-dark font-mono">{Math.round(totalGramsToday).toLocaleString()} g</strong>
+                  Total grams: <strong className="font-mono" style={{ color: '#0B2C5F' }}>{Math.round(totalGramsToday).toLocaleString()} g</strong>
                 </div>
               </div>
               <div>
-                <div className="feeding-progress-track my-2.5">
+                <div className="tri-progress-track my-2.5" style={{ backgroundColor: 'rgba(234, 88, 12, 0.1)' }}>
                   <div
-                    className="feeding-progress-bar"
+                    className="tri-progress-bar"
                     style={{
                       width: `${Math.min(100, Math.max(12, (totalAmountToday / Math.max(1, assignedPonds.length * 35)) * 100))}%`,
-                      background: 'linear-gradient(90deg, #FF7A00, #FBBF24)',
+                      background: 'linear-gradient(90deg, #EA580C 0%, #F97316 100%)',
                     }}
                   />
                 </div>
-                <div className="d-flex justify-content-between align-items-center">
+                <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
                   <span className="text-muted extra-small">Distributed across 5 slots</span>
-                  <span className="tag-orange-maintenance">5 Feedings</span>
+                  <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: '#FFF7ED', color: '#EA580C', border: '1px solid rgba(234, 88, 12, 0.25)' }}>
+                    5 Feedings
+                  </span>
                 </div>
               </div>
             </div>
@@ -733,39 +1036,38 @@ export default function CaretakerDashboard() {
 
           {/* KPI 4: Feeding Schedule Progress */}
           <div className="col-12 col-sm-6 col-xl-3">
-            <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
+            <div className="tri-kpi-card" style={{ minHeight: 185 }}>
               <div>
                 <div className="d-flex align-items-center justify-content-between mb-3">
                   <div className="d-flex align-items-center gap-2">
-                    <span className="badge rounded-pill extra-small fw-bold px-2 py-0.5" style={{ backgroundColor: 'rgba(14, 165, 233, 0.1)', color: '#0EA5E9' }}>
+                    <span className="badge rounded-pill extra-small fw-bold px-2 py-0.5" style={{ backgroundColor: 'rgba(11, 44, 95, 0.08)', color: '#0B2C5F' }}>
                       KPI 4
                     </span>
                     <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Feeding Schedule</span>
                   </div>
-                  <div
-                    className="feeding-kpi-icon-wrap"
-                    style={{ background: 'rgba(14, 165, 233, 0.12)', color: '#0EA5E9' }}
-                  >
-                    <FaClock size={18} />
+                  <div className="tri-kpi-icon tri-kpi-icon-blue">
+                    <FaClock size={17} />
                   </div>
                 </div>
-                <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+                <h2 className="fw-extrabold mb-1" style={{ color: '#0B2C5F', fontSize: '2.2rem', letterSpacing: '-0.03em' }}>
                   {feedingCompletion}%
                 </h2>
               </div>
               <div>
-                <div className="feeding-progress-track my-2.5">
+                <div className="tri-progress-track my-2.5">
                   <div
-                    className="feeding-progress-bar"
+                    className="tri-progress-bar"
                     style={{
                       width: `${Math.max(5, feedingCompletion)}%`,
-                      background: 'linear-gradient(90deg, #0284C7, #38BDF8)',
+                      background: 'linear-gradient(90deg, #0B2C5F 0%, #EA580C 100%)',
                     }}
                   />
                 </div>
-                <div className="d-flex justify-content-between align-items-center">
+                <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
                   <span className="text-muted extra-small font-mono fw-semibold">{completedFeedingSlots}/5 Slots Logged</span>
-                  <span className="tag-cyan-active">{feedingCompletion === 100 ? 'Complete' : 'In Progress'}</span>
+                  <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(11, 44, 95, 0.06)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.15)' }}>
+                    {feedingCompletion === 100 ? 'Complete' : 'In Progress'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -774,18 +1076,20 @@ export default function CaretakerDashboard() {
       </div>
 
       {/* 🌟 ASSIGNED PONDS LIVE OVERVIEW & QUICK ACTION HUB */}
-      <div className="asymmetric-card p-4 mb-4">
-        <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+      <div className="tri-card p-4 p-md-4.5 mb-4 mb-xl-5">
+        <div className="d-flex align-items-center justify-content-between mb-3.5 flex-wrap gap-2">
           <div>
-            <h5 className="fw-extrabold text-dark mb-0 tracking-tight">Assigned Ponds Live Overview & Quick Actions</h5>
+            <h5 className="fw-bold mb-0 tracking-tight" style={{ color: '#0B2C5F', fontSize: '1.15rem' }}>
+              Assigned Ponds Live Overview &amp; Quick Actions
+            </h5>
             <small className="text-muted">Instant pond status monitoring and one-touch caretaker actions</small>
           </div>
-          <span className="badge rounded-pill extra-small px-3 py-1.5" style={{ backgroundColor: '#F0F9FF', color: '#0284C7', border: '1px solid #BAE6FD' }}>
+          <span className="badge rounded-pill extra-small px-3 py-1.5" style={{ backgroundColor: 'rgba(11, 44, 95, 0.06)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.15)' }}>
             {assignedPonds.length} Active Basins
           </span>
         </div>
 
-        <div className="row g-3">
+        <div className="row g-3 g-xl-3.5">
           {assignedPonds.map((pond) => {
             const pondLogs = todayRecords.filter((r) => String(r.pond_id) === String(pond.id));
             const pondSlots = new Set(pondLogs.map((r) => normalizeFeedingTime(r.feeding_time)).filter(Boolean));
@@ -795,24 +1099,30 @@ export default function CaretakerDashboard() {
             return (
               <div key={pond.id} className="col-12 col-md-6 col-xl-4">
                 <div
-                  className="card border border-light shadow-xs rounded-4 p-3.5 h-100 d-flex flex-column justify-content-between transition-all hover-shadow overflow-hidden bg-white"
-                  style={{ minHeight: 190 }}
+                  className="card shadow-xs rounded-4 p-3.5 p-md-4 h-100 d-flex flex-column justify-content-between transition-all hover-shadow overflow-hidden bg-white"
+                  style={{ border: '1px solid rgba(11, 44, 95, 0.08)' }}
                 >
                   <div>
                     <div className="d-flex align-items-center justify-content-between mb-3">
                       <div className="d-flex align-items-center gap-2.5">
                         <div
                           className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                          style={{ width: 38, height: 38, background: 'rgba(2, 132, 199, 0.08)', color: '#0284C7' }}
+                          style={{ width: 38, height: 38, background: 'rgba(11, 44, 95, 0.06)', color: '#0B2C5F' }}
                         >
                           <FaWater size={16} />
                         </div>
                         <div>
-                          <h6 className="fw-bold text-dark mb-0 fs-6">{pond.pond_name}</h6>
-                          <small className="text-muted extra-small">Production Basin</small>
+                          <h6 className="fw-bold mb-0 fs-6" style={{ color: '#0B2C5F' }}>{pond.pond_name}</h6>
+                          <div className="d-flex align-items-center gap-1.5 flex-wrap extra-small text-muted">
+                            <span>Production Basin</span>
+                            {pond.stocking_date && (() => {
+                              const doc = computeDoc(pond.stocking_date, selectedDate);
+                              return doc ? <span>• <strong style={{ color: '#EA580C' }}>DOC #{doc}</strong></span> : null;
+                            })()}
+                          </div>
                         </div>
                       </div>
-                      <span className="badge bg-success bg-opacity-10 text-success rounded-pill px-2.5 py-1 extra-small fw-bold">
+                      <span className="badge rounded-pill px-2.5 py-1 extra-small fw-bold" style={{ backgroundColor: 'rgba(11, 44, 95, 0.06)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.14)' }}>
                         ● Nominal
                       </span>
                     </div>
@@ -820,46 +1130,55 @@ export default function CaretakerDashboard() {
                     <div className="my-2 py-1">
                       <div className="d-flex align-items-center justify-content-between extra-small text-muted mb-1.5">
                         <span className="fw-semibold">Today's Feeding Progress</span>
-                        <span className="fw-bold text-dark font-mono">{pondCompletedCount}/5 ({pondPct}%)</span>
+                        <span className="fw-bold font-mono" style={{ color: '#0B2C5F' }}>{pondCompletedCount}/5 ({pondPct}%)</span>
                       </div>
-                      <div className="progress rounded-pill bg-light" style={{ height: 8 }}>
+                      <div className="progress rounded-pill" style={{ height: 7, backgroundColor: 'rgba(11, 44, 95, 0.06)' }}>
                         <div
                           className="progress-bar rounded-pill"
                           role="progressbar"
                           style={{
                             width: `${pondPct}%`,
-                            background: 'linear-gradient(90deg, #16A34A 0%, #22C55E 100%)'
+                            background: 'linear-gradient(90deg, #0B2C5F 0%, #EA580C 100%)',
                           }}
                         />
                       </div>
                     </div>
                   </div>
 
-                  <div className="d-flex align-items-center gap-1.5 mt-3 pt-3 border-top flex-wrap">
-                    <button
-                      type="button"
-                      className="btn btn-sm rounded-pill px-3 py-1.5 extra-small fw-bold flex-grow-1 d-inline-flex align-items-center justify-content-center gap-1 text-white shadow-xs"
-                      style={{ background: 'linear-gradient(135deg, #0B2C5F 0%, #0284C7 100%)', border: 'none' }}
-                      onClick={() => navigate('/caretaker/my-pond')}
-                    >
-                      <FaPlus size={10} /> Log Feed
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-light border rounded-pill px-2.5 py-1.5 extra-small fw-bold d-inline-flex align-items-center justify-content-center gap-1 text-dark"
-                      onClick={() => navigate('/caretaker/disease-scan')}
-                      title="AI Disease Scan"
-                    >
-                      <FaStethoscope size={11} style={{ color: '#0284C7' }} /> Scan
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-light border rounded-pill px-2.5 py-1.5 extra-small fw-bold d-inline-flex align-items-center justify-content-center gap-1 text-dark"
-                      onClick={() => navigate('/caretaker/reports')}
-                      title="Report Pond Concern"
-                    >
-                      <FaExclamationTriangle size={11} style={{ color: '#EA580C' }} /> Report
-                    </button>
+                  {/* Guaranteed 3-Column Single-Row Buttons (50% / 25% / 25%) */}
+                  <div className="row g-2 mt-3 pt-3 border-top" style={{ borderColor: 'rgba(11, 44, 95, 0.07)' }}>
+                    <div className="col-6">
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-tri-navy w-100 py-1.5 extra-small shadow-xs text-nowrap"
+                        style={{ fontSize: '0.74rem' }}
+                        onClick={() => navigate('/caretaker/my-pond')}
+                      >
+                        <FaPlus size={9} /> Log Feed
+                      </button>
+                    </div>
+                    <div className="col-3">
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-tri-outline w-100 py-1.5 extra-small shadow-xs text-nowrap"
+                        style={{ fontSize: '0.72rem' }}
+                        onClick={() => navigate('/caretaker/disease-scan')}
+                        title="AI Disease Scan"
+                      >
+                        <FaStethoscope size={10} style={{ color: '#0B2C5F' }} /> Scan
+                      </button>
+                    </div>
+                    <div className="col-3">
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-tri-outline-orange w-100 py-1.5 extra-small shadow-xs text-nowrap"
+                        style={{ fontSize: '0.72rem' }}
+                        onClick={() => navigate('/caretaker/reports')}
+                        title="Report Pond Concern"
+                      >
+                        <FaExclamationTriangle size={10} style={{ color: '#EA580C' }} /> Report
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -868,28 +1187,296 @@ export default function CaretakerDashboard() {
         </div>
       </div>
 
-      {/* 🌟 TODAY'S FEEDING RECORDS PANEL */}
-      <div className="asymmetric-card p-4 mb-4">
-        <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+      {/* 🌟 POND FEEDING CONSUMPTION ANALYTICS */}
+      <div className="tri-card p-4 p-md-4.5 mb-4 mb-xl-5">
+        <div className="d-flex align-items-center justify-content-between mb-3.5 flex-wrap gap-3">
           <div>
-            <h5 className="fw-extrabold text-dark mb-0 tracking-tight">Today's Feeding Records</h5>
+            <div className="d-flex align-items-center gap-2.5">
+              <div
+                className="rounded-3 d-flex align-items-center justify-content-center shadow-xs"
+                style={{ width: 36, height: 36, backgroundColor: '#0B2C5F', color: '#FFFFFF' }}
+              >
+                <FaChartLine size={16} />
+              </div>
+              <div>
+                <h5 className="fw-bold mb-0 tracking-tight" style={{ color: '#0B2C5F', fontSize: '1.15rem' }}>
+                  Pond Feeding Consumption Analytics
+                </h5>
+                <small className="text-muted">
+                  Feed intake distribution for assigned ponds • Real-time telemetry
+                </small>
+              </div>
+            </div>
+          </div>
+
+          {/* Controls: Pond Select, Range Toggles, Line/Bar Toggle */}
+          <div className="d-flex align-items-center gap-2 flex-wrap">
+            {/* Pond Selector */}
+            {assignedPonds.length > 1 && (
+              <div
+                className="d-flex align-items-center px-2.5 py-1 rounded-pill bg-white shadow-xs"
+                style={{ border: '1px solid rgba(11, 44, 95, 0.15)', height: 34 }}
+              >
+                <select
+                  className="form-select form-select-sm border-0 bg-transparent fw-semibold p-0 ps-1 cursor-pointer"
+                  style={{ width: 'auto', minWidth: 120, fontSize: '0.78rem', outline: 'none', color: '#0B2C5F' }}
+                  value={chartPondFilter}
+                  onChange={(e) => setChartPondFilter(e.target.value)}
+                >
+                  <option value="all">All Assigned Ponds</option>
+                  {assignedPonds.map((p) => (
+                    <option key={p.id} value={p.id}>{p.pond_name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Range Toggle Pills */}
+            <div
+              className="d-inline-flex p-1 rounded-pill bg-white shadow-xs"
+              style={{ border: '1px solid rgba(11, 44, 95, 0.15)', height: 34 }}
+            >
+              <button
+                type="button"
+                className="btn btn-sm py-0 px-2.5 rounded-pill border-0 extra-small fw-semibold transition-all"
+                style={{
+                  backgroundColor: chartRange === 'todaySlots' ? '#0B2C5F' : 'transparent',
+                  color: chartRange === 'todaySlots' ? '#FFFFFF' : '#64748B',
+                  fontSize: '0.74rem',
+                  lineHeight: '24px',
+                }}
+                onClick={() => setChartRange('todaySlots')}
+              >
+                Hourly Slots
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm py-0 px-2.5 rounded-pill border-0 extra-small fw-semibold transition-all"
+                style={{
+                  backgroundColor: chartRange === '7days' ? '#0B2C5F' : 'transparent',
+                  color: chartRange === '7days' ? '#FFFFFF' : '#64748B',
+                  fontSize: '0.74rem',
+                  lineHeight: '24px',
+                }}
+                onClick={() => setChartRange('7days')}
+              >
+                Past 7 Days
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm py-0 px-2.5 rounded-pill border-0 extra-small fw-semibold transition-all"
+                style={{
+                  backgroundColor: chartRange === '14days' ? '#0B2C5F' : 'transparent',
+                  color: chartRange === '14days' ? '#FFFFFF' : '#64748B',
+                  fontSize: '0.74rem',
+                  lineHeight: '24px',
+                }}
+                onClick={() => setChartRange('14days')}
+              >
+                Past 14 Days
+              </button>
+            </div>
+
+            {/* Unit Toggle (Auto / kg / g) */}
+            <div
+              className="d-inline-flex p-1 rounded-pill bg-white shadow-xs"
+              style={{ border: '1px solid rgba(11, 44, 95, 0.15)', height: 34 }}
+            >
+              <button
+                type="button"
+                className="btn btn-sm py-0 px-2 rounded-pill border-0 extra-small fw-semibold transition-all"
+                style={{
+                  backgroundColor: chartUnit === 'auto' ? '#0B2C5F' : 'transparent',
+                  color: chartUnit === 'auto' ? '#FFFFFF' : '#64748B',
+                  fontSize: '0.72rem',
+                  lineHeight: '24px',
+                }}
+                onClick={() => setChartUnit('auto')}
+                title="Automatic unit based on intake scale"
+              >
+                Auto ({chartData.unit})
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm py-0 px-2 rounded-pill border-0 extra-small fw-semibold transition-all"
+                style={{
+                  backgroundColor: chartUnit === 'g' ? '#0B2C5F' : 'transparent',
+                  color: chartUnit === 'g' ? '#FFFFFF' : '#64748B',
+                  fontSize: '0.72rem',
+                  lineHeight: '24px',
+                }}
+                onClick={() => setChartUnit('g')}
+                title="Display in grams (g)"
+              >
+                g
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm py-0 px-2 rounded-pill border-0 extra-small fw-semibold transition-all"
+                style={{
+                  backgroundColor: chartUnit === 'kg' ? '#0B2C5F' : 'transparent',
+                  color: chartUnit === 'kg' ? '#FFFFFF' : '#64748B',
+                  fontSize: '0.72rem',
+                  lineHeight: '24px',
+                }}
+                onClick={() => setChartUnit('kg')}
+                title="Display in kilograms (kg)"
+              >
+                kg
+              </button>
+            </div>
+
+            {/* Chart Type Toggle (Line / Bar) */}
+            <div
+              className="d-inline-flex p-1 rounded-pill bg-white shadow-xs"
+              style={{ border: '1px solid rgba(11, 44, 95, 0.15)', height: 34 }}
+            >
+              <button
+                type="button"
+                className="btn btn-sm py-0 px-2 rounded-pill border-0 transition-all"
+                style={{
+                  backgroundColor: chartType === 'line' ? '#EA580C' : 'transparent',
+                  color: chartType === 'line' ? '#FFFFFF' : '#64748B',
+                  lineHeight: '24px',
+                }}
+                onClick={() => setChartType('line')}
+                title="Line Trend"
+              >
+                <FaChartLine size={13} />
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm py-0 px-2 rounded-pill border-0 transition-all"
+                style={{
+                  backgroundColor: chartType === 'bar' ? '#EA580C' : 'transparent',
+                  color: chartType === 'bar' ? '#FFFFFF' : '#64748B',
+                  lineHeight: '24px',
+                }}
+                onClick={() => setChartType('bar')}
+                title="Bar Chart"
+              >
+                <FaChartBar size={13} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* 4 Summary Badges Row */}
+        <div className="row g-2.5 mb-3.5">
+          <div className="col-6 col-md-3">
+            <div className="p-2.5 rounded-3 bg-white" style={{ border: '1px solid rgba(11, 44, 95, 0.08)' }}>
+              <div className="text-muted extra-small fw-medium">Total Consumption</div>
+              <div className="d-flex align-items-baseline gap-1 mt-0.5">
+                <span className="fw-bold" style={{ color: '#0B2C5F', fontSize: '1.15rem' }}>
+                  {chartData.totalKg < 1 && chartData.totalGrams > 0
+                    ? `${Math.round(chartData.totalGrams).toLocaleString()} g`
+                    : `${chartData.totalKg.toFixed(2)} kg`}
+                </span>
+                <span className="extra-small ms-auto fw-semibold" style={{ color: '#EA580C' }}>
+                  {chartData.totalKg < 1 && chartData.totalGrams > 0
+                    ? `(${chartData.totalKg.toFixed(3)} kg)`
+                    : `(${Math.round(chartData.totalGrams).toLocaleString()} g)`}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="col-6 col-md-3">
+            <div className="p-2.5 rounded-3 bg-white" style={{ border: '1px solid rgba(11, 44, 95, 0.08)' }}>
+              <div className="text-muted extra-small fw-medium">
+                {chartRange === 'todaySlots' ? 'Day Total' : 'Daily Average'}
+              </div>
+              <div className="d-flex align-items-baseline gap-1 mt-0.5">
+                <span className="fw-bold" style={{ color: '#0B2C5F', fontSize: '1.15rem' }}>
+                  {chartData.avgDailyKg < 1 && chartData.avgDailyGrams > 0
+                    ? `${Math.round(chartData.avgDailyGrams).toLocaleString()} g/day`
+                    : `${chartData.avgDailyKg.toFixed(2)} kg/day`}
+                </span>
+                <span className="extra-small text-muted ms-auto">
+                  {chartData.avgDailyKg < 1 && chartData.avgDailyGrams > 0
+                    ? `(${chartData.avgDailyKg.toFixed(3)} kg)`
+                    : ''}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="col-6 col-md-3">
+            <div className="p-2.5 rounded-3 bg-white" style={{ border: '1px solid rgba(11, 44, 95, 0.08)' }}>
+              <div className="text-muted extra-small fw-medium">Peak Intake</div>
+              <div className="d-flex align-items-baseline gap-1 mt-0.5">
+                <span className="fw-bold" style={{ color: '#EA580C', fontSize: '1.15rem' }}>
+                  {chartData.peakKg < 1 && chartData.peakGrams > 0
+                    ? `${Math.round(chartData.peakGrams)} g`
+                    : `${chartData.peakKg.toFixed(2)} kg`}
+                </span>
+                <span className="extra-small text-muted ms-auto text-truncate" style={{ maxWidth: 85 }} title={chartData.peakLabel}>
+                  {chartData.peakLabel}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="col-6 col-md-3">
+            <div className="p-2.5 rounded-3 bg-white" style={{ border: '1px solid rgba(11, 44, 95, 0.08)' }}>
+              <div className="text-muted extra-small fw-medium">Active Basins Filter</div>
+              <div className="d-flex align-items-baseline gap-1 mt-0.5">
+                <span className="fw-bold text-truncate" style={{ color: '#0B2C5F', fontSize: '0.95rem' }}>
+                  {chartPondFilter === 'all'
+                    ? `${assignedPonds.length} Basins`
+                    : (assignedPonds.find((p) => String(p.id) === String(chartPondFilter))?.pond_name || 'Selected')}
+                </span>
+                <span className="badge rounded-pill bg-light text-muted ms-auto extra-small border">
+                  {chartRange === 'todaySlots' ? selectedDate : chartRange} • {chartData.unit}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Chart View Container */}
+        <div
+          className="p-3 rounded-3"
+          style={{
+            background: 'linear-gradient(180deg, #F8FAFD 0%, #FFFFFF 100%)',
+            border: '1px solid rgba(11, 44, 95, 0.06)',
+            position: 'relative',
+            height: 290,
+          }}
+        >
+          {chartType === 'line' ? (
+            <Line data={chartData} options={chartOptions} />
+          ) : (
+            <Bar data={chartData} options={chartOptions} />
+          )}
+        </div>
+      </div>
+
+      {/* 🌟 FEEDING RECORDS PANEL */}
+      <div className="tri-card p-4 p-md-4.5 mb-4 mb-xl-5">
+        <div className="d-flex align-items-center justify-content-between mb-3.5 flex-wrap gap-2">
+          <div>
+            <h5 className="fw-bold mb-0 tracking-tight" style={{ color: '#0B2C5F', fontSize: '1.15rem' }}>
+              {selectedDate === todayStr ? "Today's Feeding Records" : `Feeding Records (${selectedDate})`}
+            </h5>
             <small className="text-muted">
               {selectedPondFilter === 'all'
-                ? `Showing all assigned basins for ${todayStr}`
-                : `Filtered by ${selectedPondObj?.pond_name || 'Selected Basin'} (${todayStr})`}
+                ? `Showing all assigned basins for ${selectedDate === todayStr ? `Today (${todayStr})` : selectedDate}`
+                : `Filtered by ${selectedPondObj?.pond_name || 'Selected Basin'} (${selectedDate})`}
             </small>
           </div>
 
           <div className="d-flex align-items-center gap-2 flex-wrap">
             {/* Search Input Pill */}
             <div
-              className="d-flex align-items-center px-3 py-1 rounded-pill bg-white border shadow-xs"
-              style={{ height: 36, width: 220 }}
+              className="d-flex align-items-center px-3 py-1 rounded-pill bg-white shadow-xs"
+              style={{ height: 38, width: 220, border: '1px solid rgba(11, 44, 95, 0.15)' }}
             >
-              <FaSearch className="text-muted extra-small me-2" />
+              <FaSearch style={{ color: '#0B2C5F', fontSize: '0.8rem' }} className="me-2" />
               <input
                 type="text"
-                className="form-control form-control-sm border-0 bg-transparent p-0 extra-small fw-medium text-dark"
+                className="form-control form-control-sm border-0 bg-transparent p-0 extra-small fw-medium"
+                style={{ color: '#0B2C5F', outline: 'none' }}
                 placeholder="Search logs, vitamins..."
                 value={searchFilter}
                 onChange={(e) => setSearchFilter(e.target.value)}
@@ -897,10 +1484,13 @@ export default function CaretakerDashboard() {
             </div>
 
             {/* Sort Pill */}
-            <div className="d-flex align-items-center px-3 py-1.5 rounded-pill bg-white border shadow-xs" style={{ height: 36 }}>
+            <div
+              className="d-flex align-items-center px-3 py-1.5 rounded-pill bg-white shadow-xs"
+              style={{ height: 38, border: '1px solid rgba(11, 44, 95, 0.15)' }}
+            >
               <select
-                className="form-select form-select-sm border-0 bg-transparent fw-semibold text-dark p-0 cursor-pointer"
-                style={{ width: 'auto', minWidth: 140, fontSize: '0.82rem', outline: 'none' }}
+                className="form-select form-select-sm border-0 bg-transparent fw-semibold p-0 cursor-pointer"
+                style={{ width: 'auto', minWidth: 140, fontSize: '0.82rem', outline: 'none', color: '#0B2C5F' }}
                 value={sortOption}
                 onChange={(e) => setSortOption(e.target.value)}
               >
@@ -916,39 +1506,39 @@ export default function CaretakerDashboard() {
 
         {loading ? (
           <div className="text-center py-5 text-muted small">
-            <FaSync className="fa-spin mb-2" size={20} style={{ color: '#0284C7' }} />
+            <FaSync className="fa-spin mb-2" size={20} style={{ color: '#0B2C5F' }} />
             <p className="mb-0">Loading today's feeding logs...</p>
           </div>
         ) : sortedSearchedTodayRecords.length > 0 ? (
           <div
             className="table-responsive rounded-3 border"
-            style={{ maxHeight: '460px', overflowY: 'auto' }}
+            style={{ maxHeight: '460px', overflowY: 'auto', borderColor: 'rgba(11, 44, 95, 0.1)' }}
           >
-            <table className="table align-middle mb-0" style={{ fontSize: '0.86rem' }}>
+            <table className="table tri-table align-middle mb-0" style={{ fontSize: '0.86rem', minWidth: 880 }}>
               <thead
-                className="table-light sticky-top shadow-xs"
-                style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: '#F8FAFC' }}
+                className="sticky-top shadow-xs"
+                style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: '#F8FAFD' }}
               >
                 <tr>
-                  <th className="ps-3 py-3 text-secondary text-uppercase extra-small fw-bold">Time Slot</th>
-                  <th className="py-3 text-secondary text-uppercase extra-small fw-bold">Basin</th>
-                  <th className="py-3 text-secondary text-uppercase extra-small fw-bold">DOC / Stage</th>
-                  <th className="py-3 text-secondary text-uppercase extra-small fw-bold">Product / Feed Type</th>
-                  <th className="py-3 text-secondary text-uppercase extra-small fw-bold">Amount (Grams / Kg)</th>
-                  <th className="py-3 text-secondary text-uppercase extra-small fw-bold">Vitamin / Additive</th>
-                  <th className="py-3 text-secondary text-uppercase extra-small fw-bold">Logged At</th>
+                  <th className="ps-3 py-3 text-uppercase extra-small fw-bold" style={{ color: '#0B2C5F' }}>Time Slot</th>
+                  <th className="py-3 text-uppercase extra-small fw-bold" style={{ color: '#0B2C5F' }}>Basin</th>
+                  <th className="py-3 text-uppercase extra-small fw-bold" style={{ color: '#0B2C5F' }}>DOC / Stage</th>
+                  <th className="py-3 text-uppercase extra-small fw-bold" style={{ color: '#0B2C5F' }}>Product / Feed Type</th>
+                  <th className="py-3 text-uppercase extra-small fw-bold" style={{ color: '#0B2C5F' }}>Amount (Grams / Kg)</th>
+                  <th className="py-3 text-uppercase extra-small fw-bold" style={{ color: '#0B2C5F' }}>Vitamin / Additive</th>
+                  <th className="py-3 text-uppercase extra-small fw-bold" style={{ color: '#0B2C5F' }}>Logged At</th>
                 </tr>
               </thead>
               <tbody>
                 {sortedSearchedTodayRecords.map((r) => (
-                  <tr key={r.id} className="hover-bg-light transition-all">
+                  <tr key={r.id} className="transition-all">
                     <td className="ps-3">
-                      <span className="badge bg-light border text-dark fw-bold rounded-pill px-2.5 py-1 extra-small">
+                      <span className="badge rounded-pill px-2.5 py-1 extra-small fw-bold" style={{ backgroundColor: '#FFFFFF', border: '1px solid rgba(11, 44, 95, 0.15)', color: '#0B2C5F' }}>
                         {r.feeding_time || '-'}
                       </span>
                     </td>
                     <td>
-                      <strong className="text-dark">{r.pond_name || `Pond ${r.pond_id}`}</strong>
+                      <strong style={{ color: '#0B2C5F' }}>{r.pond_name || `Pond ${r.pond_id}`}</strong>
                     </td>
                     <td>
                       {(() => {
@@ -959,11 +1549,12 @@ export default function CaretakerDashboard() {
                         const isNur = d >= 1 && d <= 19;
                         return (
                           <span
-                            className={`badge rounded-pill extra-small fw-bold ${
-                              isNur
-                                ? 'bg-success bg-opacity-10 text-success border border-success border-opacity-25'
-                                : 'bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25'
-                            }`}
+                            className="badge rounded-pill extra-small fw-bold"
+                            style={{
+                              backgroundColor: 'rgba(11, 44, 95, 0.06)',
+                              color: '#0B2C5F',
+                              border: '1px solid rgba(11, 44, 95, 0.14)',
+                            }}
                           >
                             {isNur ? `Day ${d} Nursery (DOC #${d})` : `Day ${d} Grow-out (DOC #${d})`}
                           </span>
@@ -971,7 +1562,14 @@ export default function CaretakerDashboard() {
                       })()}
                     </td>
                     <td>
-                      <span className="badge bg-primary bg-opacity-10 text-primary rounded-pill px-2.5 py-1 extra-small fw-semibold">
+                      <span
+                        className="badge rounded-pill px-2.5 py-1 extra-small fw-semibold"
+                        style={{
+                          backgroundColor: '#FFF7ED',
+                          color: '#EA580C',
+                          border: '1px solid rgba(234, 88, 12, 0.2)',
+                        }}
+                      >
                         {r.feed_type || r.product_code || 'Tateh'}
                       </span>
                     </td>
@@ -980,10 +1578,10 @@ export default function CaretakerDashboard() {
                         <span className="badge bg-light text-muted border">0 g (No feed logged)</span>
                       ) : (
                         <div>
-                          <strong className="text-dark d-block">
+                          <strong className="d-block" style={{ color: '#0B2C5F' }}>
                             {r.amount_grams ?? Math.round(parseFloat(r.amount_kg) * 1000)} g
                           </strong>
-                          <span className="extra-small text-primary font-mono fw-semibold">
+                          <span className="extra-small font-mono fw-semibold" style={{ color: '#627591' }}>
                             ({parseFloat(r.amount_kg).toFixed(2)} kg)
                           </span>
                         </div>
@@ -991,7 +1589,7 @@ export default function CaretakerDashboard() {
                     </td>
                     <td>
                       {r.vitamin_name && r.vitamin_name !== 'None' ? (
-                        <span className="badge bg-info bg-opacity-15 text-dark fw-semibold rounded-pill px-2.5 py-1 extra-small">
+                        <span className="badge rounded-pill px-2.5 py-1 extra-small fw-semibold" style={{ backgroundColor: 'rgba(11, 44, 95, 0.06)', color: '#0B2C5F' }}>
                           {r.vitamin_name}
                         </span>
                       ) : (
@@ -1009,7 +1607,7 @@ export default function CaretakerDashboard() {
             </table>
           </div>
         ) : (
-          <div className="p-5 text-center bg-light rounded-4 border">
+          <div className="p-5 text-center bg-white rounded-4 border" style={{ borderColor: 'rgba(11, 44, 95, 0.08)' }}>
             <p className="text-muted mb-3 small">
               {searchFilter
                 ? `No matching feeding logs found for "${searchFilter}".`
@@ -1019,8 +1617,7 @@ export default function CaretakerDashboard() {
             </p>
             <button
               type="button"
-              className="btn btn-sm rounded-pill px-4 py-2 fw-bold text-white shadow-xs"
-              style={{ background: 'linear-gradient(135deg, #0B2C5F 0%, #0284C7 100%)', border: 'none' }}
+              className="btn btn-sm btn-tri-navy px-4 py-2 shadow-xs"
               onClick={() => navigate('/caretaker/my-pond')}
             >
               Log Today's First Feeding
@@ -1030,26 +1627,26 @@ export default function CaretakerDashboard() {
       </div>
 
       {/* 🌟 SIDE-BY-SIDE DISEASE SCAN & SYSTEM ALERTS */}
-      <div className="row g-3">
+      <div className="row g-3 g-md-4">
         {/* Left Card: Disease Scan */}
         <div className="col-md-6">
-          <div className="asymmetric-card p-4 h-100 d-flex flex-column justify-content-between">
+          <div className="tri-card p-4 p-md-4.5 h-100 d-flex flex-column justify-content-between" style={{ minHeight: 280 }}>
             <div>
-              <div className="d-flex align-items-center justify-content-between mb-3 gap-2 flex-wrap">
+              <div className="d-flex align-items-center justify-content-between mb-3.5 gap-2 flex-wrap">
                 <div className="d-flex align-items-center gap-2">
                   <div
                     className="rounded-circle d-flex align-items-center justify-content-center"
-                    style={{ width: 32, height: 32, background: 'rgba(2, 132, 199, 0.1)', color: '#0284C7' }}
+                    style={{ width: 34, height: 34, background: 'rgba(11, 44, 95, 0.07)', color: '#0B2C5F' }}
                   >
-                    <FaStethoscope size={13} />
+                    <FaStethoscope size={14} />
                   </div>
-                  <h5 className="fw-extrabold text-dark mb-0 tracking-tight">Disease Scan Telemetry</h5>
+                  <h5 className="fw-bold mb-0 tracking-tight" style={{ color: '#0B2C5F', fontSize: '1.15rem' }}>Disease Scan Telemetry</h5>
                 </div>
 
                 <div className="d-flex align-items-center gap-2 ms-auto">
                   <select
-                    className="form-select form-select-sm rounded-pill border bg-white text-dark px-3 py-1 shadow-xs cursor-pointer extra-small fw-semibold"
-                    style={{ width: 'auto', minWidth: 140, height: 34 }}
+                    className="form-select form-select-sm rounded-pill bg-white px-3 py-1 shadow-xs cursor-pointer extra-small fw-semibold"
+                    style={{ width: 'auto', minWidth: 140, height: 36, border: '1px solid rgba(11, 44, 95, 0.15)', color: '#0B2C5F' }}
                     value={selectedDiseasePondFilter}
                     onChange={(event) => setSelectedDiseasePondFilter(event.target.value)}
                   >
@@ -1060,14 +1657,14 @@ export default function CaretakerDashboard() {
                       </option>
                     ))}
                   </select>
-                  <span className="badge rounded-pill extra-small px-2.5 py-1.5" style={{ backgroundColor: '#F0F9FF', color: '#0284C7', border: '1px solid #BAE6FD' }}>
+                  <span className="badge rounded-pill extra-small px-2.5 py-1.5" style={{ backgroundColor: 'rgba(11, 44, 95, 0.06)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.15)' }}>
                     {filteredDiseaseScans.length} Scans
                   </span>
                 </div>
               </div>
 
               {latestDisease ? (
-                <div className="d-flex align-items-center p-3 rounded-4 bg-light border" style={{ minHeight: 110 }}>
+                <div className="d-flex align-items-center p-3 rounded-4 bg-white border" style={{ minHeight: 110, borderColor: 'rgba(11, 44, 95, 0.1)' }}>
                   {latestDisease.image_path && (
                     <img
                       src={resolveImageUrl(latestDisease.image_path)}
@@ -1077,21 +1674,21 @@ export default function CaretakerDashboard() {
                     />
                   )}
                   <div>
-                    <div className="fw-bold text-dark mb-1 fs-6">{latestDisease.disease_name}</div>
+                    <div className="fw-bold mb-1 fs-6" style={{ color: '#0B2C5F' }}>{latestDisease.disease_name}</div>
                     <div className="d-flex align-items-center gap-2 flex-wrap extra-small text-muted">
                       <span>Risk:</span>
-                      <span className={`badge rounded-pill ${latestDisease.risk_level === 'High' ? 'bg-danger text-white' : 'bg-success text-white'}`}>
+                      <span className="badge rounded-pill" style={{ backgroundColor: latestDisease.risk_level === 'High' ? '#EA580C' : '#0B2C5F', color: '#FFFFFF' }}>
                         {latestDisease.risk_level || 'Safe'}
                       </span>
                       <span>•</span>
-                      <span>Confidence: <strong>{latestDisease.confidence_score}%</strong></span>
+                      <span>Confidence: <strong style={{ color: '#0B2C5F' }}>{latestDisease.confidence_score}%</strong></span>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-4 rounded-4 bg-light border text-muted small">
-                  <FaStethoscope size={22} className="mb-2 opacity-30 text-info" />
-                  <p className="mb-0 fw-semibold">No disease scans recorded yet</p>
+                <div className="text-center py-4 rounded-4 bg-white border text-muted small" style={{ borderColor: 'rgba(11, 44, 95, 0.08)' }}>
+                  <FaStethoscope size={22} className="mb-2 opacity-40" style={{ color: '#0B2C5F' }} />
+                  <p className="mb-0 fw-semibold" style={{ color: '#0B2C5F' }}>No disease scans recorded yet</p>
                   <small className="extra-small text-muted">AI image inference is nominal.</small>
                 </div>
               )}
@@ -1100,7 +1697,7 @@ export default function CaretakerDashboard() {
             <div className="pt-3 mt-3 border-top d-flex justify-content-end">
               <button
                 type="button"
-                className="btn btn-sm btn-light border rounded-pill px-3 py-1.5 extra-small fw-bold d-inline-flex align-items-center gap-1"
+                className="btn btn-sm btn-tri-outline px-3.5 py-1.5 extra-small shadow-xs"
                 onClick={() => navigate('/caretaker/disease-scan')}
               >
                 Scan Shrimp Health <FaChevronRight size={10} />
@@ -1111,34 +1708,34 @@ export default function CaretakerDashboard() {
 
         {/* Right Card: System Alerts */}
         <div className="col-md-6">
-          <div className="asymmetric-card p-4 h-100 d-flex flex-column justify-content-between">
+          <div className="tri-card p-4 p-md-4.5 h-100 d-flex flex-column justify-content-between" style={{ minHeight: 280 }}>
             <div>
-              <div className="d-flex align-items-center justify-content-between mb-3 gap-2">
+              <div className="d-flex align-items-center justify-content-between mb-3.5 gap-2">
                 <div className="d-flex align-items-center gap-2">
                   <div
                     className="rounded-circle d-flex align-items-center justify-content-center"
-                    style={{ width: 32, height: 32, background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444' }}
+                    style={{ width: 34, height: 34, background: '#FFF7ED', color: '#EA580C' }}
                   >
-                    <FaExclamationTriangle size={13} />
+                    <FaExclamationTriangle size={14} />
                   </div>
-                  <h5 className="fw-extrabold text-dark mb-0 tracking-tight">System Incident Alerts</h5>
+                  <h5 className="fw-bold mb-0 tracking-tight" style={{ color: '#0B2C5F', fontSize: '1.15rem' }}>System Incident Alerts</h5>
                 </div>
-                <span className="badge rounded-pill extra-small px-2.5 py-1.5" style={{ backgroundColor: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>
+                <span className="badge rounded-pill extra-small px-2.5 py-1.5" style={{ backgroundColor: '#FFF7ED', color: '#EA580C', border: '1px solid rgba(234, 88, 12, 0.25)' }}>
                   {alerts.length} Active
                 </span>
               </div>
 
               {latestAlert ? (
-                <div className="d-flex flex-column justify-content-center p-3 rounded-4 bg-danger bg-opacity-10 border border-danger border-opacity-25" style={{ minHeight: 110 }}>
-                  <div className="fw-bold d-flex align-items-center gap-2 text-danger mb-1 fs-6">
+                <div className="d-flex flex-column justify-content-center p-3 rounded-4" style={{ minHeight: 110, backgroundColor: '#FFF7ED', border: '1px solid rgba(234, 88, 12, 0.25)' }}>
+                  <div className="fw-bold d-flex align-items-center gap-2 mb-1 fs-6" style={{ color: '#EA580C' }}>
                     <FaExclamationTriangle size={13} /> {latestAlert.title}
                   </div>
                   <small className="text-muted" style={{ lineHeight: 1.45 }}>{latestAlert.message}</small>
                 </div>
               ) : (
-                <div className="text-center py-4 rounded-4 bg-light border text-muted small">
-                  <FaShieldAlt size={22} className="mb-2 opacity-30 text-success" />
-                  <p className="mb-0 fw-semibold">No active alerts for your ponds</p>
+                <div className="text-center py-4 rounded-4 bg-white border text-muted small" style={{ borderColor: 'rgba(11, 44, 95, 0.08)' }}>
+                  <FaShieldAlt size={22} className="mb-2 opacity-40" style={{ color: '#0B2C5F' }} />
+                  <p className="mb-0 fw-semibold" style={{ color: '#0B2C5F' }}>No active alerts for your ponds</p>
                   <small className="extra-small text-muted">All ponds and telemetry parameters are stable.</small>
                 </div>
               )}
@@ -1147,7 +1744,7 @@ export default function CaretakerDashboard() {
             <div className="pt-3 mt-3 border-top d-flex justify-content-end">
               <button
                 type="button"
-                className="btn btn-sm btn-light border rounded-pill px-3 py-1.5 extra-small fw-bold d-inline-flex align-items-center gap-1"
+                className="btn btn-sm btn-tri-outline-orange px-3.5 py-1.5 extra-small shadow-xs"
                 onClick={() => navigate('/caretaker/reports')}
               >
                 Submit Incident Report <FaChevronRight size={10} />

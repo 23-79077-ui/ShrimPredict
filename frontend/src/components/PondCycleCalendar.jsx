@@ -384,7 +384,7 @@ export default function PondCycleCalendar({
                 <strong>
                   {stockingParsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                 </strong>{' '}
-                • Days 1–19 Nursery (Starter) ➔ Day 20 Transfer ➔ Days 21–{maxRecordedDoc} Active Grow-out (Grower)
+                • Days 1–19 Nursery ➔ Day 20 Transfer ➔ Days 21–{maxRecordedDoc} Active Grow-out
               </>
             ) : (
               'No stocking date configured for this pond. Using estimated timeline.'
@@ -409,7 +409,7 @@ export default function PondCycleCalendar({
         <span className="fw-bold text-muted extra-small text-uppercase">Cycle Legend:</span>
         <span className="badge px-2 py-1.5 fw-semibold d-inline-flex align-items-center gap-1" style={{ background: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0' }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#10B981', display: 'inline-block' }}></span>
-          🌱 Days 1–19: Nursery Pond (Starter Feed)
+          🌱 Days 1–19: Nursery Pond
         </span>
         <span className="badge px-2 py-1.5 fw-semibold d-inline-flex align-items-center gap-1" style={{ background: '#FEF3C7', color: '#B45309', border: '1px solid #FDE68A' }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#F59E0B', display: 'inline-block' }}></span>
@@ -417,7 +417,7 @@ export default function PondCycleCalendar({
         </span>
         <span className="badge px-2 py-1.5 fw-semibold d-inline-flex align-items-center gap-1" style={{ background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE' }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#3B82F6', display: 'inline-block' }}></span>
-          🌊 Days 21–{maxRecordedDoc}: Active Grow-out (Grower Feed)
+          🌊 Days 21–{maxRecordedDoc}: Active Grow-out
         </span>
         <span className="badge px-2 py-1.5 fw-semibold d-inline-flex align-items-center gap-1" style={{ background: '#F3F4F6', color: '#6B7280', border: '1px dashed #D1D5DB' }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#9CA3AF', display: 'inline-block' }}></span>
@@ -552,7 +552,7 @@ export default function PondCycleCalendar({
               }}
               title={
                 cell.doc !== null
-                  ? `Date: ${cell.dateStr} | Day of Culture: ${cell.doc} | ${isNursery ? 'Nursery (Starter)' : isTransferDay ? 'TRANSFER DAY (Grower)' : isGrowout ? 'Grow-out (Grower)' : isFutureDoc ? 'Upcoming (No records yet)' : 'Pre-stocking'}`
+                  ? `Date: ${cell.dateStr} | Day of Culture: ${cell.doc} | ${isNursery ? 'Nursery' : isTransferDay ? 'TRANSFER DAY' : isGrowout ? 'Grow-out' : isFutureDoc ? 'Upcoming (No records yet)' : 'Pre-stocking'}`
                   : cell.dateStr
               }
             >

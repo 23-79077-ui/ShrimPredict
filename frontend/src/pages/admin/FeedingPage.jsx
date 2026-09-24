@@ -1286,7 +1286,7 @@ export default function FeedingPage() {
           </div>
         </div>
 
-        {/* 🌟 ADMIN STAGE FILTER TABS: All Basins | Nursery (Starter) | Grow-out (Grower) */}
+        {/* 🌟 ADMIN STAGE FILTER TABS: All Basins | Nursery | Grow-out */}
         <div className="p-3 rounded-4 bg-light border mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
           <div className="d-flex align-items-center gap-2 flex-wrap">
             <span className="extra-small fw-bold text-uppercase text-muted d-flex align-items-center gap-1">
@@ -1311,7 +1311,7 @@ export default function FeedingPage() {
               }}
               onClick={() => setStageFilter('nursery')}
             >
-              Nursery Basins (Days 1–25 • Starter Feed) ({nurseryPondsCount})
+              Nursery Basins (Days 1–19) ({nurseryPondsCount})
             </button>
             <button
               type="button"
@@ -1324,12 +1324,12 @@ export default function FeedingPage() {
               }}
               onClick={() => setStageFilter('growout')}
             >
-              🌊 Grow-out Basins (Day 20+ • Grower Feed) ({growoutPondsCount})
+              🌊 Grow-out Basins (Day 20+) ({growoutPondsCount})
             </button>
           </div>
 
           <div className="extra-small text-muted">
-            SOP Transition: <strong>Days 1–19 Nursery (Starter)</strong> ➔ <strong>Day 20+ Grow-out (Grower)</strong>
+            SOP Transition: <strong>Days 1–19 Nursery</strong> ➔ <strong>Day 20+ Grow-out</strong>
           </div>
         </div>
 
@@ -1963,8 +1963,8 @@ export default function FeedingPage() {
                         value={adminLogForm.product_code}
                         onChange={(e) => setAdminLogForm({ ...adminLogForm, product_code: e.target.value })}
                       >
-                        <option value="Starter">Starter (Tateh Feed - Nursery)</option>
-                        <option value="Grower">Grower (Tateh Feed - Grow-out)</option>
+                        <option value="Starter">Starter • Tateh Feed</option>
+                        <option value="Grower">Grower • Tateh Feed</option>
                       </select>
                     </div>
 

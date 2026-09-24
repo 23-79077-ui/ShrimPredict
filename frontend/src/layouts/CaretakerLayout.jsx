@@ -219,8 +219,9 @@ export default function CaretakerLayout() {
 
   return (
     <div className="saas-layout-canvas">
-      {/* 🌟 TOP NAVIGATION HEADER (Executive 2-Tier Architecture) */}
-      <header className="top-dock-bar">
+      {/* 🌟 TOP NAVIGATION HEADER (Floating Card Architecture with Zero Bleed-Through) */}
+      <div className="top-dock-floating-wrapper">
+        <header className="top-dock-bar floating-dock">
         <div className="top-dock-inner" style={{ maxWidth: 1480, margin: '0 auto', width: '100%' }}>
           {/* Tier 1: Brand & Executive Utilities Bar */}
         <div className="top-dock-topbar d-flex align-items-center justify-content-between w-100">
@@ -237,12 +238,12 @@ export default function CaretakerLayout() {
                   objectFit: 'contain',
                   backgroundColor: '#FFFFFF',
                   padding: '1.5px',
-                  border: '1.5px solid rgba(255, 122, 0, 0.4)'
+                  border: '1.5px solid rgba(234, 88, 12, 0.3)'
                 }}
               />
               <div>
                 <span className="fw-extrabold text-dark tracking-tight d-block" style={{ fontSize: '1.18rem', letterSpacing: '-0.02em', lineHeight: 1.15 }}>
-                  Shrimp<span style={{ color: '#FF7B38' }}>Predict</span>
+                  Shrimp<span style={{ color: '#EA580C' }}>Predict</span>
                 </span>
                 <span className="d-block text-muted" style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.04em', lineHeight: 1, marginTop: 2 }}>
                   O & B AQUAFARM
@@ -253,9 +254,9 @@ export default function CaretakerLayout() {
             <span
               className="badge rounded-pill extra-small fw-semibold d-none d-sm-inline-block"
               style={{
-                backgroundColor: 'rgba(255, 122, 0, 0.08)',
-                color: '#FF7A00',
-                border: '1px solid rgba(255, 122, 0, 0.25)',
+                backgroundColor: '#FFF7ED',
+                color: '#EA580C',
+                border: '1px solid rgba(234, 88, 12, 0.25)',
                 fontSize: '0.68rem',
                 letterSpacing: '0.04em'
               }}
@@ -282,7 +283,7 @@ export default function CaretakerLayout() {
                 borderColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : '#E2E8F0'
               }}
             >
-              <FaClock size={11} style={{ color: '#0284C7' }} />
+              <FaClock size={11} style={{ color: '#0B2C5F' }} />
               <span className="fw-bold font-mono" style={{ color: theme === 'dark' ? '#F1F5F9' : '#0F172A' }}>{clockDigits}</span>
               <span className="opacity-40">•</span>
               <span className="fw-semibold" style={{ color: theme === 'dark' ? '#94A3B8' : '#64748B' }}>{formattedDate}</span>
@@ -301,7 +302,7 @@ export default function CaretakerLayout() {
               onClick={handleToggleTheme}
               title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`}
             >
-              {theme === 'dark' ? <FaSun size={13} className="text-warning" /> : <FaMoon size={12} className="text-muted" />}
+              {theme === 'dark' ? <FaSun size={13} style={{ color: '#EA580C' }} /> : <FaMoon size={12} className="text-muted" />}
             </button>
 
             {/* Notifications Dropdown Pill */}
@@ -318,11 +319,11 @@ export default function CaretakerLayout() {
                 onClick={() => setShowNotifMenu(!showNotifMenu)}
                 title="Caretaker Notifications"
               >
-                <FaBell size={13} className="text-muted" />
+                <FaBell size={13} style={{ color: '#0B2C5F' }} />
                 {unreadCount > 0 && (
                   <span
-                    className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-light p-1"
-                    style={{ fontSize: '0.6rem' }}
+                    className="position-absolute top-0 start-100 translate-middle badge rounded-pill border border-light p-1"
+                    style={{ fontSize: '0.6rem', backgroundColor: '#EA580C', color: '#FFFFFF' }}
                   >
                     {unreadCount}
                   </span>
@@ -333,7 +334,8 @@ export default function CaretakerLayout() {
                 <div
                   className="dropdown-menu show border-0 position-absolute end-0 mt-2 p-0 rounded-4 shadow-xl overflow-hidden"
                   style={{
-                    width: '340px',
+                    width: 'min(340px, calc(100vw - 24px))',
+                    maxWidth: 'calc(100vw - 24px)',
                     zIndex: 1050,
                     backgroundColor: theme === 'dark' ? '#1E293B' : '#FFFFFF',
                     border: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #E2E8F0'
@@ -341,14 +343,14 @@ export default function CaretakerLayout() {
                 >
                   <div
                     className="p-3 px-3.5 d-flex align-items-center justify-content-between text-white"
-                    style={{ background: 'linear-gradient(135deg, #071733 0%, #0B2C5F 55%, #FF7A00 100%)' }}
+                    style={{ background: 'linear-gradient(135deg, #071733 0%, #0B2C5F 100%)' }}
                   >
                     <div className="d-flex align-items-center gap-2">
                       <FaBell size={13} />
                       <span className="fw-bold small">Caretaker Updates</span>
                     </div>
                     <div className="d-flex align-items-center gap-2">
-                      <span className="badge bg-white text-dark rounded-pill extra-small px-2 py-0.5">
+                      <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: '#FFF7ED', color: '#EA580C' }}>
                         {unreadCount} Active
                       </span>
                       {unreadCount > 0 && (
@@ -394,7 +396,7 @@ export default function CaretakerLayout() {
                           <p className="text-muted mb-1 extra-small" style={{ fontSize: '0.75rem', lineHeight: 1.4 }}>
                             {n.message}
                           </p>
-                          <span className="fw-bold extra-small" style={{ color: '#FF7A00', fontSize: '0.72rem' }}>
+                          <span className="fw-bold extra-small" style={{ color: '#EA580C', fontSize: '0.72rem' }}>
                             View Details →
                           </span>
                         </div>
@@ -406,7 +408,7 @@ export default function CaretakerLayout() {
                     <button
                       type="button"
                       className="btn btn-link btn-sm text-decoration-none fw-semibold p-0 extra-small"
-                      style={{ color: '#0284C7' }}
+                      style={{ color: '#0B2C5F' }}
                       onClick={() => {
                         setShowNotifMenu(false);
                         navigate('/caretaker/notifications');
@@ -437,7 +439,7 @@ export default function CaretakerLayout() {
                     width: 28,
                     height: 28,
                     fontSize: '0.72rem',
-                    background: 'linear-gradient(135deg, #FF7A00 0%, #0B2C5F 100%)'
+                    background: 'linear-gradient(135deg, #0B2C5F 0%, #EA580C 100%)'
                   }}
                 >
                   {(user?.full_name || 'Caretaker').slice(0, 2).toUpperCase()}
@@ -474,7 +476,7 @@ export default function CaretakerLayout() {
                       navigate('/caretaker/settings');
                     }}
                   >
-                    <FaCog size={12} className="text-primary" /> Settings &amp; Preferences
+                    <FaCog size={12} style={{ color: '#0B2C5F' }} /> Settings &amp; Preferences
                   </button>
                   <button
                     type="button"
@@ -516,7 +518,7 @@ export default function CaretakerLayout() {
                 <span
                   className="badge rounded-pill"
                   style={{
-                    backgroundColor: '#F43F5E',
+                    backgroundColor: '#EA580C',
                     color: '#FFFFFF',
                     fontSize: '0.65rem',
                     padding: '0.15rem 0.45rem',
@@ -550,14 +552,40 @@ export default function CaretakerLayout() {
         )}
         </div>
       </header>
+      </div>
 
       {/* 🌟 MAIN PAGE CONTENT (Max Width 1480px, Spacious Padding) */}
-      <main className="container-fluid px-3 px-md-4 pb-5" style={{ maxWidth: 1480, margin: '0 auto' }}>
+      <main className="container-fluid px-2 px-sm-3 px-md-4 pt-2 pt-md-3 pb-5" style={{ maxWidth: 1480, margin: '0 auto' }}>
         <Outlet />
       </main>
+
+      {/* 📱 MOBILE BOTTOM APP NAVIGATION DOCK (Thumb-Friendly Navigation for Screens < 992px) */}
+      <nav className="caretaker-mobile-bottom-dock" aria-label="Caretaker Mobile Navigation">
+        <NavLink to="/caretaker/dashboard" className={({ isActive }) => `mobile-dock-item ${isActive ? 'active' : ''}`}>
+          <span className="mobile-dock-icon">{dockIcons.dashboard}</span>
+          <span>Home</span>
+        </NavLink>
+        <NavLink to="/caretaker/my-pond" className={({ isActive }) => `mobile-dock-item ${isActive ? 'active' : ''}`}>
+          <span className="mobile-dock-icon">{dockIcons.myPond}</span>
+          <span>My Pond</span>
+        </NavLink>
+        <NavLink to="/caretaker/disease-scan" className={({ isActive }) => `mobile-dock-item ${isActive ? 'active' : ''}`}>
+          <span className="mobile-dock-icon">{dockIcons.diseaseScan}</span>
+          <span>Scan</span>
+        </NavLink>
+        <NavLink to="/caretaker/feeding-history" className={({ isActive }) => `mobile-dock-item ${isActive ? 'active' : ''}`}>
+          <span className="mobile-dock-icon">{dockIcons.feedingHistory}</span>
+          <span>Feeding</span>
+        </NavLink>
+        <NavLink to="/caretaker/reports" className={({ isActive }) => `mobile-dock-item ${isActive ? 'active' : ''}`}>
+          <span className="mobile-dock-icon">{dockIcons.reports}</span>
+          <span>Reports</span>
+        </NavLink>
+      </nav>
 
       {/* Floating Caretaker AI Assistant */}
       <CaretakerAssistantChatHead />
     </div>
   );
 }
+

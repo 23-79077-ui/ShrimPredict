@@ -2680,30 +2680,42 @@ button {
 }
 
 .caretaker-feeding-time-grid button {
-  min-height: 64px;
-  display: grid;
-  place-items: center;
-  gap: 0.25rem;
-  border: 1px solid rgba(11,44,95,0.12);
-  border-radius: 0.75rem;
+  min-height: 68px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.28rem;
+  border: 1px solid rgba(11, 44, 95, 0.14);
+  border-radius: 1rem;
   color: #0B2C5F;
-  background: #F8FAFC;
-  font-weight: 900;
+  background: #FFFFFF;
+  font-weight: 700;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 6px rgba(11, 44, 95, 0.03);
+}
+
+.caretaker-feeding-time-grid button:hover {
+  transform: translateY(-2px);
+  border-color: rgba(11, 44, 95, 0.28);
+  box-shadow: 0 6px 16px rgba(11, 44, 95, 0.08);
 }
 
 .caretaker-feeding-time-grid button svg {
-  color: #F59E0B;
+  color: #0B2C5F;
+  font-size: 1rem;
 }
 
 .caretaker-feeding-time-grid button.active {
-  color: white;
+  color: #FFFFFF !important;
   border-color: #0B2C5F;
-  background: #0B2C5F;
-  box-shadow: 0 12px 24px rgba(11,44,95,0.2);
+  background: #0B2C5F !important;
+  box-shadow: 0 8px 20px rgba(11, 44, 95, 0.25);
+  transform: translateY(-2px);
 }
 
 .caretaker-feeding-time-grid button.active svg {
-  color: #F59E0B;
+  color: #FFFFFF !important;
 }
 
 .caretaker-feed-form-grid {
@@ -5035,31 +5047,57 @@ body.dark-theme .saas-layout-canvas {
   color: #F0F6FF;
 }
 
-/* 🌟 SOLID TOP NAVIGATION HEADER (Executive 2-Tier Architecture) */
-.top-dock-bar {
+/* 🌟 FLOATING TOP NAVIGATION HEADER (With Generous Breathing Room & Zero Bleed-Through) */
+.top-dock-floating-wrapper {
   position: sticky;
   top: 0;
   left: 0;
   right: 0;
   z-index: 1040;
-  margin: 0 0 1.5rem 0;
+  background: var(--background, #F8FBFF);
+  padding: 1rem 1.5rem 1.5rem 1.5rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (max-width: 768px) {
+  .top-dock-floating-wrapper {
+    padding: 0.75rem 0.85rem 1.15rem 0.85rem;
+  }
+}
+
+[data-theme="dark"] .top-dock-floating-wrapper,
+body.dark-theme .top-dock-floating-wrapper {
+  background: #040710;
+}
+
+.top-dock-bar {
   width: 100%;
-  background: #FFFFFF;
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border-bottom: 1px solid rgba(11, 44, 95, 0.10);
-  border-radius: 0;
-  box-shadow: 0 4px 20px rgba(11, 44, 95, 0.05);
-  padding: 0.75rem 1.5rem 0.65rem 1.5rem;
+  background: #FFFFFF !important;
+  border-bottom: 1px solid rgba(11, 44, 95, 0.12);
+  padding: 0.75rem 1.4rem 0.65rem 1.4rem;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   font-family: 'Poppins', sans-serif;
+  margin: 0;
+  position: relative;
+  overflow: visible;
+}
+
+.top-dock-bar.floating-dock {
+  border: 1px solid rgba(11, 44, 95, 0.12);
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(11, 44, 95, 0.08), 0 2px 6px rgba(11, 44, 95, 0.03);
 }
 
 [data-theme="dark"] .top-dock-bar,
 body.dark-theme .top-dock-bar {
-  background: #0A1326;
-  border-bottom: 1px solid rgba(56, 189, 248, 0.20);
-  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.55);
+  background: #0A1326 !important;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.22);
+}
+
+[data-theme="dark"] .top-dock-bar.floating-dock,
+body.dark-theme .top-dock-bar.floating-dock {
+  border: 1px solid rgba(56, 189, 248, 0.22);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
 }
 
 /* Tier 1 Header Line */
@@ -5134,24 +5172,24 @@ body.dark-theme .top-dock-divider {
 }
 
 .dock-nav-pill.active svg {
-  color: #38BDF8 !important;
+  color: #FFFFFF !important;
 }
 
 [data-theme="dark"] .dock-nav-pill.active,
 body.dark-theme .dock-nav-pill.active {
-  background: #0284C7 !important;
+  background: #0B2C5F !important;
   color: #FFFFFF !important;
-  border: 1px solid #38BDF8 !important;
-  box-shadow: 0 0 16px rgba(56, 189, 248, 0.4) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 0 0 16px rgba(11, 44, 95, 0.4) !important;
 }
 
-/* Live Operational Pulse Badge */
+/* Live Operational Pulse Badge (Tri-Color: Deep Blue & Muted Orange) */
 .dock-live-indicator {
   font-size: 0.72rem;
   font-weight: 600;
-  color: #16A34A;
-  background: rgba(22, 163, 74, 0.08);
-  border: 1px solid rgba(22, 163, 74, 0.2);
+  color: #0B2C5F;
+  background: rgba(11, 44, 95, 0.06);
+  border: 1px solid rgba(11, 44, 95, 0.16);
   padding: 0.22rem 0.65rem;
   border-radius: 9999px;
   letter-spacing: 0.02em;
@@ -5161,23 +5199,23 @@ body.dark-theme .dock-nav-pill.active {
   width: 6.5px;
   height: 6.5px;
   border-radius: 50%;
-  background-color: #16A34A;
-  box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.7);
+  background-color: #EA580C;
+  box-shadow: 0 0 0 0 rgba(234, 88, 12, 0.7);
   animation: dockPulse 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
 }
 
 @keyframes dockPulse {
   0% {
     transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.7);
+    box-shadow: 0 0 0 0 rgba(234, 88, 12, 0.7);
   }
   70% {
     transform: scale(1);
-    box-shadow: 0 0 0 6px rgba(22, 163, 74, 0);
+    box-shadow: 0 0 0 6px rgba(234, 88, 12, 0);
   }
   100% {
     transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(22, 163, 74, 0);
+    box-shadow: 0 0 0 0 rgba(234, 88, 12, 0);
   }
 }
 
@@ -5887,3 +5925,1016 @@ body.dark-theme .highlighted-report-card {
     padding-bottom: 2rem;
   }
 }
+
+/* ==========================================================================
+   🌟 CARETAKER DASHBOARD - TRI-COLOR CLEAN & MODERN DESIGN SYSTEM
+   Palette:
+   1. Brand Navy Blue: #0B2C5F, #071733, #0E3D7D (Matching Landing & Login)
+   2. Clean White: #FFFFFF, #F8FAFC
+   3. Subtle Warm Orange: #EA580C, #F97316, #FFF7ED (Refined Shrimp Accent)
+   ========================================================================== */
+
+.caretaker-dashboard-hub {
+  padding-bottom: 2.5rem;
+}
+
+/* Tri-Color Clean Cards */
+.tri-card {
+  background: #FFFFFF;
+  border-radius: 20px;
+  border: 1px solid rgba(11, 44, 95, 0.08);
+  box-shadow: 0 4px 20px rgba(11, 44, 95, 0.04);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.tri-card:hover {
+  border-color: rgba(11, 44, 95, 0.16);
+  box-shadow: 0 10px 28px rgba(11, 44, 95, 0.08);
+}
+
+[data-theme="dark"] .tri-card,
+body.dark-theme .tri-card {
+  background: #0F172A;
+  border-color: rgba(56, 189, 248, 0.2);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* Tri-Color KPI Telemetry Card */
+.tri-kpi-card {
+  background: #FFFFFF;
+  border-radius: 18px;
+  border: 1px solid rgba(11, 44, 95, 0.08);
+  box-shadow: 0 4px 18px rgba(11, 44, 95, 0.04);
+  padding: 1.35rem 1.45rem;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.tri-kpi-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(11, 44, 95, 0.18);
+  box-shadow: 0 12px 28px rgba(11, 44, 95, 0.09);
+}
+
+[data-theme="dark"] .tri-kpi-card,
+body.dark-theme .tri-kpi-card {
+  background: #0F172A;
+  border-color: rgba(56, 189, 248, 0.2);
+}
+
+/* Tri-Color KPI Icons */
+.tri-kpi-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.tri-kpi-card:hover .tri-kpi-icon {
+  transform: scale(1.08);
+}
+
+.tri-kpi-icon-blue {
+  background: rgba(11, 44, 95, 0.07);
+  color: #0B2C5F;
+}
+
+.tri-kpi-icon-orange {
+  background: #FFF7ED;
+  color: #EA580C;
+}
+
+/* Tri-Color Progress Track & Bar */
+.tri-progress-track {
+  height: 7px;
+  background: rgba(11, 44, 95, 0.07);
+  border-radius: 9999px;
+  overflow: hidden;
+  position: relative;
+}
+
+[data-theme="dark"] .tri-progress-track,
+body.dark-theme .tri-progress-track {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.tri-progress-bar {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Tri-Color Buttons */
+.btn-tri-navy {
+  background: #0B2C5F;
+  color: #FFFFFF !important;
+  border: 1px solid #0B2C5F;
+  border-radius: 9999px;
+  font-weight: 600;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+}
+
+.btn-tri-navy:hover {
+  background: #071733;
+  border-color: #071733;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(11, 44, 95, 0.28);
+}
+
+.btn-tri-orange {
+  background: #EA580C;
+  color: #FFFFFF !important;
+  border: 1px solid #EA580C;
+  border-radius: 9999px;
+  font-weight: 600;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+}
+
+.btn-tri-orange:hover {
+  background: #C2410C;
+  border-color: #C2410C;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(234, 88, 12, 0.28);
+}
+
+.btn-tri-outline {
+  background: #FFFFFF;
+  color: #0B2C5F !important;
+  border: 1px solid rgba(11, 44, 95, 0.16);
+  border-radius: 9999px;
+  font-weight: 600;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+}
+
+.btn-tri-outline:hover {
+  background: rgba(11, 44, 95, 0.05);
+  border-color: #0B2C5F;
+  color: #0B2C5F !important;
+  transform: translateY(-1px);
+}
+
+.btn-tri-outline-orange {
+  background: #FFFFFF;
+  color: #EA580C !important;
+  border: 1px solid rgba(234, 88, 12, 0.28);
+  border-radius: 9999px;
+  font-weight: 600;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+}
+
+.btn-tri-outline-orange:hover {
+  background: #FFF7ED;
+  border-color: #EA580C;
+  color: #C2410C !important;
+  transform: translateY(-1px);
+}
+
+/* Tri-Color Badges */
+.badge-tri-navy {
+  background: rgba(11, 44, 95, 0.07);
+  color: #0B2C5F;
+  border: 1px solid rgba(11, 44, 95, 0.16);
+  font-weight: 600;
+}
+
+.badge-tri-orange {
+  background: #FFF7ED;
+  color: #EA580C;
+  border: 1px solid rgba(234, 88, 12, 0.26);
+  font-weight: 600;
+}
+
+.badge-tri-white {
+  background: #FFFFFF;
+  color: #0B2C5F;
+  border: 1px solid rgba(11, 44, 95, 0.12);
+  font-weight: 600;
+}
+
+/* Tri-Color Table */
+.tri-table thead th {
+  background: #F8FAFD;
+  color: #0B2C5F;
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid rgba(11, 44, 95, 0.1);
+  padding: 0.85rem 1rem;
+}
+
+.tri-table tbody td {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid rgba(11, 44, 95, 0.05);
+  vertical-align: middle;
+  color: #1E293B;
+}
+
+.tri-table tbody tr:hover {
+  background: rgba(11, 44, 95, 0.02);
+}
+
+/* Tri-Color Pond Navigation Pill */
+.tri-pond-pill {
+  border-radius: 9999px;
+  padding: 0.48rem 0.95rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 4px rgba(11, 44, 95, 0.04);
+}
+
+.tri-pond-pill:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(11, 44, 95, 0.09);
+}
+
+.caretaker-mypond-hub {
+  padding-bottom: 3rem;
+}
+
+/* Tri-Color Progress Utilities */
+.tri-progress-track {
+  width: 100%;
+  height: 8px;
+  background: rgba(11, 44, 95, 0.08);
+  border-radius: 9999px;
+  overflow: hidden;
+  position: relative;
+}
+
+.tri-progress-bar-navy {
+  height: 100%;
+  background: #0B2C5F;
+  border-radius: 9999px;
+  transition: width 0.4s ease;
+}
+
+.tri-progress-bar-orange {
+  height: 100%;
+  background: #EA580C;
+  border-radius: 9999px;
+  transition: width 0.4s ease;
+}
+
+.tri-progress-bar-green {
+  height: 100%;
+  background: #10B981;
+  border-radius: 9999px;
+  transition: width 0.4s ease;
+}
+
+.tri-progress-bar-red {
+  height: 100%;
+  background: #EF4444;
+  border-radius: 9999px;
+  transition: width 0.4s ease;
+}
+
+.caretaker-diseasescan-hub {
+  padding-bottom: 3.5rem;
+}
+
+/* ==========================================================================
+   🌟 CARETAKER FEEDING HISTORY - TRI-COLOR STYLES
+   ========================================================================== */
+
+.caretaker-history-hub {
+  padding-bottom: 3rem;
+}
+
+[data-theme="dark"] .tri-table thead th,
+body.dark-theme .tri-table thead th {
+  background: #1E293B !important;
+  color: #93C5FD !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-theme="dark"] .tri-table tbody td,
+body.dark-theme .tri-table tbody td {
+  color: #E2E8F0 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+[data-theme="dark"] .tri-table tbody tr:hover,
+body.dark-theme .tri-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* Tri-Color Slot Pill Indicator */
+.tri-slot-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  font-family: monospace;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.tri-slot-chip.logged {
+  background: rgba(11, 44, 95, 0.08);
+  color: #0B2C5F;
+  border: 1px solid rgba(11, 44, 95, 0.18);
+}
+
+.tri-slot-chip.logged-orange {
+  background: #FFF7ED;
+  color: #EA580C;
+  border: 1px solid rgba(234, 88, 12, 0.26);
+}
+
+.tri-slot-chip.empty {
+  background: #F1F5F9;
+  color: #94A3B8;
+  border: 1px dashed #CBD5E1;
+}
+
+[data-theme="dark"] .tri-slot-chip.logged,
+body.dark-theme .tri-slot-chip.logged {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38BDF8;
+  border-color: rgba(56, 189, 248, 0.3);
+}
+
+[data-theme="dark"] .tri-slot-chip.logged-orange,
+body.dark-theme .tri-slot-chip.logged-orange {
+  background: rgba(234, 88, 12, 0.2);
+  color: #FB923C;
+  border-color: rgba(234, 88, 12, 0.35);
+}
+
+[data-theme="dark"] .tri-slot-chip.empty,
+body.dark-theme .tri-slot-chip.empty {
+  background: rgba(255, 255, 255, 0.05);
+  color: #64748B;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Segmented Toggle Control */
+.tri-segmented-switch {
+  display: inline-flex;
+  align-items: center;
+  background: #F1F5F9;
+  padding: 3px;
+  border-radius: 9999px;
+  border: 1px solid rgba(11, 44, 95, 0.08);
+}
+
+[data-theme="dark"] .tri-segmented-switch,
+body.dark-theme .tri-segmented-switch {
+  background: #1E293B;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.tri-segmented-item {
+  padding: 0.38rem 0.9rem;
+  border-radius: 9999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  background: transparent;
+  color: #64748B;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.tri-segmented-item.active {
+  background: #0B2C5F;
+  color: #FFFFFF;
+  box-shadow: 0 2px 8px rgba(11, 44, 95, 0.25);
+}
+
+[data-theme="dark"] .tri-segmented-item.active,
+body.dark-theme .tri-segmented-item.active {
+  background: #38BDF8;
+  color: #0F172A;
+}
+
+/* Action button micro-hover effect */
+.hover-lift {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(11, 44, 95, 0.12);
+}
+
+/* ==========================================================================
+   🌟 CARETAKER INCIDENT REPORTS - TRI-COLOR STYLES
+   ========================================================================== */
+
+.caretaker-reports-hub {
+  padding-bottom: 3.5rem;
+}
+
+/* Tri-Color Severity Pill */
+.tri-severity-pill {
+  border-radius: 9999px;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+}
+
+.tri-severity-pill.low {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+  border-color: rgba(16, 185, 129, 0.25);
+}
+.tri-severity-pill.low.active {
+  background: #059669;
+  color: #FFFFFF;
+  border-color: #059669;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3);
+}
+
+.tri-severity-pill.medium {
+  background: #FFF7ED;
+  color: #EA580C;
+  border-color: rgba(234, 88, 12, 0.25);
+}
+.tri-severity-pill.medium.active {
+  background: #EA580C;
+  color: #FFFFFF;
+  border-color: #EA580C;
+  box-shadow: 0 2px 8px rgba(234, 88, 12, 0.3);
+}
+
+.tri-severity-pill.high {
+  background: rgba(225, 29, 72, 0.1);
+  color: #E11D48;
+  border-color: rgba(225, 29, 72, 0.25);
+}
+.tri-severity-pill.high.active {
+  background: #E11D48;
+  color: #FFFFFF;
+  border-color: #E11D48;
+  box-shadow: 0 2px 8px rgba(225, 29, 72, 0.3);
+}
+
+.tri-severity-pill.critical {
+  background: rgba(185, 28, 28, 0.12);
+  color: #B91C1C;
+  border-color: rgba(185, 28, 28, 0.3);
+}
+.tri-severity-pill.critical.active {
+  background: #B91C1C;
+  color: #FFFFFF;
+  border-color: #B91C1C;
+  box-shadow: 0 2px 8px rgba(185, 28, 28, 0.35);
+}
+
+/* Tri-Color Incident Report Card */
+.tri-incident-card {
+  background: #FFFFFF;
+  border-radius: 18px;
+  border: 1px solid rgba(11, 44, 95, 0.09);
+  padding: 1.25rem 1.4rem;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 10px rgba(11, 44, 95, 0.03);
+  position: relative;
+  overflow: hidden;
+}
+
+.tri-incident-card:hover {
+  border-color: rgba(11, 44, 95, 0.2);
+  box-shadow: 0 8px 24px rgba(11, 44, 95, 0.08);
+  transform: translateY(-2px);
+}
+
+.tri-incident-card.highlighted {
+  border: 2px solid #EA580C;
+  box-shadow: 0 8px 28px rgba(234, 88, 12, 0.18);
+}
+
+[data-theme="dark"] .tri-incident-card,
+body.dark-theme .tri-incident-card {
+  background: #0F172A;
+  border-color: rgba(56, 189, 248, 0.18);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+/* Quick Suggestion Pills */
+.tri-suggestion-chip {
+  background: #F8FAFD;
+  color: #0B2C5F;
+  border: 1px solid rgba(11, 44, 95, 0.14);
+  border-radius: 9999px;
+  padding: 0.28rem 0.8rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+}
+
+.tri-suggestion-chip:hover {
+  background: rgba(11, 44, 95, 0.08);
+  border-color: #0B2C5F;
+  transform: translateY(-1px);
+}
+
+.tri-suggestion-chip.active {
+  background: #0B2C5F;
+  color: #FFFFFF;
+  border-color: #0B2C5F;
+}
+
+[data-theme="dark"] .tri-suggestion-chip,
+body.dark-theme .tri-suggestion-chip {
+  background: #1E293B;
+  color: #93C5FD;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+[data-theme="dark"] .tri-suggestion-chip:hover,
+body.dark-theme .tri-suggestion-chip:hover {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: #38BDF8;
+}
+
+/* Media Dropzone Box */
+.tri-media-uploadzone {
+  border: 2px dashed rgba(11, 44, 95, 0.18);
+  background: #F8FAFD;
+  border-radius: 16px;
+  padding: 1.1rem;
+  transition: all 0.2s ease;
+}
+
+.tri-media-uploadzone:hover {
+  border-color: #EA580C;
+  background: #FFFBF7;
+}
+
+[data-theme="dark"] .tri-media-uploadzone,
+body.dark-theme .tri-media-uploadzone {
+  background: #1E293B;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+[data-theme="dark"] .tri-media-uploadzone:hover,
+body.dark-theme .tri-media-uploadzone:hover {
+  border-color: #EA580C;
+  background: rgba(234, 88, 12, 0.05);
+}
+
+/* ==========================================================================
+   📱 CARETAKER MOBILE-FIRST RESPONSIVE DESIGN SYSTEM
+   Ultra-optimized for phones (360px - 768px) and field tablets
+   ========================================================================== */
+
+/* Mobile Bottom Navigation Dock (Default hidden on desktop) */
+.caretaker-mobile-bottom-dock {
+  display: none;
+}
+
+@media (max-width: 991.98px) {
+  /* Give main content bottom clearance for the mobile bottom dock */
+  .saas-layout-canvas main {
+    padding-bottom: 5.75rem !important;
+  }
+
+  /* Show floating mobile bottom dock */
+  .caretaker-mobile-bottom-dock {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 62px;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-top: 1px solid rgba(11, 44, 95, 0.12);
+    box-shadow: 0 -4px 20px rgba(11, 44, 95, 0.08);
+    z-index: 1040;
+    align-items: center;
+    justify-content: space-around;
+    padding: 0 0.5rem;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  [data-theme="dark"] .caretaker-mobile-bottom-dock,
+  body.dark-theme .caretaker-mobile-bottom-dock {
+    background: rgba(15, 23, 42, 0.96);
+    border-top: 1px solid rgba(56, 189, 248, 0.2);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.45);
+  }
+
+  .mobile-dock-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    height: 100%;
+    color: #64748B;
+    text-decoration: none;
+    font-size: 0.65rem;
+    font-weight: 700;
+    gap: 3px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    user-select: none;
+    padding: 4px 0;
+  }
+
+  .mobile-dock-item.active {
+    color: #EA580C !important;
+  }
+
+  .mobile-dock-item.active::before {
+    content: '';
+    position: absolute;
+    top: 4px;
+    width: 22px;
+    height: 3px;
+    background: #EA580C;
+    border-radius: 9999px;
+  }
+
+  [data-theme="dark"] .mobile-dock-item.active {
+    color: #FB923C !important;
+  }
+  [data-theme="dark"] .mobile-dock-item.active::before {
+    background: #FB923C;
+  }
+
+  .mobile-dock-icon {
+    font-size: 1.15rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease;
+  }
+
+  .mobile-dock-item.active .mobile-dock-icon {
+    transform: scale(1.12);
+  }
+
+  /* Adjust Assistant Chat Head button on mobile so it floats safely above the bottom dock */
+  .caretaker-chat-button {
+    bottom: 74px !important;
+    right: 14px !important;
+    width: 48px !important;
+    height: 48px !important;
+    font-size: 1.25rem !important;
+    box-shadow: 0 4px 16px rgba(11, 44, 95, 0.3) !important;
+  }
+
+  .caretaker-chat-window {
+    bottom: 130px !important;
+    right: 12px !important;
+    left: 12px !important;
+    width: auto !important;
+    max-width: calc(100vw - 24px) !important;
+    height: 440px !important;
+    max-height: 65vh !important;
+  }
+}
+
+/* Specific Responsive Breakpoints for Caretaker Side */
+@media (max-width: 767.98px) {
+  /* Hero section header typography */
+  .caretaker-dashboard-hub h2,
+  .caretaker-mypond-hub h2,
+  .caretaker-history-hub h2,
+  .caretaker-reports-hub h2,
+  .caretaker-notifications-hub h2,
+  .caretaker-diseasescan-hub h2 {
+    font-size: 1.35rem !important;
+    line-height: 1.25 !important;
+  }
+
+  /* Horizontal swipe for pond pill filter bars */
+  .caretaker-pond-swipe-strip,
+  .caretaker-history-hub .tri-pond-pill,
+  .caretaker-mypond-hub .tri-pond-pill {
+    flex-shrink: 0 !important;
+  }
+
+  .caretaker-history-hub .d-flex.align-items-center.gap-2.flex-wrap,
+  .caretaker-mypond-hub .d-flex.align-items-center.gap-2.flex-wrap {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 6px;
+    margin-bottom: 0.5rem;
+  }
+  .caretaker-history-hub .d-flex.align-items-center.gap-2.flex-wrap::-webkit-scrollbar,
+  .caretaker-mypond-hub .d-flex.align-items-center.gap-2.flex-wrap::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tri-pond-pill {
+    white-space: nowrap !important;
+    padding: 0.42rem 0.82rem !important;
+    font-size: 0.78rem !important;
+  }
+
+  /* Compact KPI Telemetry Cards on mobile */
+  .tri-kpi-card {
+    padding: 0.95rem 1rem !important;
+    border-radius: 14px !important;
+    min-height: auto !important;
+  }
+
+  .tri-kpi-card h2 {
+    font-size: 1.6rem !important;
+  }
+
+  .tri-kpi-icon {
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 1rem !important;
+    border-radius: 10px !important;
+  }
+
+  /* Responsive Cards */
+  .tri-card {
+    border-radius: 16px !important;
+    padding: 1rem !important;
+  }
+
+  /* Responsive segmented switches: full width with equal items */
+  .tri-segmented-switch {
+    width: 100% !important;
+    display: flex !important;
+  }
+
+  .tri-segmented-item {
+    flex: 1 !important;
+    justify-content: center !important;
+    padding: 0.42rem 0.6rem !important;
+    font-size: 0.74rem !important;
+    text-align: center !important;
+  }
+
+  /* Severity pills on mobile */
+  .tri-severity-pill {
+    flex: 1 1 calc(50% - 6px) !important;
+    justify-content: center !important;
+    padding: 0.42rem 0.6rem !important;
+    font-size: 0.72rem !important;
+  }
+
+  /* Tables: keep sticky header and smooth touch scrolling */
+  .tri-table thead th {
+    padding: 0.65rem 0.75rem !important;
+    font-size: 0.7rem !important;
+    white-space: nowrap !important;
+  }
+
+  .tri-table tbody td {
+    padding: 0.65rem 0.75rem !important;
+    font-size: 0.82rem !important;
+  }
+
+  /* Action buttons min height for touch targets */
+  .btn-tri-navy,
+  .btn-tri-orange,
+  .btn-tri-outline,
+  .btn-tri-outline-orange {
+    min-height: 38px;
+    font-size: 0.8rem !important;
+  }
+
+  /* Dropdown menus on mobile: never overflow offscreen */
+  .dropdown-menu {
+    max-width: calc(100vw - 20px) !important;
+  }
+
+  /* Modals on mobile */
+  .modal-dialog {
+    margin: 0.5rem auto !important;
+    max-width: calc(100vw - 16px) !important;
+  }
+
+  .modal-content {
+    border-radius: 18px !important;
+    max-height: 92vh !important;
+  }
+
+  /* Form strips stack cleanly */
+  .caretaker-submit-strip {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.75rem !important;
+  }
+
+  .caretaker-submit-strip button {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+}
+
+@media (max-width: 575.98px) {
+  /* Extra small phones (360px - 480px) */
+  .saas-layout-canvas main {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+  }
+
+  .tri-card {
+    padding: 0.85rem !important;
+  }
+
+  /* 2-column KPI cards on mobile so 4 cards show in a clean 2x2 grid */
+  .caretaker-dashboard-hub .row.g-3.g-xl-4 > [class*="col-"],
+  .caretaker-history-hub .row.g-3.g-xl-4 > [class*="col-"],
+  .caretaker-reports-hub .row.g-3.g-xl-4 > [class*="col-"] {
+    width: 50% !important;
+    flex: 0 0 50% !important;
+    max-width: 50% !important;
+  }
+
+  .tri-kpi-card {
+    padding: 0.75rem 0.85rem !important;
+  }
+
+  .tri-kpi-card h2 {
+    font-size: 1.4rem !important;
+  }
+
+  .tri-kpi-card .tri-kpi-icon {
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 0.9rem !important;
+  }
+
+  .tri-kpi-card .tri-progress-track {
+    margin-top: 0.4rem !important;
+    margin-bottom: 0.4rem !important;
+  }
+
+  /* Floating Top Dock Logo in Mobile */
+  .top-dock-bar .top-dock-topbar img {
+    width: 34px !important;
+    height: 34px !important;
+  }
+}
+
+/* =========================================================
+   CARETAKER MOBILE & RESPONSIVE POLISH
+   ========================================================= */
+
+/* Caretaker Settings Hub */
+@media (min-width: 992px) {
+  .caretaker-settings-sidebar {
+    position: sticky;
+    top: 155px;
+    z-index: 100;
+    align-self: flex-start;
+  }
+  .caretaker-settings-content-card {
+    max-height: calc(100vh - 160px);
+    min-height: 520px;
+  }
+}
+
+@media (max-width: 991.98px) {
+  .caretaker-settings-sidebar {
+    position: static !important;
+    top: auto !important;
+    z-index: auto !important;
+    margin-bottom: 1rem !important;
+  }
+  .caretaker-settings-content-card {
+    max-height: none !important;
+    min-height: auto !important;
+  }
+  .caretaker-settings-content-card .card-body {
+    overflow-y: visible !important;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .caretaker-settings-nav-strip {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    padding-bottom: 8px !important;
+    -webkit-overflow-scrolling: touch;
+    gap: 0.5rem !important;
+    scrollbar-width: thin;
+  }
+  .caretaker-settings-nav-strip::-webkit-scrollbar {
+    height: 4px;
+  }
+  .caretaker-settings-nav-strip .settings-nav-item {
+    flex: 0 0 auto !important;
+    white-space: nowrap !important;
+    padding: 0.45rem 0.85rem !important;
+    border-left: none !important;
+    border-bottom: 3.5px solid transparent !important;
+    transform: none !important;
+  }
+  .caretaker-settings-nav-strip .settings-nav-item.active {
+    border-bottom: 3.5px solid #0B2C5F !important;
+    border-left: none !important;
+  }
+  .caretaker-settings-nav-strip .settings-nav-icon {
+    width: 30px !important;
+    height: 30px !important;
+  }
+}
+
+/* Pond selector pill strip smooth horizontal swiping */
+@media (max-width: 767.98px) {
+  .tri-pond-pill-strip {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    padding-bottom: 6px !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+  .tri-pond-pill-strip .tri-pond-pill {
+    flex: 0 0 auto !important;
+    white-space: nowrap !important;
+  }
+}
+
+/* Disease Scan Action Toolbar Mobile Polish */
+@media (max-width: 575.98px) {
+  .caretaker-scan-toolbar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.6rem !important;
+  }
+  .caretaker-scan-toolbar > div {
+    width: 100% !important;
+  }
+  .caretaker-scan-toolbar button {
+    flex: 1 1 auto !important;
+    justify-content: center !important;
+  }
+  .caretaker-scan-submit-btn {
+    width: 100% !important;
+    min-width: 100% !important;
+    justify-content: center !important;
+  }
+}
+
+/* Assistant Chat Messages on Mobile */
+.assistant-message {
+  max-width: 90%;
+}
+@media (max-width: 575.98px) {
+  .assistant-message {
+    max-width: 100% !important;
+  }
+}
+
+
+
+
+

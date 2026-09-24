@@ -478,68 +478,163 @@ export default function DiseaseScanPage() {
   });
 
   return (
-    <div>
+    <div className="caretaker-diseasescan-hub">
+      {/* 🌟 PAGE HEADER HERO BAR */}
+      <div className="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+        <div>
+          <div className="d-flex align-items-center gap-2 mb-1">
+            <span
+              className="badge rounded-pill extra-small fw-bold px-2.5 py-1"
+              style={{ backgroundColor: '#FFF7ED', color: '#EA580C', border: '1px solid #FFEDD5' }}
+            >
+              <FaRobot className="me-1" /> AI Computer Vision
+            </span>
+            <span
+              className="badge rounded-pill extra-small fw-bold px-2.5 py-1"
+              style={{ backgroundColor: 'rgba(11, 44, 95, 0.07)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.16)' }}
+            >
+              WSSV &amp; Health Pipeline
+            </span>
+          </div>
+          <h3 className="fw-extrabold text-dark mb-1 tracking-tight">Disease Scan &amp; Diagnostics</h3>
+          <p className="text-muted small mb-0">
+            Real-time optical AI inspection for White Spot Syndrome Virus (WSSV), cooked shrimp detection, and health diagnosis.
+          </p>
+        </div>
+
+        <div className="d-flex align-items-center gap-2">
+          <div
+            className="d-flex align-items-center gap-2 px-3 py-1.5 rounded-pill extra-small fw-bold"
+            style={{ backgroundColor: '#FFFFFF', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.16)', boxShadow: '0 2px 6px rgba(11,44,95,0.04)' }}
+          >
+            <span className="rounded-circle bg-success" style={{ width: 8, height: 8 }} />
+            <span>AI Pipeline Active (EfficientNet / CNN)</span>
+          </div>
+        </div>
+      </div>
+
       <div className="row g-4">
         {/* 📸 LEFT CARD: SCANNER & CONTROLS */}
-        <div className="col-lg-7">
-          <div
-            className="card disease-scan-card position-relative overflow-hidden"
-          >
-            <div className="position-absolute top-0 start-0 end-0 bg-primary" style={{ height: 4 }} />
-            <div className="card-body p-4">
-              {/* 🌊 POND SELECTOR BUTTONS (INLINE HEADER) */}
-              <div className="disease-pond-selector mb-3 p-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
-                <div className="d-flex align-items-center gap-2 flex-wrap">
-                  <span className="fw-bold text-dark extra-small text-uppercase d-flex align-items-center gap-1.5 me-1 text-nowrap">
-                    <FaWater className="text-primary" /> Select Pond:
-                  </span>
-                  {assignedPonds.map((pond) => {
-                    const pName = pond.pond_name || pond.name || `Pond ${pond.id}`;
-                    const isSelected = selectedPond === pName;
-                    return (
-                      <button
-                        key={pond.id || pName}
-                        type="button"
-                        className={`btn btn-sm rounded-pill px-3 py-1.5 fw-bold extra-small transition-all d-inline-flex align-items-center gap-1.5 ${
-                          isSelected
-                            ? 'btn-primary shadow-xs'
-                            : 'disease-ghost-button'
-                        }`}
-                        onClick={() => setSelectedPond(pName)}
-                      >
-                        {isSelected && <FaCheck size={10} />} {pName}
-                      </button>
-                    );
-                  })}
+        <div className="col-12 col-lg-7">
+          <div className="tri-card p-4 h-100 d-flex flex-column justify-content-between">
+            <div>
+              {/* Card Sub-Header */}
+              <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+                <div>
+                  <h6 className="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                    <FaCamera style={{ color: '#0B2C5F' }} /> Live Scanner &amp; Image Ingestion
+                  </h6>
+                  <small className="text-muted">Target pond for diagnostic logging</small>
                 </div>
+              </div>
+
+              {/* Pond Selection Pills */}
+              <div
+                className="p-2.5 rounded-3 mb-3 d-flex align-items-center gap-2 flex-wrap"
+                style={{ backgroundColor: '#F8FAFD', border: '1px solid rgba(11, 44, 95, 0.1)' }}
+              >
+                <span className="extra-small fw-bold text-uppercase d-flex align-items-center gap-1 ps-1" style={{ color: '#0B2C5F' }}>
+                  <FaWater /> Pond:
+                </span>
+                {assignedPonds.map((pond) => {
+                  const pName = pond.pond_name || pond.name || `Pond ${pond.id}`;
+                  const isSelected = selectedPond === pName;
+                  return (
+                    <button
+                      key={pond.id || pName}
+                      type="button"
+                      className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all d-inline-flex align-items-center gap-1.5 ${
+                        isSelected ? 'btn-tri-navy shadow-xs' : 'btn-tri-outline'
+                      }`}
+                      onClick={() => setSelectedPond(pName)}
+                    >
+                      {isSelected && <FaCheck size={9} />} {pName}
+                    </button>
+                  );
+                })}
               </div>
 
               {/* 📸 CAMERA / IMAGE PREVIEW FRAME */}
               <div
-                className="disease-camera-frame border border-secondary border-opacity-25 rounded-4 overflow-hidden mb-3 position-relative bg-dark d-flex align-items-center justify-content-center"
-                style={{ minHeight: 320, maxHeight: 420 }}
+                className="rounded-4 overflow-hidden mb-3 position-relative d-flex align-items-center justify-content-center"
+                style={{
+                  minHeight: 330,
+                  maxHeight: 400,
+                  backgroundColor: '#071733',
+                  border: '1px solid rgba(11, 44, 95, 0.15)',
+                  boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.3)',
+                }}
                 onDrop={handleDrop}
                 onDragOver={handleDragOver}
               >
                 {image ? (
                   <div className="w-100 h-100 position-relative d-flex align-items-center justify-content-center bg-black">
-                    <img src={image} alt="shrimp scan target" className="w-100 h-100 object-fit-contain" style={{ maxHeight: 400 }} />
-                    <div className="position-absolute top-0 start-0 end-0 p-3 bg-dark bg-opacity-50 text-white d-flex align-items-center">
+                    <img
+                      src={image}
+                      alt="shrimp scan target"
+                      className="w-100 h-100 object-fit-contain"
+                      style={{ maxHeight: 380 }}
+                    />
+                    <div
+                      className="position-absolute top-0 start-0 end-0 p-3 text-white d-flex align-items-center justify-content-between"
+                      style={{ background: 'linear-gradient(180deg, rgba(7, 23, 51, 0.85) 0%, transparent 100%)' }}
+                    >
                       <span className="extra-small fw-bold d-flex align-items-center gap-1.5">
-                        <FaImage className="text-success" /> {imageSource || 'Selected Image'}
+                        <FaImage style={{ color: '#EA580C' }} /> {imageSource || 'Selected Image'}
                       </span>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-dark bg-opacity-75 rounded-pill px-2.5 py-0.5 extra-small fw-bold"
+                        onClick={clearSelectedImage}
+                      >
+                        <FaTimesCircle className="me-1" /> Retake
+                      </button>
                     </div>
-                    <div className="position-absolute bottom-0 start-0 end-0 p-3 bg-dark bg-opacity-60 text-white d-flex justify-content-between align-items-center gap-2">
+                    <div
+                      className="position-absolute bottom-0 start-0 end-0 p-3 text-white d-flex justify-content-between align-items-center gap-2"
+                      style={{ background: 'linear-gradient(0deg, rgba(7, 23, 51, 0.9) 0%, transparent 100%)' }}
+                    >
                       <span className="small fw-semibold">
-                        {previewLoading ? 'Counting shrimp…' : (previewCount?.is_cooked ? 'Cooked shrimp detected' : 'Detected Shrimp')}
+                        {previewLoading ? 'Inspecting shrimp geometry…' : (previewCount?.is_cooked ? 'Cooked shrimp detected' : 'Detected Shrimp Target')}
                       </span>
-                      <span className={`badge ${previewCount?.is_cooked ? 'bg-danger' : (previewCount?.detected ? 'bg-success' : 'bg-warning text-dark')}`}>
+                      <span
+                        className="badge rounded-pill extra-small fw-bold px-2.5 py-1"
+                        style={{
+                          backgroundColor: previewCount?.is_cooked
+                            ? '#FEF2F2'
+                            : (previewCount?.detected ? '#F0FDF4' : '#FFF7ED'),
+                          color: previewCount?.is_cooked
+                            ? '#DC2626'
+                            : (previewCount?.detected ? '#16A34A' : '#EA580C'),
+                          border: `1px solid ${
+                            previewCount?.is_cooked
+                              ? '#FCA5A5'
+                              : (previewCount?.detected ? '#BBF7D0' : '#FFEDD5')
+                          }`,
+                        }}
+                      >
                         {previewLoading ? 'Checking…' : (previewCount?.is_cooked ? 'Unavailable to scan: Cooked Shrimp' : (previewCount?.status || 'No shrimp detected'))}
                       </span>
                     </div>
                   </div>
                 ) : (
-                  <video ref={videoRef} autoPlay playsInline muted className="disease-camera-video w-100 h-100 object-fit-cover" />
+                  <>
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="w-100 h-100 object-fit-cover"
+                      style={{ minHeight: 330, maxHeight: 400 }}
+                    />
+                    {!streaming && (
+                      <div className="position-absolute text-center text-white-50 p-4">
+                        <FaCamera size={36} className="mb-2 opacity-50" />
+                        <p className="small mb-1 text-white">Camera not available or permission required.</p>
+                        <p className="extra-small text-white-50 mb-0">You can upload or drag-and-drop a photo below.</p>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 
@@ -552,342 +647,506 @@ export default function DiseaseScanPage() {
                 onChange={handleImageUpload}
               />
 
-              {/* 🎛️ ACTION BUTTONS */}
-              <div className="d-flex align-items-center justify-content-between gap-2 pt-1 w-100 flex-nowrap">
-                <div className="d-flex align-items-center gap-2 flex-grow-1 flex-nowrap">
+              {/* 🎛️ ACTION BUTTONS TOOLBAR */}
+              <div className="d-flex align-items-center justify-content-between gap-2 pt-1 w-100 flex-wrap flex-sm-nowrap caretaker-scan-toolbar">
+                <div className="d-flex align-items-center gap-2 flex-grow-1">
                   <button
-                    className="btn disease-ghost-button px-3 py-1.5 fw-bold text-nowrap d-inline-flex align-items-center justify-content-center gap-1.5 flex-grow-1"
-                    style={{ height: 38, minWidth: 95, fontSize: '0.8rem' }}
+                    type="button"
+                    className="btn btn-tri-outline px-3 py-2 fw-bold extra-small flex-grow-1"
                     onClick={captureImage}
                     disabled={!streaming || scanning}
                   >
-                    <FaCamera size={13} /> Capture
+                    <FaCamera /> Capture Photo
                   </button>
                   <button
-                    className="btn disease-ghost-button px-3 py-1.5 fw-bold text-nowrap d-inline-flex align-items-center justify-content-center gap-1.5 flex-grow-1"
-                    style={{ height: 38, minWidth: 95, fontSize: '0.8rem' }}
+                    type="button"
+                    className="btn btn-tri-outline px-3 py-2 fw-bold extra-small flex-grow-1"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={scanning}
                   >
-                    <FaUpload size={13} /> Upload
+                    <FaUpload /> Upload Image
                   </button>
-                  <button
-                    className={`btn disease-ghost-button px-3 py-1.5 fw-bold text-nowrap d-inline-flex align-items-center justify-content-center gap-1.5 flex-grow-1 transition-all ${
-                      image
-                        ? 'btn-outline-danger'
-                        : 'btn-outline-secondary opacity-50 cursor-not-allowed'
-                    }`}
-                    style={{ height: 38, minWidth: 95, fontSize: '0.8rem' }}
-                    onClick={clearSelectedImage}
-                    disabled={!image || scanning}
-                    title={image ? 'Clear selected image' : 'No image to clear'}
-                  >
-                    <FaTimesCircle size={13} /> Clear
-                  </button>
+                  {image && (
+                    <button
+                      type="button"
+                      className="btn btn-tri-outline-orange px-3 py-2 fw-bold extra-small"
+                      onClick={clearSelectedImage}
+                      disabled={scanning}
+                      title="Clear selected image"
+                    >
+                      <FaTimesCircle /> Clear
+                    </button>
+                  )}
                 </div>
+
                 <button
-                  className={`btn btn-primary disease-scan-button px-4 py-1.5 fw-bold text-nowrap d-inline-flex align-items-center justify-content-center gap-1.5 flex-shrink-0 ${
-                    (!scanReady) ? 'opacity-50 cursor-not-allowed' : ''
-                  }`}
-                  style={{ height: 38, minWidth: 95, fontSize: '0.8rem' }}
+                  type="button"
+                  className="btn btn-tri-navy px-4 py-2 fw-bold extra-small flex-shrink-0 shadow-sm caretaker-scan-submit-btn"
+                  style={{ minWidth: 130 }}
                   onClick={() => handleScan(false)}
                   disabled={!scanReady}
                 >
-                  {scanning ? <FaSpinner className="disease-spin" size={13} /> : <FaQrcode size={13} />}
-                  {scanning ? 'Scanning...' : 'Scan'}
+                  {scanning ? <FaSpinner className="disease-spin" /> : <FaQrcode />}
+                  {scanning ? 'Analyzing…' : 'Scan Shrimp'}
                 </button>
               </div>
+            </div>
 
-              {/* Literature Benchmark Accordion */}
-              <div className="disease-model-accuracy mt-4 p-0" style={{ fontSize: '0.9rem' }}>
-                <details>
-                  <summary className="fw-bold p-3" style={{ cursor: 'pointer', listStyle: 'none' }}>
-                    <i className="bi bi-caret-right-fill me-2 text-primary"></i>
-                    View Model Accuracy Literature & Research Baselines
-                  </summary>
-                  <div className="p-3 pt-0 border-top">
-                    <p className="mb-2 text-muted">Current AI detection baselines established by scientific literature:</p>
-                    <ul className="mb-0 text-dark">
-                      <li className="mb-2">
-                        <strong>Advanced CNN (LeNet) Precision:</strong> Up to 96.1% Precision for <i>Penaeus vannamei</i> disease classification.
-                        <a href="https://doi.org/10.1016/j.aquaeng.2022.102296" target="_blank" rel="noopener noreferrer" className="ms-1 text-primary text-decoration-none">
-                          (Read Study)
-                        </a>
-                      </li>
-                      <li className="mb-2">
-                        <strong>Deep Learning (YOLOv8):</strong> 92.0% mean Average Precision (mAP) for healthy vs. diseased classification.
-                        <a href="https://scholar.google.com/scholar?q=Video-Based+Disease+Detection+in+Vannamei+Shrimp+Using+YOLOv8" target="_blank" rel="noopener noreferrer" className="ms-1 text-primary text-decoration-none">
-                          (Search Scholar)
-                        </a>
-                      </li>
-                      <li className="mb-0">
-                        <strong>WSSV Specific Detection (ANN/DL):</strong> 90.0% Accuracy Rate.
-                        <a href="https://scholar.google.com/scholar?q=Shrimp+disease+detection+using+deep+learning+techniques" target="_blank" rel="noopener noreferrer" className="ms-1 text-primary text-decoration-none">
-                          (Search Scholar)
-                        </a>
-                      </li>
-                    </ul>
-                    <p className="mt-3 mb-0" style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>
-                      *Our system utilizes an EfficientNet/CNN transfer learning pipeline targeted to perform within or above these literature baselines.
-                    </p>
-                  </div>
-                </details>
-              </div>
+            {/* Literature Benchmark Accordion */}
+            <div
+              className="mt-4 rounded-3 overflow-hidden"
+              style={{ backgroundColor: '#F8FAFD', border: '1px solid rgba(11, 44, 95, 0.1)' }}
+            >
+              <details>
+                <summary className="fw-bold p-3 extra-small" style={{ cursor: 'pointer', listStyle: 'none', color: '#0B2C5F' }}>
+                  <FaInfoCircle className="me-2 text-primary" />
+                  View Model Accuracy Literature &amp; Research Baselines
+                </summary>
+                <div className="p-3 pt-0 border-top" style={{ fontSize: '0.82rem' }}>
+                  <p className="mb-2 text-muted extra-small">Current AI detection baselines established by scientific literature:</p>
+                  <ul className="mb-0 text-dark extra-small ps-3">
+                    <li className="mb-1.5">
+                      <strong>Advanced CNN (LeNet) Precision:</strong> Up to 96.1% Precision for <i>Penaeus vannamei</i> disease classification.
+                      <a href="https://doi.org/10.1016/j.aquaeng.2022.102296" target="_blank" rel="noopener noreferrer" className="ms-1 fw-bold" style={{ color: '#0B2C5F' }}>
+                        (Read Study)
+                      </a>
+                    </li>
+                    <li className="mb-1.5">
+                      <strong>Deep Learning (YOLOv8):</strong> 92.0% mean Average Precision (mAP) for healthy vs. diseased classification.
+                      <a href="https://scholar.google.com/scholar?q=Video-Based+Disease+Detection+in+Vannamei+Shrimp+Using+YOLOv8" target="_blank" rel="noopener noreferrer" className="ms-1 fw-bold" style={{ color: '#0B2C5F' }}>
+                        (Search Scholar)
+                      </a>
+                    </li>
+                    <li className="mb-0">
+                      <strong>WSSV Specific Detection (ANN/DL):</strong> 90.0% Accuracy Rate.
+                      <a href="https://scholar.google.com/scholar?q=Shrimp+disease+detection+using+deep+learning+techniques" target="_blank" rel="noopener noreferrer" className="ms-1 fw-bold" style={{ color: '#0B2C5F' }}>
+                        (Search Scholar)
+                      </a>
+                    </li>
+                  </ul>
+                  <p className="mt-2 mb-0 extra-small text-muted fst-italic">
+                    *Our system utilizes an EfficientNet/CNN transfer learning pipeline targeted to perform within or above these literature baselines.
+                  </p>
+                </div>
+              </details>
             </div>
           </div>
         </div>
 
         {/* 🧪 RIGHT CARD: PIPELINE ASSESSMENT RESULT */}
-        <div className="col-lg-5">
-          <div
-            className="card disease-results-card position-relative overflow-hidden h-100"
-          >
-            <div className="position-absolute top-0 start-0 end-0 bg-info" style={{ height: 4 }} />
-            <div className="card-body p-4">
-              {shouldShowAdditionalPrompt ? (
-                <div className="alert alert-warning border-warning d-flex flex-column gap-3 rounded-3 mb-0">
-                  <strong>No WSSV detected neither Shrimp is Healthy enable additional disease detection features?</strong>
-                  <button
-                    type="button"
-                    className="btn btn-warning fw-bold align-self-start"
-                    onClick={handleAdditionalDetection}
-                    disabled={scanning}
-                  >
-                    {scanning ? 'Scanning...' : 'Yes'}
-                  </button>
+        <div className="col-12 col-lg-5">
+          <div className="tri-card p-4 h-100 d-flex flex-column">
+            <div className="d-flex align-items-center justify-content-between mb-3">
+              <h6 className="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                <FaShieldAlt style={{ color: '#0B2C5F' }} /> Pipeline Assessment Result
+              </h6>
+              {result && (
+                <span
+                  className="badge rounded-pill extra-small fw-bold px-2.5 py-1"
+                  style={{
+                    backgroundColor: healthStatus === 'Healthy' ? '#F0FDF4' : '#FFF7ED',
+                    color: healthStatus === 'Healthy' ? '#16A34A' : '#EA580C',
+                    border: `1px solid ${healthStatus === 'Healthy' ? '#BBF7D0' : '#FFEDD5'}`,
+                  }}
+                >
+                  {healthStatus}
+                </span>
+              )}
+            </div>
+
+            {shouldShowAdditionalPrompt ? (
+              <div
+                className="p-3.5 rounded-3 mb-0"
+                style={{ backgroundColor: '#FFF7ED', border: '1px solid #FFEDD5' }}
+              >
+                <div className="d-flex align-items-center gap-2 mb-2" style={{ color: '#EA580C' }}>
+                  <FaExclamationTriangle size={18} />
+                  <strong className="text-dark">Additional Disease Detection</strong>
                 </div>
-              ) : (
-                <>
-                  <h5 className="fw-bold mb-3 text-dark">Pipeline Assessment Result</h5>
+                <p className="small text-muted mb-3">
+                  No WSSV detected and the shrimp is not classified as healthy. Would you like to enable secondary disease detection features?
+                </p>
+                <button
+                  type="button"
+                  className="btn btn-tri-orange btn-sm px-3.5 py-1.5 extra-small fw-bold"
+                  onClick={handleAdditionalDetection}
+                  disabled={scanning}
+                >
+                  {scanning ? 'Scanning…' : 'Yes, Run Extended Diagnosis'}
+                </button>
+              </div>
+            ) : (
+              <>
                   {!result && (
-                <div className="disease-empty-result">
-                  {scanning ? (
-                    <div className="text-center py-4">
-                      <FaSpinner className="disease-spin fs-2 text-primary mb-2" />
-                      <p className="small text-muted mb-0">Running Stage 1-4 AI Pipeline...</p>
+                    <div
+                      className="d-flex flex-column align-items-center justify-content-center text-center p-4 rounded-3 flex-grow-1"
+                      style={{ backgroundColor: '#F8FAFD', border: '1px dashed rgba(11, 44, 95, 0.16)', minHeight: 280 }}
+                    >
+                      {scanning ? (
+                        <>
+                          <FaSpinner className="disease-spin fs-1 mb-3" style={{ color: '#0B2C5F' }} />
+                          <h6 className="fw-bold mb-1" style={{ color: '#0B2C5F' }}>Running AI Pipeline</h6>
+                          <p className="extra-small text-muted mb-0">Executing Stages 1–4 Computer Vision Diagnostics…</p>
+                        </>
+                      ) : (
+                        <>
+                          <div
+                            className="rounded-circle d-flex align-items-center justify-content-center mb-3"
+                            style={{ width: 56, height: 56, backgroundColor: 'rgba(11, 44, 95, 0.06)', color: '#0B2C5F' }}
+                          >
+                            <FaSearch size={22} />
+                          </div>
+                          <h6 className="fw-bold text-dark mb-1">Awaiting Shrimp Target</h6>
+                          <p className="extra-small text-muted mb-0" style={{ maxWidth: 260 }}>
+                            Capture or upload an image to run the automated WSSV and health assessment pipeline.
+                          </p>
+                        </>
+                      )}
                     </div>
-                  ) : (
-                    <div className="text-center py-4">
-                      <FaSearch className="fs-3 text-muted mb-2" />
-                      <p className="small text-muted">Upload or capture an image to run the AI diagnosis pipeline.</p>
-                    </div>
-                  )}
-                </div>
                   )}
 
                   {result && (
-                <div>
-                  {/* Stage Status Badges */}
-                  <div className="d-flex align-items-center gap-2 flex-wrap mb-3">
-                    <span className={`badge ${shrimpDetected ? 'badge-success' : 'badge-danger'} d-flex align-items-center gap-1`}>
-                      <FaShieldAlt /> Shrimp Detected: {shrimpDetected ? 'Yes' : 'No'}
-                    </span>
-                    <span className={`badge ${imageQuality === 'Good Quality' ? 'badge-success' : 'badge-warning'} d-flex align-items-center gap-1`}>
-                      Quality: {imageQuality}
-                    </span>
-                    <span className={`badge ${getStatusBadgeClass(healthStatus)}`}>
-                      Status: {healthStatus}
-                    </span>
-                  </div>
-
-                  {/* Stage 1 Failure UI */}
-                  {!shrimpDetected && (
-                    <div className="alert alert-danger d-flex align-items-start gap-2 rounded-3 mb-3">
-                      <FaTimesCircle className="fs-4 flex-shrink-0 mt-1" />
-                      <div>
-                        <h6 className="fw-bold mb-1">No Shrimp Detected</h6>
-                        <p className="small mb-0">{result.message || 'No shrimp was detected in the uploaded image. Please upload a clear image containing a shrimp.'}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Stage 2 Failure UI */}
-                  {shrimpDetected && imageQuality === 'Poor Image Quality' && (
-                    <div className="alert alert-warning d-flex align-items-start gap-2 rounded-3 mb-3">
-                      <FaExclamationTriangle className="fs-4 flex-shrink-0 mt-1" />
-                      <div>
-                        <h6 className="fw-bold mb-1">Poor Image Quality</h6>
-                        <p className="small mb-0">{result.message || 'Please upload a clearer image of a shrimp.'}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Stage 4 Low Confidence / Uncertain UI */}
-                  {shrimpDetected && imageQuality === 'Good Quality' && healthStatus === 'Uncertain' && (
-                    <div className="alert alert-info d-flex align-items-start gap-2 rounded-3 mb-3">
-                      <FaInfoCircle className="fs-4 flex-shrink-0 mt-1" />
-                      <div>
-                        <h6 className="fw-bold mb-1">Uncertain Prediction (&lt; 90% Confidence)</h6>
-                        <p className="small mb-0">{result.message || 'Unable to confidently identify the shrimp condition. Please upload a clearer shrimp image.'}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Successful Prediction Details */}
-                  {diseaseTitle && (
-                    <div className="mb-3">
-                      <div className="d-flex align-items-center justify-content-between mb-1">
-                        <h4 className="fw-bold mb-0 text-primary">{diseaseTitle}</h4>
-                        <span className="badge disease-model-badge d-flex align-items-center gap-1">
-                          <FaRobot className="text-primary" /> {modelUsed}
+                    <div className="d-flex flex-column gap-3">
+                      {/* Stage Status Badges */}
+                      <div className="d-flex align-items-center gap-2 flex-wrap">
+                        <span
+                          className="badge rounded-pill extra-small fw-bold px-2.5 py-1.5 d-inline-flex align-items-center gap-1.5"
+                          style={
+                            shrimpDetected
+                              ? { backgroundColor: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0' }
+                              : { backgroundColor: '#FEF2F2', color: '#B91C1C', border: '1px solid #FECACA' }
+                          }
+                        >
+                          <FaShieldAlt /> Shrimp Detected: {shrimpDetected ? 'Yes' : 'No'}
+                        </span>
+                        <span
+                          className="badge rounded-pill extra-small fw-bold px-2.5 py-1.5 d-inline-flex align-items-center gap-1.5"
+                          style={
+                            imageQuality === 'Good Quality'
+                              ? { backgroundColor: 'rgba(11, 44, 95, 0.07)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.16)' }
+                              : { backgroundColor: '#FFF7ED', color: '#EA580C', border: '1px solid #FFEDD5' }
+                          }
+                        >
+                          Quality: {imageQuality}
+                        </span>
+                        <span
+                          className="badge rounded-pill extra-small fw-bold px-2.5 py-1.5"
+                          style={
+                            healthStatus === 'Healthy'
+                              ? { backgroundColor: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0' }
+                              : healthStatus === 'Diseased'
+                              ? { backgroundColor: '#FEF2F2', color: '#B91C1C', border: '1px solid #FECACA' }
+                              : { backgroundColor: '#FFF7ED', color: '#EA580C', border: '1px solid #FFEDD5' }
+                          }
+                        >
+                          Status: {healthStatus}
                         </span>
                       </div>
-                      <p className="small text-muted mb-3">{descriptionText}</p>
 
-                      <div className="d-flex justify-content-between small fw-semibold mb-1">
-                        <span>Confidence Score</span>
-                        <span>{confidence.toFixed(2)}%</span>
-                      </div>
-                      <div className="progress disease-confidence mb-3">
+                      {/* Stage 1 Failure UI */}
+                      {!shrimpDetected && (
                         <div
-                          className={`progress-bar ${healthStatus === 'Healthy' ? 'bg-success' : 'bg-danger'}`}
-                          style={{ width: `${Math.min(100, Math.max(0, confidence))}%` }}
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Disease Class Probabilities Breakdown */}
-                  {renderedProbabilities.length > 0 && (
-                    <div className="card disease-probability-card mb-3">
-                      <div className="card-body p-3">
-                        <h6 className="fw-bold small text-uppercase text-muted mb-2">Class Probability Breakdown</h6>
-                        {renderedProbabilities.map(([diseaseName, probScore]) => (
-                          <div key={diseaseName} className="mb-2">
-                            <div className="d-flex justify-content-between small mb-1">
-                              <span className="fw-semibold">{diseaseName}</span>
-                              <span className="text-muted">{Number(probScore).toFixed(2)}%</span>
-                            </div>
-                            <div className="progress" style={{ height: 6 }}>
-                              <div
-                                className={`progress-bar ${diseaseName.includes('Healthy') ? 'bg-success' : (diseaseName.includes('White Spot') ? 'bg-danger' : 'bg-warning')}`}
-                                style={{ width: `${Math.min(100, Math.max(0, Number(probScore)))}%` }}
-                              />
-                            </div>
+                          className="p-3 rounded-3 d-flex align-items-start gap-2.5"
+                          style={{ backgroundColor: '#FEF2F2', border: '1px solid #FECACA', color: '#991B1B' }}
+                        >
+                          <FaTimesCircle className="fs-5 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <h6 className="fw-bold mb-1">No Shrimp Detected</h6>
+                            <p className="extra-small mb-0 opacity-90">
+                              {result.message || 'No shrimp was detected in the uploaded image. Please upload a clear image containing a shrimp.'}
+                            </p>
                           </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                        </div>
+                      )}
 
-                  {recommendations.length > 0 && (
-                    <div>
-                      <h6 className="fw-bold mb-2 text-dark">Recommendation</h6>
-                      <ul className="ps-3 mb-0 small text-secondary">
-                        {recommendations.map((item) => <li key={item} className="mb-1">{item}</li>)}
-                      </ul>
+                      {/* Stage 2 Failure UI */}
+                      {shrimpDetected && imageQuality === 'Poor Image Quality' && (
+                        <div
+                          className="p-3 rounded-3 d-flex align-items-start gap-2.5"
+                          style={{ backgroundColor: '#FFF7ED', border: '1px solid #FFEDD5', color: '#C2410C' }}
+                        >
+                          <FaExclamationTriangle className="fs-5 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <h6 className="fw-bold mb-1">Poor Image Quality</h6>
+                            <p className="extra-small mb-0 opacity-90">
+                              {result.message || 'Please upload a clearer image of a shrimp.'}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Stage 4 Low Confidence / Uncertain UI */}
+                      {shrimpDetected && imageQuality === 'Good Quality' && healthStatus === 'Uncertain' && (
+                        <div
+                          className="p-3 rounded-3 d-flex align-items-start gap-2.5"
+                          style={{ backgroundColor: 'rgba(11, 44, 95, 0.05)', border: '1px solid rgba(11, 44, 95, 0.16)', color: '#0B2C5F' }}
+                        >
+                          <FaInfoCircle className="fs-5 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <h6 className="fw-bold mb-1">Uncertain Prediction (&lt; 90% Confidence)</h6>
+                            <p className="extra-small mb-0 opacity-90">
+                              {result.message || 'Unable to confidently identify the shrimp condition. Please upload a clearer shrimp image.'}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Successful Prediction Details */}
+                      {diseaseTitle && (
+                        <div
+                          className="p-3.5 rounded-3"
+                          style={{
+                            backgroundColor: healthStatus === 'Healthy' ? '#F0FDF4' : '#FFF7ED',
+                            border: healthStatus === 'Healthy' ? '1px solid #BBF7D0' : '1px solid #FFEDD5',
+                          }}
+                        >
+                          <div className="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
+                            <div>
+                              <span
+                                className="extra-small fw-bold text-uppercase tracking-wider d-block mb-0.5"
+                                style={{ color: healthStatus === 'Healthy' ? '#15803D' : '#EA580C' }}
+                              >
+                                Primary Diagnosis
+                              </span>
+                              <h4
+                                className="fw-extrabold mb-0 tracking-tight"
+                                style={{ color: healthStatus === 'Healthy' ? '#166534' : '#9A3412' }}
+                              >
+                                {diseaseTitle}
+                              </h4>
+                            </div>
+                            <span
+                              className="badge rounded-pill extra-small fw-bold px-2.5 py-1 d-inline-flex align-items-center gap-1.5"
+                              style={{ backgroundColor: '#FFFFFF', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.16)' }}
+                            >
+                              <FaRobot style={{ color: '#0B2C5F' }} /> {modelUsed}
+                            </span>
+                          </div>
+
+                          {descriptionText && (
+                            <p className="small text-muted mb-3" style={{ lineHeight: 1.5 }}>
+                              {descriptionText}
+                            </p>
+                          )}
+
+                          <div className="d-flex justify-content-between extra-small fw-bold mb-1.5">
+                            <span style={{ color: '#0B2C5F' }}>AI Confidence Score</span>
+                            <span className="fw-extrabold" style={{ color: healthStatus === 'Healthy' ? '#15803D' : '#EA580C' }}>
+                              {confidence.toFixed(2)}%
+                            </span>
+                          </div>
+                          <div className="tri-progress-track mb-1" style={{ height: 10 }}>
+                            <div
+                              className={healthStatus === 'Healthy' ? 'tri-progress-bar-green' : 'tri-progress-bar-orange'}
+                              style={{ width: `${Math.min(100, Math.max(0, confidence))}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Disease Class Probabilities Breakdown */}
+                      {renderedProbabilities.length > 0 && (
+                        <div
+                          className="p-3 rounded-3"
+                          style={{ backgroundColor: '#FFFFFF', border: '1px solid rgba(11, 44, 95, 0.1)' }}
+                        >
+                          <div className="d-flex align-items-center justify-content-between mb-2.5">
+                            <h6 className="fw-bold extra-small text-uppercase tracking-wider mb-0" style={{ color: '#0B2C5F' }}>
+                              Class Probability Breakdown
+                            </h6>
+                            <span className="badge rounded-pill extra-small" style={{ backgroundColor: 'rgba(11, 44, 95, 0.06)', color: '#0B2C5F' }}>
+                              Softmax Output
+                            </span>
+                          </div>
+                          <div className="d-flex flex-column gap-2.5">
+                            {renderedProbabilities.map(([diseaseName, probScore]) => {
+                              const isHealthy = diseaseName.toLowerCase().includes('healthy');
+                              const isWssv = diseaseName.toLowerCase().includes('white spot') || diseaseName.toLowerCase().includes('wssv');
+                              return (
+                                <div key={diseaseName}>
+                                  <div className="d-flex justify-content-between extra-small mb-1">
+                                    <span className="fw-semibold text-dark">{diseaseName}</span>
+                                    <span className="fw-bold" style={{ color: '#0B2C5F' }}>{Number(probScore).toFixed(2)}%</span>
+                                  </div>
+                                  <div className="tri-progress-track" style={{ height: 6 }}>
+                                    <div
+                                      className={isHealthy ? 'tri-progress-bar-green' : isWssv ? 'tri-progress-bar-orange' : 'tri-progress-bar-navy'}
+                                      style={{ width: `${Math.min(100, Math.max(0, Number(probScore)))}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Recommendation Box */}
+                      {recommendations.length > 0 && (
+                        <div
+                          className="p-3 rounded-3"
+                          style={{ backgroundColor: '#F8FAFD', border: '1px solid rgba(11, 44, 95, 0.08)' }}
+                        >
+                          <h6 className="fw-bold extra-small text-uppercase tracking-wider mb-2" style={{ color: '#0B2C5F' }}>
+                            Action Protocol &amp; Recommendations
+                          </h6>
+                          <ul className="ps-3 mb-0 extra-small text-secondary d-flex flex-column gap-1">
+                            {recommendations.map((item) => (
+                              <li key={item} className="fw-medium">{item}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
                   )}
                 </>
               )}
             </div>
           </div>
         </div>
-      </div>
 
       {/* 📜 DETECTION & PIPELINE HISTORY TABLE WITH FILTER TOOLSTRIP & EXPORT PDF */}
-      <div className="card border-0 shadow-sm rounded-4 mt-4">
-        <div className="card-body p-4">
-          <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-            <div>
-              <h5 className="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
-                <FaHistory className="text-primary" /> Detection & Pipeline History
-              </h5>
-              <small className="text-muted">History of AI disease scan assessments for assigned ponds</small>
-            </div>
-
-            <div className="d-flex align-items-center gap-2 flex-wrap ms-auto">
-              {/* Search Bar */}
-              <div
-                className="input-group disease-history-search overflow-hidden d-flex align-items-center px-3"
-                style={{ width: 190, height: 36 }}
-              >
-                <span className="text-muted extra-small me-2 d-flex align-items-center"><FaSearch /></span>
-                <input
-                  type="text"
-                  className="form-control form-control-sm border-0 shadow-none bg-transparent p-0 extra-small fw-medium"
-                  placeholder="Search log..."
-                  value={historySearch}
-                  onChange={(e) => setHistorySearch(e.target.value)}
-                  style={{ height: '100%' }}
-                />
-              </div>
-
-              {/* Status Filter */}
-              <select
-                className="form-select form-select-sm rounded-pill fw-bold border-primary border-opacity-25 bg-primary bg-opacity-10 text-primary px-3 py-1 shadow-xs cursor-pointer"
-                style={{ height: 36, width: 'auto', minWidth: 130, fontSize: '0.81rem' }}
-                value={historyStatusFilter}
-                onChange={(e) => setHistoryStatusFilter(e.target.value)}
-                aria-label="Filter scan history by status"
-              >
-                <option value="all">All Statuses</option>
-                <option value="Healthy">Healthy</option>
-                <option value="Diseased">Diseased</option>
-                <option value="Uncertain">Uncertain</option>
-                <option value="Poor Image Quality">Poor Quality</option>
-              </select>
-
-              {/* Export PDF Button */}
-              <button
-                className="btn btn-outline-primary btn-sm rounded-pill px-3 py-1.5 fw-bold extra-small d-inline-flex align-items-center gap-1.5 shadow-xs text-nowrap"
-                style={{ height: 36 }}
-                onClick={exportPdf}
-              >
-                <FaFilePdf /> Export PDF
-              </button>
-            </div>
+      <div className="tri-card p-4 mt-4">
+        <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-3">
+          <div>
+            <h5 className="fw-extrabold text-dark mb-1 d-flex align-items-center gap-2">
+              <FaHistory style={{ color: '#0B2C5F' }} /> Detection &amp; Pipeline History
+            </h5>
+            <small className="text-muted">History of AI disease scan assessments for assigned ponds</small>
           </div>
 
-          <div className="table-responsive border rounded-3 shadow-xs">
-            <table className="table align-middle mb-0">
-              <thead className="table-light">
+          <div className="d-flex align-items-center gap-2 flex-wrap ms-auto">
+            {/* Search Bar */}
+            <div
+              className="d-flex align-items-center px-3 rounded-pill"
+              style={{
+                width: 210,
+                height: 38,
+                backgroundColor: '#F8FAFD',
+                border: '1px solid rgba(11, 44, 95, 0.16)',
+              }}
+            >
+              <FaSearch className="text-muted extra-small me-2" />
+              <input
+                type="text"
+                className="form-control form-control-sm border-0 shadow-none bg-transparent p-0 extra-small fw-medium"
+                placeholder="Search history..."
+                value={historySearch}
+                onChange={(e) => setHistorySearch(e.target.value)}
+                style={{ height: '100%' }}
+              />
+            </div>
+
+            {/* Status Filter */}
+            <select
+              className="form-select form-select-sm rounded-pill fw-semibold extra-small px-3 shadow-none cursor-pointer"
+              style={{
+                height: 38,
+                width: 'auto',
+                minWidth: 135,
+                backgroundColor: '#F8FAFD',
+                border: '1px solid rgba(11, 44, 95, 0.16)',
+                color: '#0B2C5F',
+              }}
+              value={historyStatusFilter}
+              onChange={(e) => setHistoryStatusFilter(e.target.value)}
+              aria-label="Filter scan history by status"
+            >
+              <option value="all">All Statuses</option>
+              <option value="Healthy">Healthy</option>
+              <option value="Diseased">Diseased</option>
+              <option value="Uncertain">Uncertain</option>
+              <option value="Poor Image Quality">Poor Quality</option>
+            </select>
+
+            {/* Export PDF Button */}
+            <button
+              className="btn btn-tri-outline btn-sm px-3.5 extra-small fw-bold d-inline-flex align-items-center gap-1.5 text-nowrap"
+              style={{ height: 38 }}
+              onClick={exportPdf}
+            >
+              <FaFilePdf style={{ color: '#EA580C' }} /> Export PDF
+            </button>
+          </div>
+        </div>
+
+        <div className="table-responsive rounded-3" style={{ border: '1px solid rgba(11, 44, 95, 0.08)' }}>
+          <table className="table tri-table align-middle mb-0">
+            <thead>
+              <tr>
+                <th className="ps-3 py-3">Date &amp; Time</th>
+                <th className="py-3">Pond</th>
+                <th className="py-3">Disease / Outcome</th>
+                <th className="py-3">Confidence</th>
+                <th className="py-3">AI Model Used</th>
+                <th className="py-3">Risk Level</th>
+                <th className="py-3 pe-3 text-end">Pipeline Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredHistory.length === 0 && (
                 <tr>
-                  <th className="ps-3 py-3 text-secondary text-uppercase extra-small fw-bold">Date & Time</th>
-                  <th className="py-3 text-secondary text-uppercase extra-small fw-bold">Pond</th>
-                  <th className="py-3 text-secondary text-uppercase extra-small fw-bold">Disease / Outcome</th>
-                  <th className="py-3 text-secondary text-uppercase extra-small fw-bold">Confidence</th>
-                  <th className="py-3 text-secondary text-uppercase extra-small fw-bold">AI Model Used</th>
-                  <th className="py-3 text-secondary text-uppercase extra-small fw-bold">Risk Level</th>
-                  <th className="py-3 text-secondary text-uppercase extra-small fw-bold">Pipeline Status</th>
+                  <td colSpan="7" className="text-center py-5 text-muted extra-small fw-medium">
+                    {historySearch
+                      ? `No scan logs matching "${historySearch}".`
+                      : 'No disease scans recorded yet.'}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {filteredHistory.length === 0 && (
-                  <tr>
-                    <td colSpan="7" className="text-center py-4 text-muted extra-small fw-medium">
-                      {historySearch
-                        ? `No scan logs matching "${historySearch}".`
-                        : 'No disease scans recorded.'}
-                    </td>
-                  </tr>
-                )}
-                {filteredHistory.map((item) => (
+              )}
+              {filteredHistory.map((item) => {
+                const status = item.health_status || item.status;
+                const isHealthy = status === 'Healthy' || String(item.disease_name).toLowerCase().includes('healthy');
+                const isDiseased = status === 'Diseased' || String(item.risk_level).toLowerCase() === 'high';
+                return (
                   <tr key={item.id}>
                     <td className="ps-3 font-mono extra-small text-muted">{item.created_at}</td>
-                    <td className="fw-bold text-dark">{item.pond_name || 'Assigned Pond'}</td>
-                    <td className="fw-semibold text-primary">{item.disease_name}</td>
-                    <td className="fw-bold">{Number(item.confidence_score || 0).toFixed(2)}%</td>
+                    <td className="fw-bold" style={{ color: '#0B2C5F' }}>{item.pond_name || 'Assigned Pond'}</td>
                     <td>
-                      <small className="text-muted"><FaRobot className="me-1 text-primary" />{item.model_used || 'Desktop Model'}</small>
+                      <span className="fw-bold" style={{ color: isHealthy ? '#047857' : isDiseased ? '#EA580C' : '#0B2C5F' }}>
+                        {item.disease_name}
+                      </span>
+                    </td>
+                    <td className="fw-extrabold" style={{ color: '#0B2C5F' }}>
+                      {Number(item.confidence_score || 0).toFixed(2)}%
                     </td>
                     <td>
-                      <span className={`badge ${item.risk_level === 'High' ? 'bg-danger' : (item.risk_level === 'Medium' ? 'bg-warning text-dark' : 'bg-success')}`}>
+                      <span className="extra-small text-muted d-inline-flex align-items-center gap-1">
+                        <FaRobot style={{ color: '#0B2C5F' }} /> {item.model_used || 'Desktop Model'}
+                      </span>
+                    </td>
+                    <td>
+                      <span
+                        className="badge rounded-pill extra-small fw-bold px-2.5 py-1"
+                        style={
+                          item.risk_level === 'High'
+                            ? { backgroundColor: '#FEF2F2', color: '#B91C1C', border: '1px solid #FECACA' }
+                            : item.risk_level === 'Medium'
+                            ? { backgroundColor: '#FFF7ED', color: '#EA580C', border: '1px solid #FFEDD5' }
+                            : { backgroundColor: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0' }
+                        }
+                      >
                         {item.risk_level || 'Low'}
                       </span>
                     </td>
-                    <td>
-                      <span className={`badge ${getStatusBadgeClass(item.health_status || item.status)}`}>
-                        {item.health_status || item.status}
+                    <td className="pe-3 text-end">
+                      <span
+                        className="badge rounded-pill extra-small fw-bold px-2.5 py-1"
+                        style={
+                          status === 'Healthy'
+                            ? { backgroundColor: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0' }
+                            : status === 'Diseased' || status === 'No Shrimp Detected'
+                            ? { backgroundColor: '#FEF2F2', color: '#B91C1C', border: '1px solid #FECACA' }
+                            : { backgroundColor: '#FFF7ED', color: '#EA580C', border: '1px solid #FFEDD5' }
+                        }
+                      >
+                        {status}
                       </span>
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
