@@ -243,11 +243,12 @@ export default function AdminLayout() {
 
   return (
     <div className="saas-layout-canvas">
-      {/* 🌟 TOP NAVIGATION HEADER (Executive 2-Tier Architecture) */}
-      <header className="top-dock-bar">
-        <div className="top-dock-inner" style={{ maxWidth: 1480, margin: '0 auto', width: '100%' }}>
-          {/* Tier 1: Brand & Executive Utilities Bar */}
-        <div className="top-dock-topbar d-flex align-items-center justify-content-between w-100">
+      {/* 🌟 TOP NAVIGATION HEADER (Floating Capsule with Zero Top Leakage) */}
+      <div className="top-dock-wrapper">
+        <header className="top-dock-bar">
+          <div className="top-dock-inner" style={{ maxWidth: 1480, margin: '0 auto', width: '100%' }}>
+            {/* Tier 1: Brand & Executive Utilities Bar */}
+            <div className="top-dock-topbar d-flex align-items-center justify-content-between w-100">
           {/* 1. Brand Logo & Farm Identity */}
           <div className="d-flex align-items-center gap-2.5 gap-md-3 flex-shrink-0">
             <NavLink to="/admin/dashboard" className="d-flex align-items-center gap-2.5 text-decoration-none">
@@ -582,6 +583,7 @@ export default function AdminLayout() {
         )}
         </div>
       </header>
+    </div>
 
       {/* 🌟 MAIN PAGE CONTENT (Max Width 1480px, Spacious Padding) */}
       <main className="container-fluid px-3 px-md-4 pb-5" style={{ maxWidth: 1480, margin: '0 auto' }}>

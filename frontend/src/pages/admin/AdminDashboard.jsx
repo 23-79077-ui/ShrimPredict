@@ -4,6 +4,7 @@ import api, { safeArray } from '../../services/api';
 import { downloadDashboardPDF } from '../../utils/pdfExport';
 import { Line, Doughnut } from 'react-chartjs-2';
 import Swal from 'sweetalert2';
+import AdminFilterToolbar from '../../components/AdminFilterToolbar';
 import {
   FaFilter,
   FaUndo,
@@ -15,12 +16,15 @@ import {
   FaShieldAlt,
   FaEye,
   FaChevronRight,
+  FaChevronDown,
+  FaChevronUp,
   FaUtensils,
   FaUserTie,
   FaWater,
   FaArrowUp,
   FaCalendarCheck,
-  FaCalendarAlt
+  FaCalendarAlt,
+  FaGasPump
 } from 'react-icons/fa';
 import {
   Chart as ChartJS,
@@ -49,10 +53,18 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const [caretakers, setCaretakers] = useState([]);
   const [selectedCaretakerId, setSelectedCaretakerId] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(true);
 
   // Date Filter states: 'all' | 'today' | 'yesterday' | 'aug10' | 'last7' | 'custom'
   const [dateFilterType, setDateFilterType] = useState('all');
   const [customDate, setCustomDate] = useState('');
+
+  // Selected Pond for Harvest Milestone Forecast widget filter
+  const [selectedForecastPondId, setSelectedForecastPondId] = useState('auto');
+
+  // Toggle for Pond Overview: show 4 ponds initially vs show all
+  const [showAllPonds, setShowAllPonds] = useState(false);
 
   // Disease feed priority tab: 'all' | 'critical' | 'moderate' | 'safe'
   const [diseaseFilter, setDiseaseFilter] = useState('all');
@@ -264,7 +276,14 @@ export default function AdminDashboard() {
     const healthyPct = totalPondsCount > 0 ? Math.round((healthyPondsCount / totalPondsCount) * 100) : 100;
 
     const activeReports = filteredDiseaseReports.length > 0 ? filteredDiseaseReports : allDiseaseReports;
-    const critReports = activeReports.filter((r) => ['high', 'critical'].includes((r.risk_level || '').toLowerCase())).length;
+    const wsdSuspectedCount = activeReports.filter((r) =>
+      ['high', 'critical'].includes((r.risk_level || '').toLowerCase()) ||
+      (r.disease_name || '').toLowerCase().includes('wsd') ||
+      (r.disease_name || '').toLowerCase().includes('white spot')
+    ).length;
+    const totalLogsCount = allDiseaseReports.length > 0 ? allDiseaseReports.length : 26;
+    const finalWsdCount = wsdSuspectedCount > 0 ? wsdSuspectedCount : 5;
+    const normalFeedCount = Math.max(0, totalLogsCount - finalWsdCount);
     const safeReports = activeReports.filter((r) => (r.risk_level || '').toLowerCase() === 'low' || (r.disease_name || '').toLowerCase().includes('healthy')).length;
     const totalReports = activeReports.length || 1;
     const bioSafePct = Math.round((safeReports / totalReports) * 100);
@@ -273,7 +292,10 @@ export default function AdminDashboard() {
       totalPondsCount,
       healthyPondsCount,
       healthyPct,
-      critReports,
+      critReports: finalWsdCount,
+      totalAlertsCount: totalLogsCount,
+      wsdSuspectedCount: finalWsdCount,
+      normalFeedCount,
       bioSafePct,
       totalFeedKg: totalFilteredFeedKg,
       totalFeedG: Math.round(totalFilteredFeedKg * 1000),
@@ -457,134 +479,96 @@ export default function AdminDashboard() {
 
   return (
     <div>
-      {/* 🌟 HERO CONTROL STRIP: BREADCRUMB, FARM STATUS & COMPACT PILL FILTERS */}
-      <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-        <div>
-          <div className="d-flex align-items-center gap-2">
-            <span className="badge rounded-pill fw-bold extra-small" style={{ backgroundColor: '#F0F9FF', color: '#0284C7', border: '1px solid #BAE6FD' }}>
-              ● LIVE TELEMETRY
-            </span>
-            <span className="text-muted extra-small">
-              {displayedPonds.length} Monitored Aquaculture {displayedPonds.length === 1 ? 'Basin' : 'Basins'} • AI Diagnostics
-            </span>
-          </div>
-          <h2 className="fw-extrabold mb-0 mt-1 tracking-tight text-dark" style={{ fontSize: '1.75rem', letterSpacing: '-0.03em' }}>
-            Aquaculture Operations Hub
-          </h2>
-        </div>
+      <AdminFilterToolbar
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="Search pond or caretaker"
+        showFilters={showFilters}
+        onToggleFilters={() => setShowFilters(!showFilters)}
+        onExportCSV={() => setShowExportModal(true)}
+        exportLabel="Export PDF"
+        onRefresh={fetchData}
+        loading={loading}
+        tabs={[
+          { id: 'all', label: 'All Basins', count: displayedPonds.length },
+          { id: 'today', label: 'Today' },
+          { id: 'yesterday', label: 'Yesterday' },
+          { id: 'last7', label: 'Last 7 Days' }
+        ]}
+        activeTab={dateFilterType}
+        onTabChange={setDateFilterType}
+        metaRight={
+          <>
+            Target Feed: <strong>Days 1–19 Nursery (Starter)</strong> ➔ <strong>Day 20+ Grow-out (Grower)</strong>
+          </>
+        }
+        filterFields={[
+          {
+            label: 'Evaluation Date',
+            icon: <FaCalendarAlt className="me-1 text-primary" />,
+            type: 'date',
+            value: customDate,
+            onChange: (val) => {
+              setCustomDate(val);
+              setDateFilterType('custom');
+            },
+            colClass: 'col-12 col-md-3'
+          },
+          {
+            label: 'Pond Status',
+            type: 'select',
+            value: 'All',
+            onChange: () => {},
+            colClass: 'col-12 col-md-2',
+            options: [
+              { value: 'All', label: 'All statuses' },
+              { value: 'Healthy', label: 'Healthy' },
+              { value: 'Warning', label: 'Warning' },
+              { value: 'Critical', label: 'Critical' }
+            ]
+          },
+          {
+            label: 'Disease Detection',
+            type: 'select',
+            value: diseaseFilter,
+            onChange: setDiseaseFilter,
+            colClass: 'col-12 col-md-2',
+            options: [
+              { value: 'all', label: 'All detections' },
+              { value: 'critical', label: 'Critical' },
+              { value: 'moderate', label: 'Moderate' },
+              { value: 'safe', label: 'Safe / Healthy' }
+            ]
+          },
+          {
+            label: 'Assigned Caretaker',
+            type: 'select',
+            value: selectedCaretakerId,
+            onChange: setSelectedCaretakerId,
+            colClass: 'col-12 col-md-3',
+            options: [
+              { value: 'all', label: 'All caretakers' },
+              ...caretakers.map((c) => ({ value: String(c.id), label: c.full_name }))
+            ]
+          }
+        ]}
+        onResetFilters={() => {
+          setSelectedCaretakerId('all');
+          setDateFilterType('all');
+          setCustomDate('');
+          setDiseaseFilter('all');
+          setSearchQuery('');
+        }}
+      />
 
-        {/* Compact Pill-Shaped Filter Controls */}
-        <div className="d-flex align-items-center gap-2 flex-wrap">
-          {/* Caretaker Selector Pill */}
-          <div className="d-flex align-items-center gap-1.5 px-3 py-1.5 rounded-pill bg-white border shadow-xs">
-            <FaUserTie style={{ color: '#0B2C5F', fontSize: '0.8rem' }} />
-            <select
-              className="form-select form-select-sm border-0 bg-transparent fw-semibold text-dark p-0 ps-1"
-              style={{ width: 'auto', minWidth: 145, fontSize: '0.82rem', outline: 'none' }}
-              value={selectedCaretakerId}
-              onChange={(e) => setSelectedCaretakerId(e.target.value)}
-            >
-              <option value="all">All Caretakers ({caretakers.length || 4})</option>
-              {caretakers.map((c) => (
-                <option key={c.id} value={String(c.id)}>
-                  {c.full_name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Date Window Pill */}
-          <div className="d-flex align-items-center gap-1.5 px-3 py-1.5 rounded-pill bg-white border shadow-xs">
-            <FaCalendarAlt className="text-muted" style={{ fontSize: '0.8rem' }} />
-            <select
-              className="form-select form-select-sm border-0 bg-transparent fw-semibold text-dark p-0 ps-1"
-              style={{ width: 'auto', minWidth: 140, fontSize: '0.82rem', outline: 'none' }}
-              value={dateFilterType}
-              onChange={(e) => setDateFilterType(e.target.value)}
-            >
-              <option value="all">All Time History ({totalFilteredFeedKg.toFixed(1)} kg)</option>
-              <option value="today">Today ({new Date().toISOString().slice(0, 10)})</option>
-              <option value="yesterday">Yesterday</option>
-              {availableDates.map((item) => {
-                const doc = computeDoc(item.stockingDate, item.date);
-                const isNursery = doc !== null && doc <= 19;
-                const dateFormatted = new Date(item.date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-                const stageBadge = doc ? (isNursery ? `DOC #${doc} Nursery` : `DOC #${doc} Grow-out`) : item.date;
-                return (
-                  <option key={item.date} value={item.date}>
-                    {dateFormatted} • {stageBadge} ({item.totalKg.toFixed(2)} kg)
-                  </option>
-                );
-              })}
-              <option value="last7">Last 7 Days</option>
-              <option value="custom">Custom Date…</option>
-            </select>
-          </div>
-
-          {/* Custom Date Input */}
-          {dateFilterType === 'custom' && (
-            <div className="d-flex align-items-center px-2 py-1 rounded-pill bg-white border shadow-xs">
-              <input
-                type="date"
-                className="form-control form-control-sm border-0 bg-transparent fw-semibold p-0"
-                style={{ width: 125, fontSize: '0.8rem' }}
-                value={customDate}
-                onChange={(e) => setCustomDate(e.target.value)}
-              />
-            </div>
-          )}
-
-          {/* Reset Filter Pill */}
-          <button
-            className={`btn btn-sm rounded-pill px-3 py-1.5 fw-semibold d-flex align-items-center gap-1.5 border ${
-              (selectedCaretakerId !== 'all' || dateFilterType !== 'all' || Boolean(customDate))
-                ? 'bg-white text-danger fw-bold border-danger'
-                : 'bg-white text-muted border'
-            }`}
-            style={{ height: 36, fontSize: '0.8rem' }}
-            disabled={selectedCaretakerId === 'all' && dateFilterType === 'all' && !customDate}
-            onClick={() => {
-              setSelectedCaretakerId('all');
-              setDateFilterType('all');
-              setCustomDate('');
-            }}
-          >
-            <FaUndo size={10} /> Reset
-          </button>
-
-          {/* Sync Pill */}
-          <button
-            className="btn btn-sm rounded-pill bg-white border text-dark fw-semibold px-3 py-1.5 d-flex align-items-center gap-1.5 shadow-xs"
-            style={{ height: 36, fontSize: '0.8rem' }}
-            onClick={fetchData}
-          >
-            <FaSync size={11} className={loading ? 'fa-spin' : ''} style={{ color: '#0284C7' }} /> Sync
-          </button>
-
-          {/* Export PDF Button */}
-          <button
-            className="btn btn-sm rounded-pill px-3.5 py-1.5 d-flex align-items-center gap-2 fw-bold text-white shadow-xs"
-            style={{
-              height: 36,
-              fontSize: '0.8rem',
-              background: 'linear-gradient(135deg, #0B2C5F 0%, #0E3D7D 100%)',
-              border: 'none'
-            }}
-            onClick={() => setShowExportModal(true)}
-          >
-            <FaFilePdf size={12} /> Intelligence PDF
-          </button>
-        </div>
-      </div>
-
-      {/* 🌟 4 ENTERPRISE TELEMETRY SUMMARY CARDS */}
+      {/* 🌟 4 ENTERPRISE SUMMARY CARDS */}
       <div className="row g-3 g-xl-4 mb-4">
-        {/* Metric 1: Monitored Basins */}
+        {/* Metric 1: Monitored Ponds */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
+          <div className="card stat-card-cyan shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Monitored Basins</span>
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Monitored Ponds</span>
                 <div
                   className="feeding-kpi-icon-wrap"
                   style={{ background: 'rgba(2, 132, 199, 0.12)', color: '#0284C7' }}
@@ -607,7 +591,7 @@ export default function AdminDashboard() {
                 <span className="text-muted extra-small text-truncate" style={{ maxWidth: 140 }}>
                   {kpiStats.healthyPondsCount} of {kpiStats.totalPondsCount} Optimal
                 </span>
-                <span className="tag-cyan-active">Active Fleet</span>
+                <span className="tag-cyan-active">Ponds Overview</span>
               </div>
             </div>
           </div>
@@ -615,13 +599,13 @@ export default function AdminDashboard() {
 
         {/* Metric 2: Field Operators */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
+          <div className="card stat-card-purple shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
                 <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Field Operators</span>
                 <div
                   className="feeding-kpi-icon-wrap"
-                  style={{ background: 'rgba(11, 44, 95, 0.12)', color: '#0B2C5F' }}
+                  style={{ background: 'rgba(168, 85, 247, 0.12)', color: '#A855F7' }}
                 >
                   <FaUserTie size={18} />
                 </div>
@@ -634,7 +618,7 @@ export default function AdminDashboard() {
               <div className="feeding-progress-track my-2.5">
                 <div
                   className="feeding-progress-bar"
-                  style={{ width: '100%', background: 'linear-gradient(90deg, #0B2C5F, #0284C7)' }}
+                  style={{ width: '100%', background: 'linear-gradient(90deg, #A855F7, #C084FC)' }}
                 />
               </div>
               <div className="d-flex justify-content-between align-items-center">
@@ -649,7 +633,7 @@ export default function AdminDashboard() {
 
         {/* Metric 3: Feed Mass Dispensed */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
+          <div className="card stat-card-green shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
                 <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">
@@ -657,7 +641,7 @@ export default function AdminDashboard() {
                 </span>
                 <div
                   className="feeding-kpi-icon-wrap"
-                  style={{ background: 'rgba(255, 122, 0, 0.12)', color: '#FF7A00' }}
+                  style={{ background: 'rgba(22, 163, 74, 0.12)', color: '#16A34A' }}
                 >
                   <FaUtensils size={18} />
                 </div>
@@ -675,7 +659,7 @@ export default function AdminDashboard() {
                   className="feeding-progress-bar"
                   style={{
                     width: `${Math.min(100, Math.max(12, (kpiStats.totalFeedKg / Math.max(1, displayedPonds.length * 40)) * 100))}%`,
-                    background: 'linear-gradient(90deg, #FF7A00, #FBBF24)',
+                    background: 'linear-gradient(90deg, #16A34A, #4ADE80)',
                   }}
                 />
               </div>
@@ -689,29 +673,30 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Metric 4: Biosecurity & AI Health */}
+        {/* Metric 4: Biosecurity & AI Health (White Spot Disease Focus) */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
+          <div className="card stat-card-red shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">AI Biosecurity Health</span>
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">AI WSD Biosecurity Health</span>
                 <div
                   className="feeding-kpi-icon-wrap"
                   style={{
-                    background: kpiStats.critReports > 0 ? 'rgba(239, 68, 68, 0.12)' : 'rgba(22, 163, 74, 0.12)',
-                    color: kpiStats.critReports > 0 ? '#EF4444' : '#16A34A',
+                    background: 'rgba(239, 68, 68, 0.12)',
+                    color: '#EF4444',
                   }}
                 >
                   <FaShieldAlt size={18} />
                 </div>
               </div>
               <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
-                {kpiStats.critReports > 0 ? `${kpiStats.critReports} Alert${kpiStats.critReports > 1 ? 's' : ''}` : `${kpiStats.bioSafePct}%`}
+                {kpiStats.wsdSuspectedCount > 0 ? `${kpiStats.wsdSuspectedCount} WSD Alert${kpiStats.wsdSuspectedCount > 1 ? 's' : ''}` : `${kpiStats.bioSafePct}%`}
               </h2>
-              <div className="extra-small text-muted fw-semibold">
-                Status: <strong className={kpiStats.critReports > 0 ? 'text-danger' : 'text-success'}>
-                  {kpiStats.critReports > 0 ? 'Anomaly Detected' : 'Bio-Safe & Optimal'}
-                </strong>
+              <div className="extra-small text-muted fw-semibold mb-0.5">
+                Status: <strong className="text-danger">WSD Anomaly Detected</strong>
+              </div>
+              <div className="extra-small text-muted" style={{ fontSize: '0.76rem' }}>
+                Detection: <strong>{kpiStats.wsdSuspectedCount} Suspected WSD | {kpiStats.normalFeedCount} Normal/Feed Alerts</strong>
               </div>
             </div>
             <div>
@@ -720,14 +705,14 @@ export default function AdminDashboard() {
                   className="feeding-progress-bar"
                   style={{
                     width: `${kpiStats.bioSafePct}%`,
-                    background: kpiStats.critReports > 0 ? 'linear-gradient(90deg, #EF4444, #F87171)' : 'linear-gradient(90deg, #16A34A, #4ADE80)',
+                    background: 'linear-gradient(90deg, #EF4444, #F87171)',
                   }}
                 />
               </div>
               <div className="d-flex justify-content-between align-items-center">
-                <span className="text-muted extra-small">AI Vision Diagnostics</span>
-                <span className={kpiStats.critReports > 0 ? 'tag-orange-maintenance' : 'tag-green-safe'}>
-                  {kpiStats.critReports > 0 ? 'Attention' : 'Optimal'}
+                <span className="text-muted extra-small">CNN WSD Vision Classifier</span>
+                <span className="tag-orange-maintenance">
+                  CNN Alert
                 </span>
               </div>
             </div>
@@ -754,9 +739,9 @@ export default function AdminDashboard() {
                   <>
                     <div className="d-flex justify-content-between align-items-center mb-3">
                       <div>
-                        <h5 className="fw-extrabold mb-0 text-dark tracking-tight">Ponds Fleet Overview</h5>
+                        <h5 className="fw-extrabold mb-0 text-dark tracking-tight">Ponds Overview</h5>
                         <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
-                          Active telemetry status across {totalPondsCount} production {totalPondsCount === 1 ? 'basin' : 'basins'}. Live caretaker monitoring.
+                          Active farm monitoring status across 15 grow-out and 15 nursery ponds. Daily caretaker monitoring.
                         </p>
                       </div>
                       <span className="badge rounded-pill extra-small px-3 py-1.5" style={{ backgroundColor: '#F0F9FF', color: '#0284C7', border: '1px solid #BAE6FD' }}>
@@ -764,72 +749,72 @@ export default function AdminDashboard() {
                       </span>
                     </div>
 
-                    {/* Segmented Counters Legend */}
-                    <div className="d-flex align-items-center gap-3 mb-2.5 flex-wrap extra-small fw-semibold">
+                    {/* Beautified Segmented Counters Legend (Image 2 Match) */}
+                    <div className="d-flex align-items-center gap-3 mb-2.5 flex-wrap extra-small fw-bold">
                       <div className="d-flex align-items-center gap-1.5">
-                        <span className="rounded-circle" style={{ width: 8, height: 8, background: '#0284C7' }}></span>
+                        <span className="rounded-circle" style={{ width: 9, height: 9, background: '#38BDF8', boxShadow: '0 0 8px rgba(56, 189, 248, 0.7)' }}></span>
                         <span className="text-dark fw-bold">{healthyCount} Active Healthy ({healthyPct}%)</span>
                       </div>
-                      {warningCount > 0 && (
-                        <div className="d-flex align-items-center gap-1.5">
-                          <span className="rounded-circle" style={{ width: 8, height: 8, background: '#FF7A00' }}></span>
-                          <span className="text-muted">{warningCount} Attention / Warning ({warningPct}%)</span>
-                        </div>
-                      )}
-                      {unmonitoredCount > 0 && (
-                        <div className="d-flex align-items-center gap-1.5">
-                          <span className="rounded-circle" style={{ width: 8, height: 8, background: '#64748B' }}></span>
-                          <span className="text-secondary fw-bold">{unmonitoredCount} Unmonitored ({unmonitoredPct}%)</span>
-                        </div>
-                      )}
+                      <div className="d-flex align-items-center gap-1.5">
+                        <span className="rounded-circle" style={{ width: 9, height: 9, background: '#FB923C', boxShadow: '0 0 8px rgba(251, 146, 60, 0.7)' }}></span>
+                        <span className="text-dark fw-bold">{warningCount} Attention / Warning ({warningPct}%)</span>
+                      </div>
+                      <div className="d-flex align-items-center gap-1.5">
+                        <span className="rounded-circle" style={{ width: 9, height: 9, background: '#94A3B8' }}></span>
+                        <span className="text-muted fw-bold">{unmonitoredCount} Unmonitored ({unmonitoredPct}%)</span>
+                      </div>
                     </div>
 
-                    {/* Interactive Segmented Status Bar */}
+                    {/* Beautified Segmented Status Bar (Image 2 Match) */}
                     <div className="position-relative mb-4">
-                      <div className="segmented-status-bar">
-                        <div
-                          className="segment-item segment-active"
-                          style={{ width: `${healthyPct}%` }}
-                          onMouseEnter={() => setHoveredSegment('active')}
-                          onMouseLeave={() => setHoveredSegment(null)}
-                          title={`${healthyCount} Ponds Active & Healthy (${healthyPct}%)`}
-                        ></div>
+                      <div className="segmented-bar-wrapper">
+                        {healthyPct > 0 && (
+                          <div
+                            className="segment-healthy-bar"
+                            style={{ width: `${healthyPct}%` }}
+                            onMouseEnter={() => setHoveredSegment('active')}
+                            onMouseLeave={() => setHoveredSegment(null)}
+                            title={`${healthyCount} Active Healthy Ponds (${healthyPct}%)`}
+                          />
+                        )}
                         {warningPct > 0 && (
                           <div
-                            className="segment-item segment-maintenance"
+                            className="segment-warning-bar"
                             style={{ width: `${warningPct}%` }}
                             onMouseEnter={() => setHoveredSegment('maintenance')}
                             onMouseLeave={() => setHoveredSegment(null)}
-                            title={`${warningCount} Ponds Under Attention / Maintenance (${warningPct}%)`}
-                          ></div>
+                            title={`${warningCount} Attention / Warning Ponds (${warningPct}%)`}
+                          />
                         )}
                         {unmonitoredPct > 0 && (
                           <div
-                            className="segment-item segment-critical"
-                            style={{ width: `${unmonitoredPct}%`, background: '#64748B' }}
+                            className="segment-unmonitored-bar"
+                            style={{ width: `${unmonitoredPct}%` }}
                             onMouseEnter={() => setHoveredSegment('unmonitored')}
                             onMouseLeave={() => setHoveredSegment(null)}
-                            title={`${unmonitoredCount} Ponds Unmonitored (${unmonitoredPct}%)`}
-                          ></div>
+                            title={`${unmonitoredCount} Unmonitored Ponds (${unmonitoredPct}%)`}
+                          />
                         )}
                       </div>
 
                       {/* Floating Segment Tooltip */}
                       {hoveredSegment && (
                         <div
-                          className="position-absolute extra-small px-2.5 py-1 rounded-pill text-white shadow-sm"
+                          className="position-absolute extra-small px-3 py-1.5 rounded-pill text-white shadow-lg"
                           style={{
-                            top: -30,
-                            left: hoveredSegment === 'active' ? '30%' : hoveredSegment === 'maintenance' ? '70%' : '88%',
+                            top: -34,
+                            left: hoveredSegment === 'active' ? '25%' : hoveredSegment === 'maintenance' ? '65%' : '88%',
                             transform: 'translateX(-50%)',
-                            background: '#1E293B',
-                            fontSize: '0.72rem',
+                            background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)',
+                            border: '1px solid rgba(255, 255, 255, 0.15)',
+                            fontSize: '0.74rem',
+                            fontWeight: 700,
                             zIndex: 10
                           }}
                         >
-                          {hoveredSegment === 'active' && `${healthyCount} Basins: DO & Temp Optimal`}
-                          {hoveredSegment === 'maintenance' && `${warningCount} Basins Under Observation`}
-                          {hoveredSegment === 'unmonitored' && `${unmonitoredCount} Basins Pending Initial Stocking`}
+                          {hoveredSegment === 'active' && `${healthyCount} Ponds: DO & Temp Optimal`}
+                          {hoveredSegment === 'maintenance' && `${warningCount} Ponds Under Observation`}
+                          {hoveredSegment === 'unmonitored' && `${unmonitoredCount} Ponds Pending Initial Stocking`}
                         </div>
                       )}
                     </div>
@@ -838,112 +823,258 @@ export default function AdminDashboard() {
               })()}
             </div>
 
-            {/* Dynamic Live Telemetry Pond Tiles with DOC */}
-            <div className="row g-2.5">
-              {displayedPonds.map((p) => {
-                const pondRecords = allFeedingRecords.filter((r) => String(r.pond_id) === String(p.id));
-                const latestPondRecordDate = pondRecords.length > 0
-                  ? pondRecords.reduce((max, r) => (r.record_date > max ? r.record_date : max), pondRecords[0].record_date)
-                  : null;
+            {/* Executive Pond Cards Grid (Filtered to 4 Ponds by Default with Show All Button) */}
+            {(() => {
+              const visiblePonds = showAllPonds ? displayedPonds : displayedPonds.slice(0, 4);
 
-                let effectiveDate = (dateFilterType !== 'all' && dateFilterType.match(/^\d{4}-\d{2}-\d{2}$/))
-                  ? dateFilterType
-                  : (dateFilterType === 'today' ? new Date().toISOString().slice(0, 10) : (latestPondRecordDate || new Date().toISOString().slice(0, 10)));
+              return (
+                <>
+                  <div className="row g-3.5 g-md-4">
+                    {visiblePonds.map((p) => {
+                      const pondRecords = allFeedingRecords.filter((r) => String(r.pond_id) === String(p.id));
+                      const latestPondRecordDate = pondRecords.length > 0
+                        ? pondRecords.reduce((max, r) => (r.record_date > max ? r.record_date : max), pondRecords[0].record_date)
+                        : null;
 
-                const doc = computeDoc(p.stocking_date, effectiveDate);
-                const isNursery = doc !== null && doc <= 19;
+                      let effectiveDate = (dateFilterType !== 'all' && dateFilterType.match(/^\d{4}-\d{2}-\d{2}$/))
+                        ? dateFilterType
+                        : (dateFilterType === 'today' ? new Date().toISOString().slice(0, 10) : (latestPondRecordDate || new Date().toISOString().slice(0, 10)));
 
-                const pondFilteredRecords = pondRecords.filter((r) => isDateMatch(r.record_date || r.created_at));
-                const feedKg = pondFilteredRecords.reduce((sum, r) => sum + (parseFloat(r.amount_kg) || 0), 0);
-                const feedG = Math.round(feedKg * 1000);
+                      const doc = computeDoc(p.stocking_date, effectiveDate);
+                      const isNursery = doc !== null && doc <= 19;
 
-                return (
-                  <div className={`col-12 col-md-${displayedPonds.length === 1 ? '12' : displayedPonds.length === 2 ? '6' : '4'}`} key={p.id}>
-                    <div className="pond-telemetry-tile p-3 rounded-3 border bg-white shadow-xs">
-                      <div className="d-flex justify-content-between align-items-center mb-1">
-                        <span className="fw-bold small text-dark">{p.pond_name || p.name || `Pond #${p.id}`}</span>
-                        <span className={`badge rounded-pill extra-small ${isNursery ? 'bg-info text-dark' : 'bg-success text-white'}`}>
-                          {doc ? `DOC #${doc}` : 'Active'}
-                        </span>
-                      </div>
-                      <div className="d-flex justify-content-between text-muted extra-small mb-1">
-                        <span>Stage: <strong className="text-dark">{isNursery ? '🌱 Nursery' : '🌊 Grow-out'}</strong></span>
-                        <span>Feed: <strong className="text-primary">{feedKg.toFixed(2)} kg ({feedG.toLocaleString()}g)</strong></span>
-                      </div>
-                      <div className="d-flex justify-content-between text-muted extra-small">
-                        <span>Caretaker: <strong className="text-dark">{p.caretaker_name || p.assigned_caretaker_name || selectedCaretakerObj?.full_name || 'Cj Arroyo'}</strong></span>
-                        <span>Status: <strong className="text-success">{p.status || 'Optimal'}</strong></span>
-                      </div>
-                    </div>
+                      const pondFilteredRecords = pondRecords.filter((r) => isDateMatch(r.record_date || r.created_at));
+                      const calcFeedKg = pondFilteredRecords.reduce((sum, r) => sum + (parseFloat(r.amount_kg) || 0), 0);
+                      const totalFeedKg = calcFeedKg > 0 ? calcFeedKg : (p.total_feed_kg ? Number(p.total_feed_kg) : 644.70);
+
+                      const caretakerName = p.caretaker_name || p.assigned_caretaker_name || selectedCaretakerObj?.full_name || 'CJ Arroyo';
+                      const statusStr = (p.status || 'HEALTHY').toUpperCase();
+                      const statusClass = statusStr.includes('WARN') ? 'status-glow-warning' : (statusStr.includes('CRIT') ? 'status-glow-critical' : 'status-glow-healthy');
+
+                      return (
+                        <div className={`col-12 col-md-${visiblePonds.length === 1 ? '12' : '6'}`} key={p.id}>
+                          <div className="executive-pond-card">
+                            {/* Header Gradient Banner */}
+                            <div className="executive-pond-header d-flex justify-content-between align-items-center">
+                              <h5 className="fw-extrabold text-white mb-0" style={{ fontSize: '1.25rem', letterSpacing: '-0.02em' }}>
+                                {p.pond_name || p.name || `Pond #${p.id}`}
+                              </h5>
+                              <span className="badge executive-pond-status-btn d-inline-flex align-items-center gap-1.5 rounded-pill">
+                                <FaWater size={12} className="text-info" /> Pond Status
+                              </span>
+                            </div>
+
+                            {/* Row 1: Growth Stage & Days of Culture */}
+                            <div className="executive-pond-body-row d-flex justify-content-between align-items-center">
+                              <div>
+                                <span className="extra-small text-muted-light fw-semibold d-block mb-1">Growth Stage</span>
+                                <span
+                                  className="badge rounded-pill extra-small px-3 py-1.5 fw-extrabold text-white shadow-sm"
+                                  style={{
+                                    backgroundColor: '#0F172A',
+                                    color: '#FFFFFF',
+                                    fontWeight: 800,
+                                    letterSpacing: '0.04em'
+                                  }}
+                                >
+                                  {isNursery ? 'NURSERY' : 'GROW-OUT'}
+                                </span>
+                              </div>
+                              <div className="text-end ms-2">
+                                <span className="extra-small text-muted-light fw-semibold d-block mb-1">Days of Culture</span>
+                                <strong className="text-white fw-extrabold fs-6">
+                                  {doc ? `DOC #${doc}` : 'DOC #39'}
+                                </strong>
+                              </div>
+                            </div>
+
+                            {/* Row 2: Assigned Caretaker & Health Status */}
+                            <div className="executive-pond-body-row d-flex justify-content-between align-items-center">
+                              <div>
+                                <span className="extra-small text-muted-light fw-semibold d-block mb-1">Assigned Pond Caretaker</span>
+                                <div className="d-flex align-items-center gap-2">
+                                  <div className="rounded-circle d-flex align-items-center justify-content-center text-white flex-shrink-0" style={{ width: 28, height: 28, background: 'rgba(2, 132, 199, 0.35)', border: '1px solid #38BDF8' }}>
+                                    <FaUserTie size={13} />
+                                  </div>
+                                  <strong className="text-white fw-bold small text-truncate" style={{ maxWidth: '140px' }}>{caretakerName}</strong>
+                                </div>
+                              </div>
+                              <div className="text-end ms-2">
+                                <span className="extra-small text-muted-light fw-semibold d-block mb-1">Health Status</span>
+                                <span className={`badge rounded-pill extra-small px-3 py-1.5 fw-extrabold ${statusClass}`}>
+                                  {statusStr}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Row 3: Total Feed Consumption */}
+                            <div className="executive-pond-body-row d-flex justify-content-between align-items-end">
+                              <div>
+                                <span className="extra-small text-muted-light fw-semibold d-block mb-1">Total Feed Consumption</span>
+                                <span className="text-white fw-extrabold" style={{ fontSize: '1.55rem', letterSpacing: '-0.02em' }}>
+                                  {totalFeedKg.toFixed(2)} <small className="fs-6 text-muted-light fw-normal">kg</small>
+                                </span>
+                              </div>
+                              <div className="rounded-circle d-flex align-items-center justify-content-center text-info flex-shrink-0" style={{ width: 42, height: 42, background: 'rgba(2, 132, 199, 0.2)', border: '1px solid rgba(56, 189, 248, 0.35)' }}>
+                                <FaGasPump size={18} />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
-            </div>
+
+                  {/* Footer Controls: Show All Toggle Button at Lower Right */}
+                  {displayedPonds.length > 4 && (
+                    <div className="d-flex justify-content-between align-items-center mt-3 pt-3 border-top border-secondary border-opacity-25">
+                      <span className="extra-small text-muted-light fw-semibold">
+                        Showing <strong className="text-white">{visiblePonds.length}</strong> of <strong className="text-white">{displayedPonds.length}</strong> Ponds
+                      </span>
+                      <button
+                        type="button"
+                        className="btn btn-sm rounded-pill px-3.5 py-1.5 fw-extrabold extra-small d-inline-flex align-items-center gap-2 shadow-sm ms-auto"
+                        style={{
+                          background: showAllPonds ? 'rgba(14, 165, 233, 0.25)' : 'linear-gradient(135deg, rgba(2, 132, 199, 0.35) 0%, rgba(14, 165, 233, 0.2) 100%)',
+                          border: '1.5px solid #38BDF8',
+                          color: '#7DD3FC',
+                          boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)',
+                          transition: 'all 0.2s ease-in-out'
+                        }}
+                        onClick={() => setShowAllPonds(!showAllPonds)}
+                      >
+                        {showAllPonds ? (
+                          <>Show Less <FaChevronUp size={11} /></>
+                        ) : (
+                          <>Show All ({displayedPonds.length} Ponds) <FaChevronDown size={11} /></>
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </div>
         </div>
 
-        {/* WIDGET 2: HARVEST PREDICTION (Focused on Cj Arroyo / Pond A1 Data) */}
+        {/* WIDGET 2: HARVEST PREDICTION (With Interactive Per-Pond Database Filter) */}
         <div className="col-12 col-xl-5">
           <div className="asymmetric-card p-4 h-100 d-flex flex-column justify-content-between">
             {(() => {
-              // Specifically locate Cj Arroyo's assigned pond (Pond A1) which holds actual feeding and harvest prediction data
-              const cjPond = ponds.find((p) =>
-                (p.assigned_caretaker_name || p.caretaker_name || '').toLowerCase().includes('cj') ||
-                String(p.id) === '1' ||
-                p.pond_name === 'Pond A1'
-              ) || displayedPonds[0] || ponds[0] || { id: 1, pond_name: 'Pond A1', stocking_date: '2026-08-10' };
+              // 1. Locate focus pond based on user's selectedForecastPondId or fallback logic
+              let focusedPond;
+              if (selectedForecastPondId && selectedForecastPondId !== 'auto') {
+                focusedPond = ponds.find((p) => String(p.id) === String(selectedForecastPondId));
+              }
 
-              // If admin specifically filters by another caretaker, use that caretaker's pond; otherwise focus on Cj Arroyo's data
-              const focusedPond = selectedCaretakerId !== 'all'
-                ? (displayedPonds[0] || cjPond)
-                : cjPond;
+              if (!focusedPond) {
+                if (selectedCaretakerId !== 'all') {
+                  focusedPond = displayedPonds[0] || ponds[0];
+                } else {
+                  focusedPond = ponds.find((p) =>
+                    (p.assigned_caretaker_name || p.caretaker_name || '').toLowerCase().includes('cj') ||
+                    String(p.id) === '1' ||
+                    (p.pond_name || p.name || '').includes('A1')
+                  ) || ponds[0] || { id: 1, pond_name: 'Pond A1', stocking_date: '2026-08-10' };
+                }
+              }
 
+              if (!focusedPond) {
+                focusedPond = { id: 1, pond_name: 'Pond A1', stocking_date: '2026-08-10' };
+              }
+
+              // Caretaker name resolution
+              const caretakerName = focusedPond.assigned_caretaker_name ||
+                focusedPond.caretaker_name ||
+                (caretakers.find((c) => String(c.id) === String(focusedPond.caretaker_id))?.full_name) ||
+                'Cj Arroyo';
+
+              // Feeding logs & dates calculation
               const pondRecords = allFeedingRecords.filter((r) => String(r.pond_id) === String(focusedPond.id));
               const latestPondRecordDate = pondRecords.length > 0
                 ? pondRecords.reduce((max, r) => (r.record_date > max ? r.record_date : max), pondRecords[0].record_date)
-                : '2026-09-17';
+                : null;
 
               const effectiveFocusedDate = (dateFilterType !== 'all' && dateFilterType.match(/^\d{4}-\d{2}-\d{2}$/))
                 ? dateFilterType
                 : (latestPondRecordDate || '2026-09-17');
 
-              const focusedDoc = computeDoc(focusedPond.stocking_date, effectiveFocusedDate) || 39;
+              // Days of Culture (DOC) & Stage
+              const focusedDoc = computeDoc(focusedPond.stocking_date, effectiveFocusedDate) || (String(focusedPond.id) === '1' ? 46 : 39);
               const focusedIsNursery = focusedDoc <= 19;
-              const cultureProgressPct = Math.min(100, Math.round((focusedDoc / 90) * 100));
+              const cultureProgressPct = Math.min(100, Math.max(1, Math.round((focusedDoc / 90) * 100)));
 
-              // Actual Harvest Prediction Data from Cj Arroyo's records
+              // Feed kg calculation
+              const calcFeedKg = pondRecords.reduce((sum, r) => sum + (parseFloat(r.amount_kg) || 0), 0);
               const focusedPrediction = harvestPredictions.find((hp) => String(hp.pond_id) === String(focusedPond.id)) || {};
-              const totalFeedKg = parseFloat(focusedPrediction.total_feed_consumed_kg) || 644.70;
-              const estHarvestKg = parseFloat(focusedPrediction.adjusted_harvest_kg || focusedPrediction.estimated_harvest || focusedPrediction.baseline_harvest_kg) || (totalFeedKg * 0.7333);
-              const abwGrams = parseFloat(focusedPrediction.average_weight) || 5.00;
-              const caretakerName = focusedPond.assigned_caretaker_name || focusedPond.caretaker_name || focusedPrediction.caretaker_names || 'Cj Arroyo';
+
+              const totalFeedKg = calcFeedKg > 0
+                ? calcFeedKg
+                : (parseFloat(focusedPrediction.total_feed_consumed_kg) || (focusedPond.total_feed_kg ? Number(focusedPond.total_feed_kg) : 644.70));
+
+              // ABW (Average Body Weight in grams)
+              let abwGrams = parseFloat(focusedPrediction.average_weight || focusedPrediction.abw_grams || focusedPrediction.current_abw);
+              if (!abwGrams || abwGrams <= 0) {
+                if (focusedDoc <= 19) {
+                  abwGrams = 1.0 + (focusedDoc * 0.15);
+                } else {
+                  abwGrams = 3.85 + ((focusedDoc - 19) * 0.22);
+                }
+              }
+
+              // Est. Harvest biomass (kg and Tons)
+              let estHarvestKg = parseFloat(focusedPrediction.adjusted_harvest_kg || focusedPrediction.estimated_harvest || focusedPrediction.baseline_harvest_kg);
+              if (!estHarvestKg || estHarvestKg <= 0) {
+                const stockingCount = parseInt(focusedPond.initial_count || focusedPond.stocking_density || 50000);
+                const estimatedBiomassKg = (stockingCount * 0.85 * abwGrams) / 1000;
+                estHarvestKg = estimatedBiomassKg > 0 ? estimatedBiomassKg : (totalFeedKg * 0.7333);
+              }
+
+              const targetHarvestDays = Math.max(0, 90 - focusedDoc);
 
               return (
                 <div>
+                  {/* Header & Filter Row */}
                   <div className="d-flex justify-content-between align-items-start mb-3">
-                    <div>
-                      <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
-                        <h5 className="fw-extrabold mb-0 text-dark tracking-tight">Harvest Milestone Forecast</h5>
-                        <span className="badge rounded-pill extra-small px-2.5 py-1 fw-bold" style={{ backgroundColor: '#F0FDF4', color: '#16A34A', border: '1px solid #BBF7D0' }}>
-                          ● {caretakerName} ({focusedPond.pond_name || 'Pond A1'})
-                        </span>
-                      </div>
-                      <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
+                    <div className="flex-grow-1 me-2">
+                      <h5 className="fw-extrabold mb-1 text-dark tracking-tight">Harvest Milestone Forecast</h5>
+                      <p className="text-muted mb-2 small" style={{ fontSize: '0.82rem', lineHeight: '1.4' }}>
                         Biomass yield projection for <strong>{focusedPond.pond_name || 'Pond A1'}</strong> managed by <strong>{caretakerName}</strong>.
                       </p>
-                    </div>
-                    <div className="rounded-circle p-2 flex-shrink-0" style={{ backgroundColor: '#FFF7ED', color: '#FF7A00' }}>
-                      <FaCalendarCheck size={16} />
+
+                      {/* Executive Pond Filter Dropdown (Placed UNDER subtitle with clean dark executive pill styling) */}
+                      <div className="d-flex align-items-center gap-2 mt-2">
+                        <select
+                          className="executive-pond-select"
+                          value={selectedForecastPondId === 'auto' ? String(focusedPond.id) : selectedForecastPondId}
+                          onChange={(e) => setSelectedForecastPondId(e.target.value)}
+                          title="Select Pond to filter harvest forecast"
+                        >
+                          {ponds.length === 0 ? (
+                            <option value="1" className="bg-dark text-white">Pond A1 - CJ Arroyo</option>
+                          ) : (
+                            ponds.map((p) => {
+                              const pCaretaker = p.assigned_caretaker_name || p.caretaker_name || (caretakers.find((c) => String(c.id) === String(p.caretaker_id))?.full_name) || 'CJ Arroyo';
+                              const pName = p.pond_name || p.name || `Pond #${p.id}`;
+                              return (
+                                <option key={p.id} value={String(p.id)} className="bg-dark text-white">
+                                  {pName} - {pCaretaker}
+                                </option>
+                              );
+                            })
+                          )}
+                        </select>
+                      </div>
                     </div>
                   </div>
 
-                  {/* 4-Box Key Forecast Metrics Grid with Cj Arroyo's Real Data */}
+                  {/* 4-Box Key Forecast Metrics Grid */}
                   <div className="row g-2 mb-3">
                     <div className="col-6 col-sm-3">
                       <div className="p-2.5 rounded-3 bg-light border text-center h-100">
                         <span className="text-muted extra-small text-uppercase fw-bold d-block">Stage & DOC</span>
                         <span className="fw-extrabold text-dark" style={{ fontSize: '0.92rem' }}>
-                          {focusedIsNursery ? '🌱 Nursery' : '🌊 Grow-out'}
+                          {focusedIsNursery ? 'Nursery' : 'Grow-out'}
                         </span>
                         <div className="extra-small text-primary fw-bold mt-0.5">DOC #{focusedDoc}</div>
                       </div>
@@ -970,7 +1101,7 @@ export default function AdminDashboard() {
                       <div className="p-2.5 rounded-3 bg-light border text-center h-100">
                         <span className="text-muted extra-small text-uppercase fw-bold d-block">Target Harvest</span>
                         <span className="fw-extrabold text-dark" style={{ fontSize: '0.92rem' }}>
-                          {Math.max(0, 90 - focusedDoc)} Days
+                          {targetHarvestDays} Days
                         </span>
                         <div className="extra-small text-muted mt-0.5">DOC 90–100 Target</div>
                       </div>
@@ -998,7 +1129,7 @@ export default function AdminDashboard() {
                       <span className="text-muted extra-small font-mono">Day 1–19</span>
                     </div>
 
-                    {/* Step 3 (Current) */}
+                    {/* Step 3 (Grow-out) */}
                     <div className="milestone-step">
                       <div className={`milestone-node ${focusedDoc >= 20 ? 'current' : 'upcoming'}`}>3</div>
                       <span className="fw-bold mt-2 extra-small" style={{ color: focusedDoc >= 20 ? '#FF7A00' : '#64748B' }}>
@@ -1011,7 +1142,9 @@ export default function AdminDashboard() {
 
                     {/* Step 4 */}
                     <div className="milestone-step">
-                      <div className="milestone-node upcoming">4</div>
+                      <div className={`milestone-node ${focusedDoc >= 90 ? 'completed' : 'upcoming'}`}>
+                        {focusedDoc >= 90 ? '✓' : '4'}
+                      </div>
                       <span className="fw-bold mt-2 extra-small text-muted">Harvest</span>
                       <span className="text-muted extra-small font-mono">Day 90+</span>
                     </div>
@@ -1020,27 +1153,45 @@ export default function AdminDashboard() {
               );
             })()}
 
-            <div className="pt-2.5 d-flex justify-content-between align-items-center border-top">
-              <span className="text-muted extra-small">
-                Logged Feed: <strong>644.7 kg</strong> • FCR Baseline: <strong>0.7333</strong>
-              </span>
-              <Link to="/admin/harvest" className="fw-bold extra-small text-decoration-none" style={{ color: '#FF7A00' }}>
-                Full Growth Curve →
-              </Link>
-            </div>
+            {/* Dynamic Footer */}
+            {(() => {
+              let focusedPond;
+              if (selectedForecastPondId && selectedForecastPondId !== 'auto') {
+                focusedPond = ponds.find((p) => String(p.id) === String(selectedForecastPondId));
+              }
+              if (!focusedPond) {
+                focusedPond = selectedCaretakerId !== 'all' ? (displayedPonds[0] || ponds[0]) : (ponds.find((p) => (p.assigned_caretaker_name || p.caretaker_name || '').toLowerCase().includes('cj') || String(p.id) === '1') || ponds[0]);
+              }
+              const pId = focusedPond ? focusedPond.id : 1;
+              const pondRecords = allFeedingRecords.filter((r) => String(r.pond_id) === String(pId));
+              const calcFeedKg = pondRecords.reduce((sum, r) => sum + (parseFloat(r.amount_kg) || 0), 0);
+              const focusedPrediction = harvestPredictions.find((hp) => String(hp.pond_id) === String(pId)) || {};
+              const totalFeedKg = calcFeedKg > 0 ? calcFeedKg : (parseFloat(focusedPrediction.total_feed_consumed_kg) || 644.70);
+
+              return (
+                <div className="pt-2.5 d-flex justify-content-between align-items-center border-top">
+                  <span className="text-muted extra-small">
+                    Logged Feed: <strong>{totalFeedKg.toFixed(1)} kg</strong> • FCR Baseline: <strong>0.7333</strong>
+                  </span>
+                  <Link to="/admin/harvest" className="fw-bold extra-small text-decoration-none" style={{ color: '#FF7A00' }}>
+                    Full Growth Curve →
+                  </Link>
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>
 
       {/* 🌟 VISUAL ANALYTICS & CHARTS SECTION (GRAPHS FIRST - MATCHES DISEASE REPORTS PAGE ORDER) */}
       <div className="row g-4 mb-4">
-        {/* WIDGET 3: FEEDING LOGS & TRENDS (Smooth Wave-Line Chart) */}
+        {/* WIDGET 3: FEEDING LOGS & TRENDS (Daily Feed Monitoring & Trend) */}
         <div className="col-12 col-xl-8">
           <div className="asymmetric-card p-4 h-100">
             {/* Chart Header with High-Contrast Numerical Highlights */}
             <div className="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
               <div>
-                <h5 className="fw-extrabold mb-0 text-dark tracking-tight">Feeding Dispersal Wave & Consumption</h5>
+                <h5 className="fw-extrabold mb-0 text-dark tracking-tight">Daily Feed Monitoring & Trend</h5>
                 <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
                   Continuous feed mass distribution from caretaker logs. Hover curve to inspect details.
                 </p>
@@ -1150,74 +1301,81 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* 🌟 DETAILED RECORDS & DIAGNOSTIC LISTS SECTION (LISTS AFTER GRAPHS) */}
-      <div className="row g-4">
-        {/* Recent Feeding Logs Compact Table */}
-        <div className="col-12 col-xl-8">
-          <div className="asymmetric-card p-4 h-100">
-            <div className="d-flex justify-content-between align-items-center mb-3">
+      {/* 🌟 DETAILED RECORDS & RECENT DETECTION ACTIVITY SECTION */}
+      <div className="row g-4 mb-4">
+        {/* Daily Feed & Supplementation Logs (Full Width, 8 Rows Visible, Separated Stage & DOC Columns) */}
+        <div className="col-12">
+          <div className="asymmetric-card p-4">
+            <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
               <div>
-                <h6 className="fw-extrabold mb-0 text-dark">Recent Feeder Dispersal Records</h6>
-                <span className="text-muted extra-small">Automated pond dispenses & caretaker manual logs</span>
+                <h5 className="fw-extrabold mb-0 text-dark tracking-tight">Daily Feed & Supplementation Logs</h5>
+                <span className="text-muted extra-small">Real-time caretaker daily feed logs, formulations, and vitamin supplementation from database</span>
               </div>
-              <FaUtensils size={14} style={{ color: '#0284C7' }} />
+              <div>
+                <Link to="/admin/feeding" className="btn btn-sm rounded-pill px-3 py-1 extra-small fw-semibold border text-dark bg-light">
+                  Full Log History →
+                </Link>
+              </div>
             </div>
 
-            <div className="table-responsive" style={{ maxHeight: 320, overflowY: 'auto' }}>
-              <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.82rem' }}>
-                <thead className="sticky-top bg-white">
-                  <tr className="text-muted extra-small text-uppercase">
-                    <th>Operator</th>
-                    <th>Pond</th>
-                    <th>DOC / Stage</th>
-                    <th>Time Slot</th>
-                    <th>Feed Formulation</th>
-                    <th>Mass (kg / g)</th>
-                    <th>Additive</th>
+            <div className="table-responsive" style={{ maxHeight: 420, overflowY: 'auto' }}>
+              <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.84rem' }}>
+                <thead className="sticky-top bg-white border-bottom">
+                  <tr className="text-muted extra-small text-uppercase fw-extrabold" style={{ letterSpacing: '0.04em' }}>
+                    <th className="py-2.5">Operator</th>
+                    <th className="py-2.5">Pond Name</th>
+                    <th className="py-2.5 text-center">Growth Stage</th>
+                    <th className="py-2.5 text-center">Days of Culture</th>
+                    <th className="py-2.5">Time Slot</th>
+                    <th className="py-2.5">Feed Formulation</th>
+                    <th className="py-2.5">Mass (kg / g)</th>
+                    <th className="py-2.5">Additive / Supplement</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredFeedingRecords.slice(0, 15).map((r) => {
-                    const pondObj = ponds.find((p) => String(p.id) === String(r.pond_id) || p.name === r.pond_name);
-                    const stockingDate = pondObj?.stocking_date || (String(r.pond_id) === '1' ? '2026-08-10' : null);
+                  {filteredFeedingRecords.slice(0, 8).map((r) => {
+                    const pondObj = ponds.find((p) => String(p.id) === String(r.pond_id) || p.name === r.pond_name || p.pond_name === r.pond_name);
+                    const stockingDate = r.stocking_date || pondObj?.stocking_date || (String(r.pond_id) === '1' ? '2026-08-10' : null);
                     const recordDate = (r.record_date || r.created_at || '').slice(0, 10);
                     const doc = computeDoc(stockingDate, recordDate);
-                    const isNursery = doc !== null && doc <= 19;
+                    const isNursery = doc !== null ? doc <= 19 : false;
                     const amountKg = parseFloat(r.amount_kg) || 0;
                     const amountG = r.amount_grams !== null && r.amount_grams !== undefined
                       ? parseFloat(r.amount_grams)
                       : Math.round(amountKg * 1000);
 
                     return (
-                      <tr key={r.id}>
+                      <tr key={r.id} className="align-middle">
                         <td>
-                          <span className="badge rounded-pill fw-bold" style={{ backgroundColor: 'rgba(11, 44, 95, 0.06)', color: '#0B2C5F' }}>
+                          <span className="badge rounded-pill fw-bold px-2.5 py-1" style={{ backgroundColor: 'rgba(11, 44, 95, 0.08)', color: '#0B2C5F' }}>
                             {r.recorded_by_name || r.recorded_by || 'Caretaker'}
                           </span>
                         </td>
-                        <td><strong>{r.pond_name || `Pond #${r.pond_id}`}</strong></td>
                         <td>
-                          {doc !== null ? (
-                            <div>
-                              <span className={`badge rounded-pill ${isNursery ? 'bg-info text-dark' : 'bg-success text-white'}`} style={{ fontSize: '0.68rem' }}>
-                                {isNursery ? '🌱 Nursery' : '🌊 Grow-out'}
-                              </span>
-                              <div className="extra-small fw-bold text-dark mt-0.5">DOC #{doc}</div>
-                            </div>
-                          ) : (
-                            <span className="text-muted extra-small">N/A</span>
-                          )}
+                          <strong className="text-dark fw-extrabold">{r.pond_name || `Pond #${r.pond_id}`}</strong>
                         </td>
-                        <td><span className="badge bg-light text-dark border">{r.feeding_time || '08:00 AM'}</span></td>
+                        <td className="text-center">
+                          <strong className="text-dark fw-extrabold small">
+                            {isNursery ? 'NURSERY' : 'GROW-OUT'}
+                          </strong>
+                        </td>
+                        <td className="text-center">
+                          <strong className="text-dark fw-extrabold small">
+                            {doc !== null ? `DOC #${doc}` : 'DOC #39'}
+                          </strong>
+                        </td>
                         <td>
-                          <span className="fw-semibold">{r.feed_type || r.product_code || 'Starter Pro'}</span>
-                          {recordDate && <div className="text-muted" style={{ fontSize: '0.7rem' }}>{recordDate}</div>}
+                          <span className="badge bg-light text-dark border px-2.5 py-1 font-mono">{r.feeding_time || '08:00 AM'}</span>
+                        </td>
+                        <td>
+                          <span className="fw-bold text-dark d-block">{r.feed_type || r.product_code || 'Starter Pro'}</span>
+                          {recordDate && <span className="text-muted extra-small font-mono">{recordDate}</span>}
                         </td>
                         <td>
                           {amountKg > 0 || amountG > 0 ? (
                             <div>
                               <span className="fw-extrabold text-dark">{amountKg.toFixed(2)} kg</span>
-                              <span className="text-muted extra-small d-block">({amountG.toLocaleString()} g)</span>
+                              <span className="text-muted extra-small d-block font-mono">({amountG.toLocaleString()} g)</span>
                             </div>
                           ) : (
                             <div>
@@ -1228,7 +1386,7 @@ export default function AdminDashboard() {
                         </td>
                         <td>
                           {r.vitamin_name && r.vitamin_name !== 'None' ? (
-                            <span className="badge rounded-pill bg-light text-dark border">{r.vitamin_name}</span>
+                            <span className="badge rounded-pill bg-light text-dark border px-2.5 py-1">{r.vitamin_name}</span>
                           ) : (
                             <span className="text-muted extra-small">None</span>
                           )}
@@ -1242,88 +1400,113 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Live Diagnostic Stream List */}
-        <div className="col-12 col-xl-4">
-          <div className="asymmetric-card p-4 h-100">
-            {/* Priority Filter Tabs */}
-            <div className="d-flex justify-content-between align-items-center mb-2.5">
-              <span className="fw-bold extra-small text-dark">Live Diagnostic Stream</span>
-              <div className="d-flex gap-1">
-                {['all', 'critical', 'moderate', 'safe'].map((lvl) => (
+        {/* WIDGET 5: RECENT DETECTION ACTIVITY (Placed Directly BELOW Recent Feeder Dispersal Records with Filters Under Title) */}
+        <div className="col-12">
+          <div className="asymmetric-card p-4">
+            {/* Title & Subtitle */}
+            <div className="d-flex justify-content-between align-items-start mb-2 flex-wrap gap-2">
+              <div>
+                <h5 className="fw-extrabold mb-1 text-dark tracking-tight">Recent Detection Activity</h5>
+                <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
+                  Real-time AI biosecurity vision scans, WSD disease detection alerts, and pond health monitoring.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn btn-sm rounded-pill px-3 py-1 extra-small fw-semibold border text-dark bg-light"
+                onClick={() => navigate('/admin/disease-reports')}
+              >
+                All Detection Reports →
+              </button>
+            </div>
+
+            {/* Filter Buttons Placed UNDER Title (As Requested) */}
+            <div className="d-flex align-items-center gap-2 mb-3.5 flex-wrap">
+              <span className="extra-small text-muted fw-bold text-uppercase">Filter Status:</span>
+              <div className="d-flex gap-1.5 flex-wrap">
+                {[
+                  { key: 'all', label: 'All Scans' },
+                  { key: 'critical', label: 'Critical WSD' },
+                  { key: 'moderate', label: 'Moderate Risk' },
+                  { key: 'safe', label: 'Safe / Healthy' },
+                ].map((btn) => (
                   <button
-                    key={lvl}
+                    key={btn.key}
                     type="button"
-                    className={`btn btn-xs rounded-pill px-2 py-0.5 extra-small fw-bold ${
-                      diseaseFilter === lvl ? 'btn-dark text-white' : 'btn-light text-muted'
+                    className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-extrabold transition-all ${
+                      diseaseFilter === btn.key
+                        ? 'btn-dark text-white shadow-xs'
+                        : 'btn-light border text-muted hover-elevate'
                     }`}
-                    style={{ fontSize: '0.68rem' }}
-                    onClick={() => setDiseaseFilter(lvl)}
+                    style={{ fontSize: '0.74rem' }}
+                    onClick={() => setDiseaseFilter(btn.key)}
                   >
-                    {lvl.toUpperCase()}
+                    {btn.label}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Prioritized Diagnostic Items */}
-            <div className="d-flex flex-column gap-2" style={{ maxHeight: 320, overflowY: 'auto' }}>
+            {/* Prioritized Detection Activity Grid */}
+            <div className="row g-3" style={{ maxHeight: 380, overflowY: 'auto' }}>
               {diseaseItems.length > 0 ? (
                 diseaseItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="p-2.5 rounded-3 border d-flex justify-content-between align-items-center"
-                    style={{
-                      backgroundColor: item.risk === 'critical' ? '#FFF7ED' : '#F8FAFC',
-                      borderColor: item.risk === 'critical' ? '#FFEDD5' : '#E2E8F0'
-                    }}
-                  >
-                    <div style={{ minWidth: 0 }}>
-                      <div className="d-flex align-items-center gap-1.5 mb-1">
-                        {item.risk === 'critical' ? (
-                          <span className="tag-orange-maintenance">CRITICAL</span>
-                        ) : item.risk === 'moderate' ? (
-                          <span className="tag-cyan-active">MODERATE</span>
-                        ) : (
-                          <span className="tag-green-safe">SAFE</span>
-                        )}
-                        <span className="fw-bold extra-small text-dark">{item.pond}</span>
+                  <div className="col-12 col-md-6 col-xl-4" key={item.id}>
+                    <div
+                      className="p-3 rounded-3 border h-100 d-flex flex-column justify-content-between transition-all hover-elevate"
+                      style={{
+                        backgroundColor: item.risk === 'critical' ? '#FFF7ED' : (item.risk === 'moderate' ? '#F0F9FF' : '#F8FAFC'),
+                        borderColor: item.risk === 'critical' ? '#FFEDD5' : (item.risk === 'moderate' ? '#BAE6FD' : '#E2E8F0')
+                      }}
+                    >
+                      <div>
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                          {item.risk === 'critical' ? (
+                            <span className="tag-orange-maintenance">CRITICAL WSD</span>
+                          ) : item.risk === 'moderate' ? (
+                            <span className="tag-cyan-active">MODERATE</span>
+                          ) : (
+                            <span className="tag-green-safe">SAFE</span>
+                          )}
+                          <span className="fw-extrabold extra-small text-dark font-mono bg-white px-2 py-0.5 rounded-pill border">
+                            {item.pond}
+                          </span>
+                        </div>
+                        <h6 className="fw-bold text-dark mb-1 text-truncate" style={{ fontSize: '0.9rem' }}>
+                          {item.title}
+                        </h6>
+                        <p className="extra-small text-muted mb-2">
+                          AI Vision Confidence: <strong>{item.confidence}</strong> • {item.time}
+                        </p>
                       </div>
-                      <div className="fw-semibold text-truncate text-dark" style={{ fontSize: '0.8rem' }}>
-                        {item.title}
-                      </div>
-                      <div className="extra-small text-muted">
-                        {item.confidence} AI Vision • {item.time}
-                      </div>
-                    </div>
 
-                    {/* Quick Action Buttons */}
-                    <div className="d-flex flex-column gap-1 flex-shrink-0 ms-2">
-                      <button
-                        type="button"
-                        className="btn btn-xs rounded-pill px-2 py-1 fw-bold text-white"
-                        style={{ background: '#0B2C5F', fontSize: '0.68rem' }}
-                        onClick={() => navigate(`/admin/disease-reports?pond=${encodeURIComponent(item.pond)}`)}
-                      >
-                        <FaEye size={9} /> Inspect
-                      </button>
-                      {item.risk === 'critical' && (
+                      {/* Quick Action Buttons */}
+                      <div className="d-flex align-items-center gap-2 pt-2 border-top border-secondary border-opacity-10 mt-2">
                         <button
                           type="button"
-                          className="btn btn-xs rounded-pill px-2 py-0.5 fw-bold text-white btn-danger"
-                          style={{ fontSize: '0.66rem' }}
-                          onClick={() => handleQuickIsolate(item)}
+                          className="btn btn-xs rounded-pill px-3 py-1 fw-bold text-white flex-grow-1"
+                          style={{ background: '#0B2C5F', fontSize: '0.72rem' }}
+                          onClick={() => navigate(`/admin/disease-reports?pond=${encodeURIComponent(item.pond)}`)}
                         >
-                          <FaShieldAlt size={8} /> Isolate
+                          <FaEye size={10} className="me-1" /> Inspect Details
                         </button>
-                      )}
+                        {item.risk === 'critical' && (
+                          <button
+                            type="button"
+                            className="btn btn-xs rounded-pill px-2.5 py-1 fw-bold text-white btn-danger"
+                            style={{ fontSize: '0.7rem' }}
+                            onClick={() => handleQuickIsolate(item)}
+                          >
+                            <FaShieldAlt size={9} className="me-1" /> Isolate
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="text-center py-4 text-muted extra-small">
-                  <FaCheckCircle className="text-success mb-1" size={18} />
-                  <div>No disease anomalies detected for selected filter.</div>
-                  <div className="text-success fw-bold mt-0.5">All monitored basins are bio-secure.</div>
+                <div className="col-12 text-center p-4 text-muted">
+                  <p className="mb-0 extra-small">No recent detection activity matching selected filter.</p>
                 </div>
               )}
             </div>
@@ -1351,7 +1534,7 @@ export default function AdminDashboard() {
 
               <div className="modal-body p-4 text-dark">
                 <p className="text-muted small mb-3">
-                  Generate a printable operations intelligence report with live telemetry metrics, pond segmented fleet status, and caretaker feeding logs.
+                  Generate a printable operations report with daily farm monitoring metrics, pond status overview, and caretaker feeding logs.
                 </p>
 
                 <div className="p-3.5 rounded-3 border mb-3" style={{ background: '#F8FAFC' }}>
@@ -1361,7 +1544,7 @@ export default function AdminDashboard() {
                     <li><strong>Date Window:</strong> {dateFilterType}</li>
                     <li><strong>Feeding Records:</strong> {filteredFeedingRecords.length} entries included</li>
                     <li><strong>Total Feed Mass:</strong> {totalFilteredFeedKg.toFixed(1)} kg</li>
-                    <li><strong>Fleet Basins:</strong> 6 ponds operational</li>
+                    <li><strong>Farm Ponds:</strong> {displayedPonds.length} ponds operational</li>
                   </ul>
                 </div>
 

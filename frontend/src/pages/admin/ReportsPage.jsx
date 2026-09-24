@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import AdminFilterToolbar from '../../components/AdminFilterToolbar';
 import api from '../../services/api';
 import Swal from 'sweetalert2';
 import {
@@ -49,6 +50,8 @@ export default function AdminReportsPage() {
   const [loading, setLoading] = useState(true);
 
   // Filters State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(true);
   const [currentTab, setCurrentTab] = useState('all'); // 'all' | 'Pending' | 'In Progress' | 'Done'
   const [severityFilter, setSeverityFilter] = useState('all'); // 'all' | 'Critical' | 'High' | 'Medium' | 'Low'
   const [caretakerFilter, setCaretakerFilter] = useState('all');
@@ -283,100 +286,92 @@ export default function AdminReportsPage() {
         </div>
       </div>
 
-      {/* Tabs & Filters Controls */}
-      <div className="card border-0 shadow-sm mb-4">
-        <div className="card-body p-3">
-          <div className="d-flex justify-content-between align-items-center flex-wrap gap-3">
-            {/* Status Tabs */}
-            <ul className="nav nav-pills gap-2">
-              <li className="nav-item">
-                <button
-                  className={`nav-link btn-sm ${currentTab === 'all' ? 'active' : ''}`}
-                  onClick={() => setCurrentTab('all')}
-                >
-                  All ({counts.total})
-                </button>
-              </li>
-              <li className="nav-item">
-                <button
-                  className={`nav-link btn-sm ${currentTab === 'Pending' ? 'active bg-warning text-dark' : ''}`}
-                  onClick={() => setCurrentTab('Pending')}
-                >
-                  Pending ({counts.pending})
-                </button>
-              </li>
-              <li className="nav-item">
-                <button
-                  className={`nav-link btn-sm ${currentTab === 'In Progress' ? 'active bg-info text-dark' : ''}`}
-                  onClick={() => setCurrentTab('In Progress')}
-                >
-                  In Progress ({counts.in_progress})
-                </button>
-              </li>
-              <li className="nav-item">
-                <button
-                  className={`nav-link btn-sm ${currentTab === 'Done' ? 'active bg-success' : ''}`}
-                  onClick={() => setCurrentTab('Done')}
-                >
-                  Done / Resolved ({counts.done})
-                </button>
-              </li>
-            </ul>
-
-            {/* Severity & Caretaker Filter */}
-            <div className="d-flex align-items-center gap-2 flex-wrap">
-              <span className="text-muted small fw-semibold d-flex align-items-center gap-1">
-                <FaFilter /> Filters:
-              </span>
-
-              {/* Severity filter */}
-              <select
-                className="form-select form-select-sm w-auto"
-                value={severityFilter}
-                onChange={(e) => setSeverityFilter(e.target.value)}
-              >
-                <option value="all">All Severities</option>
-                <option value="Critical">Critical Only</option>
-                <option value="High">High Only</option>
-                <option value="Medium">Medium Only</option>
-                <option value="Low">Low Only</option>
-              </select>
-
-              {/* Caretaker filter */}
-              <div className="d-flex align-items-center gap-1">
-                <FaUserTie className="text-muted" />
-                <select
-                  className="form-select form-select-sm w-auto"
-                  value={caretakerFilter}
-                  onChange={(e) => setCaretakerFilter(e.target.value)}
-                >
-                  <option value="all">All Caretakers</option>
-                  {caretakers.map((c) => (
-                    <option key={c.id} value={String(c.id)}>
-                      {c.full_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <AdminFilterToolbar
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="Search maintenance issue, pond, caretaker..."
+        showFilters={showFilters}
+        onToggleFilters={() => setShowFilters(!showFilters)}
+        onRefresh={loadReports}
+        loading={loading}
+        tabs={[
+          { id: 'all', label: 'All Reports', count: counts.total },
+          { id: 'Pending', label: 'Pending ⏳', count: counts.pending },
+          { id: 'In Progress', label: 'In Progress 🔄', count: counts.in_progress },
+          { id: 'Done', label: 'Done / Resolved ✅', count: counts.done }
+        ]}
+        activeTab={currentTab}
+        onTabChange={setCurrentTab}
+        metaRight={
+          <>
+            Facility SOP: <strong>Equipment Maintenance & Incident Logging</strong>
+          </>
+        }
+        filterFields={[
+          {
+            label: 'Severity Level',
+            type: 'select',
+            value: severityFilter,
+            onChange: setSeverityFilter,
+            colClass: 'col-12 col-md-4',
+            options: [
+              { value: 'all', label: 'All Severities' },
+              { value: 'Critical', label: 'Critical Only' },
+              { value: 'High', label: 'High Only' },
+              { value: 'Medium', label: 'Medium Only' },
+              { value: 'Low', label: 'Low Only' }
+            ]
+          },
+          {
+            label: 'Assigned Caretaker',
+            type: 'select',
+            value: caretakerFilter,
+            onChange: setCaretakerFilter,
+            colClass: 'col-12 col-md-4',
+            options: [
+              { value: 'all', label: 'All Caretakers' },
+              ...caretakers.map((c) => ({ value: String(c.id), label: c.full_name }))
+            ]
+          }
+        ]}
+        onResetFilters={() => {
+          setSearchQuery('');
+          setCurrentTab('all');
+          setSeverityFilter('all');
+          setCaretakerFilter('all');
+        }}
+      />
 
       {/* Maintenance Reports Cards / List */}
       <div className="card border-0 shadow-sm">
         <div className="card-body p-0">
           {loading ? (
             <div className="text-center py-5 text-muted">Loading maintenance reports…</div>
-          ) : reports.length === 0 ? (
-            <div className="text-center py-5">
-              <FaExclamationTriangle className="text-muted opacity-25 display-4 mb-2" />
-              <h6 className="fw-semibold text-muted">No maintenance reports found</h6>
-              <p className="small text-muted mb-0">No caretaker issue entries match the selected filters.</p>
-            </div>
-          ) : (
-            <div className="list-group list-group-flush">
-              {reports.map((report) => {
+          ) : (() => {
+            const filteredReportsList = reports.filter((r) => {
+              if (!searchQuery.trim()) return true;
+              const q = searchQuery.toLowerCase();
+              return (
+                (r.specific_issue || '').toLowerCase().includes(q) ||
+                (r.pond_name || '').toLowerCase().includes(q) ||
+                (r.recorded_by_name || r.caretaker_name || '').toLowerCase().includes(q) ||
+                (r.problem_type || '').toLowerCase().includes(q)
+              );
+            });
+
+            if (filteredReportsList.length === 0) {
+              return (
+                <div className="text-center py-5">
+                  <FaExclamationTriangle className="text-muted opacity-25 display-4 mb-2" />
+                  <h6 className="fw-semibold text-muted">No maintenance reports found</h6>
+                  <p className="small text-muted mb-0">No caretaker issue entries match the selected filters.</p>
+                </div>
+              );
+            }
+
+            return (
+              <div className="list-group list-group-flush">
+                {filteredReportsList.map((report) => {
                 const resolvedPhotoUrl = resolveMediaUrl(report.photo_url);
                 const resolvedVideoUrl = resolveMediaUrl(report.video_url);
                 const isHighlighted = checkIsHighlighted(report);
@@ -564,7 +559,8 @@ export default function AdminReportsPage() {
                 );
               })}
             </div>
-          )}
+          );
+        })()}
         </div>
       </div>
 

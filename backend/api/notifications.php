@@ -68,7 +68,11 @@ $ensureNotificationsTable = function ($conn): void {
     }
 };
 
-$ensureNotificationsTable($conn);
+try {
+    $ensureNotificationsTable($conn);
+} catch (Throwable $e) {
+    // Suppress schema auto-migration errors if table already exists
+}
 
 $method = $_SERVER['REQUEST_METHOD'];
 

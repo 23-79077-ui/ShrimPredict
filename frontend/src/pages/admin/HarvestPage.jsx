@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Bar, Line } from 'react-chartjs-2';
 import { FaCalendarAlt, FaChartLine, FaExclamationTriangle, FaSeedling, FaWeightHanging } from 'react-icons/fa';
 import api, { safeArray } from '../../services/api';
+import AdminFilterToolbar from '../../components/AdminFilterToolbar';
 
 const formatKg = (value = 0) => `${Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })} kg`;
 const formatTons = (value = 0) => `${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} tons`;
@@ -10,6 +11,8 @@ const formatPct = (value = 0) => `${Number(value || 0).toFixed(2)}%`;
 export default function HarvestPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(true);
   const [selectedCaretaker, setSelectedCaretaker] = useState('all');
   const [selectedPond, setSelectedPond] = useState('all');
 
@@ -69,55 +72,56 @@ export default function HarvestPage() {
 
   return (
     <div>
-      {/* FILTER TOOLBAR (Single Header handled by AdminLayout) */}
-      <div className="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4 bg-white p-3 rounded-4 border shadow-xs">
-        <div className="d-flex align-items-center gap-2">
-          <span className="fw-bold text-dark extra-small text-uppercase me-1">Filters:</span>
-          <span className="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3 py-1 extra-small fw-bold">
-            Showing {predictions.length} Pond Prediction(s)
-          </span>
-        </div>
-
-        <div className="d-flex align-items-center flex-wrap gap-3">
-          {/* Per-Pond Filter */}
-          <div className="d-flex align-items-center gap-2">
-            <label className="form-label extra-small fw-bold text-muted mb-0" htmlFor="pondFilter">Pond:</label>
-            <select
-              id="pondFilter"
-              className="form-select form-select-sm rounded-pill fw-bold border-primary text-primary bg-primary bg-opacity-10"
-              style={{ width: 150 }}
-              value={selectedPond}
-              onChange={(event) => setSelectedPond(event.target.value)}
-            >
-              <option value="all">All Ponds</option>
-              {pondsList.map((pond) => (
-                <option key={pond.id} value={pond.id}>
-                  {pond.pond_name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Caretaker Filter */}
-          <div className="d-flex align-items-center gap-2">
-            <label className="form-label extra-small fw-bold text-muted mb-0" htmlFor="caretakerFilter">Caretaker:</label>
-            <select
-              id="caretakerFilter"
-              className="form-select form-select-sm rounded-pill fw-semibold border-secondary border-opacity-25"
-              style={{ width: 170 }}
-              value={selectedCaretaker}
-              onChange={(event) => setSelectedCaretaker(event.target.value)}
-            >
-              <option value="all">All Caretakers</option>
-              {caretakers.map((caretaker) => (
-                <option key={caretaker.id} value={caretaker.id}>
-                  {caretaker.full_name || `Caretaker ${caretaker.id}`}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
+      <AdminFilterToolbar
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="Search harvest prediction, pond, caretaker..."
+        showFilters={showFilters}
+        onToggleFilters={() => setShowFilters(!showFilters)}
+        onRefresh={() => {
+          setSelectedCaretaker('all');
+          setSelectedPond('all');
+        }}
+        loading={loading}
+        tabs={[
+          { id: 'all', label: 'All Predictions', count: predictions.length }
+        ]}
+        activeTab="all"
+        metaRight={
+          <>
+            Harvest Model: <strong>Feed-to-Harvest Baseline Intelligence</strong>
+          </>
+        }
+        filterFields={[
+          {
+            label: 'Production Basin',
+            type: 'select',
+            value: selectedPond,
+            onChange: setSelectedPond,
+            colClass: 'col-12 col-md-4',
+            options: [
+              { value: 'all', label: 'All Ponds' },
+              ...pondsList.map((p) => ({ value: p.id, label: p.pond_name }))
+            ]
+          },
+          {
+            label: 'Assigned Caretaker',
+            type: 'select',
+            value: selectedCaretaker,
+            onChange: setSelectedCaretaker,
+            colClass: 'col-12 col-md-4',
+            options: [
+              { value: 'all', label: 'All Caretakers' },
+              ...caretakers.map((c) => ({ value: c.id, label: c.full_name || `Caretaker ${c.id}` }))
+            ]
+          }
+        ]}
+        onResetFilters={() => {
+          setSearchQuery('');
+          setSelectedPond('all');
+          setSelectedCaretaker('all');
+        }}
+      />
 
       <div className="alert alert-warning d-flex align-items-start gap-2">
         <FaExclamationTriangle className="mt-1" />
@@ -227,10 +231,24 @@ export default function HarvestPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {predictions.length === 0 && (
-                    <tr><td colSpan="11" className="text-muted">No pond feeding records found for this caretaker.</td></tr>
-                  )}
-                  {predictions.map((item) => (
+                  {(() => {
+                    const filtered = predictions.filter((item) => {
+                      if (!searchQuery.trim()) return true;
+                      const q = searchQuery.toLowerCase();
+                      return (
+                        String(item.pond_name || '').toLowerCase().includes(q) ||
+                        String(item.caretaker_names || '').toLowerCase().includes(q) ||
+                        String(item.readiness_status || '').toLowerCase().includes(q)
+                      );
+                    });
+
+                    if (filtered.length === 0) {
+                      return (
+                        <tr><td colSpan="11" className="text-muted text-center py-4">No pond harvest predictions match the search query or filters.</td></tr>
+                      );
+                    }
+
+                    return filtered.map((item) => (
                     <tr key={item.pond_id}>
                       <td>
                         <strong>{item.pond_name || `Pond ${item.pond_id}`}</strong>
@@ -264,7 +282,8 @@ export default function HarvestPage() {
                       <td>{item.data_completeness_status}</td>
                       <td>{item.calculated_at}</td>
                     </tr>
-                  ))}
+                  ));
+                })()}
                 </tbody>
               </table>
             </div>

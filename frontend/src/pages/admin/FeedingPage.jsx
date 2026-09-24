@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Line, Bar } from 'react-chartjs-2';
 import Swal from 'sweetalert2';
+import AdminFilterToolbar from '../../components/AdminFilterToolbar';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -277,6 +278,29 @@ export default function FeedingPage() {
       avgDailyKg: `${avgDailyKg} kg/day`
     };
   }, [records, filteredRecords]);
+
+  const handleExportCSV = () => {
+    if (!filteredRecords || filteredRecords.length === 0) return;
+    const headers = ['ID', 'Date', 'Time', 'Pond', 'Feed Type', 'Amount (kg)', 'Recorded By', 'Notes'];
+    const rows = filteredRecords.map((r) => [
+      r.id,
+      `"${r.record_date || r.created_at || ''}"`,
+      `"${r.feeding_time || ''}"`,
+      `"${r.pond_name || ''}"`,
+      `"${r.feed_type || ''}"`,
+      `"${r.amount_kg || 0}"`,
+      `"${r.recorded_by_name || ''}"`,
+      `"${(r.notes || '').replace(/"/g, '""')}"`
+    ]);
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `feeding_records_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // Chart Data Preparation (Daily Feeding Consumption Wave)
   const chartData = useMemo(() => {
@@ -936,21 +960,6 @@ export default function FeedingPage() {
     });
   };
 
-  // Export CSV Handler
-  const handleExportCSV = () => {
-    const headers = ['Record ID,Pond Name,Feed Type,Amount (kg),Date,Time Slot,Recorded By,Notes\n'];
-    const rows = filteredRecords.map(
-      (r) => `${r.id},"${r.pond_name || r.pond_id}","${r.feed_type || 'N/A'}",${r.amount_kg},"${r.record_date || r.created_at}","${r.feeding_time || '08:00 AM'}","${r.recorded_by_name || 'Caretaker'}","${r.notes || ''}"`
-    );
-
-    const blob = new Blob([headers.concat(rows).join('\n')], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Feeding_Consumption_Report_${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-  };
-
   return (
     <div className="feeding-consumption-container" style={{ fontFamily: "'Poppins', sans-serif" }}>
       {/* 🌟 1. HERO INTELLIGENCE & CONTROL BANNER */}
@@ -975,7 +984,7 @@ export default function FeedingPage() {
               </h4>
               <span className="tag-green-safe d-inline-flex align-items-center gap-1">
                 <span className="rounded-circle" style={{ width: 6, height: 6, background: '#16A34A' }}></span>
-                IoT Feeders Synchronized
+                Mobile Feed Log Verified
               </span>
             </div>
             <p className="text-muted mb-0 small" style={{ fontSize: '0.84rem' }}>
@@ -1029,7 +1038,7 @@ export default function FeedingPage() {
       <div className="row g-3 mb-4">
         {/* Card 1: Cumulative Feed */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
+          <div className="card stat-card-cyan shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
                 <span className="text-muted extra-small text-uppercase fw-bold tracking-wider">Total Cumulative Feed</span>
@@ -1052,7 +1061,7 @@ export default function FeedingPage() {
                 ></div>
               </div>
               <div className="d-flex justify-content-between align-items-center">
-                <span className="tag-cyan-active">All Basins Combined</span>
+                <span className="tag-cyan-active">All Ponds Combined</span>
                 <span className="text-muted extra-small">Target: 480 kg/d</span>
               </div>
             </div>
@@ -1061,7 +1070,7 @@ export default function FeedingPage() {
 
         {/* Card 2: Weekly Feed */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
+          <div className="card stat-card-green shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
                 <span className="text-muted extra-small text-uppercase fw-bold tracking-wider">Weekly Volume (7-Day)</span>
@@ -1093,7 +1102,7 @@ export default function FeedingPage() {
 
         {/* Card 3: Feed Cost */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
+          <div className="card stat-card-orange shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
                 <span className="text-muted extra-small text-uppercase fw-bold tracking-wider">Estimated Nutrition Cost</span>
@@ -1125,13 +1134,13 @@ export default function FeedingPage() {
 
         {/* Card 4: Average Feed Rate & Compliance */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="feeding-kpi-card h-100 d-flex flex-column justify-content-between">
+          <div className="card stat-card-purple shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
                 <span className="text-muted extra-small text-uppercase fw-bold tracking-wider">Dispersion Velocity</span>
                 <div
                   className="feeding-kpi-icon-wrap"
-                  style={{ background: 'rgba(11, 44, 95, 0.10)', color: '#0B2C5F' }}
+                  style={{ background: 'rgba(168, 85, 247, 0.12)', color: '#A855F7' }}
                 >
                   <FaChartLine />
                 </div>
@@ -1144,12 +1153,12 @@ export default function FeedingPage() {
               <div className="feeding-progress-track my-2">
                 <div
                   className="feeding-progress-bar"
-                  style={{ width: '96%', background: 'linear-gradient(90deg, #0B2C5F, #0284C7)' }}
+                  style={{ width: '96%', background: 'linear-gradient(90deg, #A855F7, #C084FC)' }}
                 ></div>
               </div>
               <div className="d-flex justify-content-between align-items-center">
                 <span className="tag-green-safe">98.2% Adherence</span>
-                <span className="text-muted extra-small">Per Active Basin</span>
+                <span className="text-muted extra-small">Per Active Pond</span>
               </div>
             </div>
           </div>
@@ -1165,7 +1174,7 @@ export default function FeedingPage() {
               <div>
                 <h5 className="fw-extrabold text-dark mb-0 tracking-tight">Daily Feed Consumption Wave</h5>
                 <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
-                  Total feed volume delivered per day across all active basins during the current week.
+                  Total feed volume delivered per day across all active ponds during the current week.
                 </p>
               </div>
               <span className="tag-cyan-active">
@@ -1290,7 +1299,7 @@ export default function FeedingPage() {
         <div className="p-3 rounded-4 bg-light border mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
           <div className="d-flex align-items-center gap-2 flex-wrap">
             <span className="extra-small fw-bold text-uppercase text-muted d-flex align-items-center gap-1">
-              <FaFilter size={11} style={{ color: '#0284C7' }} /> Basin Phase Filter ({effectiveFilterDate}):
+              <FaFilter size={11} style={{ color: '#0284C7' }} /> Pond Phase Filter ({effectiveFilterDate}):
             </span>
             <button
               type="button"
@@ -1298,7 +1307,7 @@ export default function FeedingPage() {
                 }`}
               onClick={() => setStageFilter('all')}
             >
-              All Basins ({ponds.length})
+              All Ponds ({ponds.length})
             </button>
             <button
               type="button"
@@ -1311,7 +1320,7 @@ export default function FeedingPage() {
               }}
               onClick={() => setStageFilter('nursery')}
             >
-              Nursery Basins (Days 1–25 • Starter Feed) ({nurseryPondsCount})
+              Nursery Ponds (Days 1–19 • Starter Feed) ({nurseryPondsCount})
             </button>
             <button
               type="button"
@@ -1324,7 +1333,7 @@ export default function FeedingPage() {
               }}
               onClick={() => setStageFilter('growout')}
             >
-              🌊 Grow-out Basins (Day 20+ • Grower Feed) ({growoutPondsCount})
+              🌊 Grow-out Ponds (Day 20+ • Grower Feed) ({growoutPondsCount})
             </button>
           </div>
 
@@ -1333,127 +1342,73 @@ export default function FeedingPage() {
           </div>
         </div>
 
-        {/* Filter & Search Bar Row */}
-        <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
-          {/* Quick Date Filter Pills */}
-          <div className="d-flex align-items-center gap-1.5 flex-wrap">
-            <button
-              type="button"
-              className={`pill-filter-btn ${dateFilter === 'today' ? 'active' : ''}`}
-              onClick={() => { setDateFilter('today'); setCustomDate(''); }}
-            >
-              Today
-            </button>
-            <button
-              type="button"
-              className={`pill-filter-btn ${dateFilter === 'yesterday' ? 'active' : ''}`}
-              onClick={() => { setDateFilter('yesterday'); setCustomDate(''); }}
-            >
-              Yesterday
-            </button>
-            <button
-              type="button"
-              className={`pill-filter-btn ${dateFilter === 'week' ? 'active' : ''}`}
-              onClick={() => { setDateFilter('week'); setCustomDate(''); }}
-            >
-              Last 7 Days
-            </button>
-            <button
-              type="button"
-              className={`pill-filter-btn ${dateFilter === 'month' ? 'active' : ''}`}
-              onClick={() => { setDateFilter('month'); setCustomDate(''); }}
-            >
-              This Month
-            </button>
-            <button
-              type="button"
-              className={`pill-filter-btn ${dateFilter === 'all' ? 'active' : ''}`}
-              onClick={() => { setDateFilter('all'); setCustomDate(''); }}
-            >
-              All Records
-            </button>
-            <button
-              type="button"
-              className={`pill-filter-btn ${dateFilter === 'custom' ? 'active' : ''}`}
-              onClick={() => setDateFilter('custom')}
-            >
-              <FaCalendarAlt size={10} className="me-1" /> Custom Date
-            </button>
-
-            {/* Custom Date Input */}
-            {dateFilter === 'custom' && (
-              <input
-                type="date"
-                className="form-control form-control-sm rounded-pill"
-                style={{ width: 140, fontSize: '0.8rem', height: 32 }}
-                value={customDate}
-                onChange={(e) => setCustomDate(e.target.value)}
-              />
-            )}
-          </div>
-
-          {/* Right Filters: Pond selector, Sorting & Search */}
-          <div className="d-flex align-items-center gap-2 flex-wrap">
-            {/* Search Input with Clear Button */}
-            <div className="position-relative" style={{ width: 220 }}>
-              <input
-                type="text"
-                className="form-control form-control-sm rounded-pill ps-4 pe-4"
-                style={{ fontSize: '0.8rem', height: 34, background: '#F8FAFC', border: '1px solid #E2E8F0' }}
-                placeholder="Search pond, feed, staff..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              <FaSearch
-                size={11}
-                className="position-absolute text-muted"
-                style={{ left: 12, top: '50%', transform: 'translateY(-50%)' }}
-              />
-              {searchTerm && (
-                <button
-                  type="button"
-                  className="btn btn-link p-0 position-absolute text-muted"
-                  style={{ right: 10, top: '50%', transform: 'translateY(-50%)', textDecoration: 'none' }}
-                  onClick={() => setSearchTerm('')}
-                >
-                  <FaTimes size={11} />
-                </button>
-              )}
-            </div>
-
-            {/* Pond Filter Dropdown */}
-            <select
-              className="form-select form-select-sm rounded-pill"
-              style={{ width: 140, fontSize: '0.8rem', height: 34, background: '#F8FAFC', border: '1px solid #E2E8F0' }}
-              value={selectedPond}
-              onChange={(e) => setSelectedPond(e.target.value)}
-            >
-              <option value="all">All Ponds</option>
-              {ponds.map((p) => {
-                const name = p.pond_name || p.name || `Pond #${p.id}`;
-                return (
-                  <option key={p.id} value={name}>
-                    {name}
-                  </option>
-                );
-              })}
-            </select>
-
-            {/* Sort Dropdown */}
-            <select
-              className="form-select form-select-sm rounded-pill"
-              style={{ width: 155, fontSize: '0.8rem', height: 34, background: '#F8FAFC', border: '1px solid #E2E8F0' }}
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-            >
-              <option value="date-desc">Newest First ⬇</option>
-              <option value="date-asc">Oldest First ⬆</option>
-              <option value="amount-desc">Amount: High ⬇</option>
-              <option value="amount-asc">Amount: Low ⬆</option>
-              <option value="pond-asc">Pond: A-Z</option>
-            </select>
-          </div>
-        </div>
+        <AdminFilterToolbar
+          searchQuery={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchPlaceholder="Search pond, feed, staff..."
+          showFilters={true}
+          onExportCSV={handleExportCSV}
+          onRefresh={loadData}
+          tabs={[
+            { id: 'all', label: 'All Records', count: filteredRecords.length },
+            { id: 'today', label: 'Today' },
+            { id: 'yesterday', label: 'Yesterday' },
+            { id: 'week', label: 'Last 7 Days' },
+            { id: 'month', label: 'This Month' }
+          ]}
+          activeTab={dateFilter}
+          onTabChange={(t) => { setDateFilter(t); setCustomDate(''); }}
+          metaRight={
+            <>
+              SOP Transition: <strong>Days 1–19 Nursery (Starter)</strong> ➔ <strong>Day 20+ Grow-out (Grower)</strong>
+            </>
+          }
+          filterFields={[
+            {
+              label: 'Evaluation Date',
+              icon: <FaCalendarAlt className="me-1 text-primary" />,
+              type: 'date',
+              value: customDate,
+              onChange: (val) => { setCustomDate(val); setDateFilter('custom'); },
+              colClass: 'col-12 col-md-3'
+            },
+            {
+              label: 'Pond Select',
+              type: 'select',
+              value: selectedPond,
+              onChange: setSelectedPond,
+              colClass: 'col-12 col-md-3',
+              options: [
+                { value: 'all', label: 'All Ponds' },
+                ...ponds.map((p) => {
+                  const name = p.pond_name || p.name || `Pond #${p.id}`;
+                  return { value: name, label: name };
+                })
+              ]
+            },
+            {
+              label: 'Sort Order',
+              type: 'select',
+              value: sortBy,
+              onChange: setSortBy,
+              colClass: 'col-12 col-md-3',
+              options: [
+                { value: 'date-desc', label: 'Newest First ⬇' },
+                { value: 'date-asc', label: 'Oldest First ⬆' },
+                { value: 'amount-desc', label: 'Amount: High ⬇' },
+                { value: 'amount-asc', label: 'Amount: Low ⬆' },
+                { value: 'pond-asc', label: 'Pond: A-Z' }
+              ]
+            }
+          ]}
+          onResetFilters={() => {
+            setDateFilter('all');
+            setCustomDate('');
+            setSelectedPond('all');
+            setSortBy('date-desc');
+            setSearchTerm('');
+          }}
+        />
 
         {/* VIEW 1: PER-POND FLEET MATRIX TABLE */}
         {activeTab === 'fleet' && (

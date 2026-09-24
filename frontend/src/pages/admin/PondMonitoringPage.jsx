@@ -35,6 +35,8 @@ import PondCycleCalendar from '../../components/PondCycleCalendar';
 import WaterQualityHistoryModal from '../../components/WaterQualityHistoryModal';
 import WaterQualityOcrModal from '../../components/WaterQualityOcrModal';
 
+import AdminFilterToolbar from '../../components/AdminFilterToolbar';
+
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 function computeDoc(stockingDateStr, targetDateStr) {
@@ -387,129 +389,85 @@ export default function PondMonitoringPage() {
 
   return (
     <div className="pb-4">
-      <div className="card border-0 shadow-sm rounded-4 bg-white p-4 mb-4">
-        <div className="d-flex flex-column flex-xl-row align-items-xl-center justify-content-between gap-3">
-          <div className="position-relative flex-grow-1" style={{ maxWidth: 560 }}>
-            <FaSearch className="position-absolute top-50 translate-middle-y text-primary" style={{ left: 16 }} />
-            <input
-              className="form-control ps-5"
-              placeholder="Search pond or caretaker"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-            />
-          </div>
-          <div className="d-flex flex-wrap gap-2 admin-actions">
-            <button className="btn btn-outline-primary d-flex align-items-center gap-2" onClick={() => setShowFilters((show) => !show)}>
-              <FaFilter /> Filters
-            </button>
-            <button className="btn btn-outline-success d-flex align-items-center gap-2" onClick={handleExportCSV}>
-              <FaFileCsv /> Export CSV
-            </button>
-            <button className="btn btn-primary d-flex align-items-center gap-2" onClick={loadPondData} disabled={loading}>
-              <FaSync /> Refresh
-            </button>
-          </div>
-        </div>
-
-        {showFilters && (
-          <div className="mt-3 pt-3 border-top">
-            {/* 🌟 Stage Filter Tabs Bar */}
-            <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3 pb-2 border-bottom">
-              <div className="d-flex align-items-center gap-1.5 flex-wrap">
-                <button
-                  type="button"
-                  className={`btn btn-sm rounded-pill px-3 py-1.5 extra-small fw-bold transition-all ${stageFilter === 'All' ? 'btn-dark text-white shadow-xs' : 'btn-light border text-dark'
-                    }`}
-                  onClick={() => setStageFilter('All')}
-                >
-                  All Basins ({ponds.length})
-                </button>
-                <button
-                  type="button"
-                  className={`btn btn-sm rounded-pill px-3 py-1.5 extra-small fw-bold transition-all ${stageFilter === 'Nursery' ? 'text-white shadow-xs' : 'btn-light border text-dark'
-                    }`}
-                  style={{
-                    backgroundColor: stageFilter === 'Nursery' ? '#059669' : '#FFFFFF',
-                    color: stageFilter === 'Nursery' ? '#FFFFFF' : '#047857',
-                    borderColor: '#A7F3D0',
-                  }}
-                  onClick={() => setStageFilter('Nursery')}
-                >
-                  Nursery Basins (Days 1–19 • Starter Feed) ({nurseryCount})
-                </button>
-                <button
-                  type="button"
-                  className={`btn btn-sm rounded-pill px-3 py-1.5 extra-small fw-bold transition-all ${stageFilter === 'Growout' ? 'text-white shadow-xs' : 'btn-light border text-dark'
-                    }`}
-                  style={{
-                    backgroundColor: stageFilter === 'Growout' ? '#2563EB' : '#FFFFFF',
-                    color: stageFilter === 'Growout' ? '#FFFFFF' : '#1D4ED8',
-                    borderColor: '#BFDBFE',
-                  }}
-                  onClick={() => setStageFilter('Growout')}
-                >
-                  🌊 Grow-out Basins (Day 20+ • Grower Feed) ({growoutCount})
-                </button>
-              </div>
-              <div className="extra-small text-muted">
-                Target Feed: <strong>Days 1–19 Nursery (Starter)</strong> ➔ <strong>Day 20+ Grow-out (Grower)</strong>
-              </div>
-            </div>
-
-            <div className="row g-3">
-              {/* Date Filter */}
-              <div className="col-12 col-md-3">
-                <label className="form-label small fw-bold text-muted d-flex align-items-center justify-content-between">
-                  <span><FaCalendarAlt className="me-1 text-primary" /> Evaluation Date</span>
-                  {filterDate !== todayStr && (
-                    <button
-                      type="button"
-                      className="btn btn-link p-0 extra-small text-primary text-decoration-none"
-                      onClick={() => setFilterDate(todayStr)}
-                    >
-                      Reset Today
-                    </button>
-                  )}
-                </label>
-                <input
-                  type="date"
-                  className="form-control"
-                  value={filterDate}
-                  onChange={(event) => setFilterDate(event.target.value)}
-                />
-              </div>
-              <div className="col-12 col-md-2">
-                <label className="form-label small fw-bold text-muted">Pond Status</label>
-                <select className="form-select" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-                  <option value="All">All statuses</option>
-                  <option value="Healthy">Healthy</option>
-                  <option value="Warning">Warning</option>
-                  <option value="Critical">Critical</option>
-                  <option value="Unmonitored">Unmonitored</option>
-                </select>
-              </div>
-              <div className="col-12 col-md-2">
-                <label className="form-label small fw-bold text-muted">Disease Detection</label>
-                <select className="form-select" value={diseaseFilter} onChange={(event) => setDiseaseFilter(event.target.value)}>
-                  <option value="All">All detections</option>
-                  <option value="Clear">Clear only</option>
-                  <option value="Alert">Alerts only</option>
-                </select>
-              </div>
-              <div className="col-12 col-md-3">
-                <label className="form-label small fw-bold text-muted">Assigned Caretaker</label>
-                <select className="form-select" value={caretakerFilter} onChange={(event) => setCaretakerFilter(event.target.value)}>
-                  <option value="All">All caretakers</option>
-                  {uniqueCaretakers.map((caretaker) => <option key={caretaker} value={caretaker}>{caretaker}</option>)}
-                </select>
-              </div>
-              <div className="col-12 col-md-2 d-flex align-items-end">
-                <button className="btn btn-light border w-100" onClick={clearFilters}>Reset Filters</button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+      <AdminFilterToolbar
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="Search pond or caretaker"
+        showFilters={showFilters}
+        onToggleFilters={() => setShowFilters((show) => !show)}
+        onExportCSV={handleExportCSV}
+        onRefresh={loadPondData}
+        loading={loading}
+        tabs={[
+          { id: 'All', label: 'All Ponds', count: ponds.length },
+          { id: 'Nursery', label: 'Nursery Ponds (Days 1–19 • Starter Feed)', count: nurseryCount },
+          { id: 'Growout', label: '🌊 Grow-out Ponds (Day 20+ • Grower Feed)', count: growoutCount }
+        ]}
+        activeTab={stageFilter}
+        onTabChange={setStageFilter}
+        metaRight={
+          <>
+            Target Feed: <strong>Days 1–19 Nursery (Starter)</strong> ➔ <strong>Day 20+ Grow-out (Grower)</strong>
+          </>
+        }
+        filterFields={[
+          {
+            label: 'Evaluation Date',
+            icon: <FaCalendarAlt className="me-1 text-primary" />,
+            type: 'date',
+            value: filterDate,
+            onChange: setFilterDate,
+            colClass: 'col-12 col-md-3',
+            headerAction: filterDate !== todayStr ? (
+              <button
+                type="button"
+                className="btn btn-link p-0 extra-small text-primary text-decoration-none"
+                onClick={() => setFilterDate(todayStr)}
+              >
+                Reset Today
+              </button>
+            ) : null
+          },
+          {
+            label: 'Pond Status',
+            type: 'select',
+            value: statusFilter,
+            onChange: setStatusFilter,
+            colClass: 'col-12 col-md-2',
+            options: [
+              { value: 'All', label: 'All statuses' },
+              { value: 'Healthy', label: 'Healthy' },
+              { value: 'Warning', label: 'Warning' },
+              { value: 'Critical', label: 'Critical' },
+              { value: 'Unmonitored', label: 'Unmonitored' }
+            ]
+          },
+          {
+            label: 'Disease Detection',
+            type: 'select',
+            value: diseaseFilter,
+            onChange: setDiseaseFilter,
+            colClass: 'col-12 col-md-2',
+            options: [
+              { value: 'All', label: 'All detections' },
+              { value: 'Clear', label: 'Clear only' },
+              { value: 'Alert', label: 'Alerts only' }
+            ]
+          },
+          {
+            label: 'Assigned Caretaker',
+            type: 'select',
+            value: caretakerFilter,
+            onChange: setCaretakerFilter,
+            colClass: 'col-12 col-md-3',
+            options: [
+              { value: 'All', label: 'All caretakers' },
+              ...uniqueCaretakers.map((c) => ({ value: c, label: c }))
+            ]
+          }
+        ]}
+        onResetFilters={clearFilters}
+      />
 
       {error && (
         <div className="alert alert-danger d-flex align-items-center gap-2 rounded-4">
