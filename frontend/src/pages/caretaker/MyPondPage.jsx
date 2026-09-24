@@ -238,9 +238,80 @@ export default function MyPondPage() {
   const isPondWqVerified = Boolean(currentPondWq?.is_verified);
   const activeWqRecord = currentPondWq?.record;
 
+  // Helper to resolve the active sampling for a given pond and date (valid for 7 days)
+  const resolveActiveSampling = useCallback((pondId, targetDateStr, allRecords = []) => {
+    if (!pondId || !targetDateStr) return null;
+
+    // 1. Check local sampling history
+    try {
+      const historyRaw = localStorage.getItem(`shrim-abw-sampling-history-pond-${pondId}`);
+      if (historyRaw) {
+        const history = JSON.parse(historyRaw);
+        if (Array.isArray(history) && history.length > 0) {
+          const validHistory = history
+            .filter((s) => s && s.sampledDate && s.sampledDate <= targetDateStr && Number(s.shrimpWeightGrams) > 0)
+            .sort((a, b) => b.sampledDate.localeCompare(a.sampledDate));
+          if (validHistory.length > 0) {
+            return validHistory[0];
+          }
+        }
+      }
+    } catch (e) {}
+
+    // 2. Check feeding records from database on or before targetDateStr
+    if (Array.isArray(allRecords) && allRecords.length > 0) {
+      const pastFeeds = allRecords
+        .filter((r) => {
+          const rDate = r.record_date || (r.created_at ? r.created_at.split(' ')[0] : '');
+          const w = parseFloat(r.shrimp_weight_grams);
+          return rDate && rDate <= targetDateStr && Number.isFinite(w) && w > 0;
+        })
+        .sort((a, b) => (b.record_date || '').localeCompare(a.record_date || ''));
+
+      if (pastFeeds.length > 0) {
+        const latestWeight = parseFloat(pastFeeds[0].shrimp_weight_grams);
+        // Trace back the start date of this specific sampling weight streak
+        let streakStartDate = pastFeeds[0].record_date;
+        for (let i = 0; i < pastFeeds.length; i++) {
+          const currentWeight = parseFloat(pastFeeds[i].shrimp_weight_grams);
+          if (Math.abs(currentWeight - latestWeight) < 0.05) {
+            streakStartDate = pastFeeds[i].record_date;
+          } else {
+            break;
+          }
+        }
+
+        return {
+          shrimpWeightGrams: latestWeight,
+          pondId: pondId,
+          sampledDate: streakStartDate,
+          sampledDoc: null,
+          source: 'database',
+        };
+      }
+    }
+
+    // 3. Fallback to standard localStorage keys
+    try {
+      const singleKey = `shrim-abw-sampling-pond-${pondId}`;
+      const stored = JSON.parse(localStorage.getItem(singleKey) || 'null');
+      if (stored?.shrimpWeightGrams && (!stored.sampledDate || stored.sampledDate <= targetDateStr)) {
+        return stored;
+      }
+    } catch (e) {}
+
+    return null;
+  }, []);
+
   useEffect(() => {
     if (!selectedPondId) {
       setWeeklySampling(null);
+      return;
+    }
+
+    const resolved = resolveActiveSampling(selectedPondId, todayDateStr);
+    if (resolved?.shrimpWeightGrams) {
+      setWeeklySampling(resolved);
       return;
     }
 
@@ -263,7 +334,7 @@ export default function MyPondPage() {
     } catch (e) {
       setWeeklySampling(null);
     }
-  }, [samplingStorageKey, legacySamplingKey, selectedPondId, todayDateStr, currentDoc]);
+  }, [samplingStorageKey, legacySamplingKey, selectedPondId, todayDateStr, currentDoc, resolveActiveSampling]);
 
   const daysSinceSample = useMemo(() => {
     if (!weeklySampling?.sampledDate) return Infinity;
@@ -309,6 +380,12 @@ export default function MyPondPage() {
         params: { pond_id: pondId },
       });
       if (Array.isArray(res.data)) {
+        // Resolve active sampling dynamically from database records
+        const activeSampling = resolveActiveSampling(pondId, targetDateStr, res.data);
+        if (activeSampling?.shrimpWeightGrams) {
+          setWeeklySampling(activeSampling);
+        }
+
         const pastRecords = res.data.filter((r) => {
           const rDate = r.record_date || (r.created_at ? r.created_at.split(' ')[0] : '');
           return rDate && rDate < targetDateStr;
@@ -616,6 +693,14 @@ export default function MyPondPage() {
     if (samplingStorageKey) {
       localStorage.setItem(samplingStorageKey, JSON.stringify(nextSampling));
     }
+    try {
+      const historyKey = `shrim-abw-sampling-history-pond-${selectedPondId}`;
+      const historyRaw = localStorage.getItem(historyKey);
+      const history = historyRaw ? JSON.parse(historyRaw) : [];
+      const updatedHistory = Array.isArray(history) ? history.filter((s) => s.sampledDate !== todayDateStr) : [];
+      updatedHistory.push(nextSampling);
+      localStorage.setItem(historyKey, JSON.stringify(updatedHistory));
+    } catch (e) {}
     setWeeklySampling(nextSampling);
 
     Swal.fire({
