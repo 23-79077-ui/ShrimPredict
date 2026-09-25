@@ -303,7 +303,51 @@ export default function NotificationsPage() {
   };
 
   return (
-    <div>
+    <div className="pb-5" style={{ fontFamily: "'Poppins', sans-serif" }}>
+      {/* 🌟 HERO BANNER */}
+      <div className="disease-hero-banner d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+        <div className="d-flex align-items-center gap-3">
+          <div
+            className="rounded-circle d-flex align-items-center justify-content-center shadow-xs flex-shrink-0"
+            style={{
+              width: 50,
+              height: 50,
+              background: 'linear-gradient(135deg, #0B2C5F 0%, #1E3A8A 100%)',
+              color: '#FFFFFF',
+              fontSize: '1.3rem',
+              border: '2px solid rgba(234, 88, 12, 0.3)'
+            }}
+          >
+            <FaBell />
+          </div>
+          <div>
+            <div className="d-flex align-items-center gap-2 flex-wrap">
+              <h3 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#0B2C5F', fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
+                Operational Notifications &amp; System Dispatch
+              </h3>
+              <span
+                className="badge rounded-pill extra-small px-3 py-1 fw-bold"
+                style={{ backgroundColor: 'rgba(11, 44, 95, 0.08)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.16)' }}
+              >
+                ● Live Incident Stream
+              </span>
+            </div>
+            <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
+              Real-time feed alerts, water telemetry variances, and caretaker biometric reports.
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          className="btn btn-sm btn-tri-outline px-3.5 py-2 shadow-xs"
+          style={{ fontSize: '0.82rem', height: 40 }}
+          onClick={loadNotifications}
+        >
+          <FaSync size={11} className={loading ? 'fa-spin me-1.5' : 'me-1.5'} /> Refresh Dispatch
+        </button>
+      </div>
+
       <AdminFilterToolbar
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
@@ -315,7 +359,7 @@ export default function NotificationsPage() {
         extraActions={
           <button
             type="button"
-            className="btn btn-admin-filter border-primary text-primary"
+            className="btn btn-sm btn-tri-navy px-3.5 py-2 shadow-xs"
             onClick={handleMarkAllRead}
             disabled={counts.unread === 0}
           >
@@ -374,7 +418,7 @@ export default function NotificationsPage() {
       />
 
       {/* Notifications List Container */}
-      <div className="card border-0 shadow-sm" ref={dropdownRef}>
+      <div className="tri-card p-4" ref={dropdownRef}>
         <div className="card-body p-0">
           {loading ? (
             <div className="text-center py-5 text-muted">

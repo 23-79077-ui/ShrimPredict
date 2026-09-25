@@ -220,8 +220,8 @@ export default function CaretakerLayout() {
   return (
     <div className="saas-layout-canvas">
       {/* 🌟 TOP NAVIGATION HEADER (Floating Card Architecture with Zero Bleed-Through) */}
-      <div className="top-dock-floating-wrapper">
-        <header className="top-dock-bar floating-dock">
+      <div className="top-dock-wrapper">
+        <header className="top-dock-bar">
         <div className="top-dock-inner" style={{ maxWidth: 1480, margin: '0 auto', width: '100%' }}>
           {/* Tier 1: Brand & Executive Utilities Bar */}
         <div className="top-dock-topbar d-flex align-items-center justify-content-between w-100">

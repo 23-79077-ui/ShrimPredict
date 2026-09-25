@@ -24,6 +24,7 @@ import {
   FaGlobe,
   FaDesktop,
   FaCog,
+  FaSync,
   FaEdit,
   FaTimes,
   FaEnvelope,
@@ -726,16 +727,185 @@ export default function SettingsPage() {
 
   return (
     <div className="container-fluid px-0 px-md-3 pb-5">
+      {/* 🌟 1. EXECUTIVE HERO BANNER */}
+      <div className="disease-hero-banner d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+        <div className="d-flex align-items-center gap-3">
+          <div
+            className="rounded-circle d-flex align-items-center justify-content-center shadow-xs flex-shrink-0"
+            style={{
+              width: 50,
+              height: 50,
+              background: 'linear-gradient(135deg, #0B2C5F 0%, #1E3A8A 100%)',
+              color: '#FFFFFF',
+              fontSize: '1.3rem',
+              border: '2px solid rgba(234, 88, 12, 0.3)'
+            }}
+          >
+            <FaCog />
+          </div>
+          <div>
+            <div className="d-flex align-items-center gap-2 flex-wrap">
+              <h3 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#0B2C5F', fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
+                System Configuration &amp; Administration
+              </h3>
+              <span
+                className="badge rounded-pill extra-small px-3 py-1 fw-bold"
+                style={{ backgroundColor: 'rgba(11, 44, 95, 0.08)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.16)' }}
+              >
+                ● Enterprise Security Verified
+              </span>
+            </div>
+            <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
+              Manage platform preferences, administrator credentials, system biometrics defaults, automated backups, and personnel archives.
+            </p>
+          </div>
+        </div>
+
+        {/* Action Controls: Refresh Preferences */}
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            className="btn btn-sm btn-tri-outline px-3.5 py-2 shadow-xs"
+            style={{ fontSize: '0.82rem', height: 40 }}
+            onClick={fetchInitialData}
+            disabled={loading}
+          >
+            <FaSync size={11} className={loading ? 'fa-spin me-1.5' : 'me-1.5'} /> Refresh Preferences
+          </button>
+        </div>
+      </div>
+
+      {/* 🌟 2. 4 TOP SYSTEM SUMMARY KPI CARDS */}
+      <div className="row g-3 g-xl-4 mb-4">
+        {/* Card 1: Admin Profile */}
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="tri-kpi-card">
+            <div>
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Account Authority</span>
+                <div className="tri-kpi-icon tri-kpi-icon-blue">
+                  <FaUserShield size={16} />
+                </div>
+              </div>
+              <h2 className="fw-extrabold mb-1" style={{ color: '#0B2C5F', fontSize: '1.8rem', letterSpacing: '-0.03em' }}>
+                {profile.position || 'Super Admin'}
+              </h2>
+            </div>
+            <div>
+              <div className="tri-progress-track my-2.5">
+                <div className="tri-progress-bar" style={{ width: '100%', background: 'linear-gradient(90deg, #0B2C5F 0%, #1E3A8A 100%)' }} />
+              </div>
+              <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                <span className="text-muted extra-small">ID #{profile.id || 1} • {profile.full_name}</span>
+                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: '#F0FDF4', color: '#16A34A', border: '1px solid #BBF7D0' }}>
+                  Root Access
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 2: Security & 2FA */}
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="tri-kpi-card">
+            <div>
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Security Protection</span>
+                <div className="tri-kpi-icon tri-kpi-icon-orange">
+                  <FaLock size={16} />
+                </div>
+              </div>
+              <h2 className="fw-extrabold mb-1" style={{ color: '#EA580C', fontSize: '1.8rem', letterSpacing: '-0.03em' }}>
+                {profile.two_factor_enabled ? '2FA Active' : 'Standard 2FA'}
+              </h2>
+            </div>
+            <div>
+              <div className="tri-progress-track my-2.5" style={{ backgroundColor: 'rgba(234, 88, 12, 0.1)' }}>
+                <div
+                  className="tri-progress-bar"
+                  style={{
+                    width: profile.two_factor_enabled ? '100%' : '60%',
+                    background: 'linear-gradient(90deg, #EA580C 0%, #F97316 100%)'
+                  }}
+                />
+              </div>
+              <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                <span className="text-muted extra-small">SHA-256 Protected</span>
+                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(234, 88, 12, 0.08)', color: '#EA580C', border: '1px solid rgba(234, 88, 12, 0.2)' }}>
+                  Active
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 3: Basins Capacity */}
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="tri-kpi-card">
+            <div>
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Basin Capacity</span>
+                <div className="tri-kpi-icon tri-kpi-icon-blue">
+                  <FaWater size={16} />
+                </div>
+              </div>
+              <h2 className="fw-extrabold mb-1" style={{ color: '#0B2C5F', fontSize: '1.8rem', letterSpacing: '-0.03em' }}>
+                {pondSettings.max_ponds || 30} <small className="fs-6 text-muted fw-normal">Max Basins</small>
+              </h2>
+            </div>
+            <div>
+              <div className="tri-progress-track my-2.5">
+                <div className="tri-progress-bar" style={{ width: '80%', background: 'linear-gradient(90deg, #0B2C5F 0%, #1E3A8A 100%)' }} />
+              </div>
+              <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                <span className="text-muted extra-small">Auto Assign: {pondSettings.auto_assign_pond_number}</span>
+                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(11, 44, 95, 0.06)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.15)' }}>
+                  Active
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 4: Automated Backups */}
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="tri-kpi-card">
+            <div>
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Database Archive</span>
+                <div className="tri-kpi-icon tri-kpi-icon-blue">
+                  <FaDatabase size={16} />
+                </div>
+              </div>
+              <h2 className="fw-extrabold mb-1" style={{ color: '#0B2C5F', fontSize: '1.8rem', letterSpacing: '-0.03em' }}>
+                {backupSettings.backup_frequency || 'Weekly'}
+              </h2>
+            </div>
+            <div>
+              <div className="tri-progress-track my-2.5">
+                <div className="tri-progress-bar" style={{ width: '100%', background: 'linear-gradient(90deg, #16A34A 0%, #22C55E 100%)' }} />
+              </div>
+              <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                <span className="text-muted extra-small">Auto-Backup: {backupSettings.automatic_backup}</span>
+                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: '#F0FDF4', color: '#16A34A', border: '1px solid #BBF7D0' }}>
+                  Healthy
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Main Settings Body */}
       <div className="row g-4 align-items-start">
         {/* Left Navigation Sidebar / Tabs (Fixed/Sticky on Scroll below top dock bar) */}
         <div className="col-12 col-lg-4 col-xl-3" style={{ position: 'sticky', top: '155px', zIndex: 100, alignSelf: 'flex-start' }}>
-          <div className="settings-card bg-white p-3 rounded-4 border border-slate-200 shadow-xs">
+          <div className="settings-menu-card p-3.5 shadow-xs">
             {/* Settings Menu Header + Integrated Search Bar */}
             <div className="px-1 pb-3 mb-2 border-bottom">
               <div className="d-flex align-items-center justify-content-between mb-2">
                 <span className="text-uppercase fw-bold text-muted extra-small tracking-wider">SETTINGS MENU</span>
-                <span className="badge bg-primary bg-opacity-10 text-primary extra-small rounded-pill fw-semibold">
+                <span className="badge rounded-pill extra-small px-2.5 py-1 fw-bold" style={{ backgroundColor: 'rgba(11, 44, 95, 0.08)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.15)' }}>
                   {filteredTabs.length} Tabs
                 </span>
               </div>
@@ -745,7 +915,7 @@ export default function SettingsPage() {
                 <FaSearch className="position-absolute top-50 translate-middle-y text-primary" style={{ left: 14, fontSize: '0.85rem' }} />
                 <input
                   type="text"
-                  className="form-control form-control-sm ps-5 pe-4 py-2.5 rounded-3 border-slate-200 shadow-xs"
+                  className="form-control form-control-sm ps-5 pe-4 py-2 rounded-3 border-slate-200 shadow-xs"
                   placeholder="Search Settings..."
                   style={{ fontSize: '0.86rem' }}
                   value={searchQuery}
@@ -775,20 +945,21 @@ export default function SettingsPage() {
                     <button
                       key={t.id}
                       onClick={() => setActiveTab(t.id)}
-                      className={`settings-nav-item nav-link text-start d-flex align-items-center gap-3 py-3 px-3 ${
-                        isActive ? 'active' : 'text-dark'
-                      }`}
+                      className={`settings-nav-pill ${isActive ? 'active' : ''}`}
                       style={{ cursor: 'pointer' }}
                     >
-                      <div
-                        className="settings-nav-icon p-2 rounded-3 d-flex align-items-center justify-content-center"
-                        style={{ width: 36, height: 36 }}
-                      >
+                      <div className="settings-nav-icon">
                         <Icon size={16} />
                       </div>
-                      <div className="text-truncate">
+                      <div className="text-truncate flex-grow-1">
                         <div className="fw-semibold fs-6 lh-1">{t.label}</div>
                       </div>
+                      {isActive && (
+                        <span
+                          className="rounded-circle"
+                          style={{ width: 6, height: 6, backgroundColor: '#EA580C', flexShrink: 0 }}
+                        />
+                      )}
                     </button>
                   );
                 })

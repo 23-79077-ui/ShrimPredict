@@ -22,7 +22,8 @@ import {
   FaLightbulb,
   FaUserCheck,
   FaArrowRight,
-  FaChartLine
+  FaChartLine,
+  FaBell
 } from 'react-icons/fa';
 import api, { safeArray } from '../../services/api';
 import Swal from 'sweetalert2';
@@ -323,7 +324,197 @@ export default function AlertsPage() {
 
   return (
     <div className="pb-5">
-      {/* 🛠 1. UNIFIED CONTROL & FILTER TOOLBAR (TOP SECTION) */}
+      {/* 🌟 1. EXECUTIVE HERO BANNER */}
+      <div className="disease-hero-banner d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+        <div className="d-flex align-items-center gap-3">
+          <div
+            className="rounded-circle d-flex align-items-center justify-content-center shadow-xs flex-shrink-0"
+            style={{
+              width: 50,
+              height: 50,
+              background: 'linear-gradient(135deg, #0B2C5F 0%, #1E3A8A 100%)',
+              color: '#FFFFFF',
+              fontSize: '1.3rem',
+              border: '2px solid rgba(234, 88, 12, 0.3)'
+            }}
+          >
+            <FaExclamationTriangle />
+          </div>
+          <div>
+            <div className="d-flex align-items-center gap-2 flex-wrap">
+              <h3 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#0B2C5F', fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
+                Alerts &amp; Biosecurity Early Warning
+              </h3>
+              <span
+                className="badge rounded-pill extra-small px-3 py-1 fw-bold"
+                style={{ backgroundColor: 'rgba(11, 44, 95, 0.08)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.16)' }}
+              >
+                ● Real-time Incident Triage
+              </span>
+            </div>
+            <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
+              Active incident response queue, anomaly notifications, and automated caretaker triage assignments.
+            </p>
+          </div>
+        </div>
+
+        {/* Action Controls: Refresh, Export CSV */}
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            className="btn btn-sm btn-tri-outline px-3.5 py-2 shadow-xs"
+            style={{ fontSize: '0.82rem', height: 40 }}
+            onClick={loadAlerts}
+            disabled={loading}
+          >
+            <FaSync size={11} className={loading ? 'fa-spin me-1.5' : 'me-1.5'} /> Refresh
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-sm btn-tri-navy px-4 py-2 shadow-xs"
+            style={{ height: 40, fontSize: '0.82rem' }}
+            onClick={handleExportCSV}
+          >
+            <FaFileCsv size={13} className="me-1.5" /> Export CSV
+          </button>
+        </div>
+      </div>
+
+      {/* 🌟 2. 4 TOP TRI-COLOR TELEMETRY CARDS */}
+      <div className="row g-3 g-xl-4 mb-4">
+        {/* Critical Alerts */}
+        <div className="col-12 col-sm-6 col-md-3">
+          <div className="tri-kpi-card" style={{ borderColor: summary.critical_alerts > 0 ? 'rgba(234, 88, 12, 0.28)' : 'rgba(11, 44, 95, 0.12)' }}>
+            <div>
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Critical Alerts</span>
+                <div className="tri-kpi-icon tri-kpi-icon-orange">
+                  <FaExclamationTriangle size={16} />
+                </div>
+              </div>
+              <h2 className="fw-extrabold mb-1" style={{ color: summary.critical_alerts > 0 ? '#EA580C' : '#0B2C5F', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+                {summary.critical_alerts || 0}
+              </h2>
+            </div>
+            <div>
+              <div className="tri-progress-track my-2.5" style={{ backgroundColor: 'rgba(234, 88, 12, 0.1)' }}>
+                <div
+                  className="tri-progress-bar"
+                  style={{
+                    width: alerts.length > 0 ? `${Math.max(15, ((summary.critical_alerts || 0) / alerts.length) * 100)}%` : '15%',
+                    background: 'linear-gradient(90deg, #EA580C 0%, #F97316 100%)'
+                  }}
+                />
+              </div>
+              <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                <span className="text-muted extra-small">Immediate Intervention</span>
+                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: '#FFF7ED', color: '#EA580C', border: '1px solid rgba(234, 88, 12, 0.25)' }}>
+                  Action Needed
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Warnings */}
+        <div className="col-12 col-sm-6 col-md-3">
+          <div className="tri-kpi-card">
+            <div>
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Active Warnings</span>
+                <div className="tri-kpi-icon tri-kpi-icon-orange">
+                  <FaBell size={16} />
+                </div>
+              </div>
+              <h2 className="fw-extrabold mb-1" style={{ color: '#EA580C', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+                {summary.warnings || 0}
+              </h2>
+            </div>
+            <div>
+              <div className="tri-progress-track my-2.5" style={{ backgroundColor: 'rgba(234, 88, 12, 0.1)' }}>
+                <div
+                  className="tri-progress-bar"
+                  style={{
+                    width: alerts.length > 0 ? `${Math.max(15, ((summary.warnings || 0) / alerts.length) * 100)}%` : '20%',
+                    background: 'linear-gradient(90deg, #EA580C 0%, #F97316 100%)'
+                  }}
+                />
+              </div>
+              <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                <span className="text-muted extra-small">High &amp; Medium</span>
+                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: '#FFF7ED', color: '#EA580C', border: '1px solid rgba(234, 88, 12, 0.25)' }}>
+                  Watch List
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Resolved */}
+        <div className="col-12 col-sm-6 col-md-3">
+          <div className="tri-kpi-card">
+            <div>
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Resolved Issues</span>
+                <div className="tri-kpi-icon tri-kpi-icon-blue">
+                  <FaCheckCircle size={16} />
+                </div>
+              </div>
+              <h2 className="fw-extrabold mb-1" style={{ color: '#0B2C5F', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+                {summary.resolved || 0}
+              </h2>
+            </div>
+            <div>
+              <div className="tri-progress-track my-2.5">
+                <div
+                  className="tri-progress-bar"
+                  style={{ width: '100%', background: 'linear-gradient(90deg, #0B2C5F 0%, #1E3A8A 100%)' }}
+                />
+              </div>
+              <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                <span className="text-muted extra-small">Addressed Incidents</span>
+                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(11, 44, 95, 0.06)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.15)' }}>
+                  Closed
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Pending */}
+        <div className="col-12 col-sm-6 col-md-3">
+          <div className="tri-kpi-card">
+            <div>
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Pending Queue</span>
+                <div className="tri-kpi-icon tri-kpi-icon-blue">
+                  <FaClock size={16} />
+                </div>
+              </div>
+              <h2 className="fw-extrabold mb-1" style={{ color: '#0B2C5F', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+                {summary.pending || 0}
+              </h2>
+            </div>
+            <div>
+              <div className="tri-progress-track my-2.5">
+                <div
+                  className="tri-progress-bar"
+                  style={{ width: '80%', background: 'linear-gradient(90deg, #0B2C5F 0%, #1E3A8A 100%)' }}
+                />
+              </div>
+              <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                <span className="text-muted extra-small">Awaiting Caretaker</span>
+                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(11, 44, 95, 0.06)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.15)' }}>
+                  Active Queue
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 🌟 3. UNIFIED CONTROL & FILTER TOOLBAR */}
       <AdminFilterToolbar
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
@@ -334,9 +525,9 @@ export default function AlertsPage() {
         loading={loading}
         tabs={[
           { id: 'All', label: 'All Severities', count: alerts.length },
-          { id: 'Critical', label: 'Critical 🔴', count: summary.critical_alerts },
+          { id: 'Critical', label: 'Critical 🔴', count: summary.critical_alerts || 0 },
           { id: 'High', label: 'High Risk 🟠' },
-          { id: 'Medium', label: 'Warning 🟡', count: summary.warnings },
+          { id: 'Medium', label: 'Warning 🟡', count: summary.warnings || 0 },
           { id: 'Low', label: 'Low Priority 🔵' }
         ]}
         activeTab={severityFilter}
@@ -371,7 +562,10 @@ export default function AlertsPage() {
             colClass: 'col-12 col-md-2',
             options: [
               { value: 'All', label: 'All Ponds' },
-              ...ponds.map((p) => ({ value: p.pond_name, label: p.pond_name }))
+              ...ponds.map((p) => {
+                const name = typeof p === 'string' ? p : (p?.pond_name || p?.name || '');
+                return { value: name, label: name };
+              }).filter((item) => Boolean(item.value))
             ]
           },
           {
@@ -410,59 +604,8 @@ export default function AlertsPage() {
         }}
       />
 
-      {/* 📊 2. SUMMARY CARDS (MIDDLE SECTION) */}
-      <div className="row g-3 mb-4">
-        {/* Critical Alerts */}
-        <div className="col-12 col-sm-6 col-md-3">
-          <div className="card stat-card-red shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
-            <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold pt-0.5">Critical Alerts</span>
-              <span className="badge bg-danger bg-opacity-10 text-danger rounded-pill extra-small fw-semibold">🔴 Action Needed</span>
-            </div>
-            <h3 className="fw-extrabold text-danger mb-2">{summary.critical_alerts}</h3>
-            <span className="text-muted extra-small d-block pb-0.5">Immediate Intervention</span>
-          </div>
-        </div>
-
-        {/* Warnings */}
-        <div className="col-12 col-sm-6 col-md-3">
-          <div className="card stat-card-orange shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
-            <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold pt-0.5">Warnings</span>
-              <span className="badge bg-warning bg-opacity-10 text-warning rounded-pill extra-small fw-semibold">🟠 Watch List</span>
-            </div>
-            <h3 className="fw-extrabold text-warning mb-2">{summary.warnings}</h3>
-            <span className="text-muted extra-small d-block pb-0.5">High & Medium Alerts</span>
-          </div>
-        </div>
-
-        {/* Resolved */}
-        <div className="col-12 col-sm-6 col-md-3">
-          <div className="card stat-card-green shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
-            <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold pt-0.5">Resolved</span>
-              <span className="badge bg-success bg-opacity-10 text-success rounded-pill extra-small fw-semibold">✅ Closed</span>
-            </div>
-            <h3 className="fw-extrabold text-success mb-2">{summary.resolved}</h3>
-            <span className="text-muted extra-small d-block pb-0.5">Addressed Issues</span>
-          </div>
-        </div>
-
-        {/* Pending */}
-        <div className="col-12 col-sm-6 col-md-3">
-          <div className="card stat-card-cyan shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
-            <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold pt-0.5">Pending Queue</span>
-              <span className="badge bg-info bg-opacity-10 text-info rounded-pill extra-small fw-semibold">⏳ Active Queue</span>
-            </div>
-            <h3 className="fw-extrabold text-info mb-2">{summary.pending}</h3>
-            <span className="text-muted extra-small d-block pb-0.5">Awaiting Caretaker Action</span>
-          </div>
-        </div>
-      </div>
-
       {/* 🚨 3. ALERTS ACTION CENTER CARDS GRID (3-COLUMN ROW LAYOUT) */}
-      <div className="card border-0 shadow-sm rounded-4 bg-white p-4">
+      <div className="tri-card p-4">
         <div className="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
           <div>
             <h5 className="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
@@ -496,8 +639,8 @@ export default function AlertsPage() {
               return (
                 <div key={alert.id} className="col-12 col-md-6 col-lg-6 col-xxl-4">
                   <div
-                    className={`card border shadow-sm rounded-4 p-4 h-100 d-flex flex-column justify-content-between transition-all hover-shadow bg-white ${
-                      alert.severity === 'Critical' ? 'border-danger border-opacity-50' : ''
+                    className={`alert-action-card p-4 h-100 d-flex flex-column justify-content-between ${
+                      alert.severity === 'Critical' ? 'critical' : ''
                     }`}
                     style={{ minHeight: 320 }}
                   >

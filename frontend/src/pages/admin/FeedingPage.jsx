@@ -331,7 +331,7 @@ export default function FeedingPage() {
           },
           fill: true,
           tension: 0.42,
-          pointBackgroundColor: '#FF7A00',
+          pointBackgroundColor: '#EA580C',
           pointBorderColor: '#ffffff',
           pointBorderWidth: 2,
           pointRadius: 5,
@@ -963,31 +963,34 @@ export default function FeedingPage() {
   return (
     <div className="feeding-consumption-container" style={{ fontFamily: "'Poppins', sans-serif" }}>
       {/* 🌟 1. HERO INTELLIGENCE & CONTROL BANNER */}
-      <div className="feeding-hero-banner d-flex justify-content-between align-items-center flex-wrap gap-3">
+      <div className="disease-hero-banner d-flex justify-content-between align-items-center flex-wrap gap-3">
         <div className="d-flex align-items-center gap-3">
           <div
-            className="rounded-circle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0"
+            className="rounded-circle d-flex align-items-center justify-content-center shadow-xs flex-shrink-0"
             style={{
-              width: 52,
-              height: 52,
-              background: 'linear-gradient(135deg, #0B2C5F 0%, #0284C7 100%)',
+              width: 50,
+              height: 50,
+              background: 'linear-gradient(135deg, #0B2C5F 0%, #1E3A8A 100%)',
               color: '#FFFFFF',
-              fontSize: '1.35rem'
+              fontSize: '1.3rem',
+              border: '2px solid rgba(234, 88, 12, 0.3)'
             }}
           >
             <FaUtensils />
           </div>
           <div>
             <div className="d-flex align-items-center gap-2 flex-wrap">
-              <h4 className="fw-extrabold text-dark mb-0 tracking-tight" style={{ letterSpacing: '-0.02em' }}>
-                Feeding Operations & Biomass Nutrition
-              </h4>
-              <span className="tag-green-safe d-inline-flex align-items-center gap-1">
-                <span className="rounded-circle" style={{ width: 6, height: 6, background: '#16A34A' }}></span>
-                Mobile Feed Log Verified
+              <h3 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#0B2C5F', fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
+                Feeding Operations &amp; Biomass Nutrition
+              </h3>
+              <span
+                className="badge rounded-pill extra-small px-3 py-1 fw-bold"
+                style={{ backgroundColor: 'rgba(11, 44, 95, 0.08)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.16)' }}
+              >
+                ● Mobile Feed Log Verified
               </span>
             </div>
-            <p className="text-muted mb-0 small" style={{ fontSize: '0.84rem' }}>
+            <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
               Real-time feed ration verification, automated dispenser telemetry, and FCR compliance auditing.
             </p>
           </div>
@@ -997,104 +1000,92 @@ export default function FeedingPage() {
         <div className="d-flex align-items-center gap-2 flex-wrap">
           <button
             type="button"
-            className="btn btn-sm rounded-pill px-3.5 py-2 d-flex align-items-center gap-1.5 fw-bold text-white shadow-xs"
-            style={{
-              height: 40,
-              fontSize: '0.82rem',
-              background: 'linear-gradient(135deg, #16A34A 0%, #15803D 100%)',
-              border: 'none'
-            }}
+            className="btn btn-sm btn-tri-orange px-3.5 py-2 shadow-xs"
+            style={{ height: 40, fontSize: '0.82rem' }}
             onClick={handleOpenLogModal}
           >
-            <FaPlus size={12} /> Log Feeding
+            <FaPlus size={12} className="me-1.5" /> Log Feeding
           </button>
 
           <button
             type="button"
-            className="btn btn-sm rounded-pill bg-white border text-dark fw-semibold px-3 py-2 d-flex align-items-center gap-1.5 shadow-xs"
+            className="btn btn-sm btn-tri-outline px-3.5 py-2 shadow-xs"
             style={{ fontSize: '0.82rem', height: 40 }}
             onClick={loadData}
           >
-            <FaSync size={12} className={loading ? 'fa-spin text-primary' : 'text-primary'} /> Refresh
+            <FaSync size={11} className={loading ? 'fa-spin me-1.5' : 'me-1.5'} /> Refresh
           </button>
 
           <button
             type="button"
-            className="btn btn-sm rounded-pill px-4 py-2 d-flex align-items-center gap-2 fw-bold text-white shadow-xs"
-            style={{
-              height: 40,
-              fontSize: '0.82rem',
-              background: 'linear-gradient(135deg, #0B2C5F 0%, #0284C7 100%)',
-              border: 'none'
-            }}
+            className="btn btn-sm btn-tri-navy px-4 py-2 shadow-xs"
+            style={{ height: 40, fontSize: '0.82rem' }}
             onClick={handleExportCSV}
           >
-            <FaFileDownload size={13} /> Export CSV Report
+            <FaFileDownload size={13} className="me-1.5" /> Export CSV Report
           </button>
         </div>
       </div>
 
-      {/* 🌟 2. TOP 4 ENTERPRISE METRICS TELEMETRY CARDS */}
-      <div className="row g-3 mb-4">
-        {/* Card 1: Cumulative Feed */}
+      {/* 🌟 2. 4 TRI-COLOR OPERATIONAL TELEMETRY CARDS */}
+      <div className="row g-3 g-xl-4 mb-4">
+        {/* Card 1: Total Feed Dispensed */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card stat-card-cyan shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
+          <div className="tri-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small text-uppercase fw-bold tracking-wider">Total Cumulative Feed</span>
-                <div
-                  className="feeding-kpi-icon-wrap"
-                  style={{ background: 'rgba(2, 132, 199, 0.12)', color: '#0284C7' }}
-                >
-                  <FaSeedling />
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Total Feed Dispensed</span>
+                <div className="tri-kpi-icon tri-kpi-icon-blue">
+                  <FaUtensils size={17} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1 text-dark" style={{ letterSpacing: '-0.03em' }}>
+              <h2 className="fw-extrabold mb-1" style={{ color: '#0B2C5F', fontSize: '2.2rem', letterSpacing: '-0.03em' }}>
                 {metrics.totalKg} <small className="fs-6 text-muted fw-normal">kg</small>
               </h2>
             </div>
             <div>
-              <div className="feeding-progress-track my-2">
+              <div className="tri-progress-track my-2.5">
                 <div
-                  className="feeding-progress-bar"
-                  style={{ width: '84%', background: 'linear-gradient(90deg, #0284C7, #38BDF8)' }}
-                ></div>
+                  className="tri-progress-bar"
+                  style={{ width: '100%', background: 'linear-gradient(90deg, #0B2C5F 0%, #1E3A8A 100%)' }}
+                />
               </div>
-              <div className="d-flex justify-content-between align-items-center">
-                <span className="tag-cyan-active">All Ponds Combined</span>
-                <span className="text-muted extra-small">Target: 480 kg/d</span>
+              <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                <span className="text-muted extra-small">Cumulative Mass</span>
+                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(11, 44, 95, 0.06)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.15)' }}>
+                  Active Cycle
+                </span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Card 2: Weekly Feed */}
+        {/* Card 2: 7-Day Feed Volume */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card stat-card-green shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
+          <div className="tri-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small text-uppercase fw-bold tracking-wider">Weekly Volume (7-Day)</span>
-                <div
-                  className="feeding-kpi-icon-wrap"
-                  style={{ background: 'rgba(22, 163, 74, 0.12)', color: '#16A34A' }}
-                >
-                  <FaCalendarWeek />
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Weekly Volume (7-Day)</span>
+                <div className="tri-kpi-icon tri-kpi-icon-orange">
+                  <FaCalendarWeek size={17} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1 text-dark" style={{ letterSpacing: '-0.03em' }}>
+              <h2 className="fw-extrabold mb-1" style={{ color: '#EA580C', fontSize: '2.2rem', letterSpacing: '-0.03em' }}>
                 {metrics.weeklyKg} <small className="fs-6 text-muted fw-normal">kg</small>
               </h2>
             </div>
             <div>
-              <div className="feeding-progress-track my-2">
+              <div className="tri-progress-track my-2.5" style={{ backgroundColor: 'rgba(234, 88, 12, 0.1)' }}>
                 <div
-                  className="feeding-progress-bar"
-                  style={{ width: '92%', background: 'linear-gradient(90deg, #16A34A, #4ADE80)' }}
-                ></div>
+                  className="tri-progress-bar"
+                  style={{ width: '85%', background: 'linear-gradient(90deg, #EA580C 0%, #F97316 100%)' }}
+                />
               </div>
-              <div className="d-flex justify-content-between align-items-center">
-                <span className="tag-green-safe">FCR Est. 1.22</span>
-                <span className="text-muted extra-small">7-Day Active Cycle</span>
+              <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                <span className="text-muted extra-small">FCR Est. 1.22</span>
+                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: '#FFF7ED', color: '#EA580C', border: '1px solid rgba(234, 88, 12, 0.25)' }}>
+                  Rolling 7 Days
+                </span>
               </div>
             </div>
           </div>
@@ -1102,63 +1093,61 @@ export default function FeedingPage() {
 
         {/* Card 3: Feed Cost */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card stat-card-orange shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
+          <div className="tri-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small text-uppercase fw-bold tracking-wider">Estimated Nutrition Cost</span>
-                <div
-                  className="feeding-kpi-icon-wrap"
-                  style={{ background: 'rgba(255, 122, 0, 0.12)', color: '#FF7A00' }}
-                >
-                  <FaCoins />
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Estimated Nutrition Cost</span>
+                <div className="tri-kpi-icon tri-kpi-icon-blue">
+                  <FaCoins size={17} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1 text-dark" style={{ letterSpacing: '-0.03em' }}>
+              <h2 className="fw-extrabold mb-1" style={{ color: '#0B2C5F', fontSize: '2.2rem', letterSpacing: '-0.03em' }}>
                 {metrics.estimatedCost}
               </h2>
             </div>
             <div>
-              <div className="feeding-progress-track my-2">
+              <div className="tri-progress-track my-2.5">
                 <div
-                  className="feeding-progress-bar"
-                  style={{ width: '68%', background: 'linear-gradient(90deg, #FF7A00, #FBBF24)' }}
-                ></div>
+                  className="tri-progress-bar"
+                  style={{ width: '70%', background: 'linear-gradient(90deg, #0B2C5F 0%, #1E3A8A 100%)' }}
+                />
               </div>
-              <div className="d-flex justify-content-between align-items-center">
-                <span className="tag-orange-maintenance">₱35.00 / kg avg</span>
-                <span className="text-muted extra-small">Nutrition Budget</span>
+              <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                <span className="text-muted extra-small">₱35.00/kg avg</span>
+                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(11, 44, 95, 0.06)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.15)' }}>
+                  Nutrition Budget
+                </span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Card 4: Average Feed Rate & Compliance */}
+        {/* Card 4: Average Feed Rate & Velocity */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card stat-card-purple shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
+          <div className="tri-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small text-uppercase fw-bold tracking-wider">Dispersion Velocity</span>
-                <div
-                  className="feeding-kpi-icon-wrap"
-                  style={{ background: 'rgba(168, 85, 247, 0.12)', color: '#A855F7' }}
-                >
-                  <FaChartLine />
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Dispersion Velocity</span>
+                <div className="tri-kpi-icon tri-kpi-icon-orange">
+                  <FaChartLine size={17} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1 text-dark" style={{ letterSpacing: '-0.03em' }}>
+              <h2 className="fw-extrabold mb-1" style={{ color: '#EA580C', fontSize: '2.2rem', letterSpacing: '-0.03em' }}>
                 {metrics.avgDailyKg}
               </h2>
             </div>
             <div>
-              <div className="feeding-progress-track my-2">
+              <div className="tri-progress-track my-2.5" style={{ backgroundColor: 'rgba(234, 88, 12, 0.1)' }}>
                 <div
-                  className="feeding-progress-bar"
-                  style={{ width: '96%', background: 'linear-gradient(90deg, #A855F7, #C084FC)' }}
-                ></div>
+                  className="tri-progress-bar"
+                  style={{ width: '96%', background: 'linear-gradient(90deg, #EA580C 0%, #F97316 100%)' }}
+                />
               </div>
-              <div className="d-flex justify-content-between align-items-center">
-                <span className="tag-green-safe">98.2% Adherence</span>
-                <span className="text-muted extra-small">Per Active Pond</span>
+              <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                <span className="text-muted extra-small">98.2% Adherence</span>
+                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: '#FFF7ED', color: '#EA580C', border: '1px solid rgba(234, 88, 12, 0.25)' }}>
+                  Per Active Pond
+                </span>
               </div>
             </div>
           </div>
@@ -1169,7 +1158,7 @@ export default function FeedingPage() {
       <div className="row g-4 mb-4">
         {/* Left: 7-Day Feed Consumption Wave Chart */}
         <div className="col-12 col-xl-8">
-          <div className="asymmetric-card p-4 h-100">
+          <div className="tri-card p-4 h-100">
             <div className="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
               <div>
                 <h5 className="fw-extrabold text-dark mb-0 tracking-tight">Daily Feed Consumption Wave</h5>
@@ -1185,19 +1174,19 @@ export default function FeedingPage() {
             {/* High-Contrast Mini Highlights */}
             <div className="row g-2.5 mb-3">
               <div className="col-4">
-                <div className="p-2.5 rounded-3 bg-light border text-center">
+                <div className="tri-mini-stat text-center">
                   <span className="extra-small text-muted text-uppercase fw-bold d-block">Filtered Mass</span>
                   <strong className="text-dark fs-6">{metrics.filteredTotalKg} kg</strong>
                 </div>
               </div>
               <div className="col-4">
-                <div className="p-2.5 rounded-3 bg-light border text-center">
+                <div className="tri-mini-stat text-center">
                   <span className="extra-small text-muted text-uppercase fw-bold d-block">Active Logs</span>
                   <strong className="text-dark fs-6">{filteredRecords.length} Entries</strong>
                 </div>
               </div>
               <div className="col-4">
-                <div className="p-2.5 rounded-3 bg-light border text-center">
+                <div className="tri-mini-stat text-center">
                   <span className="extra-small text-muted text-uppercase fw-bold d-block">Waste Reduction</span>
                   <strong className="text-success fs-6">99.1% Optimal</strong>
                 </div>
@@ -1213,7 +1202,7 @@ export default function FeedingPage() {
 
         {/* Right: Feed Type Breakdown Bar Chart */}
         <div className="col-12 col-xl-4">
-          <div className="asymmetric-card p-4 h-100 d-flex flex-column justify-content-between">
+          <div className="tri-card p-4 h-100 d-flex flex-column justify-content-between">
             <div>
               <div className="d-flex justify-content-between align-items-start mb-2">
                 <div>
@@ -1253,7 +1242,7 @@ export default function FeedingPage() {
       </div>
 
       {/* 🌟 4. MAIN FEEDING LOGS SECTION WITH MULTI-FILTER CONTROL BAR & VIEW SWITCHER */}
-      <div className="asymmetric-card p-4 mb-4">
+      <div className="tri-card p-4 mb-4">
         {/* Top Control Bar: Title & View Mode Switcher */}
         <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3 pb-3 border-bottom">
           <div>
@@ -1280,14 +1269,14 @@ export default function FeedingPage() {
           <div className="feeding-tab-nav">
             <button
               type="button"
-              className={`feeding-tab-item ${activeTab === 'fleet' ? 'active' : ''}`}
+              className={`btn btn-sm rounded-pill px-3.5 py-1.5 extra-small fw-bold ${activeTab === 'fleet' ? 'btn-tri-navy shadow-xs' : 'btn-tri-outline'}`}
               onClick={() => setActiveTab('fleet')}
             >
               <FaLayerGroup size={12} /> Pond Fleet Matrix
             </button>
             <button
               type="button"
-              className={`feeding-tab-item ${activeTab === 'stream' ? 'active' : ''}`}
+              className={`btn btn-sm rounded-pill px-3.5 py-1.5 extra-small fw-bold ${activeTab === 'stream' ? 'btn-tri-navy shadow-xs' : 'btn-tri-outline'}`}
               onClick={() => setActiveTab('stream')}
             >
               <FaTable size={12} /> Granular Log Stream ({filteredRecords.length})
@@ -1303,34 +1292,21 @@ export default function FeedingPage() {
             </span>
             <button
               type="button"
-              className={`btn btn-sm rounded-pill px-3 py-1.5 extra-small fw-bold transition-all ${stageFilter === 'all' ? 'btn-dark text-white shadow-xs' : 'btn-white bg-white border text-dark'
-                }`}
+              className={`btn btn-sm rounded-pill px-3.5 py-1.5 extra-small fw-bold transition-all ${stageFilter === 'all' ? 'btn-tri-navy shadow-xs' : 'btn-tri-outline'}`}
               onClick={() => setStageFilter('all')}
             >
               All Ponds ({ponds.length})
             </button>
             <button
               type="button"
-              className={`btn btn-sm rounded-pill px-3 py-1.5 extra-small fw-bold transition-all ${stageFilter === 'nursery' ? 'text-white shadow-xs' : 'btn-white bg-white border text-dark'
-                }`}
-              style={{
-                backgroundColor: stageFilter === 'nursery' ? '#059669' : '#ffffff',
-                color: stageFilter === 'nursery' ? '#ffffff' : '#047857',
-                borderColor: '#A7F3D0',
-              }}
+              className={`btn btn-sm rounded-pill px-3.5 py-1.5 extra-small fw-bold transition-all ${stageFilter === 'nursery' ? 'btn-tri-navy shadow-xs' : 'btn-tri-outline'}`}
               onClick={() => setStageFilter('nursery')}
             >
               Nursery Basins (Days 1–25 • Starter Feed) ({nurseryPondsCount})
             </button>
             <button
               type="button"
-              className={`btn btn-sm rounded-pill px-3 py-1.5 extra-small fw-bold transition-all ${stageFilter === 'growout' ? 'text-white shadow-xs' : 'btn-white bg-white border text-dark'
-                }`}
-              style={{
-                backgroundColor: stageFilter === 'growout' ? '#2563EB' : '#ffffff',
-                color: stageFilter === 'growout' ? '#ffffff' : '#1D4ED8',
-                borderColor: '#BFDBFE',
-              }}
+              className={`btn btn-sm rounded-pill px-3.5 py-1.5 extra-small fw-bold transition-all ${stageFilter === 'growout' ? 'btn-tri-orange shadow-xs' : 'btn-tri-outline'}`}
               onClick={() => setStageFilter('growout')}
             >
               🌊 Grow-out Basins (Day 20+ • Grower Feed) ({growoutPondsCount})
@@ -1412,8 +1388,8 @@ export default function FeedingPage() {
 
         {/* VIEW 1: PER-POND FLEET MATRIX TABLE */}
         {activeTab === 'fleet' && (
-          <div className="table-responsive rounded-4 border" style={{ maxHeight: '520px', overflowY: 'auto' }}>
-            <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.85rem' }}>
+          <div className="table-responsive" style={{ maxHeight: '520px', overflowY: 'auto' }}>
+            <table className="table tri-table table-hover align-middle mb-0" style={{ fontSize: '0.85rem' }}>
               <thead style={{ position: 'sticky', top: 0, zIndex: 5, background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
                 <tr className="text-muted extra-small text-uppercase fw-bold">
                   <th className="border-0 ps-3 py-3">Pond Basin</th>
@@ -1446,7 +1422,7 @@ export default function FeedingPage() {
                         <div className="d-flex align-items-center gap-2">
                           <span
                             className="badge rounded-pill fw-bold px-3 py-1.5 d-flex align-items-center gap-1.5"
-                            style={{ background: '#F0F9FF', color: '#0284C7', border: '1px solid #BAE6FD', fontSize: '0.85rem' }}
+                            style={{ background: 'rgba(11, 44, 95, 0.08)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.16)', fontSize: '0.82rem' }}
                           >
                             <FaWater size={11} /> {p.pond_name}
                           </span>
@@ -1577,8 +1553,8 @@ export default function FeedingPage() {
 
         {/* VIEW 2: GRANULAR FEEDING LOGS STREAM TABLE */}
         {activeTab === 'stream' && (
-          <div className="table-responsive rounded-4 border" style={{ maxHeight: '520px', overflowY: 'auto' }}>
-            <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.85rem' }}>
+          <div className="table-responsive" style={{ maxHeight: '520px', overflowY: 'auto' }}>
+            <table className="table tri-table table-hover align-middle mb-0" style={{ fontSize: '0.85rem' }}>
               <thead style={{ position: 'sticky', top: 0, zIndex: 5, background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
                 <tr className="text-muted extra-small text-uppercase fw-bold">
                   <th className="border-0 ps-3 py-3">Time & Date</th>
@@ -1685,7 +1661,7 @@ export default function FeedingPage() {
       <div className="row g-3.5 mb-4">
         <div className="col-12 col-md-4">
           <div
-            className="asymmetric-card p-4 h-100"
+            className="tri-card p-4 h-100"
             style={{ borderLeft: '4px solid #FF7A00', background: '#FFFDFB' }}
           >
             <div className="d-flex align-items-center gap-2 mb-2">
@@ -1705,7 +1681,7 @@ export default function FeedingPage() {
 
         <div className="col-12 col-md-4">
           <div
-            className="asymmetric-card p-4 h-100"
+            className="tri-card p-4 h-100"
             style={{ borderLeft: '4px solid #16A34A', background: '#FAFFFD' }}
           >
             <div className="d-flex align-items-center gap-2 mb-2">
@@ -1725,7 +1701,7 @@ export default function FeedingPage() {
 
         <div className="col-12 col-md-4">
           <div
-            className="asymmetric-card p-4 h-100"
+            className="tri-card p-4 h-100"
             style={{ borderLeft: '4px solid #0284C7', background: '#FAFCFF' }}
           >
             <div className="d-flex align-items-center gap-2 mb-2">

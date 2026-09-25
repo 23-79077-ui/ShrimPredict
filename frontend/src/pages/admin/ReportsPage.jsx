@@ -215,73 +215,179 @@ export default function AdminReportsPage() {
 
   return (
     <div>
-      {/* Header */}
-      <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-        <div>
-          <h3 className="fw-bold mb-1 d-flex align-items-center gap-2">
-            <FaExclamationTriangle className="text-warning" /> Caretaker Maintenance & Incident Reports
-          </h3>
-          <p className="text-muted mb-0">
-            Review incoming caretaker requests, attached photos and videos, and update maintenance statuses.
-          </p>
+      {/* 🌟 1. HERO HEADER */}
+      <div className="disease-hero-banner d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+        <div className="d-flex align-items-center gap-3">
+          <div
+            className="rounded-circle d-flex align-items-center justify-content-center shadow-xs flex-shrink-0"
+            style={{
+              width: 50,
+              height: 50,
+              background: 'linear-gradient(135deg, #0B2C5F 0%, #1E3A8A 100%)',
+              color: '#FFFFFF',
+              fontSize: '1.3rem',
+              border: '2px solid rgba(234, 88, 12, 0.3)'
+            }}
+          >
+            <FaTools />
+          </div>
+          <div>
+            <div className="d-flex align-items-center gap-2 flex-wrap">
+              <h3 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#0B2C5F', fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
+                Caretaker Incident &amp; Equipment Reports
+              </h3>
+              <span
+                className="badge rounded-pill extra-small px-3 py-1 fw-bold"
+                style={{ backgroundColor: 'rgba(11, 44, 95, 0.08)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.16)' }}
+              >
+                ● Field Audit Stream
+              </span>
+            </div>
+            <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
+              Review incoming caretaker requests, attached telemetry imagery, and resolve facility work orders.
+            </p>
+          </div>
         </div>
 
-        <button className="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1" onClick={loadReports}>
-          <FaSync /> Refresh Reports
+        <button
+          type="button"
+          className="btn btn-sm btn-tri-outline px-3.5 py-2 shadow-xs"
+          style={{ fontSize: '0.82rem', height: 40 }}
+          onClick={loadReports}
+        >
+          <FaSync size={11} className={loading ? 'fa-spin me-1.5' : 'me-1.5'} /> Refresh Reports
         </button>
       </div>
 
-      {/* Summary Cards */}
-      <div className="row g-3 mb-4">
+      {/* 🌟 2. 4 TRI-COLOR OPERATIONAL KPI CARDS */}
+      <div className="row g-3 g-xl-4 mb-4">
+        {/* Total Reports */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card stat-card-cyan shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
-            <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold pt-0.5">Total Reports</span>
-              <div className="rounded-3 p-2.5 bg-primary bg-opacity-10 text-primary fs-5">
-                <FaExclamationTriangle />
+          <div className="tri-kpi-card">
+            <div>
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Total Filed Reports</span>
+                <div className="tri-kpi-icon tri-kpi-icon-blue">
+                  <FaExclamationTriangle size={16} />
+                </div>
+              </div>
+              <h2 className="fw-extrabold mb-1" style={{ color: '#0B2C5F', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+                {counts.total}
+              </h2>
+            </div>
+            <div>
+              <div className="tri-progress-track my-2.5">
+                <div className="tri-progress-bar" style={{ width: '100%', background: 'linear-gradient(90deg, #0B2C5F, #1E3A8A)' }} />
+              </div>
+              <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                <span className="text-muted extra-small">Caretaker Entries</span>
+                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(11, 44, 95, 0.06)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.15)' }}>
+                  Total Filed
+                </span>
               </div>
             </div>
-            <h3 className="fw-extrabold mb-2">{counts.total}</h3>
-            <span className="text-muted extra-small d-block pb-0.5">Caretaker Submitted Reports</span>
           </div>
         </div>
 
+        {/* Pending Review */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card stat-card-orange shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
-            <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold pt-0.5">Pending Review</span>
-              <div className="rounded-3 p-2.5 bg-warning bg-opacity-10 text-warning fs-5">
-                <FaClock />
+          <div className="tri-kpi-card" style={{ borderColor: counts.pending > 0 ? 'rgba(234, 88, 12, 0.25)' : 'rgba(11, 44, 95, 0.12)' }}>
+            <div>
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Pending Review</span>
+                <div className="tri-kpi-icon tri-kpi-icon-orange">
+                  <FaClock size={16} />
+                </div>
+              </div>
+              <h2 className="fw-extrabold mb-1" style={{ color: counts.pending > 0 ? '#EA580C' : '#0B2C5F', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+                {counts.pending}
+              </h2>
+            </div>
+            <div>
+              <div className="tri-progress-track my-2.5" style={{ backgroundColor: 'rgba(234, 88, 12, 0.1)' }}>
+                <div
+                  className="tri-progress-bar"
+                  style={{
+                    width: counts.total > 0 ? `${Math.max(15, (counts.pending / counts.total) * 100)}%` : '20%',
+                    background: 'linear-gradient(90deg, #EA580C, #F97316)'
+                  }}
+                />
+              </div>
+              <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                <span className="text-muted extra-small">Awaiting Action</span>
+                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: '#FFF7ED', color: '#EA580C', border: '1px solid rgba(234, 88, 12, 0.25)' }}>
+                  Review Needed
+                </span>
               </div>
             </div>
-            <h3 className="fw-extrabold text-warning mb-2">{counts.pending}</h3>
-            <span className="badge bg-warning bg-opacity-10 text-warning rounded-pill extra-small fw-semibold">Awaiting Review</span>
           </div>
         </div>
 
+        {/* In Progress */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card stat-card-purple shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
-            <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold pt-0.5">In Progress</span>
-              <div className="rounded-3 p-2.5 bg-info bg-opacity-10 text-info fs-5">
-                <FaTools />
+          <div className="tri-kpi-card">
+            <div>
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">In Progress</span>
+                <div className="tri-kpi-icon tri-kpi-icon-blue">
+                  <FaTools size={16} />
+                </div>
+              </div>
+              <h2 className="fw-extrabold mb-1" style={{ color: '#0B2C5F', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+                {counts.in_progress}
+              </h2>
+            </div>
+            <div>
+              <div className="tri-progress-track my-2.5">
+                <div
+                  className="tri-progress-bar"
+                  style={{
+                    width: counts.total > 0 ? `${Math.max(15, (counts.in_progress / counts.total) * 100)}%` : '15%',
+                    background: 'linear-gradient(90deg, #0B2C5F, #1E3A8A)'
+                  }}
+                />
+              </div>
+              <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                <span className="text-muted extra-small">Technician Active</span>
+                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(11, 44, 95, 0.06)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.15)' }}>
+                  Work Order Active
+                </span>
               </div>
             </div>
-            <h3 className="fw-extrabold text-info mb-2">{counts.in_progress}</h3>
-            <span className="text-muted extra-small d-block pb-0.5">Action In Progress</span>
           </div>
         </div>
 
+        {/* Done / Resolved */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="card stat-card-green shadow-sm rounded-4 p-4 h-100 position-relative overflow-hidden">
-            <div className="d-flex align-items-center justify-content-between mb-3">
-              <span className="text-muted small fw-semibold pt-0.5">Done / Resolved</span>
-              <div className="rounded-3 p-2.5 bg-success bg-opacity-10 text-success fs-5">
-                <FaCheckCircle />
+          <div className="tri-kpi-card">
+            <div>
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Done / Resolved</span>
+                <div className="tri-kpi-icon tri-kpi-icon-blue">
+                  <FaCheckCircle size={16} />
+                </div>
+              </div>
+              <h2 className="fw-extrabold mb-1" style={{ color: '#0B2C5F', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+                {counts.done}
+              </h2>
+            </div>
+            <div>
+              <div className="tri-progress-track my-2.5">
+                <div
+                  className="tri-progress-bar"
+                  style={{
+                    width: counts.total > 0 ? `${Math.max(15, (counts.done / counts.total) * 100)}%` : '30%',
+                    background: 'linear-gradient(90deg, #16A34A, #22C55E)'
+                  }}
+                />
+              </div>
+              <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                <span className="text-muted extra-small">Closed Requests</span>
+                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: '#F0FDF4', color: '#16A34A', border: '1px solid #BBF7D0' }}>
+                  Resolved
+                </span>
               </div>
             </div>
-            <h3 className="fw-extrabold text-success mb-2">{counts.done}</h3>
-            <span className="badge bg-success bg-opacity-10 text-success rounded-pill extra-small fw-semibold">Closed & Resolved</span>
           </div>
         </div>
       </div>
@@ -343,7 +449,7 @@ export default function AdminReportsPage() {
       />
 
       {/* Maintenance Reports Cards / List */}
-      <div className="card border-0 shadow-sm">
+      <div className="tri-card p-4">
         <div className="card-body p-0">
           {loading ? (
             <div className="text-center py-5 text-muted">Loading maintenance reports…</div>
