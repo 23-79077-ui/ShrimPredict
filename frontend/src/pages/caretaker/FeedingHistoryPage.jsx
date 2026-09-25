@@ -753,19 +753,14 @@ export default function FeedingHistoryPage() {
         </div>
       )}
 
-      {/* 🌟 4 TRI-COLOR KPI TELEMETRY CARDS */}
+      {/* 🌟 4 TRI-COLOR TELEMETRY CARDS */}
       <div className="row g-3 g-xl-4 mb-4">
-        {/* KPI 1: Cumulative Feed Intake */}
+        {/* Card 1: Cumulative Feed Intake */}
         <div className="col-12 col-sm-6 col-xl-3">
           <div className="tri-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <div className="d-flex align-items-center gap-2">
-                  <span className="badge rounded-pill extra-small fw-bold px-2 py-0.5" style={{ backgroundColor: 'rgba(11, 44, 95, 0.08)', color: '#0B2C5F' }}>
-                    KPI 1
-                  </span>
-                  <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Feed Consumed</span>
-                </div>
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Feed Consumed</span>
                 <div className="tri-kpi-icon tri-kpi-icon-blue">
                   <FaUtensils size={17} />
                 </div>
@@ -795,17 +790,12 @@ export default function FeedingHistoryPage() {
           </div>
         </div>
 
-        {/* KPI 2: Total Feeding Logs */}
+        {/* Card 2: Total Feeding Logs */}
         <div className="col-12 col-sm-6 col-xl-3">
           <div className="tri-kpi-card" style={{ borderColor: 'rgba(234, 88, 12, 0.16)' }}>
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <div className="d-flex align-items-center gap-2">
-                  <span className="badge rounded-pill extra-small fw-bold px-2 py-0.5" style={{ backgroundColor: '#FFF7ED', color: '#EA580C' }}>
-                    KPI 2
-                  </span>
-                  <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Feeding Logs</span>
-                </div>
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Feeding Logs</span>
                 <div className="tri-kpi-icon tri-kpi-icon-orange">
                   <FaCalendarAlt size={17} />
                 </div>
@@ -835,17 +825,12 @@ export default function FeedingHistoryPage() {
           </div>
         </div>
 
-        {/* KPI 3: Active Production Basins */}
+        {/* Card 3: Active Production Basins */}
         <div className="col-12 col-sm-6 col-xl-3">
           <div className="tri-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <div className="d-flex align-items-center gap-2">
-                  <span className="badge rounded-pill extra-small fw-bold px-2 py-0.5" style={{ backgroundColor: 'rgba(11, 44, 95, 0.08)', color: '#0B2C5F' }}>
-                    KPI 3
-                  </span>
-                  <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Active Basins</span>
-                </div>
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Active Basins</span>
                 <div className="tri-kpi-icon tri-kpi-icon-blue">
                   <FaWater size={17} />
                 </div>
@@ -875,17 +860,12 @@ export default function FeedingHistoryPage() {
           </div>
         </div>
 
-        {/* KPI 4: Vitamins & Probiotics Logged */}
+        {/* Card 4: Vitamins & Probiotics Logged */}
         <div className="col-12 col-sm-6 col-xl-3">
           <div className="tri-kpi-card" style={{ borderColor: 'rgba(234, 88, 12, 0.16)' }}>
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <div className="d-flex align-items-center gap-2">
-                  <span className="badge rounded-pill extra-small fw-bold px-2 py-0.5" style={{ backgroundColor: '#FFF7ED', color: '#EA580C' }}>
-                    KPI 4
-                  </span>
-                  <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Supplements</span>
-                </div>
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Supplements</span>
                 <div className="tri-kpi-icon tri-kpi-icon-orange">
                   <FaLeaf size={17} />
                 </div>

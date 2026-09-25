@@ -6135,3 +6135,427 @@
      padding-bottom: 2rem;
    }
  }
+
+/* ==========================================================================
+   🌟 TRI-COLOR SYSTEM DESIGN TOKENS & COMPONENTS (Brand Navy, Shrimpy Orange & Crisp Slate/White)
+   ========================================================================== */
+.tri-card {
+  border-radius: 20px !important;
+  background: #FFFFFF !important;
+  border: 1px solid rgba(11, 44, 95, 0.08) !important;
+  box-shadow: 0 4px 20px rgba(11, 44, 95, 0.04) !important;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.tri-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(11, 44, 95, 0.08) !important;
+  border-color: rgba(11, 44, 95, 0.16) !important;
+}
+
+[data-theme="dark"] .tri-card,
+body.dark-theme .tri-card {
+  background: rgba(15, 23, 42, 0.85) !important;
+  border-color: rgba(56, 189, 248, 0.22) !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4) !important;
+}
+
+.tri-kpi-card {
+  border-radius: 18px !important;
+  background: #FFFFFF !important;
+  border: 1px solid rgba(11, 44, 95, 0.09) !important;
+  box-shadow: 0 2px 12px rgba(11, 44, 95, 0.04) !important;
+  padding: 1.35rem 1.45rem !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  transition: all 0.22s ease-in-out !important;
+  height: 100% !important;
+  min-height: 185px !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.tri-kpi-card:hover {
+  transform: translateY(-3px) !important;
+  box-shadow: 0 8px 24px rgba(11, 44, 95, 0.09) !important;
+  border-color: rgba(11, 44, 95, 0.2) !important;
+}
+
+[data-theme="dark"] .tri-kpi-card,
+body.dark-theme .tri-kpi-card {
+  background: rgba(15, 23, 42, 0.85) !important;
+  border-color: rgba(56, 189, 248, 0.25) !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4) !important;
+}
+
+.tri-kpi-icon {
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+  transition: transform 0.2s ease !important;
+}
+
+.tri-kpi-card:hover .tri-kpi-icon {
+  transform: scale(1.08);
+}
+
+.tri-kpi-icon-blue {
+  background: rgba(11, 44, 95, 0.08) !important;
+  color: #0B2C5F !important;
+  border: 1px solid rgba(11, 44, 95, 0.12) !important;
+}
+
+.tri-kpi-icon-orange {
+  background: #FFF7ED !important;
+  color: #EA580C !important;
+  border: 1px solid rgba(234, 88, 12, 0.22) !important;
+}
+
+[data-theme="dark"] .tri-kpi-icon-blue,
+body.dark-theme .tri-kpi-icon-blue {
+  background: rgba(56, 189, 248, 0.18) !important;
+  color: #7DD3FC !important;
+  border-color: rgba(56, 189, 248, 0.3) !important;
+}
+
+[data-theme="dark"] .tri-kpi-icon-orange,
+body.dark-theme .tri-kpi-icon-orange {
+  background: rgba(234, 88, 12, 0.22) !important;
+  color: #FB923C !important;
+  border-color: rgba(249, 115, 22, 0.4) !important;
+}
+
+/* Tri-Color Buttons */
+.btn-tri-navy {
+  background-color: #0B2C5F !important;
+  color: #FFFFFF !important;
+  border: 1px solid #0B2C5F !important;
+  border-radius: 9999px !important;
+  font-weight: 700 !important;
+  transition: all 0.2s ease-in-out !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.45rem !important;
+}
+
+.btn-tri-navy:hover {
+  background-color: #1E3A8A !important;
+  border-color: #1E3A8A !important;
+  color: #FFFFFF !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 14px rgba(11, 44, 95, 0.25) !important;
+}
+
+.btn-tri-orange {
+  background-color: #EA580C !important;
+  color: #FFFFFF !important;
+  border: 1px solid #EA580C !important;
+  border-radius: 9999px !important;
+  font-weight: 700 !important;
+  transition: all 0.2s ease-in-out !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.45rem !important;
+}
+
+.btn-tri-orange:hover {
+  background-color: #C2410C !important;
+  border-color: #C2410C !important;
+  color: #FFFFFF !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 14px rgba(234, 88, 12, 0.28) !important;
+}
+
+.btn-tri-outline {
+  background-color: #FFFFFF !important;
+  color: #0B2C5F !important;
+  border: 1px solid rgba(11, 44, 95, 0.18) !important;
+  border-radius: 9999px !important;
+  font-weight: 600 !important;
+  transition: all 0.2s ease-in-out !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.45rem !important;
+}
+
+.btn-tri-outline:hover {
+  background-color: #F8FAFD !important;
+  border-color: #0B2C5F !important;
+  color: #0B2C5F !important;
+  transform: translateY(-1px) !important;
+}
+
+.btn-tri-outline-orange {
+  background-color: #FFFFFF !important;
+  color: #EA580C !important;
+  border: 1px solid rgba(234, 88, 12, 0.28) !important;
+  border-radius: 9999px !important;
+  font-weight: 600 !important;
+  transition: all 0.2s ease-in-out !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.45rem !important;
+}
+
+.btn-tri-outline-orange:hover {
+  background-color: #FFF7ED !important;
+  border-color: #EA580C !important;
+  color: #EA580C !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Tri-Color Badges */
+.badge-tri-navy {
+  background-color: rgba(11, 44, 95, 0.08) !important;
+  color: #0B2C5F !important;
+  border: 1px solid rgba(11, 44, 95, 0.16) !important;
+  font-weight: 700 !important;
+}
+
+.badge-tri-orange {
+  background-color: #FFF7ED !important;
+  color: #EA580C !important;
+  border: 1px solid rgba(234, 88, 12, 0.25) !important;
+  font-weight: 700 !important;
+}
+
+/* Tri-Color Progress Track & Bar */
+.tri-progress-track {
+  height: 7px !important;
+  background: rgba(11, 44, 95, 0.07) !important;
+  border-radius: 9999px !important;
+  overflow: hidden !important;
+  position: relative !important;
+}
+
+.tri-progress-bar {
+  height: 100% !important;
+  border-radius: 9999px !important;
+  transition: width 0.5s ease !important;
+}
+
+.tri-progress-bar-navy {
+  background: linear-gradient(90deg, #0B2C5F 0%, #1E3A8A 100%) !important;
+}
+
+.tri-progress-bar-orange {
+  background: linear-gradient(90deg, #EA580C 0%, #F97316 100%) !important;
+}
+
+.tri-pond-pill {
+  padding: 0.35rem 0.85rem;
+  border-radius: 9999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: 1px solid rgba(11, 44, 95, 0.14);
+  background: #FFFFFF;
+  color: #0B2C5F;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tri-pond-pill:hover {
+  background: #F8FAFD;
+  border-color: #0B2C5F;
+}
+
+.tri-pond-pill.active {
+  background: #0B2C5F;
+  color: #FFFFFF;
+  border-color: #0B2C5F;
+  box-shadow: 0 4px 12px rgba(11, 44, 95, 0.2);
+}
+
+.tri-table thead th {
+  background-color: #F8FAFD !important;
+  color: #0B2C5F !important;
+  font-weight: 700 !important;
+  border-bottom: 1.5px solid rgba(11, 44, 95, 0.12) !important;
+  font-size: 0.76rem !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+}
+
+
+/* ==========================================================================
+   🌟 ADMIN FILTER TOOLBAR (Tri-Color Navy & Shrimpy Orange)
+   ========================================================================== */
+.admin-filter-card {
+  border-radius: 20px !important;
+  background: #FFFFFF !important;
+  border: 1px solid rgba(11, 44, 95, 0.08) !important;
+  box-shadow: 0 4px 20px rgba(11, 44, 95, 0.04) !important;
+}
+
+[data-theme="dark"] .admin-filter-card,
+body.dark-theme .admin-filter-card {
+  background: rgba(15, 23, 42, 0.85) !important;
+  border-color: rgba(56, 189, 248, 0.22) !important;
+}
+
+.admin-search-input {
+  height: 42px !important;
+  border-radius: 9999px !important;
+  border: 1px solid rgba(11, 44, 95, 0.14) !important;
+  background: #F8FAFD !important;
+  color: #0B2C5F !important;
+  font-size: 0.85rem !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease !important;
+}
+
+.admin-search-input:focus {
+  background: #FFFFFF !important;
+  border-color: #0B2C5F !important;
+  box-shadow: 0 0 0 3px rgba(11, 44, 95, 0.1) !important;
+  outline: none !important;
+}
+
+.btn-admin-filter {
+  height: 42px !important;
+  border-radius: 9999px !important;
+  background-color: #FFFFFF !important;
+  border: 1px solid rgba(11, 44, 95, 0.18) !important;
+  color: #0B2C5F !important;
+  font-weight: 700 !important;
+  font-size: 0.84rem !important;
+  padding: 0 1.25rem !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  transition: all 0.2s ease !important;
+}
+
+.btn-admin-filter:hover,
+.btn-admin-filter.active {
+  background-color: rgba(11, 44, 95, 0.06) !important;
+  border-color: #0B2C5F !important;
+  color: #0B2C5F !important;
+}
+
+.btn-admin-export {
+  height: 42px !important;
+  border-radius: 9999px !important;
+  background-color: #FFF7ED !important;
+  border: 1px solid rgba(234, 88, 12, 0.25) !important;
+  color: #EA580C !important;
+  font-weight: 700 !important;
+  font-size: 0.84rem !important;
+  padding: 0 1.25rem !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  transition: all 0.2s ease !important;
+}
+
+.btn-admin-export:hover {
+  background-color: #EA580C !important;
+  border-color: #EA580C !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 4px 14px rgba(234, 88, 12, 0.25) !important;
+}
+
+.btn-admin-refresh {
+  height: 42px !important;
+  border-radius: 9999px !important;
+  background-color: #0B2C5F !important;
+  border: 1px solid #0B2C5F !important;
+  color: #FFFFFF !important;
+  font-weight: 700 !important;
+  font-size: 0.84rem !important;
+  padding: 0 1.35rem !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  box-shadow: 0 2px 8px rgba(11, 44, 95, 0.22) !important;
+  transition: all 0.2s ease !important;
+}
+
+.btn-admin-refresh:hover {
+  background-color: #1E3A8A !important;
+  border-color: #1E3A8A !important;
+  box-shadow: 0 4px 14px rgba(11, 44, 95, 0.32) !important;
+}
+
+.admin-tab-pill {
+  border-radius: 9999px !important;
+  padding: 6px 18px !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  background-color: #FFFFFF !important;
+  color: #475569 !important;
+  border: 1px solid rgba(11, 44, 95, 0.14) !important;
+  transition: all 0.18s ease-in-out !important;
+}
+
+.admin-tab-pill:hover {
+  background-color: #F8FAFD !important;
+  border-color: #0B2C5F !important;
+  color: #0B2C5F !important;
+}
+
+.admin-tab-pill.active {
+  background-color: #0B2C5F !important;
+  color: #FFFFFF !important;
+  border-color: #0B2C5F !important;
+  box-shadow: 0 4px 12px rgba(11, 44, 95, 0.25) !important;
+}
+
+.admin-tab-meta {
+  font-size: 0.78rem !important;
+  color: #64748B !important;
+  font-weight: 500 !important;
+}
+
+.admin-tab-meta strong {
+  color: #0B2C5F !important;
+  font-weight: 700 !important;
+}
+
+.admin-filter-control {
+  height: 40px !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(11, 44, 95, 0.12) !important;
+  background-color: #F8FAFD !important;
+  color: #0B2C5F !important;
+  font-size: 0.84rem !important;
+  font-weight: 600 !important;
+  padding: 0 0.85rem !important;
+  transition: all 0.18s ease-in-out !important;
+}
+
+.admin-filter-control:focus {
+  background-color: #FFFFFF !important;
+  border-color: #0B2C5F !important;
+  box-shadow: 0 0 0 3px rgba(11, 44, 95, 0.1) !important;
+  outline: none !important;
+}
+
+.btn-admin-reset {
+  height: 40px !important;
+  border-radius: 12px !important;
+  background-color: #FFFFFF !important;
+  border: 1px solid rgba(11, 44, 95, 0.18) !important;
+  color: #0B2C5F !important;
+  font-weight: 700 !important;
+  font-size: 0.84rem !important;
+  transition: all 0.18s ease-in-out !important;
+}
+
+.btn-admin-reset:hover {
+  background-color: #F8FAFD !important;
+  color: #0B2C5F !important;
+  border-color: #0B2C5F !important;
+}

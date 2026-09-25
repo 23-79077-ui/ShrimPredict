@@ -891,7 +891,7 @@ export default function CaretakerDashboard() {
         </div>
       </div>
 
-      {/* 🌟 KEY PERFORMANCE INDICATORS (KPI) HEADER & 4 TELEMETRY CARDS */}
+      {/* 🌟 OPERATIONAL PERFORMANCE & 4 TELEMETRY CARDS */}
       <div className="mb-4 mb-xl-5">
         <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
           <div className="d-flex align-items-center gap-2.5">
@@ -899,11 +899,11 @@ export default function CaretakerDashboard() {
               className="badge rounded-pill px-3 py-1.5 fw-bold text-white extra-small shadow-xs"
               style={{ background: '#0B2C5F', letterSpacing: '0.06em' }}
             >
-              KPI
+              OPERATIONS
             </span>
             <div>
               <h5 className="fw-bold mb-0 tracking-tight" style={{ color: '#0B2C5F', fontSize: '1.15rem', letterSpacing: '-0.02em' }}>
-                Key Performance Indicators (KPI)
+                Operational Telemetry &amp; Performance
               </h5>
               <span className="text-muted extra-small">Daily Field Operations, Feeding Adherence &amp; Water Telemetry Benchmarks</span>
             </div>
@@ -914,17 +914,12 @@ export default function CaretakerDashboard() {
         </div>
 
         <div className="row g-3 g-xl-4">
-          {/* KPI 1: Assigned Ponds */}
+          {/* Card 1: Assigned Ponds */}
           <div className="col-12 col-sm-6 col-xl-3">
             <div className="tri-kpi-card" style={{ minHeight: 185 }}>
               <div>
                 <div className="d-flex align-items-center justify-content-between mb-3">
-                  <div className="d-flex align-items-center gap-2">
-                    <span className="badge rounded-pill extra-small fw-bold px-2 py-0.5" style={{ backgroundColor: 'rgba(11, 44, 95, 0.08)', color: '#0B2C5F' }}>
-                      KPI 1
-                    </span>
-                    <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Assigned Ponds</span>
-                  </div>
+                  <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Assigned Ponds</span>
                   <div className="tri-kpi-icon tri-kpi-icon-blue">
                     <FaWater size={17} />
                   </div>
@@ -949,17 +944,12 @@ export default function CaretakerDashboard() {
             </div>
           </div>
 
-          {/* KPI 2: Today's Feeding Logs */}
+          {/* Card 2: Today's Feeding Logs */}
           <div className="col-12 col-sm-6 col-xl-3">
             <div className="tri-kpi-card" style={{ minHeight: 185 }}>
               <div>
                 <div className="d-flex align-items-center justify-content-between mb-3">
-                  <div className="d-flex align-items-center gap-2">
-                    <span className="badge rounded-pill extra-small fw-bold px-2 py-0.5" style={{ backgroundColor: 'rgba(11, 44, 95, 0.08)', color: '#0B2C5F' }}>
-                      KPI 2
-                    </span>
-                    <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Today's Logs</span>
-                  </div>
+                  <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Today's Logs</span>
                   <div className="tri-kpi-icon tri-kpi-icon-blue">
                     <FaUtensils size={17} />
                   </div>
@@ -990,19 +980,14 @@ export default function CaretakerDashboard() {
             </div>
           </div>
 
-          {/* KPI 3: Total Feed */}
+          {/* Card 3: Total Feed */}
           <div className="col-12 col-sm-6 col-xl-3">
             <div className="tri-kpi-card" style={{ minHeight: 185, borderColor: 'rgba(234, 88, 12, 0.15)' }}>
               <div>
                 <div className="d-flex align-items-center justify-content-between mb-3">
-                  <div className="d-flex align-items-center gap-2">
-                    <span className="badge rounded-pill extra-small fw-bold px-2 py-0.5" style={{ backgroundColor: '#FFF7ED', color: '#EA580C' }}>
-                      KPI 3
-                    </span>
-                    <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">
-                      Total Feed ({selectedDate === todayStr ? 'Today' : selectedDate})
-                    </span>
-                  </div>
+                  <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">
+                    Total Feed ({selectedDate === todayStr ? 'Today' : selectedDate})
+                  </span>
                   <div className="tri-kpi-icon tri-kpi-icon-orange">
                     <FaCheckCircle size={17} />
                   </div>
@@ -1034,17 +1019,12 @@ export default function CaretakerDashboard() {
             </div>
           </div>
 
-          {/* KPI 4: Feeding Schedule Progress */}
+          {/* Card 4: Feeding Schedule Progress */}
           <div className="col-12 col-sm-6 col-xl-3">
             <div className="tri-kpi-card" style={{ minHeight: 185 }}>
               <div>
                 <div className="d-flex align-items-center justify-content-between mb-3">
-                  <div className="d-flex align-items-center gap-2">
-                    <span className="badge rounded-pill extra-small fw-bold px-2 py-0.5" style={{ backgroundColor: 'rgba(11, 44, 95, 0.08)', color: '#0B2C5F' }}>
-                      KPI 4
-                    </span>
-                    <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Feeding Schedule</span>
-                  </div>
+                  <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Feeding Schedule</span>
                   <div className="tri-kpi-icon tri-kpi-icon-blue">
                     <FaClock size={17} />
                   </div>
