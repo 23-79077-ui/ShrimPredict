@@ -6,14 +6,29 @@ import { useAuth } from '../../context/AuthContext';
 import api, { safeArray } from '../../services/api';
 
 const suggestedQuestions = [
-  'Show my ponds',
-  'Show latest disease scans',
-  'Show feed consumption',
-  'Weekly summary',
-  'Show harvest prediction',
-  'Show low pH ponds',
-  'Show today alerts',
+  'Show my ponds overview',
+  'When is the next feeding time?',
+  'What feed formulation should I use?',
+  'Are my ponds in optimal temperature?',
+  'What is the pH level of Pond A1?',
+  'Do I need to apply lime to any pond?',
+  'Show water parameters (pH, DO, Temp)',
+  'Any disease detected in my ponds?',
+  'Harvest readiness and expected date',
+  'What if Dissolved Oxygen (DO) is low?',
+  'Weekly caretaker summary',
 ];
+
+function renderFormattedMessage(text) {
+  if (!text) return '';
+  const parts = String(text).split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, idx) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={idx}>{part.slice(2, -2)}</strong>;
+    }
+    return part;
+  });
+}
 
 const rowLabel = (row) => row.pond_name || row.title || row.disease_name || row.created_at || 'Record';
 
@@ -86,8 +101,7 @@ export default function FarmAssistantPage() {
     {
       role: 'assistant',
       intent: 'welcome',
-      answer: 'Hi. I can answer using only your ShrimPredict caretaker records: assigned ponds, disease scans, feeding logs, water readings, alerts, and harvest estimates.',
-      recommendation: 'Start with a suggested question below.',
+      answer: 'Hello! I am your Smart AI Farm Assistant.\n\nI am ready to answer your questions regarding:\n• Pond status and telemetry (pH, DO, Temp, Salinity)\n• Feeding schedules, amounts, and formulations\n• Disease detection and alert monitoring\n• Harvest predictions and biosecurity guidelines',
       followups: suggestedQuestions.slice(0, 4),
     },
   ]);
@@ -128,9 +142,6 @@ export default function FarmAssistantPage() {
     <div>
       <div className="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
         <div>
-          <div className="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3 py-2 mb-2">
-            Database-only Assistant
-          </div>
           <h3 className="fw-bold mb-1">Smart AI Farm Assistant</h3>
           <p className="text-muted mb-0">Ask about your assigned ponds, scans, feeding, water quality, alerts, and harvest estimates.</p>
         </div>
@@ -150,17 +161,23 @@ export default function FarmAssistantPage() {
                   </span>
                   <div>
                     <h5 className="fw-bold mb-0">ShrimPredict Assistant</h5>
-                    <small className="text-white-75">Answers are generated from your farm database records.</small>
                   </div>
                 </div>
               </div>
 
-              <div className="assistant-chat-scroll p-4">
+              <div className="assistant-chat-scroll p-4" style={{
+                backgroundImage: 'linear-gradient(rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.92)), url(/shrimp_predict_logo.png)',
+                backgroundPosition: 'center',
+                backgroundRepeat: 'no-repeat',
+                backgroundSize: '40%'
+              }}>
                 {messages.map((message, index) => (
                   <div key={`${message.role}-${index}`} className={`d-flex mb-3 ${message.role === 'user' ? 'justify-content-end' : 'justify-content-start'}`}>
                     <div className={`assistant-message p-3 rounded-3 shadow-sm ${message.role === 'user' ? 'bg-primary text-white' : 'bg-white border'}`}>
                       <div className="fw-semibold mb-1">{message.role === 'user' ? 'You' : 'AI Farm Assistant'}</div>
-                      <div style={{ lineHeight: 1.55 }}>{message.answer}</div>
+                      <div style={{ lineHeight: 1.55, whiteSpace: 'pre-line' }}>
+                        {renderFormattedMessage(message.answer)}
+                      </div>
 
                       {message.role === 'assistant' && message.recommendation && (
                         <div className="alert alert-warning mt-3 mb-0 py-2 small">
@@ -249,9 +266,6 @@ export default function FarmAssistantPage() {
                     {item}
                   </button>
                 ))}
-              </div>
-              <div className="alert alert-info mt-4 mb-0 small">
-                This assistant is not a general chatbot. It answers only from ShrimPredict database records assigned to your caretaker account.
               </div>
             </div>
           </div>

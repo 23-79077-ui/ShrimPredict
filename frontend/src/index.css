@@ -6471,6 +6471,11 @@ body.dark-theme .tri-kpi-icon-orange {
   box-shadow: 0 4px 12px rgba(11, 44, 95, 0.2);
 }
 
+.tri-table {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+}
+
 .tri-table thead th {
   background-color: #F8FAFD !important;
   color: #0B2C5F !important;
@@ -6479,7 +6484,94 @@ body.dark-theme .tri-kpi-icon-orange {
   font-size: 0.76rem !important;
   letter-spacing: 0.04em !important;
   text-transform: uppercase !important;
+  white-space: nowrap !important;
 }
+
+.tri-table tbody td {
+  padding: 0.95rem 1rem !important;
+  border-bottom: 1px solid rgba(11, 44, 95, 0.06) !important;
+  font-size: 0.84rem !important;
+  vertical-align: middle !important;
+}
+
+.tri-table tbody tr {
+  transition: background-color 0.18s ease-in-out !important;
+}
+
+.tri-table tbody tr:hover {
+  background-color: #F8FAFD !important;
+}
+
+[data-theme="dark"] .tri-table thead th,
+body.dark-theme .tri-table thead th {
+  background-color: #0F172A !important;
+  color: #38BDF8 !important;
+  border-bottom-color: rgba(56, 189, 248, 0.2) !important;
+}
+
+[data-theme="dark"] .tri-table tbody td,
+body.dark-theme .tri-table tbody td {
+  border-bottom-color: rgba(56, 189, 248, 0.1) !important;
+  color: #E2E8F0 !important;
+}
+
+[data-theme="dark"] .tri-table tbody tr:hover,
+body.dark-theme .tri-table tbody tr:hover {
+  background-color: rgba(56, 189, 248, 0.06) !important;
+}
+
+/* Action squircle buttons in tables */
+.btn-action-squircle {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 9px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  background: #FFFFFF !important;
+  border: 1px solid rgba(11, 44, 95, 0.14) !important;
+  color: #0B2C5F !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  cursor: pointer !important;
+}
+
+.btn-action-squircle:hover {
+  transform: translateY(-1.5px) !important;
+  box-shadow: 0 4px 10px rgba(11, 44, 95, 0.12) !important;
+}
+
+.btn-action-squircle.action-cycle:hover {
+  background: #EFF6FF !important;
+  border-color: #2563EB !important;
+  color: #1D4ED8 !important;
+}
+
+.btn-action-squircle.action-logs:hover {
+  background: #ECFEFF !important;
+  border-color: #06B6D4 !important;
+  color: #0891B2 !important;
+}
+
+.btn-action-squircle.action-edit:hover {
+  background: #FFF7ED !important;
+  border-color: #EA580C !important;
+  color: #EA580C !important;
+}
+
+.btn-action-squircle.action-delete:hover {
+  background: #FEF2F2 !important;
+  border-color: #DC2626 !important;
+  color: #DC2626 !important;
+}
+
+[data-theme="dark"] .btn-action-squircle,
+body.dark-theme .btn-action-squircle {
+  background: #0F172A !important;
+  border-color: rgba(56, 189, 248, 0.25) !important;
+  color: #94A3B8 !important;
+}
+
 
 
 /* ==========================================================================

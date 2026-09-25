@@ -30,6 +30,17 @@ import api, { safeArray } from '../services/api';
  * @param {function} onClose - optional close callback if rendered in a modal
  * @param {Array} records - optional feeding records array to show dots
  */
+function sanitizeNotes(notes, isZeroFeed) {
+  if (!notes || typeof notes !== 'string' || !notes.trim()) {
+    return isZeroFeed ? 'No feed logged (0g)' : 'Nominal feed';
+  }
+  return notes
+    .replace(/wala\s+pang\s+pakain/gi, 'No feed logged')
+    .replace(/wala\s+pang\s+record/gi, 'No record yet')
+    .replace(/wala\s+pang/gi, 'No feed logged')
+    .replace(/\(0g\)\s*\(0g\)/gi, '(0g)');
+}
+
 export default function PondCycleCalendar({
   pondId,
   stockingDate,
@@ -421,7 +432,7 @@ export default function PondCycleCalendar({
         </span>
         <span className="badge px-2 py-1.5 fw-semibold d-inline-flex align-items-center gap-1" style={{ background: '#F3F4F6', color: '#6B7280', border: '1px dashed #D1D5DB' }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#9CA3AF', display: 'inline-block' }}></span>
-          ⏳ Day {maxRecordedDoc + 1}+: Upcoming (Wala Pang Record)
+          ⏳ Day {maxRecordedDoc + 1}+: Upcoming (No Records Yet)
         </span>
       </div>
 
@@ -702,7 +713,7 @@ export default function PondCycleCalendar({
                 }}
               >
                 {selectedInfo.stageTone === 'upcoming'
-                  ? 'Upcoming (Wala Pang Record)'
+                  ? 'Upcoming (No Records Yet)'
                   : selectedInfo.feedType !== 'None' && selectedInfo.feedType !== 'Upcoming'
                   ? `Tateh - ${selectedInfo.feedType}`
                   : 'No Feed Scheduled'}
@@ -774,7 +785,7 @@ export default function PondCycleCalendar({
                             )}
                           </td>
                           <td>
-                            <span className="text-secondary extra-small">{log.notes || (isZeroFeed ? 'No feed logged (0g)' : 'Nominal feed')}</span>
+                            <span className="text-secondary extra-small">{sanitizeNotes(log.notes, isZeroFeed)}</span>
                           </td>
                           <td className="pe-3">
                             <span className="badge bg-light text-dark border extra-small">{log.recorded_by_name || log.recorded_by || 'Caretaker'}</span>

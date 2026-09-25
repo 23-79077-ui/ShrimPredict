@@ -6,12 +6,26 @@ import { useAuth } from '../context/AuthContext';
 import api, { safeArray } from '../services/api';
 
 const suggestedQuestions = [
-  'Weekly summary',
-  'What is the status of my ponds?',
-  'What feeding times are still pending?',
-  'Show latest disease scans',
-  'Show harvest prediction',
+  'Show my ponds overview',
+  'When is the next feeding time?',
+  'What feed formulation should I use?',
+  'Are my ponds in optimal temperature?',
+  'What is the pH level of Pond A1?',
+  'Do I need to apply lime to any pond?',
+  'Any disease detected?',
+  'Show water quality status',
 ];
+
+function renderFormattedMessage(text) {
+  if (!text) return '';
+  const parts = String(text).split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, idx) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={idx}>{part.slice(2, -2)}</strong>;
+    }
+    return part;
+  });
+}
 
 const rowTitle = (row) => row.pond_name || row.feeding_time || row.title || row.disease_name || row.created_at || 'Record';
 
@@ -60,7 +74,6 @@ export default function CaretakerAssistantChatHead() {
     {
       role: 'assistant',
       answer: 'Hi. Ask me about your assigned ponds, feeding logs, disease scans, alerts, water quality, or harvest estimates.',
-      recommendation: 'I only use ShrimPredict database records.',
       followups: suggestedQuestions.slice(0, 3),
     },
   ]);
@@ -105,7 +118,6 @@ export default function CaretakerAssistantChatHead() {
               <span className="caretaker-chat-avatar"><FaRobot /></span>
               <div>
                 <div className="fw-bold">Smart AI Farm Assistant</div>
-                <small>Live caretaker records only</small>
               </div>
             </div>
             <button type="button" className="btn btn-sm btn-light rounded-circle" aria-label="Close assistant" onClick={() => setOpen(false)}>
@@ -113,17 +125,18 @@ export default function CaretakerAssistantChatHead() {
             </button>
           </div>
 
-          <div className="caretaker-chat-body">
+          <div className="caretaker-chat-body" style={{
+            backgroundImage: 'linear-gradient(rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.92)), url(/shrimp_predict_logo.png)',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+            backgroundSize: '50%'
+          }}>
             {messages.map((message, index) => (
               <div key={`${message.role}-${index}`} className={`caretaker-chat-row ${message.role === 'user' ? 'user' : 'assistant'}`}>
                 <div className="caretaker-chat-bubble">
-                  <div>{message.answer}</div>
-                  {message.role === 'assistant' && (
-                    <div className="caretaker-chat-scope">Live data from your assigned ponds and submitted records</div>
-                  )}
-                  {message.role === 'assistant' && message.recommendation && (
-                    <div className="caretaker-chat-note">{message.recommendation}</div>
-                  )}
+                  <div style={{ whiteSpace: 'pre-line', lineHeight: '1.5' }}>
+                    {renderFormattedMessage(message.answer)}
+                  </div>
                   {message.role === 'assistant' && <ChatChart chart={message.chart} />}
                   {message.role === 'assistant' && safeArray(message.rows).length > 0 && (
                     <div className="caretaker-chat-records">

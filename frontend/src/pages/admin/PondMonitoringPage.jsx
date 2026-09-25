@@ -27,7 +27,8 @@ import {
   FaWater,
   FaWeightHanging,
   FaWind,
-  FaHistory
+  FaHistory,
+  FaEye
 } from 'react-icons/fa';
 import Swal from 'sweetalert2';
 import api from '../../services/api';
@@ -686,189 +687,368 @@ export default function PondMonitoringPage() {
         </div>
       </AdminFilterToolbar>
 
-      {/* 🌊 POND MONITORING TABLE CARD (FULL WIDTH COL-12 WITH STICKY HEADER & MAX 10 ROWS VISIBLE) */}
+      {/* 🌊 POND MONITORING TABLE CARD (FULL WIDTH COL-12 WITH STICKY HEADER & CLEAN EXECUTIVE DESIGN) */}
       <div className="row g-4 mb-4">
         <div className="col-12">
           <div className="tri-card p-4 position-relative overflow-hidden">
-            
-            <div className="card-body p-4">
-              <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-                <div>
-                  <h5 className="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
-                    <FaWater className="text-primary" /> Pond Monitoring
-                  </h5>
-                  <p className="small text-muted mb-0">Showing {filteredPonds.length} of {ponds.length} database records.</p>
-                </div>
-                <button
-                  className="btn btn-primary d-flex align-items-center gap-2"
-                  onClick={openAddPondModal}
+            <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3 pb-3 border-bottom">
+              <div className="d-flex align-items-center gap-3">
+                <div
+                  className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                  style={{
+                    width: '42px',
+                    height: '42px',
+                    background: 'linear-gradient(135deg, rgba(11, 44, 95, 0.08) 0%, rgba(30, 58, 138, 0.14) 100%)',
+                    color: '#0B2C5F',
+                    border: '1px solid rgba(11, 44, 95, 0.12)'
+                  }}
                 >
-                  <FaPlus /> Add Pond
-                </button>
+                  <FaWater size={18} />
+                </div>
+                <div>
+                  <div className="d-flex align-items-center gap-2">
+                    <h5 className="fw-extrabold text-dark mb-0" style={{ letterSpacing: '-0.01em' }}>
+                      Pond Monitoring
+                    </h5>
+                    <span className="badge rounded-pill bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2.5 py-0.5 extra-small fw-bold">
+                      {filteredPonds.length} of {ponds.length} Basins
+                    </span>
+                  </div>
+                  <p className="extra-small text-muted mb-0 mt-0.5">
+                    Real-time water quality indices, culture stage tracking, and caretaker basin assignments
+                  </p>
+                </div>
               </div>
+              <button
+                type="button"
+                className="btn btn-sm btn-tri-orange px-3 py-2 shadow-xs"
+                onClick={openAddPondModal}
+              >
+                <FaPlus size={11} className="me-1.5" /> Add New Pond
+              </button>
+            </div>
 
-              {loading ? (
-                <div className="text-center py-5 text-muted">
-                  <div className="spinner-border text-primary" role="status" />
-                  <p className="mt-2 mb-0">Loading pond records...</p>
-                </div>
-              ) : filteredPonds.length === 0 ? (
-                <div className="text-center py-5 bg-light rounded-4 border">
-                  <FaWater className="fs-2 text-muted mb-2" />
-                  <h6 className="fw-bold">No ponds found</h6>
-                  <p className="small text-muted mb-0">No database records match the current filters.</p>
-                </div>
-              ) : (
-                /* 📜 Scrollable container displaying ~10 rows before vertical scroll bar appears */
-                <div className="table-responsive border rounded-3 shadow-xs" style={{ maxHeight: 540, overflowY: 'auto' }}>
-                  <table className="table tri-table align-middle mb-0">
-                    <thead className="table-light sticky-top shadow-xs" style={{ top: 0, zIndex: 5 }}>
-                      <tr>
-                        <th className="ps-3 py-3 text-secondary text-uppercase extra-small fw-bold">Pond</th>
-                        <th className="py-3 text-secondary text-uppercase extra-small fw-bold">Culture Stage & Feed</th>
-                        <th className="py-3 text-secondary text-uppercase extra-small fw-bold">Status</th>
-                        <th className="py-3 text-secondary text-uppercase extra-small fw-bold">Caretaker</th>
-                        <th className="py-3 text-secondary text-uppercase extra-small fw-bold">Water Quality</th>
-                        <th className="py-3 text-secondary text-uppercase extra-small fw-bold">Feed Consumption</th>
-                        <th className="py-3 text-secondary text-uppercase extra-small fw-bold">Disease Alert</th>
-                        <th className="pe-3 py-3 text-secondary text-uppercase extra-small fw-bold text-end">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredPonds.map((pond) => {
-                        const tone = statusClass[pond.status] || 'secondary';
-                        return (
-                          <tr key={pond.id}>
-                            <td className="ps-3">
-                              <div className="fw-bold text-dark">{pond.pond_name}</div>
-                              <small className="text-muted">Pond #{pond.id}</small>
-                            </td>
-                            <td>
-                              {pond.docOnFilterDate !== null ? (
-                                pond.isNursery ? (
-                                  <div>
-                                    <span
-                                      className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1"
-                                      style={{ background: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0', fontSize: '0.78rem' }}
-                                    >
-                                      Day {pond.docOnFilterDate} • Nursery
-                                    </span>
-                                    <small className="d-block text-muted extra-small mt-0.5">Feed: <strong>Tateh - Starter</strong></small>
+            {loading ? (
+              <div className="text-center py-5 text-muted">
+                <div className="spinner-border text-primary" role="status" />
+                <p className="mt-2 mb-0">Loading pond records...</p>
+              </div>
+            ) : filteredPonds.length === 0 ? (
+              <div className="text-center py-5 bg-light rounded-4 border">
+                <FaWater className="fs-2 text-muted mb-2" />
+                <h6 className="fw-bold">No ponds found</h6>
+                <p className="small text-muted mb-0">No database records match the current filters.</p>
+              </div>
+            ) : (
+              <div className="table-responsive border rounded-3 shadow-xs" style={{ maxHeight: 560, overflowY: 'auto' }}>
+                <table className="table tri-table align-middle mb-0">
+                  <thead className="table-light sticky-top shadow-xs" style={{ top: 0, zIndex: 5 }}>
+                    <tr>
+                      <th className="ps-3.5 py-3 text-secondary extra-small fw-bold" style={{ minWidth: '150px' }}>Pond Basin</th>
+                      <th className="py-3 text-secondary extra-small fw-bold" style={{ minWidth: '160px' }}>Culture & Feed</th>
+                      <th className="py-3 text-secondary extra-small fw-bold" style={{ minWidth: '105px' }}>Status</th>
+                      <th className="py-3 text-secondary extra-small fw-bold" style={{ minWidth: '135px' }}>Caretaker</th>
+                      <th className="py-3 text-secondary extra-small fw-bold" style={{ minWidth: '175px' }}>Water Quality Indices</th>
+                      <th className="py-3 text-secondary extra-small fw-bold" style={{ minWidth: '125px' }}>Feeding</th>
+                      <th className="py-3 text-secondary extra-small fw-bold" style={{ minWidth: '110px' }}>Biosecurity</th>
+                      <th className="pe-3.5 py-3 text-secondary extra-small fw-bold text-end" style={{ minWidth: '190px' }}>Quick Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredPonds.map((pond) => {
+                      const tone = statusClass[pond.status] || 'secondary';
+                      return (
+                        <tr key={pond.id}>
+                          {/* Basin Info */}
+                          <td className="ps-3.5 py-3">
+                            <div className="d-flex align-items-center gap-2.5">
+                              <div
+                                className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                                style={{
+                                  width: '36px',
+                                  height: '36px',
+                                  background: 'rgba(11, 44, 95, 0.06)',
+                                  color: '#0B2C5F',
+                                  border: '1px solid rgba(11, 44, 95, 0.1)'
+                                }}
+                              >
+                                <FaWater size={15} />
+                              </div>
+                              <div>
+                                <div className="fw-bold text-dark text-truncate" style={{ maxWidth: '140px', fontSize: '0.88rem' }}>
+                                  {pond.pond_name}
+                                </div>
+                                <div className="d-flex align-items-center gap-1 extra-small text-muted mt-0.5">
+                                  <span className="badge bg-light text-secondary border px-1.5 py-0 extra-small fw-semibold">
+                                    Basin #{pond.id}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Culture Stage & Feed */}
+                          <td className="py-3">
+                            {pond.docOnFilterDate !== null ? (
+                              pond.isNursery ? (
+                                <div>
+                                  <span
+                                    className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1"
+                                    style={{ background: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0', fontSize: '0.74rem' }}
+                                  >
+                                    <span className="rounded-circle bg-success" style={{ width: 5, height: 5 }} />
+                                    Day {pond.docOnFilterDate} • Nursery
+                                  </span>
+                                  <div className="extra-small text-muted mt-1 fw-medium">
+                                    Feed: <strong className="text-secondary">Tateh - Starter</strong>
                                   </div>
-                                ) : pond.docOnFilterDate === 20 ? (
-                                  <div>
-                                    <span
-                                      className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1"
-                                      style={{ background: '#FEF3C7', color: '#B45309', border: '1px solid #FCD34D', fontSize: '0.78rem' }}
-                                    >
-                                      ⚡ Day 20 • Transfer Day
-                                    </span>
-                                    <small className="d-block text-muted extra-small mt-0.5">Feed: <strong>Tateh - Grower</strong></small>
+                                </div>
+                              ) : pond.docOnFilterDate === 20 ? (
+                                <div>
+                                  <span
+                                    className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1"
+                                    style={{ background: '#FEF3C7', color: '#B45309', border: '1px solid #FCD34D', fontSize: '0.74rem' }}
+                                  >
+                                    ⚡ Day 20 • Transfer
+                                  </span>
+                                  <div className="extra-small text-muted mt-1 fw-medium">
+                                    Feed: <strong className="text-secondary">Tateh - Grower</strong>
                                   </div>
-                                ) : (
-                                  <div>
-                                    <span
-                                      className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1"
-                                      style={{ background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', fontSize: '0.78rem' }}
-                                    >
-                                      Day {pond.docOnFilterDate} • Grow-out
-                                    </span>
-                                    <small className="d-block text-muted extra-small mt-0.5">Feed: <strong>Tateh - Grower</strong></small>
-                                  </div>
-                                )
+                                </div>
                               ) : (
-                                <span className="badge bg-light text-muted border px-2 py-1 extra-small">
+                                <div>
+                                  <span
+                                    className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1"
+                                    style={{ background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', fontSize: '0.74rem' }}
+                                  >
+                                    <span className="rounded-circle bg-primary" style={{ width: 5, height: 5 }} />
+                                    Day {pond.docOnFilterDate} • Grow-out
+                                  </span>
+                                  <div className="extra-small text-muted mt-1 fw-medium">
+                                    Feed: <strong className="text-secondary">Tateh - Grower</strong>
+                                  </div>
+                                </div>
+                              )
+                            ) : (
+                              <div>
+                                <span className="badge bg-light text-muted border px-2.5 py-1 extra-small fw-medium rounded-pill">
                                   Pre-Stocking
                                 </span>
-                              )}
-                            </td>
-                            <td>
-                              <span className={`badge bg-${tone} ${tone === 'warning' ? 'text-dark' : ''} px-2.5 py-1.5 fw-bold`}>
-                                {pond.status || '-'}
+                                <div className="extra-small text-muted mt-1">Pending Stock</div>
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Status */}
+                          <td className="py-3">
+                            <span
+                              className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1.5"
+                              style={{
+                                fontSize: '0.75rem',
+                                backgroundColor:
+                                  tone === 'success' ? '#ECFDF5' :
+                                  tone === 'warning' ? '#FFFBEB' :
+                                  tone === 'danger' ? '#FEF2F2' : '#F1F5F9',
+                                color:
+                                  tone === 'success' ? '#047857' :
+                                  tone === 'warning' ? '#B45309' :
+                                  tone === 'danger' ? '#B91C1C' : '#475569',
+                                border: `1px solid ${
+                                  tone === 'success' ? '#A7F3D0' :
+                                  tone === 'warning' ? '#FDE68A' :
+                                  tone === 'danger' ? '#FECACA' : '#CBD5E1'
+                                }`
+                              }}
+                            >
+                              <span
+                                className="rounded-circle"
+                                style={{
+                                  width: 6,
+                                  height: 6,
+                                  backgroundColor:
+                                    tone === 'success' ? '#10B981' :
+                                    tone === 'warning' ? '#F59E0B' :
+                                    tone === 'danger' ? '#EF4444' : '#64748B'
+                                }}
+                              />
+                              {pond.status || 'Unmonitored'}
+                            </span>
+                          </td>
+
+                          {/* Caretaker */}
+                          <td className="py-3">
+                            <div className="d-flex align-items-center gap-2">
+                              <div
+                                className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0"
+                                style={{
+                                  width: '28px',
+                                  height: '28px',
+                                  fontSize: '0.72rem',
+                                  background: pond.assigned_caretaker_name
+                                    ? 'linear-gradient(135deg, #0B2C5F 0%, #1E4E8C 100%)'
+                                    : '#94A3B8'
+                                }}
+                              >
+                                {pond.assigned_caretaker_name ? pond.assigned_caretaker_name.charAt(0).toUpperCase() : '?'}
+                              </div>
+                              <span
+                                className="fw-medium text-dark text-truncate"
+                                style={{ maxWidth: '120px', fontSize: '0.84rem' }}
+                                title={pond.assigned_caretaker_name || 'Unassigned'}
+                              >
+                                {pond.assigned_caretaker_name || <span className="text-muted fst-italic">Unassigned</span>}
                               </span>
-                            </td>
-                            <td className="fw-medium text-dark">{pond.assigned_caretaker_name || 'Unassigned'}</td>
-                            <td>
-                              <small className="d-block text-secondary">Temp: <strong className="text-dark">{valueOrDash(pond.temperature, ' °C')}</strong></small>
-                              <small className="d-block text-secondary">pH: <strong className="text-dark">{valueOrDash(pond.ph_level)}</strong></small>
-                              <small className="d-block text-secondary">DO: <strong className="text-dark">{valueOrDash(pond.dissolved_oxygen, ' mg/L')}</strong></small>
-                              <small className="d-block text-secondary">Sal: <strong className="text-dark">{valueOrDash(pond.salinity, ' ppt')}</strong></small>
-                            </td>
-                            <td>
-                              <small className="d-block text-secondary">Today: <strong className="text-dark">{formatNumber(pond.feed_today_kg)} kg</strong></small>
-                              <small className="d-block text-secondary">Total: <strong className="text-dark">{formatNumber(pond.total_feed_kg)} kg</strong></small>
-                            </td>
-                            <td>
-                              {isDiseaseAlert(pond.disease_detection) ? (
-                                <span className="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-2.5 py-1.5 fw-bold">
+                            </div>
+                          </td>
+
+                          {/* Water Quality Indices (Clean 2x2 Grid) */}
+                          <td className="py-3">
+                            <div
+                              className="d-grid gap-1"
+                              style={{
+                                gridTemplateColumns: 'repeat(2, minmax(75px, 1fr))',
+                                width: '165px'
+                              }}
+                            >
+                              <div
+                                className="px-2 py-0.5 rounded bg-light border border-light-subtle d-flex align-items-center justify-content-between"
+                                style={{ fontSize: '0.72rem' }}
+                                title="Water Temperature"
+                              >
+                                <span className="text-muted fw-semibold">Temp</span>
+                                <span className="fw-bold text-dark">{valueOrDash(pond.temperature, '°C')}</span>
+                              </div>
+                              <div
+                                className="px-2 py-0.5 rounded bg-light border border-light-subtle d-flex align-items-center justify-content-between"
+                                style={{ fontSize: '0.72rem' }}
+                                title="Water pH Level"
+                              >
+                                <span className="text-muted fw-semibold">pH</span>
+                                <span className="fw-bold text-dark">{valueOrDash(pond.ph_level)}</span>
+                              </div>
+                              <div
+                                className="px-2 py-0.5 rounded bg-light border border-light-subtle d-flex align-items-center justify-content-between"
+                                style={{ fontSize: '0.72rem' }}
+                                title="Dissolved Oxygen (DO)"
+                              >
+                                <span className="text-muted fw-semibold">DO</span>
+                                <span className="fw-bold text-dark">{valueOrDash(pond.dissolved_oxygen, 'mg')}</span>
+                              </div>
+                              <div
+                                className="px-2 py-0.5 rounded bg-light border border-light-subtle d-flex align-items-center justify-content-between"
+                                style={{ fontSize: '0.72rem' }}
+                                title="Salinity Level"
+                              >
+                                <span className="text-muted fw-semibold">Sal</span>
+                                <span className="fw-bold text-dark">{valueOrDash(pond.salinity, 'ppt')}</span>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Feed Consumption */}
+                          <td className="py-3">
+                            <div style={{ minWidth: '115px' }}>
+                              <div className="d-flex align-items-baseline gap-1">
+                                <span className="fw-extrabold text-dark" style={{ fontSize: '0.92rem' }}>
+                                  {formatNumber(pond.feed_today_kg)}
+                                </span>
+                                <span className="extra-small text-muted fw-semibold">kg today</span>
+                              </div>
+                              <div className="extra-small text-muted mt-0.5">
+                                Total: <strong className="text-secondary">{formatNumber(pond.total_feed_kg)} kg</strong>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Biosecurity */}
+                          <td className="py-3">
+                            {isDiseaseAlert(pond.disease_detection) ? (
+                              <span
+                                className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1 extra-small"
+                                style={{ background: '#FEF2F2', color: '#B91C1C', border: '1px solid #FECACA' }}
+                                title={`Disease Alert: ${pond.disease_detection}`}
+                              >
+                                <FaExclamationTriangle size={10} />
+                                <span className="text-truncate" style={{ maxWidth: '80px' }}>
                                   {pond.disease_detection}
                                 </span>
-                              ) : (
-                                <span className="badge bg-success bg-opacity-10 text-success px-2.5 py-1.5 fw-bold">Clear</span>
-                              )}
-                            </td>
-                            <td className="pe-3 text-end">
-                              <div className="d-flex justify-content-end gap-1.5 flex-wrap">
-                                <button
-                                  className="btn btn-sm btn-outline-info rounded-pill px-2.5 py-1 fw-bold shadow-xs d-inline-flex align-items-center gap-1"
-                                  style={{ fontSize: '0.78rem' }}
-                                  onClick={() => setCalendarModalPond(pond)}
-                                  title="View Pond Culture Cycle Calendar"
-                                >
-                                  <FaCalendarAlt size={11} /> Cycle
-                                </button>
-                                <button
-                                  className="btn btn-sm btn-outline-secondary rounded-pill px-2.5 py-1 fw-bold shadow-xs d-inline-flex align-items-center gap-1"
-                                  style={{ fontSize: '0.78rem' }}
-                                  onClick={() => {
-                                    setHistoryModalPond(pond);
-                                    setIsHistoryModalOpen(true);
-                                  }}
-                                  title="View Water Quality Log History and past date records"
-                                >
-                                  <FaHistory size={11} className="text-info" /> Logs
-                                </button>
-                                <button
-                                  className="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 fw-bold shadow-xs"
-                                  style={{ fontSize: '0.78rem' }}
-                                  onClick={() => setSelectedPond(pond)}
-                                >
-                                  Details
-                                </button>
-                                <button
-                                  className="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1 fw-bold shadow-xs"
-                                  style={{ fontSize: '0.78rem' }}
-                                  onClick={() => openEditPondModal(pond)}
-                                >
-                                  <FaEdit className="me-1" /> Edit
-                                </button>
-                                <button
-                                  className="btn btn-sm btn-outline-danger rounded-pill px-3 py-1 fw-bold shadow-xs"
-                                  style={{ fontSize: '0.78rem' }}
-                                  onClick={() => handleDeletePond(pond)}
-                                >
-                                  <FaTrash className="me-1" /> Delete
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+                              </span>
+                            ) : (
+                              <span
+                                className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1 extra-small"
+                                style={{ background: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0' }}
+                              >
+                                <FaCheckCircle size={10} /> Clear
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Quick Actions (Streamlined, Non-Wrapping) */}
+                          <td className="pe-3.5 py-3 text-end">
+                            <div className="d-flex align-items-center justify-content-end gap-1.5 flex-nowrap">
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-tri-navy rounded-pill px-2.5 py-1 extra-small fw-bold d-inline-flex align-items-center gap-1 shadow-xs"
+                                onClick={() => setSelectedPond(pond)}
+                                title="View Detailed Pond Analytics"
+                              >
+                                <FaEye size={11} /> Details
+                              </button>
+                              <button
+                                type="button"
+                                className="btn-action-squircle action-cycle"
+                                onClick={() => setCalendarModalPond(pond)}
+                                title="Culture Cycle Calendar"
+                              >
+                                <FaCalendarAlt size={12} />
+                              </button>
+                              <button
+                                type="button"
+                                className="btn-action-squircle action-logs"
+                                onClick={() => {
+                                  setHistoryModalPond(pond);
+                                  setIsHistoryModalOpen(true);
+                                }}
+                                title="Water Quality Historical Logs"
+                              >
+                                <FaHistory size={12} />
+                              </button>
+                              <button
+                                type="button"
+                                className="btn-action-squircle action-edit"
+                                onClick={() => openEditPondModal(pond)}
+                                title="Edit Pond Basin Details"
+                              >
+                                <FaEdit size={12} />
+                              </button>
+                              <button
+                                type="button"
+                                className="btn-action-squircle action-delete"
+                                onClick={() => handleDeletePond(pond)}
+                                title="Delete Pond Basin"
+                              >
+                                <FaTrash size={12} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* 📊 HEALTH DISTRIBUTION CARD (PLACED DIRECTLY BELOW POND MONITORING TABLE) */}
+      
+{/* 📊 HEALTH DISTRIBUTION CARD (PLACED DIRECTLY BELOW POND MONITORING TABLE) */}
       <div className="row g-4 mb-4">
         <div className="col-12">
           <div className="tri-card p-4 position-relative overflow-hidden">
             
-            <div className="card-body p-4">
+            
               <div className="row align-items-center gy-4">
                 <div className="col-lg-5 text-center text-lg-start">
                   <h5 className="fw-bold text-dark mb-1 d-flex align-items-center gap-2 justify-content-center justify-content-lg-start">
@@ -934,7 +1114,7 @@ export default function PondMonitoringPage() {
             </div>
           </div>
         </div>
-      </div>
+      
 
       {selectedPond && (
         <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(15, 23, 42, 0.55)', zIndex: 1060 }}>
