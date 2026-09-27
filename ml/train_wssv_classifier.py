@@ -172,7 +172,7 @@ def main():
     )
 
     model = build_model(image_size, args.learning_rate)
-    callbacks = [
+    callbacks: list[tf.keras.callbacks.Callback] = [
         tf.keras.callbacks.EarlyStopping(monitor="val_auc", mode="max", patience=4, restore_best_weights=True),
         tf.keras.callbacks.ModelCheckpoint(
             filepath=str(output_dir / "best_wssv_classifier.keras"),
@@ -184,6 +184,7 @@ def main():
 
     history = model.fit(train_ds, validation_data=val_ds, epochs=args.epochs, callbacks=callbacks)
     metrics = model.evaluate(val_ds, return_dict=True)
+    metrics_dict: dict[str, float] = metrics if isinstance(metrics, dict) else {}
 
     model.save(output_dir / "wssv_classifier.keras")
     metadata = {
@@ -194,7 +195,7 @@ def main():
         "labels": LABELS,
         "image_size": list(image_size),
         "image_count": image_count,
-        "validation_metrics": {key: float(value) for key, value in metrics.items()},
+        "validation_metrics": {key: float(value) for key, value in metrics_dict.items()},
         "history": {key: [float(v) for v in values] for key, values in history.history.items()},
         "recommendation": "Treat WSSV probability >= 0.60 as High risk and notify admin immediately.",
     }

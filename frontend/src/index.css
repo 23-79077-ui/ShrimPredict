@@ -6439,11 +6439,31 @@ body.dark-theme .tri-kpi-icon-orange {
 }
 
 .tri-progress-bar-navy {
+  height: 100% !important;
+  border-radius: 9999px !important;
+  transition: width 0.5s ease !important;
   background: linear-gradient(90deg, #0B2C5F 0%, #1E3A8A 100%) !important;
 }
 
 .tri-progress-bar-orange {
+  height: 100% !important;
+  border-radius: 9999px !important;
+  transition: width 0.5s ease !important;
   background: linear-gradient(90deg, #EA580C 0%, #F97316 100%) !important;
+}
+
+.tri-progress-bar-green {
+  height: 100% !important;
+  border-radius: 9999px !important;
+  transition: width 0.5s ease !important;
+  background: linear-gradient(90deg, #16A34A 0%, #22C55E 100%) !important;
+}
+
+.tri-progress-bar-red {
+  height: 100% !important;
+  border-radius: 9999px !important;
+  transition: width 0.5s ease !important;
+  background: linear-gradient(90deg, #DC2626 0%, #EF4444 100%) !important;
 }
 
 .tri-pond-pill {

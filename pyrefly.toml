@@ -1,0 +1,6 @@
+python-interpreter-path = ".venv/Scripts/python.exe"
+search-path = [
+  ".",
+  "ml",
+  "ml/wssv_transfer"
+]

@@ -931,13 +931,13 @@ export default function DiseaseScanPage() {
 
                           <div className="d-flex justify-content-between extra-small fw-bold mb-1.5">
                             <span style={{ color: '#0B2C5F' }}>AI Confidence Score</span>
-                            <span className="fw-extrabold" style={{ color: healthStatus === 'Healthy' ? '#15803D' : '#EA580C' }}>
+                            <span className="fw-extrabold" style={{ color: healthStatus === 'Healthy' ? '#15803D' : '#DC2626' }}>
                               {confidence.toFixed(2)}%
                             </span>
                           </div>
                           <div className="tri-progress-track mb-1" style={{ height: 10 }}>
                             <div
-                              className={healthStatus === 'Healthy' ? 'tri-progress-bar-green' : 'tri-progress-bar-orange'}
+                              className={healthStatus === 'Healthy' ? 'tri-progress-bar-green' : 'tri-progress-bar-red'}
                               style={{ width: `${Math.min(100, Math.max(0, confidence))}%` }}
                             />
                           </div>
@@ -970,7 +970,7 @@ export default function DiseaseScanPage() {
                                   </div>
                                   <div className="tri-progress-track" style={{ height: 6 }}>
                                     <div
-                                      className={isHealthy ? 'tri-progress-bar-green' : isWssv ? 'tri-progress-bar-orange' : 'tri-progress-bar-navy'}
+                                      className={isHealthy ? 'tri-progress-bar-green' : isWssv ? 'tri-progress-bar-red' : 'tri-progress-bar-navy'}
                                       style={{ width: `${Math.min(100, Math.max(0, Number(probScore)))}%` }}
                                     />
                                   </div>

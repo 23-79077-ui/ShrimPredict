@@ -75,7 +75,7 @@ def augment_image_comprehensive(img: Image.Image, level: int = 0) -> list[Image.
 
     # --- Basic augmentations (always applied) ---
     # 1. Horizontal flip
-    results.append(img.transpose(Image.FLIP_LEFT_RIGHT))
+    results.append(img.transpose(Image.Transpose.FLIP_LEFT_RIGHT))
 
     # 2. Rotation 90 + brightness boost
     rot90 = img.rotate(90, expand=True)
@@ -88,7 +88,7 @@ def augment_image_comprehensive(img: Image.Image, level: int = 0) -> list[Image.
     if level >= 1:
         # --- Moderate augmentations ---
         # 4. Vertical flip + slight blur
-        vflip = img.transpose(Image.FLIP_TOP_BOTTOM)
+        vflip = img.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
         results.append(vflip.filter(ImageFilter.GaussianBlur(radius=random.uniform(0.3, 0.8))))
 
         # 5. Rotation 180 + color jitter
@@ -102,7 +102,7 @@ def augment_image_comprehensive(img: Image.Image, level: int = 0) -> list[Image.
         top = int(h * crop_frac)
         right = int(w * (1 - crop_frac))
         bottom = int(h * (1 - crop_frac))
-        cropped = img.crop((left, top, right, bottom)).resize((w, h), Image.LANCZOS)
+        cropped = img.crop((left, top, right, bottom)).resize((w, h), Image.Resampling.LANCZOS)
         results.append(cropped)
 
     if level >= 2:
@@ -113,9 +113,9 @@ def augment_image_comprehensive(img: Image.Image, level: int = 0) -> list[Image.
         results.append(ImageEnhance.Brightness(rand_rot).enhance(random.uniform(0.75, 0.90)))
 
         # 8. Horizontal flip + zoom crop + contrast
-        hflip_zoom = img.transpose(Image.FLIP_LEFT_RIGHT)
+        hflip_zoom = img.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
         cf = random.uniform(0.08, 0.15)
-        hflip_zoom = hflip_zoom.crop((int(w*cf), int(h*cf), int(w*(1-cf)), int(h*(1-cf)))).resize((w, h), Image.LANCZOS)
+        hflip_zoom = hflip_zoom.crop((int(w*cf), int(h*cf), int(w*(1-cf)), int(h*(1-cf)))).resize((w, h), Image.Resampling.LANCZOS)
         results.append(ImageEnhance.Contrast(hflip_zoom).enhance(random.uniform(0.90, 1.15)))
 
         # 9. Additive Gaussian noise
@@ -242,7 +242,7 @@ def extract_features_from_file(path: Path) -> np.ndarray:
 # HASH-BASED DEDUPLICATION
 # ===================================================================
 def image_hash(img: Image.Image, size: int = 16) -> str:
-    small = img.convert("L").resize((size, size), Image.LANCZOS)
+    small = img.convert("L").resize((size, size), Image.Resampling.LANCZOS)
     arr = np.asarray(small)
     avg = arr.mean()
     bits = (arr > avg).flatten()
@@ -340,7 +340,7 @@ def main():
                         seen_hashes.add(h)
 
                         # Save augmented image
-                        aug_img_resized = aug_img.resize((IMAGE_SIZE, IMAGE_SIZE), Image.LANCZOS)
+                        aug_img_resized = aug_img.resize((IMAGE_SIZE, IMAGE_SIZE), Image.Resampling.LANCZOS)
                         out_name = f"aug_{img_path.stem}_{j:02d}.jpg"
                         aug_img_resized.save(AUGMENTED_OUTPUT_DIR / out_name, "JPEG", quality=92)
                         augmented_count += 1
@@ -443,6 +443,7 @@ def main():
     acc_before = accuracy_score(y_test_b, y_pred_b)
     cm_before = confusion_matrix(y_test_b, y_pred_b)
     report_before = classification_report(y_test_b, y_pred_b, target_names=LABELS, output_dict=True)
+    assert isinstance(report_before, dict)
 
     print(f"\n  BASELINE Metrics (Test Set, {len(X_test_b)} samples):")
     print(f"  Overall Accuracy: {acc_before*100:.2f}%")
@@ -486,6 +487,7 @@ def main():
     acc_after = accuracy_score(y_test_a, y_pred_a)
     cm_after = confusion_matrix(y_test_a, y_pred_a)
     report_after = classification_report(y_test_a, y_pred_a, target_names=LABELS, output_dict=True)
+    assert isinstance(report_after, dict)
 
     print(f"\n  FINE-TUNED Metrics (Test Set, {len(X_test_a)} samples):")
     print(f"  Overall Accuracy: {acc_after*100:.2f}%")
@@ -534,6 +536,7 @@ def main():
     final_acc = accuracy_score(y_before, y_pred_orig)
     final_cm = confusion_matrix(y_before, y_pred_orig)
     final_report = classification_report(y_before, y_pred_orig, target_names=LABELS, output_dict=True)
+    assert isinstance(final_report, dict)
 
     print(f"\n  Fine-tuned model accuracy on original data: {final_acc*100:.2f}%")
     print(f"  Confusion Matrix on original data:")
@@ -547,7 +550,7 @@ def main():
     # ==========================================================
     print("[STEP 9] Saving model summary...")
 
-    after_counts = {LABELS[k]: int(v) for k, v in after_counter.items()}
+    after_counts = {LABELS[k]: v for k, v in after_counter.items()}
 
     model_summary = {
         "model_type": "trained_mlp_fallback",

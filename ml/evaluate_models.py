@@ -199,7 +199,9 @@ def evaluate_split(
     ece, brier = compute_ece_and_brier(probs, y_arr)
 
     # Per-class metrics
-    p, r, f, s = precision_recall_fscore_support(y_arr, preds, labels=list(range(len(CANONICAL_CLASSES))), zero_division=0)
+    p_raw, r_raw, f_raw, s_raw = precision_recall_fscore_support(y_arr, preds, labels=list(range(len(CANONICAL_CLASSES))), zero_division=0)
+    p_arr, r_arr, f_arr = np.asarray(p_raw), np.asarray(r_raw), np.asarray(f_raw)
+    s_arr = np.asarray(s_raw) if s_raw is not None else np.zeros(len(CANONICAL_CLASSES), dtype=int)
     per_class = {}
     for i, c in enumerate(CANONICAL_CLASSES):
         # Specificity = TN / (TN + FP)
@@ -207,11 +209,11 @@ def evaluate_split(
         fp = np.sum((y_arr != i) & (preds == i))
         spec = float(tn / (tn + fp)) if (tn + fp) > 0 else 0.0
         per_class[c] = {
-            "precision": round(float(p[i]), 4),
-            "recall": round(float(r[i]), 4),
-            "f1_score": round(float(f[i]), 4),
+            "precision": round(float(p_arr[i]), 4),
+            "recall": round(float(r_arr[i]), 4),
+            "f1_score": round(float(f_arr[i]), 4),
             "specificity": round(spec, 4),
-            "support": int(s[i]),
+            "support": int(s_arr[i]),
         }
 
     # WSSV false negative rate & Black Gill false positive rate
@@ -231,8 +233,8 @@ def evaluate_split(
     print(f"Brier Score:               {brier:.4f}")
 
     print("\nConfusion Matrix:")
-    col_w = 12
-    print(f"{'True \\ Pred':<{col_w}}" + "".join(f"{c:>{col_w}}" for c in CANONICAL_CLASSES))
+    header_title = "True \\ Pred"
+    print(f"{header_title:<{col_w}}" + "".join(f"{c:>{col_w}}" for c in CANONICAL_CLASSES))
     print("-" * (col_w * 4))
     for i, row in enumerate(cm):
         print(f"{CANONICAL_CLASSES[i]:<{col_w}}" + "".join(f"{val:>{col_w}}" for val in row))

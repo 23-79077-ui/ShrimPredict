@@ -140,8 +140,8 @@ def validate_image_quality(image_path: Path) -> dict:
             "reasons": reasons,
             "warnings": warnings,
             "quality_metrics": {
-                "width": int(width),
-                "height": int(height),
+                "width": width,
+                "height": height,
                 "blur_score": round(blur_score, 2),
                 "brightness": round(mean_bright, 2),
                 "contrast": round(std_bright, 2),
@@ -159,8 +159,8 @@ def validate_image_quality(image_path: Path) -> dict:
         "message": "Image quality is suitable for diagnosis.",
         "warnings": warnings,
         "quality_metrics": {
-            "width": int(width),
-            "height": int(height),
+            "width": width,
+            "height": height,
             "blur_score": round(blur_score, 2),
             "brightness": round(mean_bright, 2),
             "contrast": round(std_bright, 2),

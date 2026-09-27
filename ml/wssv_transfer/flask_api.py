@@ -8,6 +8,10 @@ import tempfile
 from pathlib import Path
 
 import cv2
+try:
+    import cv2.data
+except ImportError:
+    pass
 import numpy as np
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -86,9 +90,13 @@ def _has_human_face(image_bytes):
         return False
 
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    haarcascades = getattr(getattr(cv2, "data", None), "haarcascades", "")
+    cascade_cls = getattr(cv2, "CascadeClassifier", None)
+    if cascade_cls is None:
+        return False
     cascades = [
-        cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml"),
-        cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_profileface.xml"),
+        cascade_cls(haarcascades + "haarcascade_frontalface_default.xml"),
+        cascade_cls(haarcascades + "haarcascade_profileface.xml"),
     ]
 
     for cascade in cascades:
@@ -199,13 +207,31 @@ _try_load_unified_model()
 app = Flask(__name__)
 CORS(app)
 
+
+@app.route("/reload_models", methods=["GET", "POST"])
+@app.route("/api/reload_models", methods=["GET", "POST"])
+def reload_models_endpoint():
+    """Hot-reload models into memory without restarting Flask."""
+    _try_load_unified_model()
+    return jsonify({
+        "success": True,
+        "message": "Models reloaded successfully.",
+        "unified_available": _unified_available,
+        "labels": _unified_labels,
+    })
+
+
 def _predict_unified(image_path: Path) -> dict:
     """Run prediction using the upgraded EfficientNetV2 Keras model."""
     import tensorflow as tf
     from PIL import Image
     import numpy as np
 
-    labels = _unified_labels["classes"] if isinstance(_unified_labels, dict) and "classes" in _unified_labels else _unified_labels
+    if _unified_model is None or _unified_labels is None:
+        raise RuntimeError("Unified model is not available or failed to load")
+
+    labels_source = _unified_labels["classes"] if isinstance(_unified_labels, dict) and "classes" in _unified_labels else _unified_labels
+    labels: list[str] = list(labels_source) if labels_source is not None else []
     with Image.open(image_path) as img:
         img = img.convert("RGB").resize((224, 224))
     img_array = tf.keras.preprocessing.image.img_to_array(img)
@@ -257,16 +283,22 @@ def _predict_unified(image_path: Path) -> dict:
 # --- End unified model section ---
 
 
-def _confidence(result: dict) -> float:
+def _confidence(result: dict | None) -> float:
+    if not result:
+        return 0.0
     return float(result.get("confidence_score", result.get("confidence", 0)) or 0)
 
 
-def _is_healthy(result: dict) -> bool:
+def _is_healthy(result: dict | None) -> bool:
+    if not result:
+        return False
     text = f"{result.get('prediction', '')} {result.get('disease_name', '')} {result.get('status', '')}".lower()
     return "healthy" in text and "black gill" not in text and "white spot" not in text and "wssv" not in text
 
 
-def _is_uncertain(result: dict) -> bool:
+def _is_uncertain(result: dict | None) -> bool:
+    if not result:
+        return False
     text = f"{result.get('prediction', '')} {result.get('disease_name', '')} {result.get('status', '')}".lower()
     return "needs review" in text or "uncertain" in text
 
@@ -337,7 +369,7 @@ def _forest_agrees_with_desktop(desktop_result: dict | None, forest_result: dict
 
 def _merge_agreeing_forest_confidence(desktop_result: dict, forest_result: dict | None) -> dict:
     result = _normalized_result(dict(desktop_result))
-    if not _forest_agrees_with_desktop(result, forest_result):
+    if not forest_result or not _forest_agrees_with_desktop(result, forest_result):
         return result
 
     forest_confidence = _confidence(forest_result)
@@ -413,7 +445,7 @@ def _compute_consensus_ensemble(
     models_evaluated = []
 
     # 1. Unified EfficientNetV2 transfer model (weight: 0.50)
-    if _valid_prediction(unified_res):
+    if unified_res and _valid_prediction(unified_res):
         try:
             u_canon = _to_canonical_probabilities(unified_res.get("probabilities"))
             w_u = 0.50
@@ -425,7 +457,7 @@ def _compute_consensus_ensemble(
             print(f"[MODEL OUTPUT ERROR] Unified probabilities invalid: {e}", file=sys.stderr)
 
     # 2. Desktop MobileNet model (weight: 0.40)
-    if _valid_prediction(desktop_res):
+    if desktop_res and _valid_prediction(desktop_res):
         try:
             d_canon = _to_canonical_probabilities(desktop_res.get("probabilities"))
             w_d = 0.40
@@ -437,7 +469,7 @@ def _compute_consensus_ensemble(
             print(f"[MODEL OUTPUT ERROR] Desktop probabilities invalid: {e}", file=sys.stderr)
 
     # 3. Forest fallback model (weight: 0.08)
-    if _valid_prediction(forest_res):
+    if forest_res and _valid_prediction(forest_res):
         f_probs = forest_res.get("probabilities")
         if f_probs:
             try:
@@ -451,7 +483,7 @@ def _compute_consensus_ensemble(
                 print(f"[MODEL OUTPUT ERROR] Forest probabilities invalid: {e}", file=sys.stderr)
 
     # 4. Black Gill specialist heuristic (weight: 0.02 - weak advisory prior only)
-    if _valid_prediction(black_gill_res):
+    if black_gill_res and _valid_prediction(black_gill_res):
         bg_probs = black_gill_res.get("probabilities")
         if bg_probs:
             try:
@@ -1095,7 +1127,7 @@ def predict_endpoint():
         pipeline_debug = {
             "desktop_prediction": desktop_res.get("prediction") if desktop_res else None,
             "desktop_confidence": round(_confidence(desktop_res), 2) if desktop_res else 0,
-            "desktop_valid": bool(desktop_valid),
+            "desktop_valid": desktop_valid,
             "desktop_minimum_confidence": DESKTOP_MIN_CONFIDENCE,
             "forest_prediction": forest_res.get("prediction") if forest_res else None,
             "forest_confidence": round(_confidence(forest_res), 2) if forest_res else 0,

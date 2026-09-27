@@ -154,7 +154,9 @@ def evaluate_on_val(model: tf.keras.Model, val_ds: tf.data.Dataset, y_val: list[
     bal_acc = float(balanced_accuracy_score(y_val, y_pred))
     acc = float(np.mean(np.array(y_val) == y_pred))
 
-    p, r, f, s = precision_recall_fscore_support(y_val, y_pred, labels=[0, 1, 2, 3], zero_division=0)
+    p_raw, r_raw, f_raw, s_raw = precision_recall_fscore_support(y_val, y_pred, labels=[0, 1, 2, 3], zero_division=0)
+    p_arr, r_arr, f_arr = np.asarray(p_raw), np.asarray(r_raw), np.asarray(f_raw)
+    s_arr = np.asarray(s_raw) if s_raw is not None else np.zeros(4, dtype=int)
     cm = confusion_matrix(y_val, y_pred, labels=[0, 1, 2, 3])
 
     per_class = {}
@@ -163,11 +165,11 @@ def evaluate_on_val(model: tf.keras.Model, val_ds: tf.data.Dataset, y_val: list[
         fp = np.sum((np.array(y_val) != i) & (y_pred == i))
         spec = float(tn / (tn + fp)) if (tn + fp) > 0 else 0.0
         per_class[c] = {
-            "precision": round(float(p[i]), 4),
-            "recall": round(float(r[i]), 4),
-            "f1_score": round(float(f[i]), 4),
+            "precision": round(float(p_arr[i]), 4),
+            "recall": round(float(r_arr[i]), 4),
+            "f1_score": round(float(f_arr[i]), 4),
             "specificity": round(spec, 4),
-            "support": int(s[i]),
+            "support": int(s_arr[i]),
         }
 
     return {
@@ -252,7 +254,7 @@ def run_training_pipeline():
         metrics=["accuracy"],
     )
 
-    base_callbacks = [
+    base_callbacks: list[tf.keras.callbacks.Callback] = [
         tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=4, restore_best_weights=True),
         tf.keras.callbacks.ReduceLROnPlateau(monitor="val_loss", factor=0.5, patience=2, min_lr=1e-6),
     ]
@@ -291,7 +293,7 @@ def run_training_pipeline():
         metrics=["accuracy"],
     )
 
-    imp_callbacks = [
+    imp_callbacks: list[tf.keras.callbacks.Callback] = [
         tf.keras.callbacks.ModelCheckpoint(
             filepath=str(IMPROVED_MODEL_PATH),
             monitor="val_accuracy",

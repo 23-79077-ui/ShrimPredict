@@ -46,8 +46,8 @@ def letterbox_pil_image(
     target_w, target_h = target_size
 
     scale = min(target_w / orig_w, target_h / orig_h)
-    new_w = max(1, int(round(orig_w * scale)))
-    new_h = max(1, int(round(orig_h * scale)))
+    new_w = max(1, round(orig_w * scale))
+    new_h = max(1, round(orig_h * scale))
 
     resized = image.resize((new_w, new_h), Image.Resampling.BICUBIC)
 

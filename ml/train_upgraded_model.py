@@ -15,13 +15,33 @@ DEFAULT_MODEL_PATH = ROOT_DIR / "ml" / "artifacts" / "efficientnet_v2_disease.ke
 DEFAULT_LABELS_PATH = ROOT_DIR / "ml" / "artifacts" / "efficientnet_v2_disease_labels.json"
 DEFAULT_METRICS_PATH = ROOT_DIR / "ml" / "artifacts" / "efficientnet_v2_disease_metrics.json"
 
-CLASS_NAMES = ["Healthy", "WSSV", "Black Gill"]
-FOLDER_TO_LABEL = {
+DEFAULT_CLASS_NAMES = ["Healthy", "WSSV", "Black Gill"]
+DEFAULT_FOLDER_TO_LABEL = {
     "Healthy": "Healthy",
     "WSSV": "WSSV",
     "Black Gill": "Black Gill",
     "Black_Gill": "Black Gill",
 }
+
+
+def resolve_class_names(dataset_dir: Path) -> tuple[list[str], dict[str, str]]:
+    folder_map = {}
+    for label, folder_name in DEFAULT_FOLDER_TO_LABEL.items():
+        candidate_dirs = [dataset_dir / folder_name, dataset_dir / folder_name.replace(" ", "_")]
+        for candidate in candidate_dirs:
+            if candidate.exists():
+                folder_map[label] = candidate.name
+                break
+
+    class_names = ["Healthy", "WSSV"]
+    if "Black Gill" in folder_map:
+        class_names.append("Black Gill")
+
+    if "Healthy" not in folder_map or "WSSV" not in folder_map:
+        missing = [name for name in ("Healthy", "WSSV") if name not in folder_map]
+        raise FileNotFoundError(f"Missing images for target classes: {missing}; expected Healthy and WSSV directories in {dataset_dir}")
+
+    return class_names, {label: folder_map[label] for label in class_names}
 
 
 def parse_args() -> argparse.Namespace:
@@ -39,30 +59,31 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def collect_files(dataset_dir: Path) -> tuple[list[str], list[int], dict[str, int]]:
+def collect_files(dataset_dir: Path) -> tuple[list[str], list[int], dict[str, int], list[str]]:
     image_extensions = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
     files: list[str] = []
     labels: list[int] = []
 
-    for folder, label in FOLDER_TO_LABEL.items():
-        class_dir = dataset_dir / folder
+    class_names, folder_map = resolve_class_names(dataset_dir)
+    for label in class_names:
+        class_dir = dataset_dir / folder_map[label]
         if not class_dir.exists():
             continue
-        label_index = CLASS_NAMES.index(label)
+        label_index = class_names.index(label)
         for image_path in sorted(class_dir.rglob("*")):
             if image_path.is_file() and image_path.suffix.lower() in image_extensions:
                 files.append(str(image_path))
                 labels.append(label_index)
 
-    counts = {name: labels.count(index) for index, name in enumerate(CLASS_NAMES)}
+    counts = {name: labels.count(index) for index, name in enumerate(class_names)}
     missing = [name for name, count in counts.items() if count == 0]
     if missing:
         raise FileNotFoundError(f"Missing images for target classes: {missing}")
-    return files, labels, counts
+    return files, labels, counts, class_names
 
 
 def build_datasets(args: argparse.Namespace):
-    files, labels, counts = collect_files(args.dataset_dir)
+    files, labels, counts, class_names = collect_files(args.dataset_dir)
     image_size = (args.image_size, args.image_size)
     dataset = tf.data.Dataset.from_tensor_slices((files, labels))
     dataset = dataset.shuffle(len(files), seed=args.seed, reshuffle_each_iteration=False)
@@ -76,7 +97,7 @@ def build_datasets(args: argparse.Namespace):
         image = tf.io.decode_image(image, channels=3, expand_animations=False)
         image = tf.image.resize(image, image_size)
         image = tf.cast(image, tf.float32)
-        return image, tf.one_hot(label, len(CLASS_NAMES))
+        return image, tf.one_hot(label, len(class_names))
 
     autotune = tf.data.AUTOTUNE
     train_ds = (
@@ -94,7 +115,7 @@ def build_datasets(args: argparse.Namespace):
     return train_ds, val_ds, counts, len(files), val_size
 
 
-def build_model(image_size: int) -> tuple[tf.keras.Model, tf.keras.Model]:
+def build_model(image_size: int, num_classes: int) -> tuple[tf.keras.Model, tf.keras.Model]:
     inputs = tf.keras.Input(shape=(image_size, image_size, 3), name="image")
     augmentation = tf.keras.Sequential(
         [
@@ -118,7 +139,7 @@ def build_model(image_size: int) -> tuple[tf.keras.Model, tf.keras.Model]:
     x = base(x, training=False)
     x = layers.GlobalAveragePooling2D(name="global_pool")(x)
     x = layers.Dropout(0.35, name="dropout")(x)
-    outputs = layers.Dense(len(CLASS_NAMES), activation="softmax", name="disease")(x)
+    outputs = layers.Dense(num_classes, activation="softmax", name="disease")(x)
 
     model = tf.keras.Model(inputs, outputs, name="shrimp_efficientnetv2b0_disease")
     model.compile(
@@ -142,9 +163,10 @@ def main() -> None:
     args.model_path.parent.mkdir(parents=True, exist_ok=True)
 
     train_ds, val_ds, counts, total_images, val_size = build_datasets(args)
-    model, base = build_model(args.image_size)
+    class_names, _ = resolve_class_names(args.dataset_dir)
+    model, base = build_model(args.image_size, len(class_names))
 
-    callbacks = [
+    callbacks: list[tf.keras.callbacks.Callback] = [
         tf.keras.callbacks.ModelCheckpoint(
             filepath=str(args.model_path),
             monitor="val_accuracy",
@@ -196,8 +218,9 @@ def main() -> None:
     metrics = model.evaluate(val_ds, return_dict=True)
     model.save(args.model_path)
 
+    class_names, _ = resolve_class_names(args.dataset_dir)
     labels_payload = {
-        "classes": CLASS_NAMES,
+        "classes": class_names,
         "image_size": [args.image_size, args.image_size],
         "preprocessing": "EfficientNetV2B0 include_preprocessing=True; upload resized to 224x224 RGB.",
         "model": "EfficientNetV2B0 transfer learning",
@@ -207,7 +230,7 @@ def main() -> None:
     report = {
         "model_path": str(args.model_path),
         "labels_path": str(args.labels_path),
-        "classes": CLASS_NAMES,
+        "classes": class_names,
         "dataset_dir": str(args.dataset_dir),
         "class_counts": counts,
         "total_images": total_images,

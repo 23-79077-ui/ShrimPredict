@@ -56,10 +56,15 @@ def run_sanity_tests():
 
     all_passed = True
     for i, test in enumerate(test_cases, 1):
-        print(f"\n[{i}/{len(test_cases)}] Testing: {test['name']}")
-        print(f"     File: {test['path']}")
+        test_path = Path(str(test["path"]))
+        expected_status = str(test["expected_status"])
+        expected_class = str(test["expected_class"])
+        min_confidence = float(test["min_confidence"])
 
-        res = post_image_file(API_URL, test["path"])
+        print(f"\n[{i}/{len(test_cases)}] Testing: {test['name']}")
+        print(f"     File: {test_path}")
+
+        res = post_image_file(API_URL, test_path)
 
         pred = res.get("prediction") or res.get("disease_name")
         status = res.get("status")
@@ -71,21 +76,21 @@ def run_sanity_tests():
         print(f"     -> Image Quality   : {res.get('image_quality')}")
         print(f"     -> Prediction      : {pred}")
         print(f"     -> Status          : {status}")
-        print(f"     -> Confidence      : {conf:.2f}% (Threshold: {test['min_confidence']}%)")
+        print(f"     -> Confidence      : {conf:.2f}% (Threshold: {min_confidence}%)")
         print(f"     -> Model Used      : {model_used}")
         print(f"     -> Probabilities   : {probs}")
 
         passed = (
-            status == test["expected_status"]
-            and test["expected_class"].lower() in str(pred).lower()
-            and conf >= test["min_confidence"]
+            status == expected_status
+            and expected_class.lower() in str(pred).lower()
+            and conf >= min_confidence
             and ("Consensus" in str(model_used) or "Upgraded" in str(model_used))
         )
 
         if passed:
             print("     -> SANITY CHECK    : [PASSED]")
         else:
-            print(f"     -> SANITY CHECK    : [FAILED] (Expected {test['expected_class']} with status {test['expected_status']})")
+            print(f"     -> SANITY CHECK    : [FAILED] (Expected {expected_class} with status {expected_status})")
             all_passed = False
 
     print("\n" + "=" * 65)

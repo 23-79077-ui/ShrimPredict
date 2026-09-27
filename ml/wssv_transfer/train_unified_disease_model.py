@@ -13,16 +13,18 @@ def main():
     ARTIFACTS_DIR = ROOT_DIR / "ml" / "artifacts" / "unified_model"
     ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
 
-MODEL_PATH = ARTIFACTS_DIR / "unified_disease_model.keras"
-LABELS_PATH = ARTIFACTS_DIR / "labels.json"
+    MODEL_PATH = ARTIFACTS_DIR / "unified_disease_model.keras"
+    LABELS_PATH = ARTIFACTS_DIR / "labels.json"
 
-EXPECTED_CLASSES = ["Healthy", "Black Gill", "White Spot Syndrome Virus (WSSV)", "Cooked Shrimp"]
+    EXPECTED_CLASSES = ["Healthy", "Black Gill", "White Spot Syndrome Virus (WSSV)", "Cooked Shrimp"]
 
-if not DATA_DIR.exists():
+    if not DATA_DIR.exists():
         print(f"Error: Dataset directory {DATA_DIR} not found.")
         print("Please place your images in data/shrimp_disease_dataset/ with subfolders for each class:")
         for class_name in EXPECTED_CLASSES:
             print(f" - {class_name.replace(' ', '_')}")
+        return
+
     IMG_SIZE = 224
     BATCH_SIZE = 32
     EPOCHS = 20
@@ -91,8 +93,8 @@ if not DATA_DIR.exists():
 
     # 6. Train Model
     print("Starting training...")
-    callbacks = [
-        tf.keras.callbacks.ModelCheckpoint(filepath=MODEL_PATH, save_best_only=True, monitor="val_accuracy"),
+    callbacks: list[tf.keras.callbacks.Callback] = [
+        tf.keras.callbacks.ModelCheckpoint(filepath=str(MODEL_PATH), save_best_only=True, monitor="val_accuracy"),
         tf.keras.callbacks.EarlyStopping(patience=5, restore_best_weights=True)
     ]
     

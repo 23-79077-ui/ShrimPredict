@@ -117,9 +117,9 @@ def count_shrimp_in_image(image_path: Path) -> dict:
 
     return {
         "shrimp_detected": True,
-        "shrimp_count": int(shrimp_count),
+        "shrimp_count": shrimp_count,
         "valid_shrimp_present": True,
-        "is_cooked": bool(is_cooked),
+        "is_cooked": is_cooked,
         "status": status,
         "message": message,
         "confidence": round(float(confidence), 2),
@@ -140,7 +140,7 @@ def detect_shrimp(image_path: Path) -> dict:
             orange_mask_3 = cv2.inRange(hsv, np.array([160, 80, 90], dtype=np.uint8), np.array([180, 255, 255], dtype=np.uint8))
             orange_mask = cv2.bitwise_or(cv2.bitwise_or(orange_mask_1, orange_mask_2), orange_mask_3)
             orange_ratio = float(np.count_nonzero(orange_mask) / max(1, orange_mask.size))
-            result["is_cooked"] = bool(orange_ratio >= 0.55)
+            result["is_cooked"] = orange_ratio >= 0.55
             if result["is_cooked"]:
                 result["message"] = "Shrimp was detected, but it appears to be cooked."
     return result
