@@ -220,9 +220,9 @@ export default function CaretakerLayout() {
   return (
     <div className="saas-layout-canvas">
       {/* TOP NAVIGATION HEADER (Floating Card Architecture with Zero Bleed-Through) */}
-      <div className="top-dock-wrapper">
+      <div className="top-dock-wrapper" style={{ position: 'sticky', top: 0, zIndex: 1050 }}>
         <header className="top-dock-bar">
-        <div className="top-dock-inner" style={{ maxWidth: 1480, margin: '0 auto', width: '100%' }}>
+        <div className="top-dock-inner" style={{ maxWidth: '100%', margin: '0 auto', width: '100%' }}>
           {/* Tier 1: Brand & Executive Utilities Bar */}
         <div className="top-dock-topbar d-flex align-items-center justify-content-between w-100">
           {/* 1. Brand Logo & Farm Identity */}
@@ -238,14 +238,14 @@ export default function CaretakerLayout() {
                   objectFit: 'contain',
                   backgroundColor: '#FFFFFF',
                   padding: '1.5px',
-                  border: '1.5px solid rgba(234, 88, 12, 0.3)'
+                  border: '1.5px solid rgba(234, 88, 12, 0.5)'
                 }}
               />
               <div>
-                <span className="fw-extrabold text-dark tracking-tight d-block" style={{ fontSize: '1.18rem', letterSpacing: '-0.02em', lineHeight: 1.15 }}>
-                  Shrimp<span style={{ color: '#EA580C' }}>Predict</span>
+                <span className="fw-extrabold text-white tracking-tight d-block" style={{ fontSize: '1.18rem', letterSpacing: '-0.02em', lineHeight: 1.15 }}>
+                  Shrimp<span style={{ color: '#FF7B38' }}>Predict</span>
                 </span>
-                <span className="d-block text-muted" style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.04em', lineHeight: 1, marginTop: 2 }}>
+                <span className="d-block text-white-50" style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.04em', lineHeight: 1, marginTop: 2 }}>
                   O & B AQUAFARM
                 </span>
               </div>
@@ -254,9 +254,9 @@ export default function CaretakerLayout() {
             <span
               className="badge rounded-pill extra-small fw-semibold d-none d-sm-inline-block"
               style={{
-                backgroundColor: '#FFF7ED',
-                color: '#EA580C',
-                border: '1px solid rgba(234, 88, 12, 0.25)',
+                backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                color: '#FFFFFF',
+                border: '1px solid rgba(255, 255, 255, 0.25)',
                 fontSize: '0.68rem',
                 letterSpacing: '0.04em'
               }}
@@ -275,18 +275,18 @@ export default function CaretakerLayout() {
           <div className="d-flex align-items-center gap-2 flex-shrink-0">
             {/* Real-time Clock & Date Pill */}
             <div
-              className="d-none d-sm-flex align-items-center gap-2 px-3 py-1.5 rounded-pill border text-muted extra-small"
+              className="d-none d-sm-flex align-items-center gap-2 px-3 py-1.5 rounded-pill border text-white extra-small"
               style={{
                 height: 38,
                 fontSize: '0.78rem',
-                backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.06)' : '#F8FAFC',
-                borderColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : '#E2E8F0'
+                backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                borderColor: 'rgba(255, 255, 255, 0.2)'
               }}
             >
-              <FaClock size={11} style={{ color: '#0B2C5F' }} />
-              <span className="fw-bold font-mono" style={{ color: theme === 'dark' ? '#F1F5F9' : '#0F172A' }}>{clockDigits}</span>
-              <span className="opacity-40">•</span>
-              <span className="fw-semibold" style={{ color: theme === 'dark' ? '#94A3B8' : '#64748B' }}>{formattedDate}</span>
+              <FaClock size={11} style={{ color: '#38BDF8' }} />
+              <span className="fw-bold font-mono text-white">{clockDigits}</span>
+              <span className="opacity-40 text-white">•</span>
+              <span className="fw-semibold text-white-50">{formattedDate}</span>
             </div>
 
             {/* Theme Toggle Pill */}
@@ -296,13 +296,13 @@ export default function CaretakerLayout() {
               style={{
                 width: 38,
                 height: 38,
-                backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.06)' : '#F8FAFC',
-                borderColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : '#E2E8F0'
+                backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                borderColor: 'rgba(255, 255, 255, 0.2)'
               }}
               onClick={handleToggleTheme}
               title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`}
             >
-              {theme === 'dark' ? <FaSun size={13} style={{ color: '#EA580C' }} /> : <FaMoon size={12} className="text-muted" />}
+              {theme === 'dark' ? <FaSun size={13} style={{ color: '#FBBF24' }} /> : <FaMoon size={12} className="text-white" />}
             </button>
 
             {/* Notifications Dropdown Pill */}
@@ -313,13 +313,13 @@ export default function CaretakerLayout() {
                 style={{
                   width: 38,
                   height: 38,
-                  backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.06)' : '#F8FAFC',
-                  borderColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : '#E2E8F0'
+                  backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                  borderColor: 'rgba(255, 255, 255, 0.2)'
                 }}
                 onClick={() => setShowNotifMenu(!showNotifMenu)}
                 title="Caretaker Notifications"
               >
-                <FaBell size={13} style={{ color: '#0B2C5F' }} />
+                <FaBell size={13} style={{ color: '#FFFFFF' }} />
                 {unreadCount > 0 && (
                   <span
                     className="position-absolute top-0 start-100 translate-middle badge rounded-pill border border-light p-1"
@@ -428,8 +428,8 @@ export default function CaretakerLayout() {
                 className="btn border rounded-pill d-flex align-items-center gap-2 p-1 ps-1.5 pe-2.5"
                 style={{
                   height: 38,
-                  backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.06)' : '#F8FAFC',
-                  borderColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : '#E2E8F0'
+                  backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                  borderColor: 'rgba(255, 255, 255, 0.2)'
                 }}
                 onClick={() => setShowUserMenu(!showUserMenu)}
               >
@@ -439,16 +439,16 @@ export default function CaretakerLayout() {
                     width: 28,
                     height: 28,
                     fontSize: '0.72rem',
-                    background: 'linear-gradient(135deg, #0B2C5F 0%, #EA580C 100%)'
+                    background: 'linear-gradient(135deg, #0284C7 0%, #EA580C 100%)'
                   }}
                 >
                   {(user?.full_name || 'Caretaker').slice(0, 2).toUpperCase()}
                 </div>
                 <div className="d-none d-md-flex flex-column text-start" style={{ lineHeight: 1.15 }}>
-                  <span className="fw-bold text-dark text-truncate" style={{ fontSize: '0.79rem', maxWidth: 110, color: theme === 'dark' ? '#F1F5F9' : '#0F172A' }}>
+                  <span className="fw-bold text-white text-truncate" style={{ fontSize: '0.79rem', maxWidth: 110 }}>
                     {user?.full_name || 'Caretaker'}
                   </span>
-                  <span className="text-muted" style={{ fontSize: '0.64rem', fontWeight: 600 }}>
+                  <span className="text-white-50" style={{ fontSize: '0.64rem', fontWeight: 600 }}>
                     Caretaker
                   </span>
                 </div>
@@ -492,8 +492,13 @@ export default function CaretakerLayout() {
             {/* Mobile Navigation Toggle */}
             <button
               type="button"
-              className="btn btn-light border rounded-pill d-flex d-lg-none align-items-center justify-content-center p-0"
-              style={{ width: 38, height: 38 }}
+              className="btn border rounded-pill d-flex d-lg-none align-items-center justify-content-center p-0 text-white"
+              style={{
+                width: 38,
+                height: 38,
+                backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                borderColor: 'rgba(255, 255, 255, 0.2)'
+              }}
               onClick={() => setShowMobileNav(!showMobileNav)}
             >
               {showMobileNav ? <FaTimes size={14} /> : <FaBars size={14} />}
@@ -554,8 +559,8 @@ export default function CaretakerLayout() {
       </header>
       </div>
 
-      {/* MAIN PAGE CONTENT (Max Width 1480px, Spacious Padding) */}
-      <main className="container-fluid px-2 px-sm-3 px-md-4 pt-2 pt-md-3 pb-5" style={{ maxWidth: 1480, margin: '0 auto' }}>
+      {/* MAIN PAGE CONTENT (Full Width Responsive Canvas) */}
+      <main className="container-fluid px-3 px-md-4 px-xl-5 pt-2 pt-md-3 pb-5" style={{ maxWidth: '100%', width: '100%' }}>
         <Outlet />
       </main>
 

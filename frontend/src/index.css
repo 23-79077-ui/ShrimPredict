@@ -5309,22 +5309,23 @@ body.dark-theme .top-dock-wrapper {
   max-width: 1480px;
   margin: 0 auto;
   width: 100%;
-  background: #FFFFFF !important;
-  border: 1px solid rgba(11, 44, 95, 0.11) !important;
+  background: linear-gradient(135deg, #071733 0%, #0B2C5F 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
   border-radius: 20px !important;
-  box-shadow: 0 10px 30px rgba(11, 44, 95, 0.08), 0 2px 8px rgba(11, 44, 95, 0.03) !important;
+  box-shadow: 0 10px 30px rgba(7, 23, 51, 0.38), 0 2px 8px rgba(7, 23, 51, 0.2) !important;
   padding: 0.75rem 1.5rem 0.65rem 1.5rem;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   font-family: 'Poppins', sans-serif;
   position: relative;
   z-index: 1045;
+  color: #FFFFFF !important;
 }
 
 [data-theme="dark"] .top-dock-bar,
 body.dark-theme .top-dock-bar {
-  background: #0B1528 !important;
-  border-color: rgba(56, 189, 248, 0.22) !important;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
+  background: linear-gradient(135deg, #040914 0%, #0B1C38 100%) !important;
+  border-color: rgba(56, 189, 248, 0.28) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7) !important;
 }
 
 @media (max-width: 768px) {
@@ -5346,13 +5347,13 @@ body.dark-theme .top-dock-bar {
  .top-dock-divider {
    height: 1px;
    width: 100%;
-   background: linear-gradient(90deg, rgba(11, 44, 95, 0.03) 0%, rgba(11, 44, 95, 0.09) 30%, rgba(11, 44, 95, 0.09) 70%, rgba(11, 44, 95, 0.03) 100%);
+   background: linear-gradient(90deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.18) 30%, rgba(255, 255, 255, 0.18) 70%, rgba(255, 255, 255, 0.04) 100%);
    margin: 0.65rem 0 0.55rem 0;
  }
 
  [data-theme="dark"] .top-dock-divider,
  body.dark-theme .top-dock-divider {
-   background: linear-gradient(90deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0.08) 30%, rgba(255, 255, 255, 0.08) 70%, rgba(255, 255, 255, 0.02) 100%);
+   background: linear-gradient(90deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.18) 30%, rgba(255, 255, 255, 0.18) 70%, rgba(255, 255, 255, 0.04) 100%);
  }
 
  /* Navigation Row (Tier 2) */
@@ -5371,7 +5372,7 @@ body.dark-theme .top-dock-bar {
    padding: 0.48rem 1rem;
    font-size: 0.835rem;
    font-weight: 600;
-   color: #475569;
+   color: rgba(255, 255, 255, 0.85);
    text-decoration: none;
    display: inline-flex;
    align-items: center;
@@ -5384,29 +5385,29 @@ body.dark-theme .top-dock-bar {
  }
 
  .dock-nav-pill:hover {
-   color: #0B2C5F;
-   background: rgba(11, 44, 95, 0.05);
-   border-color: rgba(11, 44, 95, 0.08);
+   color: #FFFFFF;
+   background: rgba(255, 255, 255, 0.16);
+   border-color: rgba(255, 255, 255, 0.22);
    transform: translateY(-1px);
  }
 
  [data-theme="dark"] .dock-nav-pill {
-   color: #94A3B8;
+   color: rgba(255, 255, 255, 0.85);
  }
 
  [data-theme="dark"] .dock-nav-pill:hover {
    color: #F8FAFC;
-   background: rgba(255, 255, 255, 0.08);
-   border-color: rgba(255, 255, 255, 0.12);
+   background: rgba(255, 255, 255, 0.18);
+   border-color: rgba(255, 255, 255, 0.25);
  }
 
- /* Active Pill Highlight - Matches .nav-pill-btn.active */
+ /* Active Pill Highlight - System Blue / Accent Cyan */
  .dock-nav-pill.active {
-   background: #0B2C5F !important;
+   background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%) !important;
    color: #FFFFFF !important;
    font-weight: 700;
-   box-shadow: 0 4px 14px rgba(11, 44, 95, 0.28) !important;
-   border-color: #0B2C5F !important;
+   box-shadow: 0 4px 14px rgba(2, 132, 199, 0.45) !important;
+   border-color: rgba(255, 255, 255, 0.3) !important;
  }
 
  .dock-nav-pill.active svg {
@@ -5415,19 +5416,19 @@ body.dark-theme .top-dock-bar {
 
  [data-theme="dark"] .dock-nav-pill.active,
  body.dark-theme .dock-nav-pill.active {
-   background: #0B2C5F !important;
+   background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%) !important;
    color: #FFFFFF !important;
-   border: 1px solid rgba(255, 255, 255, 0.2) !important;
-   box-shadow: 0 0 16px rgba(11, 44, 95, 0.4) !important;
+   border: 1px solid rgba(255, 255, 255, 0.3) !important;
+   box-shadow: 0 0 16px rgba(2, 132, 199, 0.45) !important;
  }
 
  /* Live Operational Pulse Badge (Tri-Color: Deep Blue & Muted Orange) */
  .dock-live-indicator {
    font-size: 0.72rem;
    font-weight: 600;
-   color: #0B2C5F;
-   background: rgba(11, 44, 95, 0.06);
-   border: 1px solid rgba(11, 44, 95, 0.16);
+   color: #FFFFFF;
+   background: rgba(255, 255, 255, 0.12);
+   border: 1px solid rgba(255, 255, 255, 0.2);
    padding: 0.22rem 0.65rem;
    border-radius: 9999px;
    letter-spacing: 0.02em;

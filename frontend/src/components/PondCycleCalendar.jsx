@@ -41,6 +41,29 @@ function sanitizeNotes(notes, isZeroFeed) {
     .replace(/\(0g\)\s*\(0g\)/gi, '(0g)');
 }
 
+function renderStructuredNotes(notesStr, isZeroFeed) {
+  const clean = sanitizeNotes(notesStr, isZeroFeed);
+  if (!clean || clean === 'Nominal feed' || clean === 'No feed logged (0g)') {
+    return <span className="text-muted extra-small">{clean}</span>;
+  }
+
+  const parts = clean.split('|').map((p) => p.trim()).filter(Boolean);
+  if (parts.length > 1) {
+    return (
+      <div className="d-flex flex-column gap-1 extra-small py-1">
+        {parts.map((part, idx) => (
+          <div key={idx} className="d-flex align-items-center gap-1.5">
+            <span className="rounded-circle bg-secondary bg-opacity-40 flex-shrink-0" style={{ width: 5, height: 5 }}></span>
+            <span className="text-dark fw-medium">{part}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return <span className="text-secondary extra-small fw-medium">{clean}</span>;
+}
+
 export default function PondCycleCalendar({
   pondId,
   stockingDate,
@@ -368,7 +391,7 @@ export default function PondCycleCalendar({
   };
 
   return (
-    <div className="pond-cycle-calendar-container bg-white rounded-4 shadow-sm border p-3 p-md-4">
+    <div className="pond-cycle-calendar-container bg-white w-100 p-3 p-md-4 p-xl-5">
       {/* Header bar */}
       <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 pb-3 border-bottom">
         <div>
@@ -551,15 +574,15 @@ export default function PondCycleCalendar({
             <div
               key={`${cell.dateStr}-${idx}`}
               onClick={() => handleCellClick(cell)}
-              className="p-1 p-sm-2 rounded-3 text-center position-relative cursor-pointer transition-all"
+              className="p-2 rounded-3 text-center position-relative cursor-pointer transition-all"
               style={{
                 backgroundColor: bg,
                 border,
-                minHeight: '64px',
+                minHeight: '96px',
                 cursor: 'pointer',
                 opacity: cell.isCurrentMonth ? 1 : 0.45,
                 transform: isSelected ? 'scale(1.02)' : 'none',
-                boxShadow: isSelected ? '0 4px 12px rgba(255,122,0,0.22)' : 'none',
+                boxShadow: isSelected ? '0 4px 14px rgba(255,122,0,0.25)' : 'none',
               }}
               title={
                 cell.doc !== null
@@ -568,16 +591,19 @@ export default function PondCycleCalendar({
               }
             >
               {/* Day Number */}
-              <div className="d-flex justify-content-between align-items-center">
-                <span className="fw-extrabold" style={{ fontSize: '0.85rem', color: textColor }}>
+              <div className="d-flex justify-content-between align-items-center mb-1">
+                <span className="fw-extrabold" style={{ fontSize: '0.95rem', color: textColor }}>
                   {cell.dayNum}
                 </span>
                 {hasLogs && (
                   <span
-                    className="rounded-circle"
-                    style={{ width: 6, height: 6, backgroundColor: '#0284C7' }}
-                    title="Feeding logged on this date"
-                  ></span>
+                    className="d-inline-flex align-items-center gap-1 px-1.5 py-0.5 rounded-pill"
+                    style={{ backgroundColor: 'rgba(2, 132, 199, 0.12)', color: '#0284C7', fontSize: '0.65rem', fontWeight: 700 }}
+                    title="Feeding records logged on this date"
+                  >
+                    <span className="rounded-circle" style={{ width: 6, height: 6, backgroundColor: '#0284C7' }}></span>
+                    Logged
+                  </span>
                 )}
               </div>
 
@@ -585,25 +611,25 @@ export default function PondCycleCalendar({
               {cell.doc !== null && cell.doc >= 1 && (
                 <div className="mt-1">
                   <span
-                    className="badge px-1 py-0.5 rounded-pill fw-bold"
+                    className="badge px-2 py-1 rounded-pill fw-bold"
                     style={{
-                      fontSize: '0.66rem',
+                      fontSize: '0.72rem',
                       backgroundColor: docBadgeBg,
                       color: docBadgeText,
                       lineHeight: 1.1,
                       display: 'inline-block',
                     }}
                   >
-                    D{cell.doc}
+                    Day {cell.doc}
                   </span>
                   <div
-                    className="extra-small fw-semibold mt-0.5 d-none d-sm-block text-truncate"
+                    className="extra-small fw-bold mt-1 d-none d-sm-block text-truncate"
                     style={{
-                      fontSize: '0.62rem',
+                      fontSize: '0.68rem',
                       color: isTransferDay ? '#B45309' : (isNursery ? '#047857' : (isGrowout ? '#1D4ED8' : '#9CA3AF')),
                     }}
                   >
-                    {isTransferDay ? 'TRANSFER' : isNursery ? 'Starter' : (isGrowout ? 'Grower' : 'Upcoming')}
+                    {isTransferDay ? 'TRANSFER DAY' : isNursery ? 'Nursery Feed' : (isGrowout ? 'Grower Feed' : 'Upcoming')}
                   </div>
                 </div>
               )}
@@ -735,16 +761,16 @@ export default function PondCycleCalendar({
                 </div>
               </div>
 
-              <div className="table-responsive rounded-3 border bg-white shadow-xs">
-                <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.8rem' }}>
+              <div className="table-responsive rounded-3 border bg-white shadow-xs" style={{ overflowX: 'auto', maxWidth: '100%' }}>
+                <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.83rem', minWidth: '1050px', tableLayout: 'auto' }}>
                   <thead className="table-light">
                     <tr className="text-muted extra-small text-uppercase">
-                      <th className="ps-3 py-2">Time Slot</th>
-                      <th className="py-2">Mass (Grams / Kg)</th>
-                      <th className="py-2">Feed Formulation</th>
-                      <th className="py-2">Vitamins & Supplements</th>
-                      <th className="py-2">Notes / Status</th>
-                      <th className="pe-3 py-2">Caretaker</th>
+                      <th className="ps-3 py-2.5" style={{ width: '130px', whiteSpace: 'nowrap' }}>Time Slot</th>
+                      <th className="py-2.5" style={{ width: '160px', whiteSpace: 'nowrap' }}>Mass (Grams / Kg)</th>
+                      <th className="py-2.5" style={{ width: '150px', whiteSpace: 'nowrap' }}>Feed Formulation</th>
+                      <th className="py-2.5" style={{ width: '220px', whiteSpace: 'nowrap' }}>Vitamins &amp; Supplements</th>
+                      <th className="py-2.5" style={{ minWidth: '320px' }}>Notes / Status</th>
+                      <th className="pe-3 py-2.5" style={{ width: '150px', whiteSpace: 'nowrap' }}>Caretaker</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -785,7 +811,7 @@ export default function PondCycleCalendar({
                             )}
                           </td>
                           <td>
-                            <span className="text-secondary extra-small">{sanitizeNotes(log.notes, isZeroFeed)}</span>
+                            {renderStructuredNotes(log.notes, isZeroFeed)}
                           </td>
                           <td className="pe-3">
                             <span className="badge bg-light text-dark border extra-small">{log.recorded_by_name || log.recorded_by || 'Caretaker'}</span>

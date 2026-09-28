@@ -80,9 +80,8 @@ $ensureFeedingTable = function ($conn): void {
         }
     }
 
-    // Ensure column widths are adequate for detailed status strings and id is AUTO_INCREMENT
+    // Ensure column widths are adequate for detailed status strings
     try {
-        $conn->exec("ALTER TABLE feeding_records MODIFY COLUMN id INT AUTO_INCREMENT");
         $conn->exec("ALTER TABLE feeding_records MODIFY COLUMN tray_monitoring_status VARCHAR(150) DEFAULT NULL");
         $conn->exec("ALTER TABLE feeding_records MODIFY COLUMN vitamin_name VARCHAR(150) DEFAULT NULL");
     } catch (Throwable $e) {

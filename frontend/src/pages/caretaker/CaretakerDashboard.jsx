@@ -705,32 +705,33 @@ export default function CaretakerDashboard() {
               return (
                 <div key={pond.id} className="col-12 col-md-6 col-lg-4">
                   <div
-                    className="p-3.5 rounded-4 bg-white border d-flex flex-column justify-content-between h-100 transition-all hover-shadow"
+                    className="p-4 rounded-4 bg-white border d-flex flex-column justify-content-between h-100 transition-all hover-shadow"
                     style={{
                       borderLeft: isVerified ? '4px solid #0B2C5F' : '4px solid #EA580C',
-                      borderColor: 'rgba(11, 44, 95, 0.09)',
-                      boxShadow: '0 2px 12px rgba(11, 44, 95, 0.04)',
-                      minHeight: 215,
+                      borderColor: 'rgba(11, 44, 95, 0.12)',
+                      boxShadow: '0 4px 16px rgba(11, 44, 95, 0.05)',
+                      minHeight: 225,
+                      overflow: 'hidden',
                     }}
                   >
                     <div>
                       {/* Tier 1: Pond Name & Status Badge */}
-                      <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
-                        <div className="d-flex align-items-center gap-2">
+                      <div className="d-flex align-items-center justify-content-between gap-2 mb-3">
+                        <div className="d-flex align-items-center gap-2.5">
                           <div
                             className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
                             style={{
-                              width: 32,
-                              height: 32,
+                              width: 34,
+                              height: 34,
                               backgroundColor: isVerified ? 'rgba(11, 44, 95, 0.07)' : '#FFF7ED',
                               color: isVerified ? '#0B2C5F' : '#EA580C',
-                              fontSize: '0.82rem',
+                              fontSize: '0.85rem',
                             }}
                           >
                             <FaWater />
                           </div>
                           <div>
-                            <strong className="d-block" style={{ color: '#0B2C5F', fontSize: '0.95rem', lineHeight: 1.2 }}>
+                            <strong className="d-block" style={{ color: '#0B2C5F', fontSize: '0.98rem', lineHeight: 1.2 }}>
                               {pond.pond_name}
                             </strong>
                             <span className="text-muted extra-small">Production Basin</span>
@@ -740,7 +741,7 @@ export default function CaretakerDashboard() {
                         {/* Status badge */}
                         {isVerified ? (
                           <span
-                            className="d-inline-flex align-items-center gap-1 px-2.5 py-1 rounded-pill"
+                            className="d-inline-flex align-items-center gap-1.5 px-3 py-1 rounded-pill"
                             style={{
                               backgroundColor: 'rgba(11, 44, 95, 0.07)',
                               border: '1px solid rgba(11, 44, 95, 0.18)',
@@ -750,12 +751,12 @@ export default function CaretakerDashboard() {
                               whiteSpace: 'nowrap',
                             }}
                           >
-                            <FaCheckCircle size={9} style={{ color: '#0B2C5F' }} />
+                            <FaCheckCircle size={10} style={{ color: '#0B2C5F' }} />
                             <span>Verified</span>
                           </span>
                         ) : (
                           <span
-                            className="d-inline-flex align-items-center gap-1.5 px-2.5 py-1 rounded-pill"
+                            className="d-inline-flex align-items-center gap-1.5 px-3 py-1 rounded-pill"
                             style={{
                               backgroundColor: '#FFF7ED',
                               border: '1px solid rgba(234, 88, 12, 0.28)',
@@ -780,14 +781,14 @@ export default function CaretakerDashboard() {
                         if (!doc) return null;
                         const isNursery = doc >= 1 && doc <= 19;
                         return (
-                          <div className="mb-2.5">
+                          <div className="mb-3">
                             <span
-                              className="badge rounded-pill px-2.5 py-1 extra-small fw-bold"
+                              className="badge rounded-pill px-3 py-1.5 extra-small fw-bold"
                               style={{
                                 backgroundColor: isNursery ? 'rgba(11, 44, 95, 0.06)' : '#FFF7ED',
                                 color: isNursery ? '#0B2C5F' : '#EA580C',
                                 border: isNursery ? '1px solid rgba(11, 44, 95, 0.14)' : '1px solid rgba(234, 88, 12, 0.22)',
-                                fontSize: '0.7rem',
+                                fontSize: '0.72rem',
                               }}
                             >
                               {isNursery ? `Day ${doc} Nursery (DOC #${doc})` : `Day ${doc} Grow-out (DOC #${doc})`}
@@ -798,29 +799,29 @@ export default function CaretakerDashboard() {
 
                       {/* Tier 3: Telemetry Cluster Strip */}
                       <div
-                        className="p-2.5 rounded-3 mb-3"
+                        className="p-3 rounded-3 mb-3.5"
                         style={{
                           backgroundColor: isVerified ? '#F8FAFD' : '#FFFBF5',
-                          border: isVerified ? '1px solid rgba(11, 44, 95, 0.07)' : '1px dashed rgba(234, 88, 12, 0.28)',
+                          border: isVerified ? '1px solid rgba(11, 44, 95, 0.08)' : '1px dashed rgba(234, 88, 12, 0.28)',
                         }}
                       >
                         {isVerified ? (
                           <div className="d-flex align-items-center justify-content-around text-center">
                             <div>
                               <span className="text-muted extra-small d-block" style={{ fontSize: '0.68rem' }}>DO</span>
-                              <strong style={{ color: '#0B2C5F', fontSize: '0.86rem' }}>{readings?.dissolved_oxygen ?? '—'}</strong>
+                              <strong style={{ color: '#0B2C5F', fontSize: '0.88rem' }}>{readings?.dissolved_oxygen ?? '—'}</strong>
                               <small className="text-muted" style={{ fontSize: '0.62rem' }}> mg/L</small>
                             </div>
                             <div style={{ width: 1, height: 22, backgroundColor: 'rgba(11, 44, 95, 0.1)' }} />
                             <div>
                               <span className="text-muted extra-small d-block" style={{ fontSize: '0.68rem' }}>Temp</span>
-                              <strong style={{ color: '#0B2C5F', fontSize: '0.86rem' }}>{readings?.temperature ?? '—'}</strong>
+                              <strong style={{ color: '#0B2C5F', fontSize: '0.88rem' }}>{readings?.temperature ?? '—'}</strong>
                               <small className="text-muted" style={{ fontSize: '0.62rem' }}> °C</small>
                             </div>
                             <div style={{ width: 1, height: 22, backgroundColor: 'rgba(11, 44, 95, 0.1)' }} />
                             <div>
                               <span className="text-muted extra-small d-block" style={{ fontSize: '0.68rem' }}>pH</span>
-                              <strong style={{ color: '#0B2C5F', fontSize: '0.86rem' }}>{readings?.ph_level ?? '—'}</strong>
+                              <strong style={{ color: '#0B2C5F', fontSize: '0.88rem' }}>{readings?.ph_level ?? '—'}</strong>
                             </div>
                           </div>
                         ) : (
@@ -835,11 +836,11 @@ export default function CaretakerDashboard() {
                     </div>
 
                     {/* Tier 4: Action Buttons Footer */}
-                    <div className="d-flex align-items-center justify-content-between gap-2 pt-2.5 border-top" style={{ borderColor: 'rgba(11, 44, 95, 0.07)' }}>
+                    <div className="d-flex align-items-center justify-content-between gap-2 pt-3 mt-1 border-top" style={{ borderColor: 'rgba(11, 44, 95, 0.08)' }}>
                       <button
                         type="button"
-                        className="btn btn-sm btn-tri-outline px-3 py-1.5 extra-small shadow-xs"
-                        style={{ fontSize: '0.74rem' }}
+                        className="btn btn-sm btn-tri-outline px-3.5 py-1.5 extra-small shadow-xs"
+                        style={{ fontSize: '0.75rem' }}
                         onClick={() => {
                           setHistoryTargetPond(pond);
                           setIsHistoryModalOpen(true);

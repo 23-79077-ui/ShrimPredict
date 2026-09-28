@@ -66,20 +66,54 @@ function normalizeSlot(timeStr) {
 export default function FeedingHistoryPage() {
   const { user } = useAuth();
 
-  const assignedPonds = useMemo(() => (
-    user?.assigned_ponds?.length
-      ? user.assigned_ponds
-      : (user?.pond_id ? [{ id: user.pond_id, pond_name: 'Assigned Pond' }] : [])
-  ), [user?.assigned_ponds, user?.pond_id]);
-
-  const assignedPondIds = useMemo(() => (
-    Array.from(new Set([...(assignedPonds.map((pond) => pond.id) || []), user?.pond_id].filter(Boolean).map(Number)))
-  ), [assignedPonds, user?.pond_id]);
-
+  const [dbPonds, setDbPonds] = useState([]);
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    api.get('/ponds.php', { params: { user_id: user?.id || 0 } })
+      .then((res) => {
+        if (isMounted && res.data?.success && Array.isArray(res.data.ponds)) {
+          setDbPonds(res.data.ponds);
+        }
+      })
+      .catch((err) => {
+        console.error('Error fetching ponds in FeedingHistoryPage:', err);
+      });
+    return () => { isMounted = false; };
+  }, [user?.id]);
+
+  const assignedPonds = useMemo(() => {
+    let list = [];
+    if (dbPonds.length > 0) {
+      list = [...dbPonds];
+    } else if (user?.assigned_ponds?.length) {
+      list = [...user.assigned_ponds];
+    } else if (user?.pond_id) {
+      list = [{ id: user.pond_id, pond_name: 'Assigned Pond' }];
+    }
+
+    const knownIds = new Set(list.map((p) => String(p.id)));
+    (records || []).forEach((r) => {
+      if (r.pond_id && !knownIds.has(String(r.pond_id))) {
+        knownIds.add(String(r.pond_id));
+        list.push({
+          id: r.pond_id,
+          pond_name: r.pond_name || `Pond #${r.pond_id}`,
+          stocking_date: r.stocking_date,
+        });
+      }
+    });
+
+    return list;
+  }, [dbPonds, user?.assigned_ponds, user?.pond_id, records]);
+
+  const assignedPondIds = useMemo(() => (
+    Array.from(new Set([...(assignedPonds.map((pond) => pond.id) || []), user?.pond_id].filter(Boolean).map(Number)))
+  ), [assignedPonds, user?.pond_id]);
 
   // Filter States
   const [selectedPondFilter, setSelectedPondFilter] = useState('all');
@@ -592,14 +626,6 @@ export default function FeedingHistoryPage() {
       {/* HERO CONTROL STRIP (TRI-COLOR CLEAN: NAVY & WARM ORANGE) */}
       <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
         <div>
-          <div className="d-flex align-items-center gap-2 mb-1">
-            <span className="badge badge-tri-navy rounded-pill px-2.5 py-0.5 extra-small">
-              Caretaker Operations
-            </span>
-            <span className="badge badge-tri-orange rounded-pill px-2.5 py-0.5 extra-small">
-              Feeding Telemetry
-            </span>
-          </div>
           <h2 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#0B2C5F', fontSize: '1.75rem', letterSpacing: '-0.03em' }}>
             Feeding History &amp; Operations
           </h2>
@@ -633,7 +659,7 @@ export default function FeedingHistoryPage() {
             title="Inspect Culture Cycle Calendar & Transfer Milestones"
           >
             <FaCalendarAlt size={11} style={{ color: '#EA580C' }} />
-            <span>Cycle Calendar</span>
+            <span>Pond Cycle Calendar</span>
           </button>
 
           {/* Export Dropdown */}
@@ -1743,29 +1769,32 @@ export default function FeedingHistoryPage() {
         </div>
       )}
 
-      {/* POND CULTURE CYCLE CALENDAR MODAL */}
+      {/* POND CULTURE CYCLE CALENDAR OVERLAY (FULL-WIDTH BELOW TOP HEADER) */}
       {calendarModalPond && (
         <div
-          className="modal fade show d-block"
-          style={{ backgroundColor: 'rgba(7, 23, 51, 0.76)', zIndex: 1060 }}
-          tabIndex="-1"
+          className="position-fixed start-0 w-100 bg-white shadow-lg"
+          style={{
+            top: '115px',
+            height: 'calc(100vh - 115px)',
+            zIndex: 1035,
+            overflowY: 'auto',
+            overflowX: 'hidden',
+          }}
         >
-          <div className="modal-dialog modal-dialog-centered modal-lg">
-            <div className="modal-content border-0 rounded-4 overflow-hidden shadow-2xl">
-              <PondCycleCalendar
-                pondId={calendarModalPond.id}
-                stockingDate={calendarModalPond.stocking_date}
-                selectedDate={customDate || todayYMD}
-                pondName={calendarModalPond.pond_name || `Pond #${calendarModalPond.id}`}
-                records={records.filter(r => String(r.pond_id) === String(calendarModalPond.id))}
-                onSelectDate={(dateStr) => {
-                  setDateFilter('custom');
-                  setCustomDate(dateStr);
-                  setCalendarModalPond(null);
-                }}
-                onClose={() => setCalendarModalPond(null)}
-              />
-            </div>
+          <div className="p-3 p-md-4">
+            <PondCycleCalendar
+              pondId={calendarModalPond.id}
+              stockingDate={calendarModalPond.stocking_date}
+              selectedDate={customDate || todayYMD}
+              pondName={calendarModalPond.pond_name || `Pond #${calendarModalPond.id}`}
+              records={records.filter(r => String(r.pond_id) === String(calendarModalPond.id))}
+              onSelectDate={(dateStr) => {
+                setDateFilter('custom');
+                setCustomDate(dateStr);
+                setCalendarModalPond(null);
+              }}
+              onClose={() => setCalendarModalPond(null)}
+            />
           </div>
         </div>
       )}
