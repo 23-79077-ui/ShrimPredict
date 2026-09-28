@@ -219,7 +219,7 @@ export default function CaretakerLayout() {
 
   return (
     <div className="saas-layout-canvas">
-      {/* 🌟 TOP NAVIGATION HEADER (Floating Card Architecture with Zero Bleed-Through) */}
+      {/* TOP NAVIGATION HEADER (Floating Card Architecture with Zero Bleed-Through) */}
       <div className="top-dock-wrapper">
         <header className="top-dock-bar">
         <div className="top-dock-inner" style={{ maxWidth: 1480, margin: '0 auto', width: '100%' }}>
@@ -554,12 +554,12 @@ export default function CaretakerLayout() {
       </header>
       </div>
 
-      {/* 🌟 MAIN PAGE CONTENT (Max Width 1480px, Spacious Padding) */}
+      {/* MAIN PAGE CONTENT (Max Width 1480px, Spacious Padding) */}
       <main className="container-fluid px-2 px-sm-3 px-md-4 pt-2 pt-md-3 pb-5" style={{ maxWidth: 1480, margin: '0 auto' }}>
         <Outlet />
       </main>
 
-      {/* 📱 MOBILE BOTTOM APP NAVIGATION DOCK (Thumb-Friendly Navigation for Screens < 992px) */}
+      {/* MOBILE BOTTOM APP NAVIGATION DOCK (Thumb-Friendly Navigation for Screens < 992px) */}
       <nav className="caretaker-mobile-bottom-dock" aria-label="Caretaker Mobile Navigation">
         <NavLink to="/caretaker/dashboard" className={({ isActive }) => `mobile-dock-item ${isActive ? 'active' : ''}`}>
           <span className="mobile-dock-icon">{dockIcons.dashboard}</span>

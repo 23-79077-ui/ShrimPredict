@@ -243,7 +243,7 @@ export default function AdminLayout() {
 
   return (
     <div className="saas-layout-canvas">
-      {/* 🌟 TOP NAVIGATION HEADER (Floating Capsule with Zero Top Leakage) */}
+      {/* TOP NAVIGATION HEADER (Floating Capsule with Zero Top Leakage) */}
       <div className="top-dock-wrapper">
         <header className="top-dock-bar">
           <div className="top-dock-inner" style={{ maxWidth: 1480, margin: '0 auto', width: '100%' }}>
@@ -585,7 +585,7 @@ export default function AdminLayout() {
       </header>
     </div>
 
-      {/* 🌟 MAIN PAGE CONTENT (Max Width 1480px, Spacious Padding) */}
+      {/* MAIN PAGE CONTENT (Max Width 1480px, Spacious Padding) */}
       <main className="container-fluid px-3 px-md-4 pb-5" style={{ maxWidth: 1480, margin: '0 auto' }}>
         <Outlet />
       </main>

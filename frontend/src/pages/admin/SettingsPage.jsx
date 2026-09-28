@@ -727,7 +727,7 @@ export default function SettingsPage() {
 
   return (
     <div className="container-fluid px-0 px-md-3 pb-5">
-      {/* 🌟 1. EXECUTIVE HERO BANNER */}
+      {/* 1. EXECUTIVE HERO BANNER */}
       <div className="disease-hero-banner d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
         <div className="d-flex align-items-center gap-3">
           <div
@@ -775,7 +775,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* 🌟 2. 4 TOP SYSTEM SUMMARY KPI CARDS */}
+      {/* 2. 4 TOP SYSTEM SUMMARY KPI CARDS */}
       <div className="row g-3 g-xl-4 mb-4">
         {/* Card 1: Admin Profile */}
         <div className="col-12 col-sm-6 col-xl-3">
@@ -928,7 +928,7 @@ export default function SettingsPage() {
                     style={{ right: 10, fontSize: '0.85rem' }}
                     onClick={() => setSearchQuery('')}
                   >
-                    ✕
+                    &times;
                   </button>
                 )}
               </div>
@@ -1118,7 +1118,7 @@ export default function SettingsPage() {
                       </div>
                     </div>
 
-                    {/* 🌟 EDIT PROFILE BUTTON IN LOWER RIGHT PART */}
+                    {/* EDIT PROFILE BUTTON IN LOWER RIGHT PART */}
                     <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-4.5 pt-4 border-top">
                       <div className="text-muted extra-small d-flex align-items-center gap-2">
                         <FaShieldAlt className="text-success" size={14} />
@@ -1416,7 +1416,7 @@ export default function SettingsPage() {
                   <FaFish size={20} />
                 </div>
                 <div>
-                  <h4 className="fw-bold mb-0 text-dark">🦐 Harvest Settings</h4>
+                  <h4 className="fw-bold mb-0 text-dark">Harvest Settings</h4>
                   <small className="text-muted">Itakda ang target harvest age at readiness threshold na ginagamit ng system.</small>
                 </div>
               </div>
@@ -1645,7 +1645,7 @@ export default function SettingsPage() {
                   <FaSlidersH size={20} />
                 </div>
                 <div>
-                  <h4 className="fw-bold mb-0 text-dark">📄 System Preferences</h4>
+                  <h4 className="fw-bold mb-0 text-dark">System Preferences</h4>
                   <small className="text-muted">Theme, language, at date/time format.</small>
                 </div>
               </div>
@@ -1891,7 +1891,7 @@ export default function SettingsPage() {
                     <FaUserCheck size={20} />
                   </div>
                   <div>
-                    <h4 className="fw-bold mb-0 text-dark">📁 Archived Caretakers Directory</h4>
+                    <h4 className="fw-bold mb-0 text-dark">Archived Caretakers Directory</h4>
                     <small className="text-muted">Preserved record archives of resigned, inactive, or former farm caretakers.</small>
                   </div>
                 </div>
@@ -2040,14 +2040,14 @@ export default function SettingsPage() {
                     className="mx-auto rounded-4 bg-primary text-white d-flex align-items-center justify-content-center mb-3 shadow-lg"
                     style={{ width: 78, height: 78, fontSize: '2rem', fontWeight: 800 }}
                   >
-                    🦐
+                    <FaFish size={36} />
                   </div>
                   <h3 className="fw-bold text-primary mb-1">ShrimpPredict</h3>
                   <span className="badge bg-primary px-3.5 py-1.5 rounded-pill fs-6 fw-normal mb-2">
                     Version 1.0
                   </span>
                   <p className="text-muted max-w-md mx-auto small">
-                    Smart AI-Powered Shrimp Disease Risk Prediction & Pond Monitoring System.
+                    Smart Shrimp Disease Risk Prediction & Pond Monitoring System.
                   </p>
                 </div>
 
@@ -2094,7 +2094,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* 📁 FULL ARCHIVED CARETAKER DETAILS MODAL */}
+      {/* FULL ARCHIVED CARETAKER DETAILS MODAL */}
       {(selectedArchivedDetails || loadingDetails) && (
         <div
           className="modal fade show d-block"
@@ -2258,7 +2258,7 @@ export default function SettingsPage() {
                         </div>
                         <div className="col-12 col-sm-6 col-md-3">
                           <div className="p-3 rounded-4 bg-light border">
-                            <small className="text-muted extra-small fw-semibold d-block mb-1">AI Detection Accuracy</small>
+                            <small className="text-muted extra-small fw-semibold d-block mb-1">Detection Accuracy</small>
                             <h4 className="fw-extrabold text-primary mb-0">{selectedArchivedDetails.performance.ai_detection_accuracy}</h4>
                           </div>
                         </div>

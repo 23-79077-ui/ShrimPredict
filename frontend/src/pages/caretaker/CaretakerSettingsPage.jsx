@@ -347,7 +347,7 @@ export default function CaretakerSettingsPage() {
                     style={{ right: 10, fontSize: '0.85rem' }}
                     onClick={() => setSearchQuery('')}
                   >
-                    ✕
+                    &times;
                   </button>
                 )}
               </div>

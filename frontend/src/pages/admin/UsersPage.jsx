@@ -463,7 +463,7 @@ export default function UsersPage() {
 
   return (
     <div className="users-page-container pb-5" style={{ fontFamily: "'Poppins', sans-serif" }}>
-      {/* 🌟 1. HERO INTELLIGENCE & CONTROL BANNER */}
+      {/* 1. HERO INTELLIGENCE & CONTROL BANNER */}
       <div className="user-hero-banner d-flex justify-content-between align-items-center flex-wrap gap-3">
         <div className="d-flex align-items-center gap-3">
           <div
@@ -525,7 +525,7 @@ export default function UsersPage() {
         </div>
       </div>
 
-      {/* 🌟 2. 4 TRI-COLOR OPERATIONAL TELEMETRY CARDS */}
+      {/* 2. 4 TRI-COLOR OPERATIONAL TELEMETRY CARDS */}
       <div className="row g-3 g-xl-4 mb-4">
         {/* Card 1: Total Users */}
         <div className="col-12 col-sm-6 col-md-3">
@@ -640,7 +640,7 @@ export default function UsersPage() {
         </div>
       </div>
 
-      {/* 🌟 3. UNIFIED SEARCH, FILTER & SORT CONTROL STRIP */}
+      {/* 3. UNIFIED SEARCH, FILTER & SORT CONTROL STRIP */}
       <AdminFilterToolbar
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
@@ -670,8 +670,8 @@ export default function UsersPage() {
             colClass: 'col-12 col-md-3',
             options: [
               { value: 'All', label: 'All Statuses' },
-              { value: 'Active', label: '🟢 Active' },
-              { value: 'Inactive', label: '🔴 Inactive' }
+              { value: 'Active', label: 'Active' },
+              { value: 'Inactive', label: 'Inactive' }
             ]
           },
           {
@@ -692,7 +692,7 @@ export default function UsersPage() {
             onChange: setSortBy,
             colClass: 'col-12 col-md-3',
             options: [
-              { value: 'newest', label: 'Newest First ⬇' },
+              { value: 'newest', label: 'Newest First' },
               { value: 'name', label: 'Name (A - Z)' },
               { value: 'role', label: 'Role Classification' }
             ]
@@ -707,7 +707,7 @@ export default function UsersPage() {
         }}
       />
 
-      {/* 🌟 4. USERS TABLE MATRIX */}
+      {/* 4. USERS TABLE MATRIX */}
       <div className="tri-card p-4">
         <div className="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
           <div>
@@ -815,7 +815,7 @@ export default function UsersPage() {
                               : { background: '#FFF1F2', color: '#E11D48', border: '1px solid #FECDD3' }
                           }
                         >
-                          {user.status === 'Active' ? '🟢 Active' : '🔴 Inactive'}
+                          {user.status === 'Active' ? 'Active' : 'Inactive'}
                         </span>
                       </td>
 
@@ -904,7 +904,7 @@ export default function UsersPage() {
         </div>
       </div>
 
-      {/* 🌟 5. RADICAL REDESIGN: CREATE & EDIT CARETAKER MODAL */}
+      {/* 5. RADICAL REDESIGN: CREATE & EDIT CARETAKER MODAL */}
       {(showCreateModal || editingUser) && (
         <div
           className="modal fade show d-block"
@@ -947,7 +947,7 @@ export default function UsersPage() {
                     setEditingUser(null);
                   }}
                 >
-                  ✕
+                  &times;
                 </button>
               </div>
 
@@ -1059,8 +1059,8 @@ export default function UsersPage() {
                             onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                             style={{ borderRadius: 12, height: 42, fontSize: '0.88rem' }}
                           >
-                            <option value="Active">Active Operational 🟢</option>
-                            <option value="Inactive">Inactive Suspended 🔴</option>
+                            <option value="Active">Active Operational</option>
+                            <option value="Inactive">Inactive Suspended</option>
                           </select>
                         </div>
                         <div className="col-12 col-md-4">
@@ -1226,7 +1226,7 @@ export default function UsersPage() {
         </div>
       )}
 
-      {/* 🌟 6. USER PROFILE & PERFORMANCE MODAL */}
+      {/* 6. USER PROFILE & PERFORMANCE MODAL */}
       {viewingUser && (
         <div
           className="modal fade show d-block"
@@ -1253,7 +1253,7 @@ export default function UsersPage() {
                         className="badge rounded-pill fw-bold extra-small"
                         style={{ background: '#ECFDF5', color: '#16A34A', border: '1px solid #BBF7D0' }}
                       >
-                        🟢 {viewingUser.status || 'Active'}
+                        {viewingUser.status || 'Active'}
                       </span>
                     </div>
                     <p className="text-white text-opacity-75 mb-0 small" style={{ fontSize: '0.82rem' }}>
@@ -1267,7 +1267,7 @@ export default function UsersPage() {
                   style={{ width: 34, height: 34, background: 'rgba(255, 255, 255, 0.12)', border: 'none' }}
                   onClick={() => setViewingUser(null)}
                 >
-                  ✕
+                  &times;
                 </button>
               </div>
 

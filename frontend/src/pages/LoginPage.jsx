@@ -76,7 +76,7 @@ export default function LoginPage() {
     <div className="login-page-container min-vh-100 d-flex align-items-center py-2 py-lg-3" style={{ backgroundColor: '#071022' }}>
       <div className="container-fluid px-3 px-lg-5" style={{ maxWidth: '1260px' }}>
         <div className="row g-3 g-lg-4 align-items-center">
-          {/* 🌟 LEFT PANEL: BRANDING & ROLE CAPABILITIES */}
+          {/* LEFT PANEL: BRANDING & ROLE CAPABILITIES */}
           <div className="col-lg-6 login-left-panel pe-lg-4 text-white">
             {/* Back Button (Top Left) */}
             <div className="mb-2">
@@ -201,7 +201,7 @@ export default function LoginPage() {
             </motion.div>
           </div>
 
-          {/* ⚡ RIGHT PANEL: GLOWING LOGIN FORM CARD */}
+          {/* RIGHT PANEL: GLOWING LOGIN FORM CARD */}
           <div className="col-lg-6 login-right-panel ps-lg-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.96 }}
@@ -219,7 +219,7 @@ export default function LoginPage() {
                   borderRadius: '20px',
                 }}
               >
-                {/* 🎛️ ROLE TOGGLE PILL SWITCHER BAR */}
+                {/* ROLE TOGGLE PILL SWITCHER BAR */}
                 <div
                   className="p-1 rounded-pill d-flex mb-3"
                   style={{
@@ -269,7 +269,7 @@ export default function LoginPage() {
                   <p className="mb-0 text-muted extra-small" style={{ color: '#94A3B8', fontSize: '0.82rem', lineHeight: '1.4' }}>
                     {activeTab === 'admin'
                       ? 'Sign in to access pond management dashboards, harvest forecasts, and biosecurity settings.'
-                      : 'Sign in to log daily feed records, perform AI disease scans, and view pond status.'}
+                      : 'Sign in to log daily feed records, perform disease scans, and view pond status.'}
                   </p>
                 </div>
 

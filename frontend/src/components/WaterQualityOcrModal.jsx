@@ -1634,7 +1634,7 @@ export default function WaterQualityOcrModal({
     setScanProgress(10);
     setScanStatusText('Preparing optical scan...');
 
-    // 📄 Mode 2: Physical Paper Data Sheet -> Multimodal Vision Model (Gemini 1.5 Flash / GPT-4o-mini)
+    // Mode 2: Physical Paper Data Sheet -> Multimodal Vision Model (Gemini 1.5 Flash / GPT-4o-mini)
     if (primaryMode === 'sheet' || meterMode === 'sheet') {
       try {
         setScanProgress(25);
@@ -1703,7 +1703,7 @@ export default function WaterQualityOcrModal({
         }
 
         setScanProgress(50);
-        setScanStatusText('Transcribing handwritten logsheet with Vision AI...');
+        setScanStatusText('Transcribing handwritten logsheet with Vision OCR...');
 
         // Call Vision API backend endpoint
         const visionPayload = {
@@ -1725,9 +1725,9 @@ export default function WaterQualityOcrModal({
             timeout: 35000,
           });
         } catch (apiErr) {
-          console.warn('PHP Vision API endpoint failed or unroutable, trying Flask AI API on port 5001...', apiErr);
+          console.warn('PHP Vision API endpoint failed or unroutable, trying Flask API on port 5001...', apiErr);
           try {
-            // Secondary fallback: Call Flask AI API
+            // Secondary fallback: Call Flask API
             response = await axios.post('http://127.0.0.1:5001/api/scan_paper_logsheet', visionPayload, {
               headers: { 'Content-Type': 'application/json' },
               timeout: 35000,
@@ -1791,7 +1791,7 @@ export default function WaterQualityOcrModal({
         });
 
         setScanProgress(100);
-        setScanStatusText('All 4 parameters successfully extracted via Multimodal Vision AI.');
+        setScanStatusText('All 4 parameters successfully extracted via Multimodal Vision OCR.');
 
         Swal.fire({
           icon: 'success',
@@ -1817,7 +1817,7 @@ export default function WaterQualityOcrModal({
         if (errCode === 'API_KEY_REQUIRED' || errMsg.includes('API key')) {
           Swal.fire({
             icon: 'info',
-            title: 'Vision AI Key Required',
+            title: 'Vision OCR Key Required',
             html: `To transcribe handwritten physical logsheets using Gemini 1.5 Flash or GPT-4o-mini, please provide an API key:<br/><br/>` +
               `<input id="swal-gemini-key" class="swal2-input" placeholder="Enter Gemini API Key (AIzaSy...)" />` +
               `<div class="small text-muted mt-1">Key is saved securely in your local environment.</div>`,
@@ -1840,7 +1840,7 @@ export default function WaterQualityOcrModal({
         } else {
           Swal.fire({
             icon: 'warning',
-            title: 'Vision AI Transcription Notice',
+            title: 'Vision OCR Transcription Notice',
             text: errMsg,
             confirmButtonColor: '#0B2C5F',
           });
@@ -1851,7 +1851,7 @@ export default function WaterQualityOcrModal({
       return;
     }
 
-    // 🖩 Mode 1: Handheld Digital Meter Screen (LCD) Multi-Pass Pipeline
+    // Mode 1: Handheld Digital Meter Screen (LCD) Multi-Pass Pipeline
     try {
       const { fullUrl, upperFocusUrl, lcdCropUrl, geomLine1, geomLine2 } = await preprocessImageCanvas(imageSource);
       setScanProgress(30);
@@ -2137,7 +2137,7 @@ export default function WaterQualityOcrModal({
         style={{ maxWidth: '1180px', width: '95%' }}
       >
         <div className="modal-content border-0 rounded-4 shadow-2xl overflow-hidden bg-white">
-          {/* 🌟 1. HERO HEADER */}
+          {/* 1. HERO HEADER */}
           <div
             className="p-3 px-4 text-white position-relative"
             style={{
@@ -2165,7 +2165,7 @@ export default function WaterQualityOcrModal({
                       Water Quality Telemetry Scanner
                     </h5>
                     <span className="badge bg-info bg-opacity-25 text-white border border-info border-opacity-50 rounded-pill extra-small">
-                      Dual-Mode AI
+                      Dual-Mode OCR
                     </span>
                   </div>
                   <p className="mb-0 text-white text-opacity-70 small">
@@ -2188,7 +2188,7 @@ export default function WaterQualityOcrModal({
                     setMeterMode('sheet');
                   }}
                 >
-                  <FaFileAlt size={11} /> Paper Sheet (AI Vision)
+                  <FaFileAlt size={11} /> Paper Sheet (Vision OCR)
                 </button>
                 <button
                   type="button"
@@ -2219,7 +2219,7 @@ export default function WaterQualityOcrModal({
 
           <div className="modal-body p-3 p-lg-4" style={{ backgroundColor: '#F8FAFC' }}>
             <div className="row g-3 g-lg-4">
-              {/* 🌟 LEFT COLUMN: CAMERA / UPLOAD VIEWFINDER (COL-LG-5) */}
+              {/* LEFT COLUMN: CAMERA / UPLOAD VIEWFINDER (COL-LG-5) */}
               <div className="col-12 col-lg-5 d-flex flex-column">
                 <div className="bg-white p-3 rounded-4 border shadow-xs h-100 d-flex flex-column justify-content-between">
                   <div>
@@ -2299,7 +2299,7 @@ export default function WaterQualityOcrModal({
                           <div className="position-absolute top-0 end-0 m-2 d-flex flex-column gap-1 align-items-end">
                             {ocrConfidence && (
                               <span className="badge bg-success shadow-sm extra-small">
-                                ✓ AI Vision: {Math.round(ocrConfidence)}% Conf
+                                Vision OCR: {Math.round(ocrConfidence)}% Conf
                               </span>
                             )}
                             {deskewAngle !== null && Math.abs(deskewAngle) >= 0.5 && (
@@ -2445,7 +2445,7 @@ export default function WaterQualityOcrModal({
                     )}
                   </div>
 
-                  {/* Clean AI Vision Status Notification */}
+                  {/* Clean Vision OCR Status Notification */}
                   {scanSummary && (
                     <div className="mt-3 p-2.5 rounded-3 bg-success bg-opacity-10 border border-success border-opacity-20 d-flex align-items-center justify-content-between">
                       <div className="d-flex align-items-center gap-2">
@@ -2462,7 +2462,7 @@ export default function WaterQualityOcrModal({
                 </div>
               </div>
 
-              {/* 🌟 RIGHT COLUMN: VERIFIED TELEMETRY FORM & CONFIRMATION (COL-LG-7) */}
+              {/* RIGHT COLUMN: VERIFIED TELEMETRY FORM & CONFIRMATION (COL-LG-7) */}
               <div className="col-12 col-lg-7">
                 <form onSubmit={handleCommitRecord} className="h-100 d-flex flex-column">
                   <div className="bg-white p-3 p-md-3.5 rounded-4 border shadow-xs h-100 d-flex flex-column justify-content-between">
@@ -2569,7 +2569,7 @@ export default function WaterQualityOcrModal({
                         )}
                       </div>
 
-                      {/* 🌟 2x2 PARAMETERS GRID */}
+                      {/* 2x2 PARAMETERS GRID */}
                       <div className="row g-2.5">
                         {/* 1. Dissolved Oxygen (DO) Card */}
                         <div className="col-12 col-sm-6">

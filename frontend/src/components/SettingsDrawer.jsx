@@ -74,10 +74,10 @@ export default function SettingsDrawer({
     },
     {
       key: 'vision_key',
-      label: 'AI Vision API Keys',
+      label: 'Vision OCR API Keys',
       desc: 'Google Gemini & OpenAI API configuration',
       icon: <FaKey size={15} style={{ color: '#EC4899' }} />,
-      badge: 'Vision AI'
+      badge: 'Vision OCR'
     }
   ];
 
@@ -105,10 +105,10 @@ export default function SettingsDrawer({
     },
     {
       key: 'ai_vision',
-      label: 'AI Vision Model Keys',
+      label: 'Vision Model Keys',
       desc: 'Gemini 2.5 Flash & GPT-4o-mini keys',
       icon: <FaKey size={15} style={{ color: '#EC4899' }} />,
-      badge: 'AI Engine'
+      badge: 'Vision Engine'
     },
     {
       key: 'notifications',

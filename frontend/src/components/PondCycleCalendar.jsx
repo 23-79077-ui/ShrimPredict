@@ -395,7 +395,7 @@ export default function PondCycleCalendar({
                 <strong>
                   {stockingParsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                 </strong>{' '}
-                • Days 1–19 Nursery ➔ Day 20 Transfer ➔ Days 21–{maxRecordedDoc} Active Grow-out
+                • Days 1–19 Nursery &rarr; Day 20 Transfer &rarr; Days 21–{maxRecordedDoc} Active Grow-out
               </>
             ) : (
               'No stocking date configured for this pond. Using estimated timeline.'
@@ -420,19 +420,19 @@ export default function PondCycleCalendar({
         <span className="fw-bold text-muted extra-small text-uppercase">Cycle Legend:</span>
         <span className="badge px-2 py-1.5 fw-semibold d-inline-flex align-items-center gap-1" style={{ background: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0' }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#10B981', display: 'inline-block' }}></span>
-          🌱 Days 1–19: Nursery Pond
+          Days 1–19: Nursery Pond
         </span>
         <span className="badge px-2 py-1.5 fw-semibold d-inline-flex align-items-center gap-1" style={{ background: '#FEF3C7', color: '#B45309', border: '1px solid #FDE68A' }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#F59E0B', display: 'inline-block' }}></span>
-          ⚡ Day 20: Transfer Day to Grow-out
+          Day 20: Transfer Day to Grow-out
         </span>
         <span className="badge px-2 py-1.5 fw-semibold d-inline-flex align-items-center gap-1" style={{ background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE' }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#3B82F6', display: 'inline-block' }}></span>
-          🌊 Days 21–{maxRecordedDoc}: Active Grow-out
+          Days 21–{maxRecordedDoc}: Active Grow-out
         </span>
         <span className="badge px-2 py-1.5 fw-semibold d-inline-flex align-items-center gap-1" style={{ background: '#F3F4F6', color: '#6B7280', border: '1px dashed #D1D5DB' }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#9CA3AF', display: 'inline-block' }}></span>
-          ⏳ Day {maxRecordedDoc + 1}+: Upcoming (No Records Yet)
+          Day {maxRecordedDoc + 1}+: Upcoming (No Records Yet)
         </span>
       </div>
 

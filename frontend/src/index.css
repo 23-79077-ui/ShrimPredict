@@ -5288,7 +5288,7 @@
    color: #F0F6FF;
  }
 
- /* 🌟 FLOATING TOP NAVIGATION DOCK (Capsule Floating with Zero Content Bleed) */
+ /*  FLOATING TOP NAVIGATION DOCK (Capsule Floating with Zero Content Bleed) */
 .top-dock-wrapper {
   position: sticky;
   top: 0;
@@ -5459,7 +5459,7 @@ body.dark-theme .top-dock-bar {
    }
  }
 
- /* 🌟 ASYMMETRICAL MASONRY CARD (Matching .stat-box-modern on Landing Page) */
+ /*  ASYMMETRICAL MASONRY CARD (Matching .stat-box-modern on Landing Page) */
  .asymmetric-card {
    border-radius: 20px !important;
    background: #FFFFFF;
@@ -5490,7 +5490,7 @@ body.dark-theme .top-dock-bar {
    border-color: #38BDF8;
  }
 
- /* 🌟 INTERACTIVE SEGMENTED STATUS BAR (Matching Logo: Ocean Cyan & Shrimp Orange) */
+ /*  INTERACTIVE SEGMENTED STATUS BAR (Matching Logo: Ocean Cyan & Shrimp Orange) */
  .segmented-status-bar {
    height: 20px;
    border-radius: 9999px;
@@ -5561,7 +5561,7 @@ body.dark-theme .top-dock-bar {
    border-color: #38BDF8;
  }
 
- /* 🌟 HARVEST TIMELINE MILESTONE TRACK (Matching Brand Navy & Shrimp Orange) */
+ /*  HARVEST TIMELINE MILESTONE TRACK (Matching Brand Navy & Shrimp Orange) */
  .milestone-track {
    position: relative;
    display: flex;
@@ -5688,7 +5688,7 @@ body.dark-theme .top-dock-bar {
    padding: 0.2rem 0.65rem;
  }
 
- /* 🌟 FEEDING LOGS ENTERPRISE UI STYLES */
+ /*  FEEDING LOGS ENTERPRISE UI STYLES */
  .feeding-hero-banner {
    background: linear-gradient(135deg, rgba(11, 44, 95, 0.04) 0%, rgba(2, 132, 199, 0.08) 100%);
    border: 1px solid rgba(11, 44, 95, 0.08);
@@ -5855,7 +5855,7 @@ body.dark-theme .top-dock-bar {
    box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
  }
 
- /* 🌟 USER MANAGEMENT & CARETAKER MODAL ENTERPRISE STYLES */
+ /*  USER MANAGEMENT & CARETAKER MODAL ENTERPRISE STYLES */
  .user-hero-banner {
    background: linear-gradient(135deg, rgba(11, 44, 95, 0.04) 0%, rgba(2, 132, 199, 0.08) 100%);
    border: 1px solid rgba(11, 44, 95, 0.08);
@@ -5974,7 +5974,7 @@ body.dark-theme .top-dock-bar {
    color: #FFFFFF;
  }
 
- /* 🌟 DISEASE REPORTS & BIOSECURITY DIAGNOSTICS (Tri-Color System) */
+ /*  DISEASE REPORTS & BIOSECURITY DIAGNOSTICS (Tri-Color System) */
 .disease-hero-banner {
   background: #FFFFFF !important;
   border: 1px solid rgba(11, 44, 95, 0.09) !important;
@@ -6058,7 +6058,7 @@ body.dark-theme .highlighted-report-card {
   border-left-color: #EA580C !important;
 }
 
- /* 🌟 DUAL-MODE OCR WATER QUALITY INGESTION & GATING STYLES */
+ /*  DUAL-MODE OCR WATER QUALITY INGESTION & GATING STYLES */
  .water-gate-card {
    border-radius: 20px;
    box-shadow: 0 12px 36px rgba(185, 28, 28, 0.16);
@@ -6114,7 +6114,7 @@ body.dark-theme .highlighted-report-card {
  }
 
  /* ==========================================================================
-   🌟 LOGIN PAGE SPLIT LAYOUT (FIXED RIGHT FORM & INDEPENDENTLY SCROLLABLE LEFT PANEL WITH HIDDEN SCROLLBAR)
+    LOGIN PAGE SPLIT LAYOUT (FIXED RIGHT FORM & INDEPENDENTLY SCROLLABLE LEFT PANEL WITH HIDDEN SCROLLBAR)
    ========================================================================== */
  .login-page-container {
    min-height: 100vh;
@@ -6176,7 +6176,7 @@ body.dark-theme .highlighted-report-card {
  }
 
 /* ==========================================================================
-   🌟 TRI-COLOR SYSTEM DESIGN TOKENS & COMPONENTS (Brand Navy, Shrimpy Orange & Crisp Slate/White)
+    TRI-COLOR SYSTEM DESIGN TOKENS & COMPONENTS (Brand Navy, Shrimpy Orange & Crisp Slate/White)
    ========================================================================== */
 .tri-card {
   border-radius: 22px !important;
@@ -6595,7 +6595,7 @@ body.dark-theme .btn-action-squircle {
 
 
 /* ==========================================================================
-   🌟 ADMIN FILTER TOOLBAR (Tri-Color Navy & Shrimpy Orange)
+    ADMIN FILTER TOOLBAR (Tri-Color Navy & Shrimpy Orange)
    ========================================================================== */
 .admin-filter-card {
   border-radius: 20px !important;
@@ -6767,7 +6767,7 @@ body.dark-theme .admin-filter-card {
 
 
 /* ==========================================================================
-   🌟 SETTINGS SUITE (Tri-Color System)
+    SETTINGS SUITE (Tri-Color System)
    ========================================================================== */
 .settings-menu-card {
   border-radius: 20px !important;
@@ -6957,7 +6957,7 @@ body.dark-theme .setting-row-card {
 
 
 
-/* 🌟 EXECUTIVE HERO BANNER UPGRADE */
+/*  EXECUTIVE HERO BANNER UPGRADE */
 .disease-hero-banner {
   background: linear-gradient(135deg, #FFFFFF 0%, #F8FAFD 60%, #F1F5F9 100%) !important;
   border: 1px solid rgba(11, 44, 95, 0.09) !important;
@@ -6990,7 +6990,7 @@ body.dark-theme .disease-hero-banner {
   background: linear-gradient(90deg, #38BDF8 0%, #0284C7 50%, #F97316 100%);
 }
 
-/* 🌟 ALERT ACTION CARDS */
+/*  ALERT ACTION CARDS */
 .alert-action-card {
   border-radius: 20px !important;
   background: #FFFFFF !important;
@@ -7028,7 +7028,7 @@ body.dark-theme .alert-action-card {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
 }
 
-/* 🌟 MINI HIGHLIGHT STATS */
+/*  MINI HIGHLIGHT STATS */
 .tri-mini-stat {
   border-radius: 14px !important;
   background: #F8FAFD !important;

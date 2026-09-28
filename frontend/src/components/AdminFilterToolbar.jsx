@@ -31,7 +31,7 @@ export default function AdminFilterToolbar({
 }) {
   return (
     <div className="card border-0 shadow-sm rounded-4 bg-white p-4 mb-4 admin-filter-card">
-      {/* 🌟 Top Row: Search Input + Action Buttons */}
+      {/* Top Row: Search Input + Action Buttons */}
       <div className="d-flex flex-column flex-xl-row align-items-xl-center justify-content-between gap-3">
         {/* Search Bar */}
         <div className="position-relative flex-grow-1 admin-search-input-wrap" style={{ maxWidth: 560 }}>
@@ -92,7 +92,7 @@ export default function AdminFilterToolbar({
         </div>
       </div>
 
-      {/* 🌟 Middle Row: Tab Pills & Subtitle Metadata (Only shown if tabs or meta exists or showFilters is true) */}
+      {/* Middle Row: Tab Pills & Subtitle Metadata (Only shown if tabs or meta exists or showFilters is true) */}
       {showFilters && (tabs.length > 0 || metaRight) && (
         <div className="mt-3 pt-3 border-top d-flex align-items-center justify-content-between flex-wrap gap-2 pb-1">
           {/* Left Tabs */}
@@ -127,7 +127,7 @@ export default function AdminFilterToolbar({
         </div>
       )}
 
-      {/* 🌟 Bottom Row: Filter Dropdowns Grid */}
+      {/* Bottom Row: Filter Dropdowns Grid */}
       {showFilters && (filterFields.length > 0 || children || onResetFilters) && (
         <div className="mt-3 pt-3 border-top">
           {children ? (

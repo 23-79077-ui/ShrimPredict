@@ -272,7 +272,7 @@ export default function DiseaseReportsPage() {
   const trendChart = useMemo(() => ({
     labels: dailyCounts.length > 0 ? dailyCounts.map(([label]) => label) : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
     datasets: [{
-      label: 'AI Inferences',
+      label: 'Diagnostic Inferences',
       data: dailyCounts.length > 0 ? dailyCounts.map(([, count]) => count) : [3, 6, 4, 8, 5, 7, 9],
       borderColor: '#EA580C',
       backgroundColor: (context) => {
@@ -387,7 +387,7 @@ export default function DiseaseReportsPage() {
 
   return (
     <div className="disease-reports-container pb-5" style={{ fontFamily: "'Poppins', sans-serif" }}>
-      {/* 🌟 1. HERO INTELLIGENCE & BIOSECURITY CONTROL BANNER */}
+      {/* 1. HERO INTELLIGENCE & BIOSECURITY CONTROL BANNER */}
       <div className="disease-hero-banner d-flex justify-content-between align-items-center flex-wrap gap-3">
         <div className="d-flex align-items-center gap-3">
           <div
@@ -406,7 +406,7 @@ export default function DiseaseReportsPage() {
           <div>
             <div className="d-flex align-items-center gap-2 flex-wrap">
               <h3 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#0B2C5F', fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
-                Biosecurity &amp; AI Disease Diagnostics
+                Biosecurity &amp; Disease Diagnostics
               </h3>
               <span
                 className="badge rounded-pill extra-small px-3 py-1 fw-bold"
@@ -443,14 +443,14 @@ export default function DiseaseReportsPage() {
         </div>
       </div>
 
-      {/* 🌟 2. 4 TRI-COLOR OPERATIONAL TELEMETRY CARDS */}
+      {/* 2. 4 TRI-COLOR OPERATIONAL TELEMETRY CARDS */}
       <div className="row g-3 g-xl-4 mb-4">
-        {/* Card 1: Total AI Inferences */}
+        {/* Card 1: Total Inferences */}
         <div className="col-12 col-sm-6 col-xl-3">
           <div className="tri-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Total AI Inferences</span>
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Total Inferences</span>
                 <div className="tri-kpi-icon tri-kpi-icon-blue">
                   <FaMicroscope size={17} />
                 </div>
@@ -573,7 +573,7 @@ export default function DiseaseReportsPage() {
         </div>
       </div>
 
-      {/* 🌟 3. VISUAL ANALYTICS SECTION (Bar Chart + Donut Split + Trend Line) */}
+      {/* 3. VISUAL ANALYTICS SECTION (Bar Chart + Donut Split + Trend Line) */}
       <div className="row g-4 mb-4">
         {/* Left: Pathology Classification Breakdown */}
         <div className="col-12 col-xl-5">
@@ -678,7 +678,7 @@ export default function DiseaseReportsPage() {
         </div>
       </div>
 
-      {/* 🌟 4. MULTI-FILTER TOOLBAR & SEARCH STRIP */}
+      {/* 4. MULTI-FILTER TOOLBAR & SEARCH STRIP */}
       <AdminFilterToolbar
         searchQuery={search}
         onSearchChange={setSearch}
@@ -720,8 +720,8 @@ export default function DiseaseReportsPage() {
             onChange: setSortBy,
             colClass: 'col-12 col-md-4',
             options: [
-              { value: 'newest', label: 'Newest Scans First ⬇' },
-              { value: 'confidence-desc', label: 'Highest Confidence % ⬇' },
+              { value: 'newest', label: 'Newest Scans First' },
+              { value: 'confidence-desc', label: 'Highest Confidence %' },
               { value: 'name-asc', label: 'Pathogen Name (A - Z)' }
             ]
           }
@@ -734,7 +734,7 @@ export default function DiseaseReportsPage() {
         }}
       />
 
-      {/* 🌟 5. CARETAKER SCAN HISTORY MATRIX TABLE */}
+      {/* 5. CARETAKER SCAN HISTORY MATRIX TABLE */}
       <div className="tri-card p-4 mb-4">
         <div className="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom flex-wrap gap-2" style={{ borderColor: 'rgba(11, 44, 95, 0.08)' }}>
           <div>
@@ -742,7 +742,7 @@ export default function DiseaseReportsPage() {
               Caretaker Diagnostic Stream
             </h5>
             <p className="text-muted small mb-0" style={{ fontSize: '0.82rem' }}>
-              Microscopic images and real-time AI pathology results submitted by field farm caretakers.
+              Microscopic images and real-time pathology results submitted by field farm caretakers.
             </p>
           </div>
           <span className="badge badge-tri-navy rounded-pill px-3 py-1.5 extra-small">
@@ -757,7 +757,7 @@ export default function DiseaseReportsPage() {
                 <th className="py-2.5 ps-3" style={{ width: 80 }}>Snapshot</th>
                 <th className="py-2.5" style={{ minWidth: 160 }}>Basin &amp; Caretaker</th>
                 <th className="py-2.5" style={{ minWidth: 180 }}>Diagnosed Pathogen</th>
-                <th className="py-2.5" style={{ minWidth: 130 }}>AI Confidence</th>
+                <th className="py-2.5" style={{ minWidth: 130 }}>Confidence</th>
                 <th className="py-2.5" style={{ minWidth: 120 }}>Threat Level</th>
                 <th className="py-2.5" style={{ minWidth: 170 }}>Date &amp; Time</th>
                 <th className="py-2.5" style={{ minWidth: 230 }}>Clinical Recommendation</th>
@@ -837,7 +837,7 @@ export default function DiseaseReportsPage() {
                         <span className="extra-small text-muted">Vision Classifier v2.4</span>
                       </td>
 
-                      {/* AI Confidence */}
+                      {/* Confidence */}
                       <td className="py-3">
                         <div className="d-flex align-items-center justify-content-between mb-1" style={{ maxWidth: 110 }}>
                           <strong style={{ color: conf >= 90 ? '#0B2C5F' : conf >= 75 ? '#EA580C' : '#DC2626' }}>
@@ -908,7 +908,7 @@ export default function DiseaseReportsPage() {
                             type="button"
                             className="btn btn-sm btn-tri-outline px-3 py-1 extra-small shadow-xs"
                             onClick={() => setSelectedReport(report)}
-                            title="Inspect AI Pathology Snapshot"
+                            title="Inspect Pathology Snapshot"
                           >
                             <FaEye size={11} className="me-1" /> Inspect
                           </button>
@@ -933,7 +933,7 @@ export default function DiseaseReportsPage() {
         </div>
       </div>
 
-      {/* 🌟 6. LUXURY IMAGE & DIAGNOSTIC BREAKDOWN MODAL */}
+      {/* 6. LUXURY IMAGE & DIAGNOSTIC BREAKDOWN MODAL */}
       {selectedReport && (
         <div
           className="modal fade show d-block"
@@ -980,7 +980,7 @@ export default function DiseaseReportsPage() {
                   style={{ width: 34, height: 34, background: 'rgba(255, 255, 255, 0.15)', border: 'none' }}
                   onClick={() => setSelectedReport(null)}
                 >
-                  ✕
+                  &times;
                 </button>
               </div>
 
@@ -1028,7 +1028,7 @@ export default function DiseaseReportsPage() {
                       )}
 
                       <span className="badge badge-tri-navy rounded-pill fs-6 px-3 py-1.5 fw-bold">
-                        {Number(selectedReport.confidence_score || 0).toFixed(2)}% AI Confidence
+                        {Number(selectedReport.confidence_score || 0).toFixed(2)}% Confidence
                       </span>
                     </div>
 

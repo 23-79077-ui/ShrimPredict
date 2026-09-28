@@ -104,7 +104,7 @@ export default function HarvestPage() {
 
   return (
     <div className="pb-5" style={{ fontFamily: "'Poppins', sans-serif" }}>
-      {/* 🌟 1. HERO BANNER */}
+      {/* 1. HERO BANNER */}
       <div className="disease-hero-banner d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
         <div className="d-flex align-items-center gap-3">
           <div
@@ -160,7 +160,7 @@ export default function HarvestPage() {
         </div>
       </div>
 
-      {/* 🌟 2. 4 TRI-COLOR OPERATIONAL KPI CARDS */}
+      {/* 2. 4 TRI-COLOR OPERATIONAL KPI CARDS */}
       <div className="row g-3 g-xl-4 mb-4">
         {/* Card 1: Predicted Harvest */}
         <div className="col-12 col-sm-6 col-xl-3">
@@ -290,7 +290,7 @@ export default function HarvestPage() {
         </div>
       </div>
 
-      {/* 🌟 Filter Toolbar */}
+      {/* Filter Toolbar */}
       <AdminFilterToolbar
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
@@ -364,7 +364,7 @@ export default function HarvestPage() {
         </div>
       </div>
 
-      {/* 🌟 3. CHARTS ROW */}
+      {/* 3. CHARTS ROW */}
       <div className="row g-4 mb-4">
         <div className="col-12 col-xl-7">
           <div className="tri-card p-4 h-100">
@@ -427,7 +427,7 @@ export default function HarvestPage() {
         </div>
       </div>
 
-      {/* 🌟 4. PREDICTION TABLE */}
+      {/* 4. PREDICTION TABLE */}
       <div className="tri-card p-4">
         <div className="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom flex-wrap gap-2">
           <div>

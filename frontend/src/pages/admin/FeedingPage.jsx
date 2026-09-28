@@ -962,7 +962,7 @@ export default function FeedingPage() {
 
   return (
     <div className="feeding-consumption-container" style={{ fontFamily: "'Poppins', sans-serif" }}>
-      {/* 🌟 1. HERO INTELLIGENCE & CONTROL BANNER */}
+      {/* 1. HERO INTELLIGENCE & CONTROL BANNER */}
       <div className="disease-hero-banner d-flex justify-content-between align-items-center flex-wrap gap-3">
         <div className="d-flex align-items-center gap-3">
           <div
@@ -1027,7 +1027,7 @@ export default function FeedingPage() {
         </div>
       </div>
 
-      {/* 🌟 2. 4 TRI-COLOR OPERATIONAL TELEMETRY CARDS */}
+      {/* 2. 4 TRI-COLOR OPERATIONAL TELEMETRY CARDS */}
       <div className="row g-3 g-xl-4 mb-4">
         {/* Card 1: Total Feed Dispensed */}
         <div className="col-12 col-sm-6 col-xl-3">
@@ -1154,7 +1154,7 @@ export default function FeedingPage() {
         </div>
       </div>
 
-      {/* 🌟 3. CHARTS ROW: WAVE LINE CHART (8 cols) + FEED TYPE BREAKDOWN (4 cols) */}
+      {/* 3. CHARTS ROW: WAVE LINE CHART (8 cols) + FEED TYPE BREAKDOWN (4 cols) */}
       <div className="row g-4 mb-4">
         {/* Left: 7-Day Feed Consumption Wave Chart */}
         <div className="col-12 col-xl-8">
@@ -1241,7 +1241,7 @@ export default function FeedingPage() {
         </div>
       </div>
 
-      {/* 🌟 4. MAIN FEEDING LOGS SECTION WITH MULTI-FILTER CONTROL BAR & VIEW SWITCHER */}
+      {/* 4. MAIN FEEDING LOGS SECTION WITH MULTI-FILTER CONTROL BAR & VIEW SWITCHER */}
       <div className="tri-card p-4 mb-4">
         {/* Top Control Bar: Title & View Mode Switcher */}
         <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3 pb-3 border-bottom">
@@ -1284,7 +1284,7 @@ export default function FeedingPage() {
           </div>
         </div>
 
-        {/* 🌟 ADMIN STAGE FILTER TABS: All Basins | Nursery | Grow-out */}
+        {/* ADMIN STAGE FILTER TABS: All Basins | Nursery | Grow-out */}
         <div className="p-3 rounded-4 bg-light border mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
           <div className="d-flex align-items-center gap-2 flex-wrap">
             <span className="extra-small fw-bold text-uppercase text-muted d-flex align-items-center gap-1">
@@ -1309,12 +1309,12 @@ export default function FeedingPage() {
               className={`btn btn-sm rounded-pill px-3.5 py-1.5 extra-small fw-bold transition-all ${stageFilter === 'growout' ? 'btn-tri-orange shadow-xs' : 'btn-tri-outline'}`}
               onClick={() => setStageFilter('growout')}
             >
-              🌊 Grow-out Basins (Day 20+ • Grower Feed) ({growoutPondsCount})
+              Grow-out Basins (Day 20+ • Grower Feed) ({growoutPondsCount})
             </button>
           </div>
 
           <div className="extra-small text-muted">
-            SOP Transition: <strong>Days 1–19 Nursery</strong> ➔ <strong>Day 20+ Grow-out</strong>
+            SOP Transition: <strong>Days 1–19 Nursery</strong> &rarr; <strong>Day 20+ Grow-out</strong>
           </div>
         </div>
 
@@ -1336,7 +1336,7 @@ export default function FeedingPage() {
           onTabChange={(t) => { setDateFilter(t); setCustomDate(''); }}
           metaRight={
             <>
-              SOP Transition: <strong>Days 1–19 Nursery (Starter)</strong> ➔ <strong>Day 20+ Grow-out (Grower)</strong>
+              SOP Transition: <strong>Days 1–19 Nursery (Starter)</strong> &rarr; <strong>Day 20+ Grow-out (Grower)</strong>
             </>
           }
           filterFields={[
@@ -1434,14 +1434,14 @@ export default function FeedingPage() {
                             className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1"
                             style={{ background: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0', fontSize: '0.78rem' }}
                           >
-                            🌱 {p.doc ? `Day ${p.doc}` : 'DOC 1-19'} • Nursery
+                            {p.doc ? `Day ${p.doc}` : 'DOC 1-19'} • Nursery
                           </span>
                         ) : p.isGrowout ? (
                           <span
                             className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1"
                             style={{ background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', fontSize: '0.78rem' }}
                           >
-                            🌊 {p.doc ? `Day ${p.doc}` : 'DOC 20+'} • Grow-out
+                            {p.doc ? `Day ${p.doc}` : 'DOC 20+'} • Grow-out
                           </span>
                         ) : (
                           <span className="badge bg-light text-muted border extra-small">Pre-Stocking</span>
@@ -1599,14 +1599,14 @@ export default function FeedingPage() {
                             className="badge rounded-pill px-2 py-0.5 fw-bold extra-small mt-1"
                             style={{ background: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0', fontSize: '0.68rem' }}
                           >
-                            🌱 {r.doc ? `Day ${r.doc}` : 'DOC 1-19'} • Nursery
+                            {r.doc ? `Day ${r.doc}` : 'DOC 1-19'} • Nursery
                           </span>
                         ) : r.isGrowout ? (
                           <span
                             className="badge rounded-pill px-2 py-0.5 fw-bold extra-small mt-1"
                             style={{ background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', fontSize: '0.68rem' }}
                           >
-                            🌊 {r.doc ? `Day ${r.doc}` : 'DOC 20+'} • Grow-out
+                            {r.doc ? `Day ${r.doc}` : 'DOC 20+'} • Grow-out
                           </span>
                         ) : null}
                       </td>
@@ -1622,7 +1622,7 @@ export default function FeedingPage() {
                             className="badge rounded-pill px-2.5 py-1 fw-semibold extra-small"
                             style={{ background: '#F1F5F9', color: '#475569', border: '1px solid #CBD5E1', fontSize: '0.72rem' }}
                           >
-                            🚫 5th Feed (No Vit)
+                            5th Feed (No Vit)
                           </span>
                         ) : r.vitamin_name && r.vitamin_name !== 'None' ? (
                           <span
@@ -1657,7 +1657,7 @@ export default function FeedingPage() {
         )}
       </div>
 
-      {/* 🌟 5. SMART OPERATIONAL INTELLIGENCE & FEEDING ALERTS */}
+      {/* 5. SMART OPERATIONAL INTELLIGENCE & FEEDING ALERTS */}
       <div className="row g-3.5 mb-4">
         <div className="col-12 col-md-4">
           <div
@@ -1720,7 +1720,7 @@ export default function FeedingPage() {
         </div>
       </div>
 
-      {/* 🌟 6. ADMIN LOG FEEDING MODAL */}
+      {/* 6. ADMIN LOG FEEDING MODAL */}
       {showLogModal && (
         <div
           className="modal fade show d-block"
@@ -1804,7 +1804,7 @@ export default function FeedingPage() {
                                       border: isGrowout ? '1px solid #BFDBFE' : '1px solid #A7F3D0'
                                     }}
                                   >
-                                    {isGrowout ? `🌊 DOC Day ${doc || 20}+ • Grow-out Stage` : `🌱 DOC Day ${doc || 1} • Nursery Stage`}
+                                    {isGrowout ? `DOC Day ${doc || 20}+ • Grow-out Stage` : `DOC Day ${doc || 1} • Nursery Stage`}
                                   </span>
                                   <span className="extra-small text-muted">
                                     Recommended: <strong>{isGrowout ? 'Grower Feed' : 'Starter Feed'}</strong>
@@ -1964,7 +1964,7 @@ export default function FeedingPage() {
         </div>
       )}
 
-      {/* 🌟 POND CULTURE CYCLE CALENDAR MODAL (ADMIN) */}
+      {/* POND CULTURE CYCLE CALENDAR MODAL (ADMIN) */}
       {calendarModalPond && (
         <div
           className="modal fade show d-block"

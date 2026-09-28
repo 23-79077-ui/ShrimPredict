@@ -402,7 +402,7 @@ export default function ReportsPage() {
 
   return (
     <div className="caretaker-reports-hub">
-      {/* 🌟 HERO CONTROL STRIP (TRI-COLOR NAVY & SHRIMPY ORANGE) */}
+      {/* HERO CONTROL STRIP (TRI-COLOR NAVY & SHRIMPY ORANGE) */}
       <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
         <div>
           <div className="d-flex align-items-center gap-2 mb-1">
@@ -468,7 +468,7 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      {/* 🌟 4 TRI-COLOR TELEMETRY CARDS */}
+      {/* 4 TRI-COLOR TELEMETRY CARDS */}
       <div className="row g-3 g-xl-4 mb-4">
         {/* Card 1: Assigned Basins */}
         <div className="col-12 col-sm-6 col-xl-3">
@@ -605,7 +605,7 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      {/* 🌟 TAB 1: SUBMIT NEW INCIDENT REPORT */}
+      {/* TAB 1: SUBMIT NEW INCIDENT REPORT */}
       {activeTab === 'submit' && (
         <div className="tri-card p-3.5 p-md-4 mb-4">
           <div className="d-flex align-items-center justify-content-between mb-3 pb-3 border-bottom flex-wrap gap-2" style={{ borderColor: 'rgba(11, 44, 95, 0.08)' }}>
@@ -933,7 +933,7 @@ export default function ReportsPage() {
         </div>
       )}
 
-      {/* 🌟 TAB 2: INCIDENT HISTORY & RESOLUTION TRACKING */}
+      {/* TAB 2: INCIDENT HISTORY & RESOLUTION TRACKING */}
       {activeTab === 'history' && (
         <div className="tri-card p-3.5 p-md-4 mb-4">
           {/* TOOLBAR CONTROLS */}
@@ -996,7 +996,7 @@ export default function ReportsPage() {
                 }`}
                 onClick={() => setHistoryStatusFilter('Pending')}
               >
-                ⏳ Pending ({pendingReports})
+                Pending ({pendingReports})
               </button>
               <button
                 type="button"
@@ -1005,7 +1005,7 @@ export default function ReportsPage() {
                 }`}
                 onClick={() => setHistoryStatusFilter('In Progress')}
               >
-                🛠 In Progress ({inProgressReports})
+                In Progress ({inProgressReports})
               </button>
               <button
                 type="button"
@@ -1014,7 +1014,7 @@ export default function ReportsPage() {
                 }`}
                 onClick={() => setHistoryStatusFilter('Done')}
               >
-                ✓ Resolved ({doneReports})
+                Resolved ({doneReports})
               </button>
             </div>
 
@@ -1306,7 +1306,7 @@ export default function ReportsPage() {
         </div>
       )}
 
-      {/* 🌟 FULLSCREEN IMAGE PREVIEW LIGHTBOX MODAL */}
+      {/* FULLSCREEN IMAGE PREVIEW LIGHTBOX MODAL */}
       {previewMediaUrl && (
         <div
           className="modal fade show d-block"

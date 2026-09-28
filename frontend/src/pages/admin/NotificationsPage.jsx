@@ -304,7 +304,7 @@ export default function NotificationsPage() {
 
   return (
     <div className="pb-5" style={{ fontFamily: "'Poppins', sans-serif" }}>
-      {/* 🌟 HERO BANNER */}
+      {/* HERO BANNER */}
       <div className="disease-hero-banner d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
         <div className="d-flex align-items-center gap-3">
           <div

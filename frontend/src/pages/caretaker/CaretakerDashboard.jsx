@@ -270,7 +270,7 @@ export default function CaretakerDashboard() {
   const latestDisease = filteredDiseaseScans[0];
   const latestAlert = alerts[0];
 
-  // 🌟 FEEDING CONSUMPTION CHART DATA & TELEMETRY
+  // FEEDING CONSUMPTION CHART DATA & TELEMETRY
   const chartData = useMemo(() => {
     // 1. Hourly Slots for Selected Date Mode
     if (chartRange === 'todaySlots') {
@@ -488,7 +488,7 @@ export default function CaretakerDashboard() {
 
   return (
     <div className="caretaker-dashboard-hub">
-      {/* 🌟 HERO CONTROL STRIP: TITLE & SLEEK PILL FILTERS */}
+      {/* HERO CONTROL STRIP: TITLE & SLEEK PILL FILTERS */}
       <div className="d-flex justify-content-between align-items-center mb-4 mb-xl-5 flex-wrap gap-3">
         <div>
           <h2 className="fw-extrabold mb-1 tracking-tight" style={{ color: '#0B2C5F', fontSize: '1.75rem', letterSpacing: '-0.03em' }}>
@@ -615,7 +615,7 @@ export default function CaretakerDashboard() {
         </div>
       </div>
 
-      {/* 🌟 DAILY WATER QUALITY VERIFICATION PROTOCOL CARD */}
+      {/* DAILY WATER QUALITY VERIFICATION PROTOCOL CARD */}
       <div className="tri-card mb-4 mb-xl-5 overflow-hidden">
         <div
           className="p-3.5 p-md-4 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 text-white"
@@ -891,7 +891,7 @@ export default function CaretakerDashboard() {
         </div>
       </div>
 
-      {/* 🌟 OPERATIONAL PERFORMANCE & 4 TELEMETRY CARDS */}
+      {/* OPERATIONAL PERFORMANCE & 4 TELEMETRY CARDS */}
       <div className="mb-4 mb-xl-5">
         <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
           <div className="d-flex align-items-center gap-2.5">
@@ -1055,7 +1055,7 @@ export default function CaretakerDashboard() {
         </div>
       </div>
 
-      {/* 🌟 ASSIGNED PONDS LIVE OVERVIEW & QUICK ACTION HUB */}
+      {/* ASSIGNED PONDS LIVE OVERVIEW & QUICK ACTION HUB */}
       <div className="tri-card p-4 p-md-4.5 mb-4 mb-xl-5">
         <div className="d-flex align-items-center justify-content-between mb-3.5 flex-wrap gap-2">
           <div>
@@ -1143,7 +1143,7 @@ export default function CaretakerDashboard() {
                         className="btn btn-sm btn-tri-outline w-100 py-1.5 extra-small shadow-xs text-nowrap"
                         style={{ fontSize: '0.72rem' }}
                         onClick={() => navigate('/caretaker/disease-scan')}
-                        title="AI Disease Scan"
+                        title="Disease Scan"
                       >
                         <FaStethoscope size={10} style={{ color: '#0B2C5F' }} /> Scan
                       </button>
@@ -1167,7 +1167,7 @@ export default function CaretakerDashboard() {
         </div>
       </div>
 
-      {/* 🌟 POND FEEDING CONSUMPTION ANALYTICS */}
+      {/* POND FEEDING CONSUMPTION ANALYTICS */}
       <div className="tri-card p-4 p-md-4.5 mb-4 mb-xl-5">
         <div className="d-flex align-items-center justify-content-between mb-3.5 flex-wrap gap-3">
           <div>
@@ -1432,7 +1432,7 @@ export default function CaretakerDashboard() {
         </div>
       </div>
 
-      {/* 🌟 FEEDING RECORDS PANEL */}
+      {/* FEEDING RECORDS PANEL */}
       <div className="tri-card p-4 p-md-4.5 mb-4 mb-xl-5">
         <div className="d-flex align-items-center justify-content-between mb-3.5 flex-wrap gap-2">
           <div>
@@ -1606,7 +1606,7 @@ export default function CaretakerDashboard() {
         )}
       </div>
 
-      {/* 🌟 SIDE-BY-SIDE DISEASE SCAN & SYSTEM ALERTS */}
+      {/* SIDE-BY-SIDE DISEASE SCAN & SYSTEM ALERTS */}
       <div className="row g-3 g-md-4">
         {/* Left Card: Disease Scan */}
         <div className="col-md-6">
@@ -1669,7 +1669,7 @@ export default function CaretakerDashboard() {
                 <div className="text-center py-4 rounded-4 bg-white border text-muted small" style={{ borderColor: 'rgba(11, 44, 95, 0.08)' }}>
                   <FaStethoscope size={22} className="mb-2 opacity-40" style={{ color: '#0B2C5F' }} />
                   <p className="mb-0 fw-semibold" style={{ color: '#0B2C5F' }}>No disease scans recorded yet</p>
-                  <small className="extra-small text-muted">AI image inference is nominal.</small>
+                  <small className="extra-small text-muted">Image inference is nominal.</small>
                 </div>
               )}
             </div>
@@ -1734,7 +1734,7 @@ export default function CaretakerDashboard() {
         </div>
       </div>
 
-      {/* 🌟 DUAL-MODE OCR WATER QUALITY MODAL */}
+      {/* DUAL-MODE OCR WATER QUALITY MODAL */}
       <WaterQualityOcrModal
         isOpen={isOcrModalOpen}
         onClose={() => {
@@ -1752,7 +1752,7 @@ export default function CaretakerDashboard() {
         }}
       />
 
-      {/* 🌟 WATER QUALITY LOG HISTORY & BACKFILL MODAL */}
+      {/* WATER QUALITY LOG HISTORY & BACKFILL MODAL */}
       <WaterQualityHistoryModal
         isOpen={isHistoryModalOpen}
         onClose={() => {

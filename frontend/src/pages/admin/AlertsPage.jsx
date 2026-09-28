@@ -50,13 +50,13 @@ function getCategoryMeta(category) {
 function getSeverityBadge(severity) {
   switch (severity) {
     case 'Critical':
-      return <span className="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-3 py-1.5 rounded-pill extra-small fw-bold">🔴 Critical Alert</span>;
+      return <span className="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-3 py-1.5 rounded-pill extra-small fw-bold">Critical Alert</span>;
     case 'High':
-      return <span className="badge bg-warning bg-opacity-15 text-dark border border-warning border-opacity-50 px-3 py-1.5 rounded-pill extra-small fw-bold">🟠 High Risk</span>;
+      return <span className="badge bg-warning bg-opacity-15 text-dark border border-warning border-opacity-50 px-3 py-1.5 rounded-pill extra-small fw-bold">High Risk</span>;
     case 'Medium':
-      return <span className="badge bg-warning bg-opacity-10 text-dark border border-warning border-opacity-30 px-3 py-1.5 rounded-pill extra-small fw-bold">🟡 Warning</span>;
+      return <span className="badge bg-warning bg-opacity-10 text-dark border border-warning border-opacity-30 px-3 py-1.5 rounded-pill extra-small fw-bold">Warning</span>;
     default:
-      return <span className="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 px-3 py-1.5 rounded-pill extra-small fw-bold">🔵 Low Priority</span>;
+      return <span className="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 px-3 py-1.5 rounded-pill extra-small fw-bold">Low Priority</span>;
   }
 }
 
@@ -64,11 +64,11 @@ function getSeverityBadge(severity) {
 function getStatusBadge(status) {
   switch (status) {
     case 'Resolved':
-      return <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2.5 py-1.5 rounded-pill extra-small fw-bold">✅ Resolved</span>;
+      return <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2.5 py-1.5 rounded-pill extra-small fw-bold">Resolved</span>;
     case 'In Progress':
-      return <span className="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 px-2.5 py-1.5 rounded-pill extra-small fw-bold">🔄 In Progress</span>;
+      return <span className="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 px-2.5 py-1.5 rounded-pill extra-small fw-bold">In Progress</span>;
     default:
-      return <span className="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-2.5 py-1.5 rounded-pill extra-small fw-bold">⏳ Pending Action</span>;
+      return <span className="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-2.5 py-1.5 rounded-pill extra-small fw-bold">Pending Action</span>;
   }
 }
 
@@ -324,7 +324,7 @@ export default function AlertsPage() {
 
   return (
     <div className="pb-5">
-      {/* 🌟 1. EXECUTIVE HERO BANNER */}
+      {/* 1. EXECUTIVE HERO BANNER */}
       <div className="disease-hero-banner d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
         <div className="d-flex align-items-center gap-3">
           <div
@@ -381,7 +381,7 @@ export default function AlertsPage() {
         </div>
       </div>
 
-      {/* 🌟 2. 4 TOP TRI-COLOR TELEMETRY CARDS */}
+      {/* 2. 4 TOP TRI-COLOR TELEMETRY CARDS */}
       <div className="row g-3 g-xl-4 mb-4">
         {/* Critical Alerts */}
         <div className="col-12 col-sm-6 col-md-3">
@@ -514,7 +514,7 @@ export default function AlertsPage() {
         </div>
       </div>
 
-      {/* 🌟 3. UNIFIED CONTROL & FILTER TOOLBAR */}
+      {/* 3. UNIFIED CONTROL & FILTER TOOLBAR */}
       <AdminFilterToolbar
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
@@ -525,10 +525,10 @@ export default function AlertsPage() {
         loading={loading}
         tabs={[
           { id: 'All', label: 'All Severities', count: alerts.length },
-          { id: 'Critical', label: 'Critical 🔴', count: summary.critical_alerts || 0 },
-          { id: 'High', label: 'High Risk 🟠' },
-          { id: 'Medium', label: 'Warning 🟡', count: summary.warnings || 0 },
-          { id: 'Low', label: 'Low Priority 🔵' }
+          { id: 'Critical', label: 'Critical', count: summary.critical_alerts || 0 },
+          { id: 'High', label: 'High Risk' },
+          { id: 'Medium', label: 'Warning', count: summary.warnings || 0 },
+          { id: 'Low', label: 'Low Priority' }
         ]}
         activeTab={severityFilter}
         onTabChange={setSeverityFilter}
@@ -546,12 +546,12 @@ export default function AlertsPage() {
             colClass: 'col-12 col-md-3',
             options: [
               { value: 'All', label: 'All Alert Types' },
-              { value: 'Disease', label: 'Disease Alert 🦠' },
-              { value: 'Harvest', label: 'Harvest Alert 🦐' },
-              { value: 'Feeding', label: 'Feeding Alert 🥣' },
-              { value: 'Image Upload', label: 'Image Upload 📷' },
-              { value: 'Caretaker Activity', label: 'Caretaker Activity 👨‍🌾' },
-              { value: 'Pond Status', label: 'Pond Status 🟢' }
+              { value: 'Disease', label: 'Disease Alert' },
+              { value: 'Harvest', label: 'Harvest Alert' },
+              { value: 'Feeding', label: 'Feeding Alert' },
+              { value: 'Image Upload', label: 'Image Upload' },
+              { value: 'Caretaker Activity', label: 'Caretaker Activity' },
+              { value: 'Pond Status', label: 'Pond Status' }
             ]
           },
           {
@@ -576,9 +576,9 @@ export default function AlertsPage() {
             colClass: 'col-12 col-md-2',
             options: [
               { value: 'All', label: 'All Statuses' },
-              { value: 'Pending', label: 'Pending ⏳' },
-              { value: 'In Progress', label: 'In Progress 🔄' },
-              { value: 'Resolved', label: 'Resolved ✅' }
+              { value: 'Pending', label: 'Pending' },
+              { value: 'In Progress', label: 'In Progress' },
+              { value: 'Resolved', label: 'Resolved' }
             ]
           },
           {
@@ -604,7 +604,7 @@ export default function AlertsPage() {
         }}
       />
 
-      {/* 🚨 3. ALERTS ACTION CENTER CARDS GRID (3-COLUMN ROW LAYOUT) */}
+      {/* 3. ALERTS ACTION CENTER CARDS GRID (3-COLUMN ROW LAYOUT) */}
       <div className="tri-card p-4">
         <div className="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
           <div>
@@ -698,7 +698,7 @@ export default function AlertsPage() {
                     {/* Bottom Action Buttons Row (Un-squeezed Clean Actions) */}
                     <div className="pt-3 border-top mt-auto">
                       <div className="d-flex align-items-center justify-content-between gap-1.5 flex-wrap">
-                        {/* 👁 View Details */}
+                        {/* View Details */}
                         <button
                           type="button"
                           className="btn btn-sm btn-outline-primary px-2 py-1.5 rounded-3 d-flex align-items-center justify-content-center gap-1 extra-small fw-semibold flex-grow-1"
@@ -707,7 +707,7 @@ export default function AlertsPage() {
                           <FaEye size={11} /> Details
                         </button>
 
-                        {/* ✅ Resolve Button */}
+                        {/* Resolve Button */}
                         <button
                           type="button"
                           className={`btn btn-sm px-2 py-1.5 rounded-3 d-flex align-items-center justify-content-center gap-1 extra-small fw-semibold flex-grow-1 ${
@@ -719,7 +719,7 @@ export default function AlertsPage() {
                           <FaCheckCircle size={11} /> {isResolved ? 'Resolved' : 'Resolve'}
                         </button>
 
-                        {/* 👤 Assign Follow-up */}
+                        {/* Assign Follow-up */}
                         <button
                           type="button"
                           className="btn btn-sm btn-outline-secondary px-2 py-1.5 rounded-3 d-flex align-items-center justify-content-center gap-1 extra-small fw-semibold flex-grow-1"
@@ -728,7 +728,7 @@ export default function AlertsPage() {
                           <FaUserCheck size={11} /> Assign
                         </button>
 
-                        {/* 🗑 Delete Icon Button */}
+                        {/* Delete Icon Button */}
                         <button
                           type="button"
                           className="btn btn-sm btn-outline-danger p-1.5 rounded-3 flex-shrink-0 d-flex align-items-center justify-content-center"
@@ -748,7 +748,7 @@ export default function AlertsPage() {
         )}
       </div>
 
-      {/* 👁 ULTRA-PREMIUM VIEW ALERT DETAILS MODAL WITH CLEAN TOP-ROW ICON & SPACING */}
+      {/* ULTRA-PREMIUM VIEW ALERT DETAILS MODAL WITH CLEAN TOP-ROW ICON & SPACING */}
       {selectedAlert && (
         <div
           className="modal fade show d-block"
@@ -839,11 +839,11 @@ export default function AlertsPage() {
                     </div>
                   </div>
 
-                  {/* Card 3: AI CONFIDENCE SCORE */}
+                  {/* Card 3: CONFIDENCE SCORE */}
                   <div className="col-12 col-md-4">
                     <div className="p-3.5 px-4 rounded-4 bg-light border h-100 d-flex flex-column justify-content-between">
                       <div className="d-flex justify-content-between align-items-center mb-2">
-                        <small className="text-muted extra-small fw-bold text-uppercase tracking-wider">AI Confidence Score</small>
+                        <small className="text-muted extra-small fw-bold text-uppercase tracking-wider">Confidence Score</small>
                         <div className="rounded-circle bg-success bg-opacity-10 text-success p-2 d-flex align-items-center justify-content-center">
                           <FaChartLine size={14} />
                         </div>
@@ -923,7 +923,7 @@ export default function AlertsPage() {
         </div>
       )}
 
-      {/* 👤 ASSIGN FOLLOW-UP MODAL */}
+      {/* ASSIGN FOLLOW-UP MODAL */}
       {assigningAlert && (
         <div
           className="modal fade show d-block"

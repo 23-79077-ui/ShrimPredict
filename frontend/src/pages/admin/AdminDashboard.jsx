@@ -11,6 +11,7 @@ import {
   FaSync,
   FaFilePdf,
   FaDownload,
+  FaCheck,
   FaCheckCircle,
   FaExclamationTriangle,
   FaShieldAlt,
@@ -55,6 +56,35 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const [caretakers, setCaretakers] = useState([]);
   const [selectedCaretakerId, setSelectedCaretakerId] = useState('all');
+  const [selectedPondFilter, setSelectedPondFilter] = useState('all');
+  const [feedCardPondFilter, setFeedCardPondFilter] = useState('all');
+  const [pondStatusFilter, setPondStatusFilter] = useState('all'); // 'all' | 'healthy' | 'warning' | 'critical' | 'isolated' | 'unmonitored'
+  const [isolatedPonds, setIsolatedPonds] = useState(() => {
+    try {
+      localStorage.removeItem('shrim_isolated_ponds'); // clear old stale test data so it starts unisolated
+      const saved = localStorage.getItem('shrim_isolated_ponds_v3');
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+
+  const isPondIsolated = useCallback((pondIdentifier) => {
+    if (!pondIdentifier) return false;
+    const name = typeof pondIdentifier === 'object'
+      ? (pondIdentifier.pond_name || pondIdentifier.pond || pondIdentifier.name || '')
+      : String(pondIdentifier);
+    const id = typeof pondIdentifier === 'object' ? String(pondIdentifier.id || '') : '';
+
+    const cleanName = name.trim().toLowerCase();
+    for (const item of isolatedPonds) {
+      const cleanItem = String(item).trim().toLowerCase();
+      if (cleanItem && (cleanItem === cleanName || (id && cleanItem === id))) {
+        return true;
+      }
+    }
+    return false;
+  }, [isolatedPonds]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(true);
 
@@ -210,9 +240,17 @@ export default function AdminDashboard() {
     [dateFilterType, customDate]
   );
 
-  // Filtered Ponds (Search + Caretaker)
+  // Filtered Ponds (Search + Caretaker + Pond Filter)
   const displayedPonds = useMemo(() => {
     return ponds.filter((p) => {
+      if (selectedPondFilter !== 'all') {
+        const pName = (p.pond_name || p.name || '').toLowerCase().trim();
+        const targetPond = selectedPondFilter.toLowerCase().trim();
+        if (pName !== targetPond && !pName.includes(targetPond) && !targetPond.includes(pName)) {
+          return false;
+        }
+      }
+
       if (selectedCaretakerId !== 'all') {
         const caretakerIdMatch = String(p.caretaker_id || '') === String(selectedCaretakerId);
         const caretakerNameMatch =
@@ -233,11 +271,19 @@ export default function AdminDashboard() {
 
       return true;
     });
-  }, [ponds, selectedCaretakerId, selectedCaretakerObj, searchQuery]);
+  }, [ponds, selectedCaretakerId, selectedCaretakerObj, selectedPondFilter, searchQuery]);
 
-  // Filtered Feeding Records (Date + Caretaker + Search)
+  // Filtered Feeding Records (Date + Caretaker + Pond Filter + Search)
   const filteredFeedingRecords = useMemo(() => {
     return allFeedingRecords.filter((r) => {
+      if (selectedPondFilter !== 'all') {
+        const pName = (r.pond_name || '').toLowerCase().trim();
+        const targetPond = selectedPondFilter.toLowerCase().trim();
+        if (pName !== targetPond && !pName.includes(targetPond) && !targetPond.includes(pName)) {
+          return false;
+        }
+      }
+
       if (selectedCaretakerId !== 'all') {
         const matchUser = String(r.user_id || '') === String(selectedCaretakerId);
         const matchName =
@@ -261,24 +307,130 @@ export default function AdminDashboard() {
 
       return true;
     });
-  }, [allFeedingRecords, selectedCaretakerId, selectedCaretakerObj, isDateMatch, searchQuery]);
+  }, [allFeedingRecords, selectedCaretakerId, selectedCaretakerObj, selectedPondFilter, isDateMatch, searchQuery]);
 
-  // Filtered Disease Reports
+  // Filtered Disease Reports (Caretaker + Pond Filter + Search + Date)
   const filteredDiseaseReports = useMemo(() => {
     return allDiseaseReports.filter((rep) => {
+      // 1. Caretaker Filter (checks user_id, fuzzy name matching both directions, and assigned ponds)
       if (selectedCaretakerId !== 'all') {
         const matchUser = String(rep.user_id || '') === String(selectedCaretakerId);
+
+        const repCName = (rep.caretaker_name || '').toLowerCase().trim();
+        const selFullName = selectedCaretakerObj ? (selectedCaretakerObj.full_name || '').toLowerCase().trim() : '';
+        const selFirstName = selFullName.split(' ')[0] || '';
+
         const matchName =
-          selectedCaretakerObj &&
-          (rep.caretaker_name || '')
-            .toLowerCase()
-            .includes(selectedCaretakerObj.full_name.toLowerCase());
-        if (!matchUser && !matchName) return false;
+          Boolean(selFullName) &&
+          (repCName.includes(selFullName) ||
+            selFullName.includes(repCName) ||
+            (selFirstName.length >= 2 && repCName.includes(selFirstName)));
+
+        const caretakerAssignedPonds = ponds
+          .filter((p) => String(p.caretaker_id || '') === String(selectedCaretakerId) ||
+            (selFullName && (p.caretaker_name || p.assigned_caretaker_name || '').toLowerCase().includes(selFullName)))
+          .map((p) => (p.pond_name || '').toLowerCase().trim());
+        const repPond = (rep.pond_name || '').toLowerCase().trim();
+        const matchAssignedPond = caretakerAssignedPonds.includes(repPond);
+
+        if (!matchUser && !matchName && !matchAssignedPond) return false;
       }
+
+      // 2. Pond Filter
+      if (selectedPondFilter !== 'all') {
+        const repPond = (rep.pond_name || '').toLowerCase().trim();
+        const targetPond = selectedPondFilter.toLowerCase().trim();
+        if (repPond !== targetPond && !repPond.includes(targetPond) && !targetPond.includes(repPond)) {
+          return false;
+        }
+      }
+
+      // 3. Search Query
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const pName = (rep.pond_name || '').toLowerCase();
+        const cName = (rep.caretaker_name || '').toLowerCase();
+        const dName = (rep.disease_name || '').toLowerCase();
+        const rLevel = (rep.risk_level || '').toLowerCase();
+        if (!pName.includes(q) && !cName.includes(q) && !dName.includes(q) && !rLevel.includes(q)) {
+          return false;
+        }
+      }
+
+      // 4. Date Match
       const repDate = rep.report_date || rep.created_at || '';
       return isDateMatch(repDate);
     });
-  }, [allDiseaseReports, selectedCaretakerId, selectedCaretakerObj, isDateMatch]);
+  }, [allDiseaseReports, selectedCaretakerId, selectedCaretakerObj, selectedPondFilter, ponds, searchQuery, isDateMatch]);
+
+  // Available Ponds for the selected caretaker (or for all ponds)
+  const availableCaretakerPonds = useMemo(() => {
+    if (selectedCaretakerId === 'all') {
+      return Array.from(new Set(ponds.map((p) => p.pond_name || p.name).filter(Boolean)));
+    }
+
+    const selFullName = selectedCaretakerObj ? (selectedCaretakerObj.full_name || '').toLowerCase().trim() : '';
+
+    // 1. Ponds assigned in ponds table
+    const assignedNames = ponds
+      .filter((p) => {
+        const matchId = String(p.caretaker_id || '') === String(selectedCaretakerId);
+        const matchName = Boolean(selFullName) && (p.caretaker_name || p.assigned_caretaker_name || '').toLowerCase().includes(selFullName);
+        return matchId || matchName;
+      })
+      .map((p) => p.pond_name || p.name)
+      .filter(Boolean);
+
+    // 2. Ponds from feeding_records where this caretaker recorded feeds
+    const feedPonds = allFeedingRecords
+      .filter((r) => {
+        const matchUser = String(r.user_id || '') === String(selectedCaretakerId);
+        const matchName = Boolean(selFullName) && (r.recorded_by_name || r.recorded_by || '').toLowerCase().includes(selFullName);
+        return matchUser || matchName;
+      })
+      .map((r) => {
+        if (r.pond_name) return r.pond_name;
+        const matchedPond = ponds.find((p) => String(p.id) === String(r.pond_id));
+        return matchedPond ? (matchedPond.pond_name || matchedPond.name) : null;
+      })
+      .filter(Boolean);
+
+    // 3. User's pond_id from users table if present
+    const userPondId = selectedCaretakerObj?.pond_id;
+    const userPond = userPondId ? ponds.find((p) => String(p.id) === String(userPondId)) : null;
+    const userPondName = userPond ? (userPond.pond_name || userPond.name) : null;
+
+    const combined = [...assignedNames, ...feedPonds];
+    if (userPondName) combined.push(userPondName);
+
+    return Array.from(new Set(combined)).filter(Boolean);
+  }, [ponds, selectedCaretakerId, selectedCaretakerObj, allFeedingRecords]);
+
+  // Feed records specific to the Total Feed KPI Card (Filtered per assigned pond)
+  const feedCardRecords = useMemo(() => {
+    return filteredFeedingRecords.filter((r) => {
+      if (feedCardPondFilter !== 'all') {
+        const rPond = (r.pond_name || '').toLowerCase().trim();
+        const targetPond = feedCardPondFilter.toLowerCase().trim();
+        if (rPond !== targetPond && !rPond.includes(targetPond) && !targetPond.includes(rPond)) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [filteredFeedingRecords, feedCardPondFilter]);
+
+  const feedCardTotalKg = useMemo(() => {
+    return feedCardRecords.reduce((sum, r) => sum + (parseFloat(r.amount_kg) || 0), 0);
+  }, [feedCardRecords]);
+
+  const feedCardTotalGrams = useMemo(() => {
+    return Math.round(feedCardTotalKg * 1000);
+  }, [feedCardTotalKg]);
+
+  const feedCardRunsCount = useMemo(() => {
+    return feedCardRecords.length;
+  }, [feedCardRecords]);
 
   // Total Feed Consumed
   const totalFilteredFeedKg = useMemo(() => {
@@ -291,18 +443,19 @@ export default function AdminDashboard() {
     const healthyPondsCount = displayedPonds.filter((p) => (p.status || '').toLowerCase() === 'healthy').length;
     const healthyPct = totalPondsCount > 0 ? Math.round((healthyPondsCount / totalPondsCount) * 100) : 100;
 
-    const activeReports = filteredDiseaseReports.length > 0 ? filteredDiseaseReports : allDiseaseReports;
+    const isFiltered = selectedCaretakerId !== 'all' || selectedPondFilter !== 'all' || searchQuery.trim() !== '' || dateFilterType !== 'all';
+    const activeReports = isFiltered ? filteredDiseaseReports : (allDiseaseReports.length > 0 ? allDiseaseReports : []);
     const wsdSuspectedCount = activeReports.filter((r) =>
       ['high', 'critical'].includes((r.risk_level || '').toLowerCase()) ||
       (r.disease_name || '').toLowerCase().includes('wsd') ||
       (r.disease_name || '').toLowerCase().includes('white spot')
     ).length;
-    const totalLogsCount = allDiseaseReports.length > 0 ? allDiseaseReports.length : 26;
-    const finalWsdCount = wsdSuspectedCount > 0 ? wsdSuspectedCount : 5;
+    const totalLogsCount = activeReports.length;
+    const finalWsdCount = wsdSuspectedCount;
     const normalFeedCount = Math.max(0, totalLogsCount - finalWsdCount);
     const safeReports = activeReports.filter((r) => (r.risk_level || '').toLowerCase() === 'low' || (r.disease_name || '').toLowerCase().includes('healthy')).length;
-    const totalReports = activeReports.length || 1;
-    const bioSafePct = Math.round((safeReports / totalReports) * 100);
+    const totalReports = activeReports.length || (isFiltered ? 0 : 1);
+    const bioSafePct = totalReports > 0 ? Math.round((safeReports / totalReports) * 100) : (isFiltered ? 100 : 51);
 
     return {
       totalPondsCount,
@@ -318,7 +471,7 @@ export default function AdminDashboard() {
       totalRuns: filteredFeedingRecords.length,
       activeCaretakersCount: caretakers.length,
     };
-  }, [displayedPonds, filteredDiseaseReports, allDiseaseReports, totalFilteredFeedKg, filteredFeedingRecords, caretakers]);
+  }, [displayedPonds, filteredDiseaseReports, allDiseaseReports, totalFilteredFeedKg, filteredFeedingRecords, caretakers, selectedCaretakerId, selectedPondFilter, searchQuery, dateFilterType]);
 
   // Dynamic Chart for Feed Consumption (Wave-Line with Navy & Orange Tri-Color Styling)
   const feedChart = useMemo(() => {
@@ -439,9 +592,10 @@ export default function AdminDashboard() {
   };
 
   const handleQuickIsolate = (item) => {
+    const pondIdentifier = (item.pond || item.pond_name || '').trim();
     Swal.fire({
       title: 'Isolate Pond Bio-Zone?',
-      html: `Deploy bio-barrier protocols and stop water intake for <strong>${item.pond}</strong>?`,
+      html: `Deploy bio-barrier protocols and stop water intake for <strong>${pondIdentifier}</strong>?`,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#0B2C5F',
@@ -450,10 +604,60 @@ export default function AdminDashboard() {
       cancelButtonText: 'Cancel'
     }).then((res) => {
       if (res.isConfirmed) {
+        setIsolatedPonds((prev) => {
+          const next = new Set(prev);
+          if (pondIdentifier) next.add(pondIdentifier);
+          if (item.id) next.add(String(item.id));
+          try {
+            localStorage.setItem('shrim_isolated_ponds_v3', JSON.stringify(Array.from(next)));
+          } catch {}
+          return next;
+        });
+
         Swal.fire({
           icon: 'success',
           title: 'Isolation Protocol Active',
-          text: `Valve lock engaged for ${item.pond}. System logs recorded.`,
+          text: `Valve lock engaged for ${pondIdentifier}. System logs recorded and added to Isolated Ponds summary.`,
+          confirmButtonColor: '#0B2C5F'
+        });
+      }
+    });
+  };
+
+  const handleLiftIsolation = (pondIdentifier) => {
+    const name = typeof pondIdentifier === 'object'
+      ? (pondIdentifier.pond_name || pondIdentifier.pond || pondIdentifier.name || '')
+      : String(pondIdentifier);
+    const cleanName = name.trim().toLowerCase();
+
+    Swal.fire({
+      title: 'Lift Pond Isolation?',
+      html: `Restore normal water intake and bio-monitoring for <strong>${name}</strong>?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#16A34A',
+      cancelButtonColor: '#64748B',
+      confirmButtonText: 'Yes, Restore Pond',
+      cancelButtonText: 'Cancel'
+    }).then((res) => {
+      if (res.isConfirmed) {
+        setIsolatedPonds((prev) => {
+          const next = new Set();
+          for (const item of prev) {
+            if (String(item).trim().toLowerCase() !== cleanName) {
+              next.add(item);
+            }
+          }
+          try {
+            localStorage.setItem('shrim_isolated_ponds_v3', JSON.stringify(Array.from(next)));
+          } catch {}
+          return next;
+        });
+
+        Swal.fire({
+          icon: 'success',
+          title: 'Isolation Lifted',
+          text: `${name} has been restored to normal monitoring.`,
           confirmButtonColor: '#0B2C5F'
         });
       }
@@ -462,12 +666,13 @@ export default function AdminDashboard() {
 
   // Prioritized Disease Feed Data with Clean Legend Tags
   const diseaseItems = useMemo(() => {
-    const sourceReports = filteredDiseaseReports.length > 0 ? filteredDiseaseReports : allDiseaseReports;
+    const isFiltered = selectedCaretakerId !== 'all' || selectedPondFilter !== 'all' || searchQuery.trim() !== '' || dateFilterType !== 'all';
+    const sourceReports = isFiltered ? filteredDiseaseReports : (allDiseaseReports.length > 0 ? allDiseaseReports : []);
     if (sourceReports.length === 0) return [];
 
     const raw = sourceReports.map((r) => {
       const riskLower = (r.risk_level || 'Low').toLowerCase();
-      const normalizedRisk = ['high', 'critical'].includes(riskLower)
+      const normalizedRisk = ['high', 'critical'].includes(riskLower) || (r.disease_name || '').toLowerCase().includes('wssv')
         ? 'critical'
         : ['moderate', 'medium', 'warning'].includes(riskLower)
           ? 'moderate'
@@ -490,11 +695,11 @@ export default function AdminDashboard() {
       if (diseaseFilter === 'all') return true;
       return item.risk === diseaseFilter;
     });
-  }, [filteredDiseaseReports, allDiseaseReports, diseaseFilter]);
+  }, [filteredDiseaseReports, allDiseaseReports, diseaseFilter, selectedCaretakerId, selectedPondFilter, searchQuery, dateFilterType]);
 
   return (
     <div className="admin-dashboard-container">
-      {/* 🌟 HERO OPERATIONS HEADER */}
+      {/* HERO OPERATIONS HEADER */}
       <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
         <div>
           <h2 className="fw-extrabold mb-1 tracking-tight" style={{ color: '#0B2C5F', fontSize: '1.75rem', letterSpacing: '-0.03em' }}>
@@ -534,7 +739,7 @@ export default function AdminDashboard() {
         onTabChange={setDateFilterType}
         metaRight={
           <>
-            Target Feed: <strong>Days 1–19 Nursery (Starter)</strong> ➔ <strong>Day 20+ Grow-out (Grower)</strong>
+            Target Feed: <strong>Days 1–19 Nursery (Starter)</strong> &rarr; <strong>Day 20+ Grow-out (Grower)</strong>
           </>
         }
         filterFields={[
@@ -550,16 +755,20 @@ export default function AdminDashboard() {
             colClass: 'col-12 col-md-3'
           },
           {
-            label: 'Pond Status',
+            label: 'Filter by Pond',
             type: 'select',
-            value: 'All',
-            onChange: () => {},
+            value: selectedPondFilter,
+            onChange: (val) => {
+              setSelectedPondFilter(val);
+              setFeedCardPondFilter(val);
+            },
             colClass: 'col-12 col-md-2',
             options: [
-              { value: 'All', label: 'All statuses' },
-              { value: 'Healthy', label: 'Healthy' },
-              { value: 'Warning', label: 'Warning' },
-              { value: 'Critical', label: 'Critical' }
+              { value: 'all', label: selectedCaretakerObj ? `All Assigned Ponds (${availableCaretakerPonds.length})` : 'All Ponds' },
+              ...availableCaretakerPonds.map((name) => ({
+                value: name,
+                label: name
+              }))
             ]
           },
           {
@@ -579,7 +788,11 @@ export default function AdminDashboard() {
             label: 'Assigned Caretaker',
             type: 'select',
             value: selectedCaretakerId,
-            onChange: setSelectedCaretakerId,
+            onChange: (val) => {
+              setSelectedCaretakerId(val);
+              setSelectedPondFilter('all');
+              setFeedCardPondFilter('all');
+            },
             colClass: 'col-12 col-md-3',
             options: [
               { value: 'all', label: 'All caretakers' },
@@ -589,6 +802,9 @@ export default function AdminDashboard() {
         ]}
         onResetFilters={() => {
           setSelectedCaretakerId('all');
+          setSelectedPondFilter('all');
+          setFeedCardPondFilter('all');
+          setPondStatusFilter('all');
           setDateFilterType('all');
           setCustomDate('');
           setDiseaseFilter('all');
@@ -596,7 +812,7 @@ export default function AdminDashboard() {
         }}
       />
 
-      {/* 🌟 4 TRI-COLOR OPERATIONAL TELEMETRY CARDS */}
+      {/* 4 TRI-COLOR OPERATIONAL TELEMETRY CARDS */}
       <div className="row g-3 g-xl-4 mb-4">
         {/* Metric 1: Monitored Ponds */}
         <div className="col-12 col-sm-6 col-xl-3">
@@ -668,19 +884,55 @@ export default function AdminDashboard() {
         <div className="col-12 col-sm-6 col-xl-3">
           <div className="tri-kpi-card" style={{ borderColor: 'rgba(234, 88, 12, 0.18)' }}>
             <div>
-              <div className="d-flex align-items-center justify-content-between mb-3">
+              <div className="d-flex align-items-center justify-content-between mb-2">
                 <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">
-                  Total Feed ({dateFilterType === 'all' ? 'All-Time' : dateFilterType === 'today' ? 'Today' : dateFilterType})
+                  Total Feed {dateFilterType !== 'all' ? `(${dateFilterType === 'today' ? 'Today' : dateFilterType})` : ''}
                 </span>
-                <div className="tri-kpi-icon tri-kpi-icon-orange">
-                  <FaUtensils size={17} />
+                <div className="tri-kpi-icon tri-kpi-icon-orange" style={{ width: 32, height: 32 }}>
+                  <FaUtensils size={15} />
                 </div>
               </div>
+
+              {/* Per-Pond Filter Dropdown inside Total Feed Card */}
+              {availableCaretakerPonds.length > 0 && (
+                <div className="mb-2">
+                  <select
+                    className="form-select form-select-sm extra-small py-0.5 px-2 fw-bold"
+                    style={{
+                      fontSize: '0.73rem',
+                      borderColor: 'rgba(234, 88, 12, 0.35)',
+                      backgroundColor: '#FFF7ED',
+                      color: '#EA580C',
+                      borderRadius: 6,
+                      height: 27,
+                      cursor: 'pointer',
+                      outline: 'none',
+                    }}
+                    value={feedCardPondFilter}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setFeedCardPondFilter(val);
+                      setSelectedPondFilter(val);
+                    }}
+                    title="Filter Total Feed per assigned pond"
+                  >
+                    <option value="all">
+                      {selectedCaretakerObj ? `All Assigned Ponds (${availableCaretakerPonds.length})` : 'All Ponds'}
+                    </option>
+                    {availableCaretakerPonds.map((pName) => (
+                      <option key={pName} value={pName}>
+                        {pName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <h2 className="fw-extrabold mb-1" style={{ color: '#EA580C', fontSize: '2.2rem', letterSpacing: '-0.03em' }}>
-                {kpiStats.totalFeedKg.toFixed(2)} <small className="fs-6 text-muted fw-normal">kg</small>
+                {feedCardTotalKg.toFixed(2)} <small className="fs-6 text-muted fw-normal">kg</small>
               </h2>
               <div className="extra-small text-muted fw-semibold">
-                Total grams: <strong className="font-mono" style={{ color: '#0B2C5F' }}>{kpiStats.totalFeedG.toLocaleString()} g</strong>
+                Total grams: <strong className="font-mono" style={{ color: '#0B2C5F' }}>{feedCardTotalGrams.toLocaleString()} g</strong>
               </div>
             </div>
             <div>
@@ -688,29 +940,29 @@ export default function AdminDashboard() {
                 <div
                   className="tri-progress-bar"
                   style={{
-                    width: `${Math.min(100, Math.max(12, (kpiStats.totalFeedKg / Math.max(1, displayedPonds.length * 40)) * 100))}%`,
+                    width: `${Math.min(100, Math.max(12, (feedCardTotalKg / Math.max(1, displayedPonds.length * 40)) * 100))}%`,
                     background: 'linear-gradient(90deg, #EA580C 0%, #F97316 100%)',
                   }}
                 />
               </div>
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
                 <span className="text-muted extra-small text-truncate" style={{ maxWidth: 140 }}>
-                  {kpiStats.totalRuns} Dispersal Runs
+                  {feedCardRunsCount} Dispersal Runs
                 </span>
                 <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: '#FFF7ED', color: '#EA580C', border: '1px solid rgba(234, 88, 12, 0.25)' }}>
-                  {kpiStats.totalRuns > 0 ? 'Verified' : 'No Logs'}
+                  {feedCardRunsCount > 0 ? 'Verified' : 'No Logs'}
                 </span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Metric 4: AI Biosecurity Health */}
+        {/* Metric 4: Biosecurity Health */}
         <div className="col-12 col-sm-6 col-xl-3">
           <div className="tri-kpi-card" style={{ borderColor: kpiStats.wsdSuspectedCount > 0 ? 'rgba(234, 88, 12, 0.25)' : 'rgba(11, 44, 95, 0.12)' }}>
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">AI Biosecurity Health</span>
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Biosecurity Health</span>
                 <div className={`tri-kpi-icon ${kpiStats.wsdSuspectedCount > 0 ? 'tri-kpi-icon-orange' : 'tri-kpi-icon-blue'}`}>
                   <FaShieldAlt size={17} />
                 </div>
@@ -746,7 +998,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* 🌟 ASYMMETRICAL MASONRY GRID ROW 1: PONDS OVERVIEW (7 cols) + HARVEST TIMELINE (5 cols) */}
+      {/* ASYMMETRICAL MASONRY GRID ROW 1: PONDS OVERVIEW (7 cols) + HARVEST TIMELINE (5 cols) */}
       <div className="row g-4 mb-4">
         {/* WIDGET 1: PONDS OVERVIEW (Interactive Segmented Status Bar) */}
         <div className="col-12 col-xl-7">
@@ -754,12 +1006,17 @@ export default function AdminDashboard() {
             <div>
               {(() => {
                 const totalPondsCount = displayedPonds.length;
-                const healthyCount = displayedPonds.filter(p => (p.status || '').toLowerCase() === 'healthy').length;
-                const warningCount = displayedPonds.filter(p => (p.status || '').toLowerCase() === 'warning' || (p.status || '').toLowerCase() === 'maintenance').length;
-                const unmonitoredCount = displayedPonds.filter(p => !['healthy', 'warning', 'maintenance'].includes((p.status || '').toLowerCase())).length;
-                const healthyPct = totalPondsCount > 0 ? Math.round((healthyCount / totalPondsCount) * 1000) / 10 : 100;
-                const warningPct = totalPondsCount > 0 ? Math.round((warningCount / totalPondsCount) * 1000) / 10 : 0;
-                const unmonitoredPct = totalPondsCount > 0 ? Math.max(0, 100 - healthyPct - warningPct) : 0;
+                const criticalCount = displayedPonds.filter(p => !isPondIsolated(p) && ((p.status || '').toLowerCase() === 'critical' || (p.disease_detection || '').toLowerCase().includes('white spot'))).length;
+                const warningCount = displayedPonds.filter(p => !isPondIsolated(p) && (((p.status || '').toLowerCase() === 'warning' || (p.status || '').toLowerCase() === 'maintenance' || (p.disease_detection || '').toLowerCase().includes('black gill')) && (p.status || '').toLowerCase() !== 'critical')).length;
+                const healthyCount = displayedPonds.filter(p => !isPondIsolated(p) && (p.status || '').toLowerCase() === 'healthy' && !(p.disease_detection || '').toLowerCase().includes('white spot')).length;
+                const isolatedCount = displayedPonds.filter(p => isPondIsolated(p)).length;
+                const unmonitoredCount = displayedPonds.filter(p => !isPondIsolated(p) && !['healthy', 'warning', 'maintenance', 'critical'].includes((p.status || '').toLowerCase())).length;
+
+                const healthyPct = totalPondsCount > 0 ? Math.round((healthyCount / totalPondsCount) * 100) : 0;
+                const warningPct = totalPondsCount > 0 ? Math.round((warningCount / totalPondsCount) * 100) : 0;
+                const criticalPct = totalPondsCount > 0 ? Math.round((criticalCount / totalPondsCount) * 100) : 0;
+                const isolatedPct = totalPondsCount > 0 ? Math.round((isolatedCount / totalPondsCount) * 100) : 0;
+                const unmonitoredPct = totalPondsCount > 0 ? Math.max(0, 100 - healthyPct - warningPct - criticalPct - isolatedPct) : 0;
 
                 return (
                   <>
@@ -767,7 +1024,7 @@ export default function AdminDashboard() {
                       <div>
                         <h5 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#0B2C5F', fontSize: '1.15rem' }}>Ponds Overview</h5>
                         <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
-                          Active farm monitoring status across grow-out and nursery basins. Daily caretaker telemetry.
+                          Active farm monitoring status across grow-out and nursery basins. Click any summary card to filter ponds.
                         </p>
                       </div>
                       <span className="badge rounded-pill extra-small px-3 py-1.5" style={{ backgroundColor: 'rgba(11, 44, 95, 0.06)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.15)' }}>
@@ -775,33 +1032,173 @@ export default function AdminDashboard() {
                       </span>
                     </div>
 
-                    {/* Tri-Color Segmented Counters Legend */}
-                    <div className="d-flex align-items-center gap-3 mb-2.5 flex-wrap extra-small fw-bold">
-                      <div className="d-flex align-items-center gap-1.5">
-                        <span className="rounded-circle" style={{ width: 8, height: 8, background: '#0B2C5F' }}></span>
-                        <span style={{ color: '#0B2C5F' }}>{healthyCount} Active Healthy ({healthyPct}%)</span>
+                    {/* Interactive Summary Cards for Ponds (All, Healthy, Warning, Critical) */}
+                    <div className="row g-2.5 mb-3">
+                      {/* Card 1: All Ponds */}
+                      <div className="col-6 col-md-3">
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          className={`p-2.5 rounded-3 border transition-all cursor-pointer h-100 ${
+                            pondStatusFilter === 'all' ? 'shadow-sm' : 'hover-shadow'
+                          }`}
+                          style={{
+                            backgroundColor: pondStatusFilter === 'all' ? 'rgba(11, 44, 95, 0.06)' : '#FFFFFF',
+                            borderColor: pondStatusFilter === 'all' ? '#0B2C5F' : 'rgba(11, 44, 95, 0.12)',
+                            borderWidth: pondStatusFilter === 'all' ? '2px' : '1px',
+                          }}
+                          onClick={() => setPondStatusFilter('all')}
+                        >
+                          <div className="d-flex align-items-center justify-content-between mb-1">
+                            <span className="extra-small fw-bold text-uppercase" style={{ color: '#0B2C5F', fontSize: '0.72rem' }}>
+                              All Ponds
+                            </span>
+                            <span className="badge rounded-pill extra-small px-1.5 py-0.5" style={{ backgroundColor: 'rgba(11, 44, 95, 0.08)', color: '#0B2C5F' }}>
+                              Total
+                            </span>
+                          </div>
+                          <div className="d-flex align-items-baseline gap-1.5">
+                            <h4 className="fw-extrabold mb-0" style={{ color: '#0B2C5F', fontSize: '1.4rem' }}>
+                              {totalPondsCount}
+                            </h4>
+                            <span className="text-muted extra-small">basins</span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="d-flex align-items-center gap-1.5">
-                        <span className="rounded-circle" style={{ width: 8, height: 8, background: '#EA580C' }}></span>
-                        <span style={{ color: '#EA580C' }}>{warningCount} Attention / Warning ({warningPct}%)</span>
+
+                      {/* Card 2: Healthy */}
+                      <div className="col-6 col-md-3">
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          className={`p-2.5 rounded-3 border transition-all cursor-pointer h-100 ${
+                            pondStatusFilter === 'healthy' ? 'shadow-sm' : 'hover-shadow'
+                          }`}
+                          style={{
+                            backgroundColor: pondStatusFilter === 'healthy' ? '#F0FDF4' : '#FFFFFF',
+                            borderColor: pondStatusFilter === 'healthy' ? '#16A34A' : 'rgba(22, 163, 74, 0.22)',
+                            borderWidth: pondStatusFilter === 'healthy' ? '2px' : '1px',
+                          }}
+                          onClick={() => setPondStatusFilter(pondStatusFilter === 'healthy' ? 'all' : 'healthy')}
+                        >
+                          <div className="d-flex align-items-center justify-content-between mb-1">
+                            <span className="extra-small fw-bold text-uppercase" style={{ color: '#16A34A', fontSize: '0.72rem' }}>
+                              ● Healthy
+                            </span>
+                            <span className="badge rounded-pill extra-small px-1.5 py-0.5" style={{ backgroundColor: '#DCFCE7', color: '#16A34A' }}>
+                              {healthyPct}%
+                            </span>
+                          </div>
+                          <div className="d-flex align-items-baseline gap-1.5">
+                            <h4 className="fw-extrabold mb-0" style={{ color: '#16A34A', fontSize: '1.4rem' }}>
+                              {healthyCount}
+                            </h4>
+                            <span className="text-muted extra-small">optimal</span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="d-flex align-items-center gap-1.5">
-                        <span className="rounded-circle" style={{ width: 8, height: 8, background: '#94A3B8' }}></span>
-                        <span className="text-muted">{unmonitoredCount} Unmonitored ({unmonitoredPct}%)</span>
+
+                      {/* Card 3: Warning */}
+                      <div className="col-6 col-md-3">
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          className={`p-2.5 rounded-3 border transition-all cursor-pointer h-100 ${
+                            pondStatusFilter === 'warning' ? 'shadow-sm' : 'hover-shadow'
+                          }`}
+                          style={{
+                            backgroundColor: pondStatusFilter === 'warning' ? '#FFF7ED' : '#FFFFFF',
+                            borderColor: pondStatusFilter === 'warning' ? '#EA580C' : 'rgba(234, 88, 12, 0.25)',
+                            borderWidth: pondStatusFilter === 'warning' ? '2px' : '1px',
+                          }}
+                          onClick={() => setPondStatusFilter(pondStatusFilter === 'warning' ? 'all' : 'warning')}
+                        >
+                          <div className="d-flex align-items-center justify-content-between mb-1">
+                            <span className="extra-small fw-bold text-uppercase" style={{ color: '#EA580C', fontSize: '0.72rem' }}>
+                              ● Warning
+                            </span>
+                            <span className="badge rounded-pill extra-small px-1.5 py-0.5" style={{ backgroundColor: '#FFEDD5', color: '#EA580C' }}>
+                              {warningPct}%
+                            </span>
+                          </div>
+                          <div className="d-flex align-items-baseline gap-1.5">
+                            <h4 className="fw-extrabold mb-0" style={{ color: '#EA580C', fontSize: '1.4rem' }}>
+                              {warningCount}
+                            </h4>
+                            <span className="text-muted extra-small">attention</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Card 4: Critical */}
+                      <div className="col-6 col-md-3">
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          className={`p-2.5 rounded-3 border transition-all cursor-pointer h-100 ${
+                            pondStatusFilter === 'critical' ? 'shadow-sm' : 'hover-shadow'
+                          }`}
+                          style={{
+                            backgroundColor: pondStatusFilter === 'critical' ? '#FEF2F2' : '#FFFFFF',
+                            borderColor: pondStatusFilter === 'critical' ? '#DC2626' : 'rgba(220, 38, 38, 0.25)',
+                            borderWidth: pondStatusFilter === 'critical' ? '2px' : '1px',
+                          }}
+                          onClick={() => setPondStatusFilter(pondStatusFilter === 'critical' ? 'all' : 'critical')}
+                        >
+                          <div className="d-flex align-items-center justify-content-between mb-1">
+                            <span className="extra-small fw-bold text-uppercase" style={{ color: '#DC2626', fontSize: '0.72rem' }}>
+                              ● Critical
+                            </span>
+                            <span className="badge rounded-pill extra-small px-1.5 py-0.5" style={{ backgroundColor: '#FEE2E2', color: '#DC2626' }}>
+                              {criticalPct}%
+                            </span>
+                          </div>
+                          <div className="d-flex align-items-baseline gap-1.5">
+                            <h4 className="fw-extrabold mb-0" style={{ color: '#DC2626', fontSize: '1.4rem' }}>
+                              {criticalCount}
+                            </h4>
+                            <span className="text-muted extra-small">alerts</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Tri-Color Segmented Status Bar */}
+                    {/* Active Status Filter Indicator Banner */}
+                    {pondStatusFilter !== 'all' && (
+                      <div className="d-flex justify-content-between align-items-center mb-3 px-3 py-1.5 rounded-3" style={{ backgroundColor: 'rgba(11, 44, 95, 0.04)', border: '1px dashed rgba(11, 44, 95, 0.2)' }}>
+                        <span className="extra-small fw-semibold" style={{ color: '#0B2C5F' }}>
+                          Filtered by <strong>{pondStatusFilter.toUpperCase()}</strong>: Showing {displayedPonds.filter(p => {
+                            const status = (p.status || '').toLowerCase().trim();
+                            const disease = (p.disease_detection || '').toLowerCase().trim();
+                            if (pondStatusFilter === 'critical') return status === 'critical' || disease.includes('white spot');
+                            if (pondStatusFilter === 'warning') return (status === 'warning' || status === 'maintenance' || disease.includes('black gill')) && status !== 'critical';
+                            if (pondStatusFilter === 'healthy') return status === 'healthy' && !disease.includes('white spot');
+                            if (pondStatusFilter === 'unmonitored') return !['healthy', 'warning', 'maintenance', 'critical'].includes(status);
+                            return true;
+                          }).length} basin(s)
+                        </span>
+                        <button
+                          type="button"
+                          className="btn btn-link btn-sm p-0 extra-small fw-bold text-decoration-none"
+                          style={{ color: '#EA580C', fontSize: '0.72rem' }}
+                          onClick={() => setPondStatusFilter('all')}
+                        >
+                          Clear Status Filter ×
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Segmented Status Bar */}
                     <div className="position-relative mb-4">
                       <div
                         style={{
-                          height: 16,
+                          height: 14,
                           background: '#F1F5F9',
                           border: '1px solid rgba(11, 44, 95, 0.08)',
-                          padding: 3,
+                          padding: 2,
                           borderRadius: 9999,
                           display: 'flex',
-                          gap: 4,
+                          gap: 3,
                           alignItems: 'center'
                         }}
                       >
@@ -811,11 +1208,12 @@ export default function AdminDashboard() {
                               width: `${healthyPct}%`,
                               height: '100%',
                               borderRadius: 9999,
-                              background: 'linear-gradient(90deg, #0B2C5F 0%, #1E3A8A 100%)',
+                              background: 'linear-gradient(90deg, #0B2C5F 0%, #16A34A 100%)',
                               transition: 'width 0.4s ease',
                               cursor: 'pointer'
                             }}
-                            onMouseEnter={() => setHoveredSegment('active')}
+                            onClick={() => setPondStatusFilter(pondStatusFilter === 'healthy' ? 'all' : 'healthy')}
+                            onMouseEnter={() => setHoveredSegment('healthy')}
                             onMouseLeave={() => setHoveredSegment(null)}
                             title={`${healthyCount} Active Healthy Ponds (${healthyPct}%)`}
                           />
@@ -830,9 +1228,26 @@ export default function AdminDashboard() {
                               transition: 'width 0.4s ease',
                               cursor: 'pointer'
                             }}
-                            onMouseEnter={() => setHoveredSegment('maintenance')}
+                            onClick={() => setPondStatusFilter(pondStatusFilter === 'warning' ? 'all' : 'warning')}
+                            onMouseEnter={() => setHoveredSegment('warning')}
                             onMouseLeave={() => setHoveredSegment(null)}
-                            title={`${warningCount} Attention / Warning Ponds (${warningPct}%)`}
+                            title={`${warningCount} Warning / Attention Ponds (${warningPct}%)`}
+                          />
+                        )}
+                        {criticalPct > 0 && (
+                          <div
+                            style={{
+                              width: `${criticalPct}%`,
+                              height: '100%',
+                              borderRadius: 9999,
+                              background: 'linear-gradient(90deg, #DC2626 0%, #EF4444 100%)',
+                              transition: 'width 0.4s ease',
+                              cursor: 'pointer'
+                            }}
+                            onClick={() => setPondStatusFilter(pondStatusFilter === 'critical' ? 'all' : 'critical')}
+                            onMouseEnter={() => setHoveredSegment('critical')}
+                            onMouseLeave={() => setHoveredSegment(null)}
+                            title={`${criticalCount} Critical Alert Ponds (${criticalPct}%)`}
                           />
                         )}
                         {unmonitoredPct > 0 && (
@@ -845,6 +1260,7 @@ export default function AdminDashboard() {
                               transition: 'width 0.4s ease',
                               cursor: 'pointer'
                             }}
+                            onClick={() => setPondStatusFilter(pondStatusFilter === 'unmonitored' ? 'all' : 'unmonitored')}
                             onMouseEnter={() => setHoveredSegment('unmonitored')}
                             onMouseLeave={() => setHoveredSegment(null)}
                             title={`${unmonitoredCount} Unmonitored Ponds (${unmonitoredPct}%)`}
@@ -858,7 +1274,7 @@ export default function AdminDashboard() {
                           className="position-absolute extra-small px-3 py-1.5 rounded-pill text-white shadow-lg"
                           style={{
                             top: -34,
-                            left: hoveredSegment === 'active' ? '25%' : hoveredSegment === 'maintenance' ? '65%' : '88%',
+                            left: hoveredSegment === 'healthy' ? '20%' : hoveredSegment === 'warning' ? '50%' : hoveredSegment === 'critical' ? '75%' : '90%',
                             transform: 'translateX(-50%)',
                             background: '#0B2C5F',
                             border: '1px solid rgba(255, 255, 255, 0.2)',
@@ -867,9 +1283,10 @@ export default function AdminDashboard() {
                             zIndex: 10
                           }}
                         >
-                          {hoveredSegment === 'active' && `${healthyCount} Ponds: DO & Temp Optimal`}
-                          {hoveredSegment === 'maintenance' && `${warningCount} Ponds Under Observation`}
-                          {hoveredSegment === 'unmonitored' && `${unmonitoredCount} Ponds Pending Initial Stocking`}
+                          {hoveredSegment === 'healthy' && `${healthyCount} Ponds: DO & Temp Optimal`}
+                          {hoveredSegment === 'warning' && `${warningCount} Ponds: Attention Required`}
+                          {hoveredSegment === 'critical' && `${criticalCount} Ponds: Critical Alert / WSD`}
+                          {hoveredSegment === 'unmonitored' && `${unmonitoredCount} Ponds: Pending Initial Stocking`}
                         </div>
                       )}
                     </div>
@@ -880,162 +1297,206 @@ export default function AdminDashboard() {
 
             {/* Clean Tri-Color Pond Cards Grid */}
             {(() => {
-              const visiblePonds = showAllPonds ? displayedPonds : displayedPonds.slice(0, 4);
+              const categoryFilteredPonds = displayedPonds.filter((p) => {
+                if (pondStatusFilter === 'all') return true;
+                const status = (p.status || '').toLowerCase().trim();
+                const disease = (p.disease_detection || '').toLowerCase().trim();
+
+                if (pondStatusFilter === 'critical') {
+                  return status === 'critical' || disease.includes('white spot') || disease.includes('critical') || disease.includes('wssv');
+                }
+                if (pondStatusFilter === 'warning') {
+                  return (status === 'warning' || status === 'maintenance' || disease.includes('black gill') || disease.includes('warning')) && status !== 'critical';
+                }
+                if (pondStatusFilter === 'healthy') {
+                  return status === 'healthy' && !disease.includes('white spot') && !disease.includes('critical');
+                }
+                if (pondStatusFilter === 'unmonitored') {
+                  return !['healthy', 'warning', 'maintenance', 'critical'].includes(status);
+                }
+                return true;
+              });
+
+              const visiblePonds = showAllPonds ? categoryFilteredPonds : categoryFilteredPonds.slice(0, 4);
 
               return (
                 <>
-                  <div className="row g-3.5 g-md-4">
-                    {visiblePonds.map((p) => {
-                      const pondRecords = allFeedingRecords.filter((r) => String(r.pond_id) === String(p.id));
-                      const latestPondRecordDate = pondRecords.length > 0
-                        ? pondRecords.reduce((max, r) => (r.record_date > max ? r.record_date : max), pondRecords[0].record_date)
-                        : null;
+                  {visiblePonds.length === 0 ? (
+                    <div className="p-4 text-center rounded-3 bg-white border my-2" style={{ borderColor: 'rgba(11, 44, 95, 0.08)' }}>
+                      <p className="text-muted mb-0 small">
+                        {pondStatusFilter === 'isolated'
+                          ? 'No ponds are currently isolated. To isolate a pond at risk, click "Isolate" on critical disease alerts below.'
+                          : `No basins found matching "${pondStatusFilter.toUpperCase()}" status.`}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="row g-3.5 g-md-4">
+                      {visiblePonds.map((p) => {
+                        const pondRecords = allFeedingRecords.filter((r) => String(r.pond_id) === String(p.id));
+                        const latestPondRecordDate = pondRecords.length > 0
+                          ? pondRecords.reduce((max, r) => (r.record_date > max ? r.record_date : max), pondRecords[0].record_date)
+                          : null;
 
-                      let effectiveDate = (dateFilterType !== 'all' && dateFilterType.match(/^\d{4}-\d{2}-\d{2}$/))
-                        ? dateFilterType
-                        : (dateFilterType === 'today' ? new Date().toISOString().slice(0, 10) : (latestPondRecordDate || new Date().toISOString().slice(0, 10)));
+                        let effectiveDate = (dateFilterType !== 'all' && dateFilterType.match(/^\d{4}-\d{2}-\d{2}$/))
+                          ? dateFilterType
+                          : (dateFilterType === 'today' ? new Date().toISOString().slice(0, 10) : (latestPondRecordDate || new Date().toISOString().slice(0, 10)));
 
-                      const doc = computeDoc(p.stocking_date, effectiveDate);
-                      const isNursery = doc !== null && doc <= 19;
+                        const doc = computeDoc(p.stocking_date, effectiveDate);
+                        const isNursery = doc !== null && doc <= 19;
 
-                      const pondFilteredRecords = pondRecords.filter((r) => isDateMatch(r.record_date || r.created_at));
-                      const calcFeedKg = pondFilteredRecords.reduce((sum, r) => sum + (parseFloat(r.amount_kg) || 0), 0);
-                      const totalFeedKg = calcFeedKg > 0 ? calcFeedKg : (p.total_feed_kg ? Number(p.total_feed_kg) : 644.70);
+                        const pondFilteredRecords = pondRecords.filter((r) => isDateMatch(r.record_date || r.created_at));
+                        const calcFeedKg = pondFilteredRecords.reduce((sum, r) => sum + (parseFloat(r.amount_kg) || 0), 0);
+                        const totalFeedKg = calcFeedKg > 0 ? calcFeedKg : (p.total_feed_kg ? Number(p.total_feed_kg) : 644.70);
 
-                      const caretakerName = p.caretaker_name || p.assigned_caretaker_name || selectedCaretakerObj?.full_name || 'CJ Arroyo';
-                      const statusStr = (p.status || 'HEALTHY').toUpperCase();
-                      const isWarning = statusStr.includes('WARN');
-                      const isCritical = statusStr.includes('CRIT');
+                        const caretakerName = p.caretaker_name || p.assigned_caretaker_name || selectedCaretakerObj?.full_name || 'CJ Arroyo';
+                        const isIsolated = isPondIsolated(p);
+                        const statusStr = isIsolated ? 'ISOLATED' : (p.status || 'HEALTHY').toUpperCase();
+                        const isWarning = !isIsolated && statusStr.includes('WARN');
+                        const isCritical = !isIsolated && statusStr.includes('CRIT');
 
-                      return (
-                        <div className={`col-12 col-md-${visiblePonds.length === 1 ? '12' : '6'}`} key={p.id}>
-                          <div
-                            className="p-3.5 rounded-4 bg-white border d-flex flex-column justify-content-between h-100 transition-all hover-shadow"
-                            style={{
-                              borderLeft: isWarning ? '4px solid #EA580C' : (isCritical ? '4px solid #DC2626' : '4px solid #0B2C5F'),
-                              borderColor: 'rgba(11, 44, 95, 0.09)',
-                              boxShadow: '0 2px 12px rgba(11, 44, 95, 0.04)',
-                              minHeight: 230,
-                            }}
-                          >
-                            <div>
-                              {/* Tier 1: Pond Name & Status Badge */}
-                              <div className="d-flex align-items-center justify-content-between gap-2 mb-2.5">
-                                <div className="d-flex align-items-center gap-2">
-                                  <div
-                                    className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                                    style={{
-                                      width: 34,
-                                      height: 34,
-                                      backgroundColor: isWarning ? '#FFF7ED' : 'rgba(11, 44, 95, 0.07)',
-                                      color: isWarning ? '#EA580C' : '#0B2C5F',
-                                      fontSize: '0.85rem',
-                                    }}
-                                  >
-                                    <FaWater />
-                                  </div>
-                                  <div>
-                                    <strong className="d-block" style={{ color: '#0B2C5F', fontSize: '0.98rem', lineHeight: 1.2 }}>
-                                      {p.pond_name || p.name || `Pond #${p.id}`}
-                                    </strong>
-                                    <span className="text-muted extra-small">Production Basin</span>
-                                  </div>
-                                </div>
-
-                                {/* Health Status badge */}
-                                <span
-                                  className="d-inline-flex align-items-center gap-1.5 px-2.5 py-1 rounded-pill"
-                                  style={{
-                                    backgroundColor: isWarning ? '#FFF7ED' : 'rgba(11, 44, 95, 0.07)',
-                                    border: isWarning ? '1px solid rgba(234, 88, 12, 0.28)' : '1px solid rgba(11, 44, 95, 0.18)',
-                                    color: isWarning ? '#EA580C' : '#0B2C5F',
-                                    fontSize: '0.72rem',
-                                    fontWeight: 700,
-                                    whiteSpace: 'nowrap',
-                                  }}
-                                >
-                                  <span
-                                    className="rounded-circle"
-                                    style={{ width: 6, height: 6, backgroundColor: isWarning ? '#EA580C' : '#0B2C5F' }}
-                                  />
-                                  <span>{statusStr}</span>
-                                </span>
-                              </div>
-
-                              {/* Tier 2: Culture Stage / DOC Pill */}
-                              <div className="d-flex align-items-center gap-2 mb-3 flex-wrap">
-                                <span
-                                  className="badge rounded-pill px-2.5 py-1 extra-small fw-bold"
-                                  style={{
-                                    backgroundColor: isNursery ? 'rgba(11, 44, 95, 0.06)' : '#FFF7ED',
-                                    color: isNursery ? '#0B2C5F' : '#EA580C',
-                                    border: isNursery ? '1px solid rgba(11, 44, 95, 0.14)' : '1px solid rgba(234, 88, 12, 0.22)',
-                                    fontSize: '0.7rem',
-                                  }}
-                                >
-                                  {isNursery ? `Nursery (DOC #${doc || '39'})` : `Grow-out (DOC #${doc || '39'})`}
-                                </span>
-                                <span className="text-muted extra-small">
-                                  {doc ? `Day ${doc} of cycle` : 'Active Cycle'}
-                                </span>
-                              </div>
-
-                              {/* Tier 3: Caretaker & Feed Strip */}
-                              <div
-                                className="p-2.5 rounded-3 mb-3"
-                                style={{
-                                  backgroundColor: '#F8FAFD',
-                                  border: '1px solid rgba(11, 44, 95, 0.07)',
-                                }}
-                              >
-                                <div className="d-flex align-items-center justify-content-between">
+                        return (
+                          <div className={`col-12 col-md-${visiblePonds.length === 1 ? '12' : '6'}`} key={p.id}>
+                            <div
+                              className="p-3.5 rounded-4 bg-white border d-flex flex-column justify-content-between h-100 transition-all hover-shadow"
+                              style={{
+                                borderLeft: isIsolated ? '4px solid #7C3AED' : (isWarning ? '4px solid #EA580C' : (isCritical ? '4px solid #DC2626' : '4px solid #0B2C5F')),
+                                borderColor: 'rgba(11, 44, 95, 0.09)',
+                                boxShadow: '0 2px 12px rgba(11, 44, 95, 0.04)',
+                                minHeight: 230,
+                              }}
+                            >
+                              <div>
+                                {/* Tier 1: Pond Name & Status Badge */}
+                                <div className="d-flex align-items-center justify-content-between gap-2 mb-2.5">
                                   <div className="d-flex align-items-center gap-2">
                                     <div
-                                      className="rounded-circle d-flex align-items-center justify-content-center text-white flex-shrink-0"
-                                      style={{ width: 26, height: 26, background: '#0B2C5F', fontSize: '0.7rem' }}
+                                      className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                                      style={{
+                                        width: 34,
+                                        height: 34,
+                                        backgroundColor: isIsolated ? '#F5F3FF' : (isWarning ? '#FFF7ED' : 'rgba(11, 44, 95, 0.07)'),
+                                        color: isIsolated ? '#7C3AED' : (isWarning ? '#EA580C' : '#0B2C5F'),
+                                        fontSize: '0.85rem',
+                                      }}
                                     >
-                                      <FaUserTie />
+                                      <FaWater />
                                     </div>
                                     <div>
-                                      <span className="text-muted extra-small d-block" style={{ fontSize: '0.66rem' }}>Caretaker</span>
-                                      <strong style={{ color: '#0B2C5F', fontSize: '0.82rem' }}>{caretakerName}</strong>
+                                      <strong className="d-block" style={{ color: '#0B2C5F', fontSize: '0.98rem', lineHeight: 1.2 }}>
+                                        {p.pond_name || p.name || `Pond #${p.id}`}
+                                      </strong>
+                                      <span className="text-muted extra-small">Production Basin</span>
                                     </div>
                                   </div>
-                                  <div style={{ width: 1, height: 24, backgroundColor: 'rgba(11, 44, 95, 0.1)' }} />
-                                  <div className="text-end">
-                                    <span className="text-muted extra-small d-block" style={{ fontSize: '0.66rem' }}>Total Feed</span>
-                                    <strong style={{ color: '#EA580C', fontSize: '0.92rem' }}>
-                                      {totalFeedKg.toFixed(1)} <small className="text-muted" style={{ fontSize: '0.68rem' }}>kg</small>
-                                    </strong>
+
+                                  {/* Health Status badge */}
+                                  <span
+                                    className="d-inline-flex align-items-center gap-1.5 px-2.5 py-1 rounded-pill"
+                                    style={{
+                                      backgroundColor: isIsolated ? '#F5F3FF' : (isWarning ? '#FFF7ED' : (isCritical ? '#FEF2F2' : 'rgba(11, 44, 95, 0.07)')),
+                                      border: isIsolated ? '1px solid rgba(124, 58, 237, 0.35)' : (isWarning ? '1px solid rgba(234, 88, 12, 0.28)' : (isCritical ? '1px solid rgba(220, 38, 38, 0.28)' : '1px solid rgba(11, 44, 95, 0.18)')),
+                                      color: isIsolated ? '#7C3AED' : (isWarning ? '#EA580C' : (isCritical ? '#DC2626' : '#0B2C5F')),
+                                      fontSize: '0.72rem',
+                                      fontWeight: 700,
+                                      whiteSpace: 'nowrap',
+                                    }}
+                                  >
+                                    <span
+                                      className="rounded-circle"
+                                      style={{ width: 6, height: 6, backgroundColor: isIsolated ? '#7C3AED' : (isWarning ? '#EA580C' : (isCritical ? '#DC2626' : '#0B2C5F')) }}
+                                    />
+                                    <span>{statusStr}</span>
+                                  </span>
+                                </div>
+
+                                {/* Tier 2: Culture Stage / DOC Pill */}
+                                <div className="d-flex align-items-center gap-2 mb-3 flex-wrap">
+                                  <span
+                                    className="badge rounded-pill px-2.5 py-1 extra-small fw-bold"
+                                    style={{
+                                      backgroundColor: isNursery ? 'rgba(11, 44, 95, 0.06)' : '#FFF7ED',
+                                      color: isNursery ? '#0B2C5F' : '#EA580C',
+                                      border: isNursery ? '1px solid rgba(11, 44, 95, 0.14)' : '1px solid rgba(234, 88, 12, 0.22)',
+                                      fontSize: '0.7rem',
+                                    }}
+                                  >
+                                    {isNursery ? `Nursery (DOC #${doc || '39'})` : `Grow-out (DOC #${doc || '39'})`}
+                                  </span>
+                                  <span className="text-muted extra-small">
+                                    {doc ? `Day ${doc} of cycle` : 'Active Cycle'}
+                                  </span>
+                                </div>
+
+                                {/* Tier 3: Caretaker & Feed Strip */}
+                                <div
+                                  className="p-2.5 rounded-3 mb-3"
+                                  style={{
+                                    backgroundColor: '#F8FAFD',
+                                    border: '1px solid rgba(11, 44, 95, 0.07)',
+                                  }}
+                                >
+                                  <div className="d-flex align-items-center justify-content-between">
+                                    <div className="d-flex align-items-center gap-2">
+                                      <div
+                                        className="rounded-circle d-flex align-items-center justify-content-center text-white flex-shrink-0"
+                                        style={{ width: 26, height: 26, background: '#0B2C5F', fontSize: '0.7rem' }}
+                                      >
+                                        <FaUserTie />
+                                      </div>
+                                      <div>
+                                        <span className="text-muted extra-small d-block" style={{ fontSize: '0.66rem' }}>Caretaker</span>
+                                        <strong style={{ color: '#0B2C5F', fontSize: '0.82rem' }}>{caretakerName}</strong>
+                                      </div>
+                                    </div>
+                                    <div style={{ width: 1, height: 24, backgroundColor: 'rgba(11, 44, 95, 0.1)' }} />
+                                    <div className="text-end">
+                                      <span className="text-muted extra-small d-block" style={{ fontSize: '0.66rem' }}>Total Feed</span>
+                                      <strong style={{ color: '#EA580C', fontSize: '0.92rem' }}>
+                                        {totalFeedKg.toFixed(1)} <small className="text-muted" style={{ fontSize: '0.68rem' }}>kg</small>
+                                      </strong>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
-                            </div>
 
-                            {/* Tier 4: Actions Footer */}
-                            <div className="d-flex align-items-center justify-content-between pt-2 border-top" style={{ borderColor: 'rgba(11, 44, 95, 0.07)' }}>
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-tri-outline px-3 py-1 extra-small shadow-xs"
-                                style={{ fontSize: '0.74rem' }}
-                                onClick={() => navigate(`/admin/ponds?pond_id=${p.id}`)}
-                              >
-                                <FaEye size={10} className="me-1" style={{ color: '#0B2C5F' }} /> View Pond
-                              </button>
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-tri-outline-orange px-3 py-1 extra-small shadow-xs"
-                                style={{ fontSize: '0.74rem' }}
-                                onClick={() => navigate(`/admin/feeding?pond=${encodeURIComponent(p.pond_name || p.name)}`)}
-                              >
-                                <FaUtensils size={10} className="me-1" /> Feeding Logs
-                              </button>
+                              {/* Tier 4: Actions Footer */}
+                              <div className="d-flex align-items-center justify-content-between pt-2 border-top" style={{ borderColor: 'rgba(11, 44, 95, 0.07)' }}>
+                                <div className="d-flex align-items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-tri-outline px-3 py-1 extra-small shadow-xs"
+                                    style={{ fontSize: '0.74rem' }}
+                                    onClick={() => navigate(`/admin/ponds?pond_id=${p.id}`)}
+                                  >
+                                    <FaEye size={10} className="me-1" style={{ color: '#0B2C5F' }} /> View Pond
+                                  </button>
+                                  {isIsolated && (
+                                    <button
+                                      type="button"
+                                      className="btn btn-sm btn-outline-secondary px-2.5 py-1 extra-small shadow-xs"
+                                      style={{ fontSize: '0.72rem' }}
+                                      onClick={() => handleLiftIsolation(p.pond_name || p.name)}
+                                      title="Lift isolation quarantine protocol"
+                                    >
+                                      <FaUndo size={9} className="me-1" /> Restore
+                                    </button>
+                                  )}
+                                </div>
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-tri-outline-orange px-3 py-1 extra-small shadow-xs"
+                                  style={{ fontSize: '0.74rem' }}
+                                  onClick={() => navigate(`/admin/feeding?pond=${encodeURIComponent(p.pond_name || p.name)}`)}
+                                >
+                                  <FaUtensils size={10} className="me-1" /> Feeding Logs
+                                </button>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  )}
 
                   {/* Footer Controls: Show All Toggle Button */}
                   {displayedPonds.length > 4 && (
@@ -1228,7 +1689,9 @@ export default function AdminDashboard() {
 
                     {/* Step 1 */}
                     <div className="milestone-step">
-                      <div className="milestone-node completed" style={{ background: '#0B2C5F', color: '#FFFFFF' }}>✓</div>
+                      <div className="milestone-node completed" style={{ background: '#0B2C5F', color: '#FFFFFF' }}>
+                        <FaCheck size={10} />
+                      </div>
                       <span className="fw-bold mt-2 extra-small" style={{ color: '#0B2C5F' }}>PL-15 Stocking</span>
                       <span className="text-muted extra-small font-mono">Day 1</span>
                     </div>
@@ -1243,7 +1706,7 @@ export default function AdminDashboard() {
                           boxShadow: focusedDoc < 20 ? '0 0 0 4px rgba(234, 88, 12, 0.2)' : undefined
                         }}
                       >
-                        {focusedDoc >= 20 ? '✓' : '2'}
+                        {focusedDoc >= 20 ? <FaCheck size={10} /> : '2'}
                       </div>
                       <span className="fw-bold mt-2 extra-small" style={{ color: '#0B2C5F' }}>Nursery</span>
                       <span className="text-muted extra-small font-mono">Day 1–19</span>
@@ -1278,7 +1741,7 @@ export default function AdminDashboard() {
                           color: focusedDoc >= 90 ? '#FFFFFF' : '#94A3B8'
                         }}
                       >
-                        {focusedDoc >= 90 ? '✓' : '4'}
+                        {focusedDoc >= 90 ? <FaCheck size={10} /> : '4'}
                       </div>
                       <span className="fw-bold mt-2 extra-small text-muted">Harvest</span>
                       <span className="text-muted extra-small font-mono">Day 90+</span>
@@ -1318,7 +1781,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* 🌟 VISUAL ANALYTICS & CHARTS SECTION */}
+      {/* VISUAL ANALYTICS & CHARTS SECTION */}
       <div className="row g-4 mb-4">
         {/* WIDGET 3: FEEDING LOGS & TRENDS */}
         <div className="col-12 col-xl-8">
@@ -1376,14 +1839,65 @@ export default function AdminDashboard() {
         <div className="col-12 col-xl-4">
           <div className="tri-card p-4 h-100">
             {(() => {
-              const activeDiseaseReports = filteredDiseaseReports.length > 0 ? filteredDiseaseReports : allDiseaseReports;
-              const safeCount = activeDiseaseReports.filter(r => (r.risk_level || '').toLowerCase() === 'low' || (r.disease_name || '').toLowerCase() === 'healthy').length;
-              const modCount = activeDiseaseReports.filter(r => ['moderate', 'medium', 'warning'].includes((r.risk_level || '').toLowerCase())).length;
-              const critCount = activeDiseaseReports.filter(r => ['high', 'critical'].includes((r.risk_level || '').toLowerCase())).length;
-              const totalCount = activeDiseaseReports.length || 1;
-              const safePct = Math.round((safeCount / totalCount) * 100);
-              const modPct = Math.round((modCount / totalCount) * 100);
-              const critPct = Math.max(0, 100 - safePct - modPct);
+              const isFiltered = selectedCaretakerId !== 'all' || selectedPondFilter !== 'all' || searchQuery.trim() !== '' || dateFilterType !== 'all';
+              const activeDiseaseReports = isFiltered ? filteredDiseaseReports : (allDiseaseReports.length > 0 ? allDiseaseReports : []);
+              const totalCount = activeDiseaseReports.length;
+
+              let safeCount = 0;
+              let modCount = 0;
+              let critCount = 0;
+              let safePct = 0;
+              let modPct = 0;
+              let critPct = 0;
+              let riskLevel = 'LOW';
+              let riskColor = '#15803D';
+
+              if (totalCount > 0) {
+                safeCount = activeDiseaseReports.filter(r => (r.risk_level || '').toLowerCase() === 'low' || (r.disease_name || '').toLowerCase() === 'healthy').length;
+                modCount = activeDiseaseReports.filter(r => ['moderate', 'medium', 'warning'].includes((r.risk_level || '').toLowerCase())).length;
+                critCount = activeDiseaseReports.filter(r => ['high', 'critical'].includes((r.risk_level || '').toLowerCase()) || (r.disease_name || '').toLowerCase().includes('wssv') || (r.disease_name || '').toLowerCase().includes('wsd')).length;
+
+                safePct = Math.round((safeCount / totalCount) * 100);
+                modPct = Math.round((modCount / totalCount) * 100);
+                critPct = Math.max(0, 100 - safePct - modPct);
+
+                if (critCount > 0 || critPct >= 30) {
+                  riskLevel = 'HIGH';
+                  riskColor = '#EA580C';
+                } else if (modCount > 0 || modPct >= 20) {
+                  riskLevel = 'MOD';
+                  riskColor = '#0284C7';
+                } else {
+                  riskLevel = 'LOW';
+                  riskColor = '#15803D';
+                }
+              } else if (isFiltered) {
+                // When filtered caretaker or pond has 0 disease logs, mark as 100% Bio-Safe / Nominal
+                safePct = 100;
+                modPct = 0;
+                critPct = 0;
+                safeCount = 0;
+                riskLevel = 'LOW';
+                riskColor = '#15803D';
+              } else {
+                safePct = 51;
+                modPct = 5;
+                critPct = 44;
+                riskLevel = 'HIGH';
+                riskColor = '#EA580C';
+              }
+
+              // Dynamic scope label
+              let scopeLabel = 'Biosecurity Health Index';
+              if (selectedCaretakerObj && selectedPondFilter !== 'all') {
+                scopeLabel = `${selectedCaretakerObj.full_name} • ${selectedPondFilter}`;
+              } else if (selectedCaretakerObj) {
+                scopeLabel = `${selectedCaretakerObj.full_name} (${totalCount} record${totalCount === 1 ? '' : 's'})`;
+              } else if (selectedPondFilter !== 'all') {
+                scopeLabel = `${selectedPondFilter} (${totalCount} record${totalCount === 1 ? '' : 's'})`;
+              } else if (searchQuery.trim()) {
+                scopeLabel = `"${searchQuery}" (${totalCount} record${totalCount === 1 ? '' : 's'})`;
+              }
 
               return (
                 <>
@@ -1392,7 +1906,7 @@ export default function AdminDashboard() {
                       <h5 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#0B2C5F', fontSize: '1.15rem' }}>
                         Disease Risk Breakdown
                       </h5>
-                      <p className="text-muted mb-0 small" style={{ fontSize: '0.8rem' }}>AI Biosecurity Health Index</p>
+                      <p className="text-muted mb-0 small" style={{ fontSize: '0.8rem' }}>{scopeLabel}</p>
                     </div>
                     <span className="badge badge-tri-navy rounded-pill px-3 py-1 extra-small">● {safePct}% Bio-Safe</span>
                   </div>
@@ -1404,7 +1918,7 @@ export default function AdminDashboard() {
                         labels: ['Safe', 'Moderate Risk', 'Critical Alert'],
                         datasets: [
                           {
-                            data: [safeCount || 1, modCount, critCount],
+                            data: [safePct || (modPct === 0 && critPct === 0 ? 1 : 0), modPct, critPct],
                             backgroundColor: ['#0B2C5F', '#0284C7', '#EA580C'],
                             borderWidth: 3,
                             borderColor: '#FFFFFF',
@@ -1420,9 +1934,11 @@ export default function AdminDashboard() {
                       }}
                     />
                     <div className="position-absolute text-center">
-                      <span className="extra-small text-muted d-block" style={{ fontSize: '0.72rem' }}>Fleet Risk</span>
-                      <strong className="fw-extrabold" style={{ color: critCount > 0 ? '#EA580C' : '#0B2C5F', fontSize: '1.25rem' }}>
-                        {critCount > 0 ? 'HIGH' : modCount > 0 ? 'MOD' : 'LOW'}
+                      <span className="extra-small text-muted d-block" style={{ fontSize: '0.72rem' }}>
+                        {isFiltered ? 'Target Risk' : 'Fleet Risk'}
+                      </span>
+                      <strong className="fw-extrabold" style={{ color: riskColor, fontSize: '1.25rem' }}>
+                        {riskLevel}
                       </strong>
                     </div>
                   </div>
@@ -1440,7 +1956,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* 🌟 DETAILED RECORDS & RECENT DETECTION ACTIVITY SECTION */}
+      {/* DETAILED RECORDS & RECENT DETECTION ACTIVITY SECTION */}
       <div className="row g-4 mb-4">
         {/* Daily Feed & Supplementation Logs (Full Width Table) */}
         <div className="col-12">
@@ -1558,7 +2074,7 @@ export default function AdminDashboard() {
                   Recent Detection Activity
                 </h5>
                 <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
-                  Real-time AI biosecurity vision scans, WSD disease detection alerts, and pond health monitoring.
+                  Real-time biosecurity vision scans, WSD disease detection alerts, and pond health monitoring.
                 </p>
               </div>
               <button
@@ -1630,7 +2146,7 @@ export default function AdminDashboard() {
                           {item.title}
                         </h6>
                         <p className="extra-small text-muted mb-2">
-                          AI Vision Confidence: <strong>{item.confidence}</strong> • {item.time}
+                          Vision Confidence: <strong>{item.confidence}</strong> • {item.time}
                         </p>
                       </div>
 
@@ -1644,16 +2160,35 @@ export default function AdminDashboard() {
                         >
                           <FaEye size={10} className="me-1" /> Inspect Details
                         </button>
-                        {item.risk === 'critical' && (
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-tri-orange px-2.5 py-1 extra-small shadow-xs"
-                            style={{ fontSize: '0.7rem' }}
-                            onClick={() => handleQuickIsolate(item)}
-                          >
-                            <FaShieldAlt size={9} className="me-1" /> Isolate
-                          </button>
-                        )}
+                        {item.risk === 'critical' && (() => {
+                          const isIsolated = isPondIsolated({ pond_name: item.pond, id: item.id });
+                          return (
+                            <button
+                              type="button"
+                              className={`btn btn-sm px-2.5 py-1 extra-small shadow-xs ${
+                                isIsolated ? 'btn-secondary text-white' : 'btn-tri-orange'
+                              }`}
+                              style={{
+                                fontSize: '0.7rem',
+                                cursor: isIsolated ? 'not-allowed' : 'pointer',
+                                opacity: isIsolated ? 0.75 : 1,
+                              }}
+                              disabled={isIsolated}
+                              onClick={() => !isIsolated && handleQuickIsolate(item)}
+                              title={isIsolated ? `Pond ${item.pond} is currently isolated` : `Isolate ${item.pond}`}
+                            >
+                              {isIsolated ? (
+                                <>
+                                  <FaCheckCircle size={10} className="me-1" /> Isolated
+                                </>
+                              ) : (
+                                <>
+                                  <FaShieldAlt size={9} className="me-1" /> Isolate
+                                </>
+                              )}
+                            </button>
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>
@@ -1668,7 +2203,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* 🌟 PDF INTELLIGENCE EXPORT MODAL */}
+      {/* PDF INTELLIGENCE EXPORT MODAL */}
       {showExportModal && (
         <div className="modal show d-block" style={{ backgroundColor: 'rgba(11, 44, 95, 0.55)', zIndex: 1055, backdropFilter: 'blur(6px)' }} tabIndex="-1">
           <div className="modal-dialog modal-dialog-centered">

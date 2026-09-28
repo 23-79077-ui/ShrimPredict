@@ -307,7 +307,7 @@ export default function DiseaseScanPage() {
 
       const prediction = response.data?.prediction;
       if (!prediction) {
-        throw new Error(response.data?.message || 'AI model did not return a prediction. Check the Flask model API.');
+        throw new Error(response.data?.message || 'Model did not return a prediction. Check the Flask model API.');
       }
 
       const predictionName = String(prediction.prediction || prediction.disease_name || '').trim().toLowerCase();
@@ -360,7 +360,7 @@ export default function DiseaseScanPage() {
       const message = error.response?.data?.message
         || error.response?.data?.ai_response?.message
         || error.message
-        || 'AI model unavailable.';
+        || 'Model unavailable.';
       Swal.fire({
         icon: 'error',
         title: 'Scan failed',
@@ -523,7 +523,7 @@ export default function DiseaseScanPage() {
 
   return (
     <div className="caretaker-diseasescan-hub">
-      {/* 🌟 PAGE HEADER HERO BAR */}
+      {/* PAGE HEADER HERO BAR */}
       <div className="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
         <div>
           <div className="d-flex align-items-center gap-2 mb-1">
@@ -531,7 +531,7 @@ export default function DiseaseScanPage() {
               className="badge rounded-pill extra-small fw-bold px-2.5 py-1"
               style={{ backgroundColor: '#FFF7ED', color: '#EA580C', border: '1px solid #FFEDD5' }}
             >
-              <FaRobot className="me-1" /> AI Computer Vision
+              <FaRobot className="me-1" /> Computer Vision
             </span>
             <span
               className="badge rounded-pill extra-small fw-bold px-2.5 py-1"
@@ -542,7 +542,7 @@ export default function DiseaseScanPage() {
           </div>
           <h3 className="fw-extrabold text-dark mb-1 tracking-tight">Disease Scan &amp; Diagnostics</h3>
           <p className="text-muted small mb-0">
-            Real-time optical AI inspection for White Spot Syndrome Virus (WSSV), cooked shrimp detection, and health diagnosis.
+            Real-time optical inspection for White Spot Syndrome Virus (WSSV), cooked shrimp detection, and health diagnosis.
           </p>
         </div>
 
@@ -552,13 +552,13 @@ export default function DiseaseScanPage() {
             style={{ backgroundColor: '#FFFFFF', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.16)', boxShadow: '0 2px 6px rgba(11,44,95,0.04)' }}
           >
             <span className="rounded-circle bg-success" style={{ width: 8, height: 8 }} />
-            <span>AI Pipeline Active (EfficientNet / CNN)</span>
+            <span>Diagnostic Pipeline Active (EfficientNet / CNN)</span>
           </div>
         </div>
       </div>
 
       <div className="row g-4">
-        {/* 📸 LEFT CARD: SCANNER & CONTROLS */}
+        {/* LEFT CARD: SCANNER & CONTROLS */}
         <div className="col-12 col-lg-7">
           <div className="tri-card p-4 h-100 d-flex flex-column justify-content-between">
             <div>
@@ -598,7 +598,7 @@ export default function DiseaseScanPage() {
                 })}
               </div>
 
-              {/* 📸 CAMERA / IMAGE PREVIEW FRAME */}
+              {/* CAMERA / IMAGE PREVIEW FRAME */}
               <div
                 className="rounded-4 overflow-hidden mb-3 position-relative d-flex align-items-center justify-content-center"
                 style={{
@@ -691,7 +691,7 @@ export default function DiseaseScanPage() {
                 onChange={handleImageUpload}
               />
 
-              {/* 🎛️ ACTION BUTTONS TOOLBAR */}
+              {/* ACTION BUTTONS TOOLBAR */}
               <div className="d-flex align-items-center justify-content-between gap-2 pt-1 w-100 flex-wrap flex-sm-nowrap caretaker-scan-toolbar">
                 <div className="d-flex align-items-center gap-2 flex-grow-1">
                   <button
@@ -747,7 +747,7 @@ export default function DiseaseScanPage() {
                   View Model Accuracy Literature &amp; Research Baselines
                 </summary>
                 <div className="p-3 pt-0 border-top" style={{ fontSize: '0.82rem' }}>
-                  <p className="mb-2 text-muted extra-small">Current AI detection baselines established by scientific literature:</p>
+                  <p className="mb-2 text-muted extra-small">Current detection baselines established by scientific literature:</p>
                   <ul className="mb-0 text-dark extra-small ps-3">
                     <li className="mb-1.5">
                       <strong>Advanced CNN (LeNet) Precision:</strong> Up to 96.1% Precision for <i>Penaeus vannamei</i> disease classification.
@@ -777,7 +777,7 @@ export default function DiseaseScanPage() {
           </div>
         </div>
 
-        {/* 🧪 RIGHT CARD: PIPELINE ASSESSMENT RESULT */}
+        {/* RIGHT CARD: PIPELINE ASSESSMENT RESULT */}
         <div className="col-12 col-lg-5">
           <div className="tri-card p-4 h-100 d-flex flex-column">
             <div className="d-flex align-items-center justify-content-between mb-3">
@@ -829,7 +829,7 @@ export default function DiseaseScanPage() {
                       {scanning ? (
                         <>
                           <FaSpinner className="disease-spin fs-1 mb-3" style={{ color: '#0B2C5F' }} />
-                          <h6 className="fw-bold mb-1" style={{ color: '#0B2C5F' }}>Running AI Pipeline</h6>
+                          <h6 className="fw-bold mb-1" style={{ color: '#0B2C5F' }}>Running Diagnostic Pipeline</h6>
                           <p className="extra-small text-muted mb-0">Executing Stages 1–4 Computer Vision Diagnostics…</p>
                         </>
                       ) : (
@@ -1052,14 +1052,14 @@ export default function DiseaseScanPage() {
           </div>
         </div>
 
-      {/* 📜 DETECTION & PIPELINE HISTORY TABLE WITH FILTER TOOLSTRIP & EXPORT PDF */}
+      {/* DETECTION & PIPELINE HISTORY TABLE WITH FILTER TOOLSTRIP & EXPORT PDF */}
       <div className="tri-card p-4 mt-4">
         <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-3">
           <div>
             <h5 className="fw-extrabold text-dark mb-1 d-flex align-items-center gap-2">
               <FaHistory style={{ color: '#0B2C5F' }} /> Detection &amp; Pipeline History
             </h5>
-            <small className="text-muted">History of AI disease scan assessments for assigned ponds</small>
+            <small className="text-muted">History of disease scan assessments for assigned ponds</small>
           </div>
 
           <div className="d-flex align-items-center gap-2 flex-wrap ms-auto">
@@ -1125,7 +1125,7 @@ export default function DiseaseScanPage() {
                 <th className="py-3">Pond</th>
                 <th className="py-3">Disease / Outcome</th>
                 <th className="py-3">Confidence</th>
-                <th className="py-3">AI Model Used</th>
+                <th className="py-3">Model Used</th>
                 <th className="py-3">Risk Level</th>
                 <th className="py-3 pe-3 text-end">Pipeline Status</th>
               </tr>

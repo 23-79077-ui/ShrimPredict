@@ -589,7 +589,7 @@ export default function FeedingHistoryPage() {
 
   return (
     <div className="caretaker-history-hub">
-      {/* 🌟 HERO CONTROL STRIP (TRI-COLOR CLEAN: NAVY & WARM ORANGE) */}
+      {/* HERO CONTROL STRIP (TRI-COLOR CLEAN: NAVY & WARM ORANGE) */}
       <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
         <div>
           <div className="d-flex align-items-center gap-2 mb-1">
@@ -685,7 +685,7 @@ export default function FeedingHistoryPage() {
         </div>
       </div>
 
-      {/* 🌟 POND QUICK-SELECTOR NAVIGATION STRIP (TRI-POND PILLS) */}
+      {/* POND QUICK-SELECTOR NAVIGATION STRIP (TRI-POND PILLS) */}
       {assignedPonds.length > 0 && (
         <div className="mb-4">
           <div className="d-flex align-items-center gap-2 flex-wrap tri-pond-pill-strip">
@@ -753,7 +753,7 @@ export default function FeedingHistoryPage() {
         </div>
       )}
 
-      {/* 🌟 4 TRI-COLOR TELEMETRY CARDS */}
+      {/* 4 TRI-COLOR TELEMETRY CARDS */}
       <div className="row g-3 g-xl-4 mb-4">
         {/* Card 1: Cumulative Feed Intake */}
         <div className="col-12 col-sm-6 col-xl-3">
@@ -896,7 +896,7 @@ export default function FeedingHistoryPage() {
         </div>
       </div>
 
-      {/* 🌟 MAIN CONTENT CONTAINER: TOOLBAR, CONTROLS & TABLE */}
+      {/* MAIN CONTENT CONTAINER: TOOLBAR, CONTROLS & TABLE */}
       <div className="tri-card p-3.5 p-md-4 mb-4">
         {/* TOOLBAR ROW 1: SEARCH, DATE FILTER PRESETS & RESET */}
         <div className="d-flex justify-content-between align-items-center flex-wrap gap-2.5 mb-3">
@@ -1010,7 +1010,7 @@ export default function FeedingHistoryPage() {
               }`}
               onClick={() => setStageFilter('nursery')}
             >
-              🌱 Nursery (DOC 1–19) ({nurseryRecordsCount})
+              Nursery (DOC 1–19) ({nurseryRecordsCount})
             </button>
             <button
               type="button"
@@ -1019,7 +1019,7 @@ export default function FeedingHistoryPage() {
               }`}
               onClick={() => setStageFilter('growout')}
             >
-              🌊 Grow-out (DOC 20+) ({growoutRecordsCount})
+              Grow-out (DOC 20+) ({growoutRecordsCount})
             </button>
           </div>
 
@@ -1051,7 +1051,7 @@ export default function FeedingHistoryPage() {
           </div>
         </div>
 
-        {/* 🌟 TABLE SECTION */}
+        {/* TABLE SECTION */}
         {loading ? (
           <div className="py-5 text-center text-muted">
             <div className="spinner-border text-primary spinner-border-sm me-2" role="status" />
@@ -1151,14 +1151,14 @@ export default function FeedingHistoryPage() {
                                 className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1"
                                 style={{ background: '#FFF7ED', color: '#EA580C', border: '1px solid rgba(234, 88, 12, 0.25)' }}
                               >
-                                🌱 {item.doc ? `Day ${item.doc}` : 'DOC 1-19'} • Nursery
+                                {item.doc ? `Day ${item.doc}` : 'DOC 1-19'} • Nursery
                               </span>
                             ) : item.isGrowout ? (
                               <span
                                 className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1"
                                 style={{ background: 'rgba(11, 44, 95, 0.07)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.18)' }}
                               >
-                                🌊 {item.doc ? `Day ${item.doc}` : 'DOC 20+'} • Grow-out
+                                {item.doc ? `Day ${item.doc}` : 'DOC 20+'} • Grow-out
                               </span>
                             ) : (
                               <span className="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-2.5 py-1 extra-small fw-bold">
@@ -1210,7 +1210,7 @@ export default function FeedingHistoryPage() {
                                   }`}
                                   style={{ fontSize: '0.67rem' }}
                                 >
-                                  {isCompleteDay ? '✓ 5/5 Slots Complete' : `${slotsLoggedCount}/5 Slots Logged`}
+                                  {isCompleteDay ? '5/5 Slots Complete' : `${slotsLoggedCount}/5 Slots Logged`}
                                 </span>
                               </div>
                             </div>
@@ -1327,14 +1327,14 @@ export default function FeedingHistoryPage() {
                                 className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1"
                                 style={{ background: '#FFF7ED', color: '#EA580C', border: '1px solid rgba(234, 88, 12, 0.25)' }}
                               >
-                                🌱 {record.doc ? `Day ${record.doc}` : 'DOC 1-19'} • Nursery
+                                {record.doc ? `Day ${record.doc}` : 'DOC 1-19'} • Nursery
                               </span>
                             ) : isGrowout ? (
                               <span
                                 className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1"
                                 style={{ background: 'rgba(11, 44, 95, 0.07)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.18)' }}
                               >
-                                🌊 {record.doc ? `Day ${record.doc}` : 'DOC 20+'} • Grow-out
+                                {record.doc ? `Day ${record.doc}` : 'DOC 20+'} • Grow-out
                               </span>
                             ) : (
                               <span className="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-2.5 py-1 extra-small fw-bold">
@@ -1451,7 +1451,7 @@ export default function FeedingHistoryPage() {
         )}
       </div>
 
-      {/* 🌟 ULTRA-PREMIUM COMPACT MODAL FOR FEEDING LOG DETAILS */}
+      {/* ULTRA-PREMIUM COMPACT MODAL FOR FEEDING LOG DETAILS */}
       {selectedRecordDetails && (
         <div
           className="modal fade show d-block"
@@ -1743,7 +1743,7 @@ export default function FeedingHistoryPage() {
         </div>
       )}
 
-      {/* 🌟 POND CULTURE CYCLE CALENDAR MODAL */}
+      {/* POND CULTURE CYCLE CALENDAR MODAL */}
       {calendarModalPond && (
         <div
           className="modal fade show d-block"
@@ -1770,7 +1770,7 @@ export default function FeedingHistoryPage() {
         </div>
       )}
 
-      {/* 🌟 BACKFILL & EDIT FEEDING RECORD MODAL (TRI-COLOR THEMED) */}
+      {/* BACKFILL & EDIT FEEDING RECORD MODAL (TRI-COLOR THEMED) */}
       {backfillModalOpen && (
         <div
           className="modal fade show d-block"

@@ -28,6 +28,8 @@ import {
   FaWeightHanging,
   FaWind,
   FaHistory,
+  FaShieldAlt,
+  FaUndo,
   FaEye
 } from 'react-icons/fa';
 import Swal from 'sweetalert2';
@@ -151,6 +153,105 @@ export default function PondMonitoringPage() {
   const [editingWqRecord, setEditingWqRecord] = useState(null);
   const [ocrTargetDate, setOcrTargetDate] = useState('');
   const [ocrTargetPondId, setOcrTargetPondId] = useState('');
+  const [isolatedPonds, setIsolatedPonds] = useState(() => {
+    try {
+      const saved = localStorage.getItem('shrim_isolated_ponds_v3');
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+
+  useEffect(() => {
+    const syncStorage = () => {
+      try {
+        const saved = localStorage.getItem('shrim_isolated_ponds_v3');
+        setIsolatedPonds(saved ? new Set(JSON.parse(saved)) : new Set());
+      } catch {}
+    };
+    window.addEventListener('storage', syncStorage);
+    return () => window.removeEventListener('storage', syncStorage);
+  }, []);
+
+  const isPondIsolated = (pond) => {
+    if (!pond) return false;
+    const name = (pond.pond_name || pond.name || '').trim().toLowerCase();
+    const id = String(pond.id || '');
+    if ((pond.status || '').toLowerCase() === 'isolated') return true;
+    for (const item of isolatedPonds) {
+      const clean = String(item).trim().toLowerCase();
+      if (clean && (clean === name || clean === id)) return true;
+    }
+    return false;
+  };
+
+  const handleLiftIsolation = (pond) => {
+    const name = pond.pond_name || pond.name || `Pond #${pond.id}`;
+    const cleanName = name.trim().toLowerCase();
+    Swal.fire({
+      title: 'Lift Pond Isolation?',
+      html: `Restore normal water intake and bio-monitoring for <strong>${name}</strong>?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#16A34A',
+      cancelButtonColor: '#64748B',
+      confirmButtonText: 'Yes, Restore Pond',
+      cancelButtonText: 'Cancel'
+    }).then((res) => {
+      if (res.isConfirmed) {
+        setIsolatedPonds((prev) => {
+          const next = new Set();
+          for (const item of prev) {
+            if (String(item).trim().toLowerCase() !== cleanName && String(item) !== String(pond.id)) {
+              next.add(item);
+            }
+          }
+          try {
+            localStorage.setItem('shrim_isolated_ponds_v3', JSON.stringify(Array.from(next)));
+          } catch {}
+          return next;
+        });
+        Swal.fire({
+          icon: 'success',
+          title: 'Isolation Lifted',
+          text: `${name} has been restored to normal monitoring.`,
+          confirmButtonColor: '#0B2C5F'
+        });
+      }
+    });
+  };
+
+  const handleQuickIsolate = (pond) => {
+    const name = pond.pond_name || pond.name || `Pond #${pond.id}`;
+    Swal.fire({
+      title: 'Isolate Pond Bio-Zone?',
+      html: `Deploy bio-barrier protocols and stop water intake for <strong>${name}</strong>?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#0B2C5F',
+      cancelButtonColor: '#EA580C',
+      confirmButtonText: 'Yes, Isolate Pond',
+      cancelButtonText: 'Cancel'
+    }).then((res) => {
+      if (res.isConfirmed) {
+        setIsolatedPonds((prev) => {
+          const next = new Set(prev);
+          if (name) next.add(name);
+          if (pond.id) next.add(String(pond.id));
+          try {
+            localStorage.setItem('shrim_isolated_ponds_v3', JSON.stringify(Array.from(next)));
+          } catch {}
+          return next;
+        });
+        Swal.fire({
+          icon: 'success',
+          title: 'Isolation Protocol Active',
+          text: `Valve lock engaged for ${name}. System logs recorded and added to Isolated Ponds summary.`,
+          confirmButtonColor: '#0B2C5F'
+        });
+      }
+    });
+  };
 
 
 
@@ -229,20 +330,28 @@ export default function PondMonitoringPage() {
     return pondsWithDoc.filter((p) => p.isGrowout).length;
   }, [pondsWithDoc]);
 
+  const isolatedPondsCount = useMemo(() => {
+    return pondsWithDoc.filter((p) => isPondIsolated(p)).length;
+  }, [pondsWithDoc, isolatedPonds]);
+
   const filteredPonds = useMemo(() => pondsWithDoc.filter((p) => {
     const q = searchQuery.trim().toLowerCase();
     if (q) {
       const haystack = [p.pond_name, p.assigned_caretaker_name].join(' ').toLowerCase();
       if (!haystack.includes(q)) return false;
     }
-    if (statusFilter !== 'All' && p.status !== statusFilter) return false;
+    if (statusFilter === 'Isolated') {
+      if (!isPondIsolated(p)) return false;
+    } else if (statusFilter !== 'All') {
+      if (isPondIsolated(p) || p.status !== statusFilter) return false;
+    }
     if (diseaseFilter === 'Clear' && isDiseaseAlert(p.disease_detection)) return false;
     if (diseaseFilter === 'Alert' && !isDiseaseAlert(p.disease_detection)) return false;
     if (caretakerFilter !== 'All' && p.assigned_caretaker_name !== caretakerFilter) return false;
     if (stageFilter === 'Nursery' && !p.isNursery) return false;
     if (stageFilter === 'Growout' && !p.isGrowout) return false;
     return true;
-  }), [pondsWithDoc, searchQuery, statusFilter, diseaseFilter, caretakerFilter, stageFilter]);
+  }), [pondsWithDoc, searchQuery, statusFilter, diseaseFilter, caretakerFilter, stageFilter, isolatedPonds]);
 
   const pieData = {
     labels: ['Healthy', 'Warning', 'Critical'],
@@ -400,7 +509,7 @@ export default function PondMonitoringPage() {
 
   return (
     <div className="pb-4">
-      {/* 🌟 1. EXECUTIVE HERO BANNER */}
+      {/* 1. EXECUTIVE HERO BANNER */}
       <div className="disease-hero-banner d-flex justify-content-between align-items-center flex-wrap gap-3">
         <div className="d-flex align-items-center gap-3">
           <div
@@ -472,11 +581,20 @@ export default function PondMonitoringPage() {
         </div>
       )}
 
-      {/* 🌟 2. 6 TOP METRIC CARDS (Tri-Color System) */}
-      <div className="row g-3 g-xl-3 mb-4">
+      {/* 2. 7 TOP METRIC CARDS (Tri-Color System + Isolated Ponds) */}
+      <div className="row g-2.5 mb-4">
         {/* Total Ponds */}
-        <div className="col-12 col-sm-6 col-md-4 col-xl-2">
-          <div className="tri-kpi-card">
+        <div className="col-12 col-sm-6 col-md-4 col-xl">
+          <div
+            className="tri-kpi-card h-100 transition-all cursor-pointer"
+            style={{
+              backgroundColor: statusFilter === 'All' ? '#F8FAFD' : '#FFFFFF',
+              borderColor: statusFilter === 'All' ? '#0B2C5F' : 'rgba(11, 44, 95, 0.12)',
+              boxShadow: statusFilter === 'All' ? '0 0 0 2px rgba(11, 44, 95, 0.2)' : undefined,
+            }}
+            onClick={() => setStatusFilter('All')}
+            title="Click to view all ponds"
+          >
             <div>
               <div className="d-flex align-items-center justify-content-between mb-2">
                 <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Total Ponds</span>
@@ -498,13 +616,22 @@ export default function PondMonitoringPage() {
         </div>
 
         {/* Healthy Ponds */}
-        <div className="col-12 col-sm-6 col-md-4 col-xl-2">
-          <div className="tri-kpi-card">
+        <div className="col-12 col-sm-6 col-md-4 col-xl">
+          <div
+            className="tri-kpi-card h-100 transition-all cursor-pointer"
+            style={{
+              backgroundColor: statusFilter === 'Healthy' ? '#F0FDF4' : '#FFFFFF',
+              borderColor: statusFilter === 'Healthy' ? '#16A34A' : 'rgba(11, 44, 95, 0.12)',
+              boxShadow: statusFilter === 'Healthy' ? '0 0 0 2px rgba(22, 163, 74, 0.25)' : undefined,
+            }}
+            onClick={() => setStatusFilter(statusFilter === 'Healthy' ? 'All' : 'Healthy')}
+            title="Click to filter healthy ponds"
+          >
             <div>
               <div className="d-flex align-items-center justify-content-between mb-2">
                 <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Healthy</span>
                 <span className="badge rounded-pill extra-small px-2 py-0.5 fw-bold" style={{ backgroundColor: '#F0FDF4', color: '#16A34A', border: '1px solid #BBF7D0' }}>
-                  ✓ Stable
+                  Stable
                 </span>
               </div>
               <h3 className="fw-extrabold mb-1" style={{ color: '#16A34A', fontSize: '1.75rem', letterSpacing: '-0.02em' }}>
@@ -521,13 +648,22 @@ export default function PondMonitoringPage() {
         </div>
 
         {/* Warning Ponds */}
-        <div className="col-12 col-sm-6 col-md-4 col-xl-2">
-          <div className="tri-kpi-card">
+        <div className="col-12 col-sm-6 col-md-4 col-xl">
+          <div
+            className="tri-kpi-card h-100 transition-all cursor-pointer"
+            style={{
+              backgroundColor: statusFilter === 'Warning' ? '#FFFBEB' : '#FFFFFF',
+              borderColor: statusFilter === 'Warning' ? '#D97706' : 'rgba(11, 44, 95, 0.12)',
+              boxShadow: statusFilter === 'Warning' ? '0 0 0 2px rgba(217, 119, 6, 0.25)' : undefined,
+            }}
+            onClick={() => setStatusFilter(statusFilter === 'Warning' ? 'All' : 'Warning')}
+            title="Click to filter warning ponds"
+          >
             <div>
               <div className="d-flex align-items-center justify-content-between mb-2">
                 <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Warning</span>
                 <span className="badge rounded-pill extra-small px-2 py-0.5 fw-bold" style={{ backgroundColor: '#FFFBEB', color: '#D97706', border: '1px solid #FDE68A' }}>
-                  ⚠ Notice
+                  Notice
                 </span>
               </div>
               <h3 className="fw-extrabold mb-1" style={{ color: '#D97706', fontSize: '1.75rem', letterSpacing: '-0.02em' }}>
@@ -544,13 +680,22 @@ export default function PondMonitoringPage() {
         </div>
 
         {/* Critical Ponds */}
-        <div className="col-12 col-sm-6 col-md-4 col-xl-2">
-          <div className="tri-kpi-card" style={{ borderColor: summary.critical_ponds > 0 ? 'rgba(220, 38, 38, 0.3)' : 'rgba(11, 44, 95, 0.12)' }}>
+        <div className="col-12 col-sm-6 col-md-4 col-xl">
+          <div
+            className="tri-kpi-card h-100 transition-all cursor-pointer"
+            style={{
+              backgroundColor: statusFilter === 'Critical' ? '#FEF2F2' : '#FFFFFF',
+              borderColor: statusFilter === 'Critical' ? '#DC2626' : (summary.critical_ponds > 0 ? 'rgba(220, 38, 38, 0.3)' : 'rgba(11, 44, 95, 0.12)'),
+              boxShadow: statusFilter === 'Critical' ? '0 0 0 2px rgba(220, 38, 38, 0.25)' : undefined,
+            }}
+            onClick={() => setStatusFilter(statusFilter === 'Critical' ? 'All' : 'Critical')}
+            title="Click to filter critical alert ponds"
+          >
             <div>
               <div className="d-flex align-items-center justify-content-between mb-2">
                 <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Critical</span>
                 <span className="badge rounded-pill extra-small px-2 py-0.5 fw-bold" style={{ backgroundColor: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>
-                  🔴 Alert
+                  Alert
                 </span>
               </div>
               <h3 className="fw-extrabold mb-1" style={{ color: '#DC2626', fontSize: '1.75rem', letterSpacing: '-0.02em' }}>
@@ -566,9 +711,47 @@ export default function PondMonitoringPage() {
           </div>
         </div>
 
+        {/* Isolated Ponds (New Card Requested by User) */}
+        <div className="col-12 col-sm-6 col-md-4 col-xl">
+          <div
+            className="tri-kpi-card h-100 transition-all cursor-pointer"
+            style={{
+              backgroundColor: statusFilter === 'Isolated' ? '#F5F3FF' : '#FFFFFF',
+              borderColor: statusFilter === 'Isolated' ? '#7C3AED' : (isolatedPondsCount > 0 ? 'rgba(124, 58, 237, 0.35)' : 'rgba(11, 44, 95, 0.12)'),
+              boxShadow: statusFilter === 'Isolated' ? '0 0 0 2px rgba(124, 58, 237, 0.25)' : undefined,
+            }}
+            onClick={() => setStatusFilter(statusFilter === 'Isolated' ? 'All' : 'Isolated')}
+            title="Click to filter isolated quarantined ponds"
+          >
+            <div>
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider" style={{ color: '#7C3AED' }}>Isolated</span>
+                <span className="badge rounded-pill extra-small px-2 py-0.5 fw-bold" style={{ backgroundColor: '#EDE9FE', color: '#7C3AED', border: '1px solid #DDD6FE' }}>
+                  Bio-Lock
+                </span>
+              </div>
+              <h3 className="fw-extrabold mb-1" style={{ color: '#7C3AED', fontSize: '1.75rem', letterSpacing: '-0.02em' }}>
+                {isolatedPondsCount}
+              </h3>
+            </div>
+            <div>
+              <div className="tri-progress-track my-2" style={{ backgroundColor: 'rgba(124, 58, 237, 0.1)' }}>
+                <div
+                  className="tri-progress-bar"
+                  style={{
+                    width: summary.total_ponds > 0 ? `${Math.min(100, (isolatedPondsCount / summary.total_ponds) * 100)}%` : '0%',
+                    background: 'linear-gradient(90deg, #7C3AED, #9333EA)'
+                  }}
+                />
+              </div>
+              <span className="text-muted extra-small d-block">Quarantined Basins</span>
+            </div>
+          </div>
+        </div>
+
         {/* Avg Feed Today */}
-        <div className="col-12 col-sm-6 col-md-4 col-xl-2">
-          <div className="tri-kpi-card">
+        <div className="col-12 col-sm-6 col-md-4 col-xl">
+          <div className="tri-kpi-card h-100">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-2">
                 <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Feed Today</span>
@@ -589,9 +772,9 @@ export default function PondMonitoringPage() {
           </div>
         </div>
 
-        {/* Avg Pond Age */}
-        <div className="col-12 col-sm-6 col-md-4 col-xl-2">
-          <div className="tri-kpi-card">
+        {/* Avg Pond DOC */}
+        <div className="col-12 col-sm-6 col-md-4 col-xl">
+          <div className="tri-kpi-card h-100">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-2">
                 <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Avg Pond DOC</span>
@@ -613,7 +796,7 @@ export default function PondMonitoringPage() {
         </div>
       </div>
 
-      {/* 🌟 3. UNIFIED SEARCH, STAGE & PARAMETER FILTER TOOLBAR */}
+      {/* 3. UNIFIED SEARCH, STAGE & PARAMETER FILTER TOOLBAR */}
       <AdminFilterToolbar
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
@@ -632,7 +815,7 @@ export default function PondMonitoringPage() {
         onTabChange={setStageFilter}
         metaRight={
           <span className="text-muted extra-small">
-            Target Feed: <strong>Days 1–19 Nursery (Starter)</strong> ➔ <strong>Day 20+ Grow-out (Grower)</strong>
+            Target Feed: <strong>Days 1–19 Nursery (Starter)</strong> &rarr; <strong>Day 20+ Grow-out (Grower)</strong>
           </span>
         }
         onResetFilters={clearFilters}
@@ -666,6 +849,7 @@ export default function PondMonitoringPage() {
               <option value="Healthy">Healthy</option>
               <option value="Warning">Warning</option>
               <option value="Critical">Critical</option>
+              <option value="Isolated">Isolated ({isolatedPondsCount})</option>
               <option value="Unmonitored">Unmonitored</option>
             </select>
           </div>
@@ -687,7 +871,7 @@ export default function PondMonitoringPage() {
         </div>
       </AdminFilterToolbar>
 
-      {/* 🌊 POND MONITORING TABLE CARD (FULL WIDTH COL-12 WITH STICKY HEADER & CLEAN EXECUTIVE DESIGN) */}
+      {/* POND MONITORING TABLE CARD (FULL WIDTH COL-12 WITH STICKY HEADER & CLEAN EXECUTIVE DESIGN) */}
       <div className="row g-4 mb-4">
         <div className="col-12">
           <div className="tri-card p-4 position-relative overflow-hidden">
@@ -809,7 +993,7 @@ export default function PondMonitoringPage() {
                                     className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1"
                                     style={{ background: '#FEF3C7', color: '#B45309', border: '1px solid #FCD34D', fontSize: '0.74rem' }}
                                   >
-                                    ⚡ Day 20 • Transfer
+                                    Day 20 • Transfer
                                   </span>
                                   <div className="extra-small text-muted mt-1 fw-medium">
                                     Feed: <strong className="text-secondary">Tateh - Grower</strong>
@@ -841,38 +1025,47 @@ export default function PondMonitoringPage() {
 
                           {/* Status */}
                           <td className="py-3">
-                            <span
-                              className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1.5"
-                              style={{
-                                fontSize: '0.75rem',
-                                backgroundColor:
-                                  tone === 'success' ? '#ECFDF5' :
-                                  tone === 'warning' ? '#FFFBEB' :
-                                  tone === 'danger' ? '#FEF2F2' : '#F1F5F9',
-                                color:
-                                  tone === 'success' ? '#047857' :
-                                  tone === 'warning' ? '#B45309' :
-                                  tone === 'danger' ? '#B91C1C' : '#475569',
-                                border: `1px solid ${
-                                  tone === 'success' ? '#A7F3D0' :
-                                  tone === 'warning' ? '#FDE68A' :
-                                  tone === 'danger' ? '#FECACA' : '#CBD5E1'
-                                }`
-                              }}
-                            >
-                              <span
-                                className="rounded-circle"
-                                style={{
-                                  width: 6,
-                                  height: 6,
-                                  backgroundColor:
-                                    tone === 'success' ? '#10B981' :
-                                    tone === 'warning' ? '#F59E0B' :
-                                    tone === 'danger' ? '#EF4444' : '#64748B'
-                                }}
-                              />
-                              {pond.status || 'Unmonitored'}
-                            </span>
+                            {(() => {
+                              const isolated = isPondIsolated(pond);
+                              return (
+                                <span
+                                  className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1.5"
+                                  style={{
+                                    fontSize: '0.75rem',
+                                    backgroundColor:
+                                      isolated ? '#F5F3FF' :
+                                      tone === 'success' ? '#ECFDF5' :
+                                      tone === 'warning' ? '#FFFBEB' :
+                                      tone === 'danger' ? '#FEF2F2' : '#F1F5F9',
+                                    color:
+                                      isolated ? '#7C3AED' :
+                                      tone === 'success' ? '#047857' :
+                                      tone === 'warning' ? '#B45309' :
+                                      tone === 'danger' ? '#B91C1C' : '#475569',
+                                    border: `1px solid ${
+                                      isolated ? '#DDD6FE' :
+                                      tone === 'success' ? '#A7F3D0' :
+                                      tone === 'warning' ? '#FDE68A' :
+                                      tone === 'danger' ? '#FECACA' : '#CBD5E1'
+                                    }`
+                                  }}
+                                >
+                                  <span
+                                    className="rounded-circle"
+                                    style={{
+                                      width: 6,
+                                      height: 6,
+                                      backgroundColor:
+                                        isolated ? '#7C3AED' :
+                                        tone === 'success' ? '#10B981' :
+                                        tone === 'warning' ? '#F59E0B' :
+                                        tone === 'danger' ? '#EF4444' : '#64748B'
+                                    }}
+                                  />
+                                  {isolated ? 'Isolated' : (pond.status || 'Unmonitored')}
+                                </span>
+                              );
+                            })()}
                           </td>
 
                           {/* Caretaker */}
@@ -986,6 +1179,25 @@ export default function PondMonitoringPage() {
                           {/* Quick Actions (Streamlined, Non-Wrapping) */}
                           <td className="pe-3.5 py-3 text-end">
                             <div className="d-flex align-items-center justify-content-end gap-1.5 flex-nowrap">
+                              {isPondIsolated(pond) ? (
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-outline-secondary rounded-pill px-2.5 py-1 extra-small fw-bold d-inline-flex align-items-center gap-1 shadow-xs"
+                                  onClick={() => handleLiftIsolation(pond)}
+                                  title="Lift Quarantine Protocol"
+                                >
+                                  <FaUndo size={10} /> Restore
+                                </button>
+                              ) : (pond.status === 'Critical' || isDiseaseAlert(pond.disease_detection)) ? (
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-outline-danger rounded-pill px-2.5 py-1 extra-small fw-bold d-inline-flex align-items-center gap-1 shadow-xs"
+                                  onClick={() => handleQuickIsolate(pond)}
+                                  title="Isolate Pond Bio-Zone"
+                                >
+                                  <FaShieldAlt size={10} /> Isolate
+                                </button>
+                              ) : null}
                               <button
                                 type="button"
                                 className="btn btn-sm btn-tri-navy rounded-pill px-2.5 py-1 extra-small fw-bold d-inline-flex align-items-center gap-1 shadow-xs"
@@ -1043,7 +1255,7 @@ export default function PondMonitoringPage() {
       </div>
 
       
-{/* 📊 HEALTH DISTRIBUTION CARD (PLACED DIRECTLY BELOW POND MONITORING TABLE) */}
+{/* HEALTH DISTRIBUTION CARD (PLACED DIRECTLY BELOW POND MONITORING TABLE) */}
       <div className="row g-4 mb-4">
         <div className="col-12">
           <div className="tri-card p-4 position-relative overflow-hidden">
@@ -1162,10 +1374,10 @@ export default function PondMonitoringPage() {
                             <h6 className="fw-extrabold mb-0 text-dark">
                               {selDoc !== null
                                 ? isNursery
-                                  ? `🌱 Nursery Pond Stage (Day ${selDoc} of Culture)`
+                                  ? `Nursery Pond Stage (Day ${selDoc} of Culture)`
                                   : selDoc === 20
-                                    ? `⚡ Transfer Milestone Day (Day 20 of Culture)`
-                                    : `🌊 Grow-out Pond Stage (Day ${selDoc} of Culture)`
+                                    ? `Transfer Milestone Day (Day 20 of Culture)`
+                                    : `Grow-out Pond Stage (Day ${selDoc} of Culture)`
                                 : 'Unstocked / Pre-Stocking Phase'}
                             </h6>
                             <span className="badge bg-secondary bg-opacity-10 text-secondary extra-small">
@@ -1173,7 +1385,7 @@ export default function PondMonitoringPage() {
                             </span>
                           </div>
                           <p className="text-muted extra-small mb-0 mt-1">
-                            Required Feed Formulation: <strong className="text-dark">{feedType}</strong> • Protocol: Days 1–19 Nursery ➔ Day 20+ Grow-out
+                            Required Feed Formulation: <strong className="text-dark">{feedType}</strong> • Protocol: Days 1–19 Nursery &rarr; Day 20+ Grow-out
                           </p>
                         </div>
                       </div>
@@ -1305,7 +1517,7 @@ export default function PondMonitoringPage() {
         </div>
       )}
 
-      {/* 📅 POND CYCLE CALENDAR MODAL (DAYS 1-19 NURSERY & DAY 20+ GROW-OUT) */}
+      {/* POND CYCLE CALENDAR MODAL (DAYS 1-19 NURSERY & DAY 20+ GROW-OUT) */}
       {calendarModalPond && (
         <div
           className="modal fade show d-block"
@@ -1366,7 +1578,7 @@ export default function PondMonitoringPage() {
         </div>
       )}
 
-      {/* 🌟 WATER QUALITY LOG HISTORY & BACKFILL MODAL */}
+      {/* WATER QUALITY LOG HISTORY & BACKFILL MODAL */}
       <WaterQualityHistoryModal
         isOpen={isHistoryModalOpen}
         onClose={() => {
@@ -1391,7 +1603,7 @@ export default function PondMonitoringPage() {
         }}
       />
 
-      {/* 🌟 DUAL-MODE OCR WATER QUALITY MODAL */}
+      {/* DUAL-MODE OCR WATER QUALITY MODAL */}
       <WaterQualityOcrModal
         isOpen={isOcrModalOpen}
         onClose={() => {

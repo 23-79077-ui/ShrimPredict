@@ -219,7 +219,7 @@ export default function CaretakerNotificationsPage() {
 
   return (
     <div className="caretaker-notifications-hub">
-      {/* 🌟 HERO CONTROL STRIP: BREADCRUMB, STATUS BADGE & ACTION BUTTONS */}
+      {/* HERO CONTROL STRIP: BREADCRUMB, STATUS BADGE & ACTION BUTTONS */}
       <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
         <div>
           <h2 className="fw-extrabold mb-0 tracking-tight text-dark" style={{ fontSize: '1.75rem', letterSpacing: '-0.03em' }}>
@@ -258,7 +258,7 @@ export default function CaretakerNotificationsPage() {
         </div>
       </div>
 
-      {/* 🌟 TABS AND FILTERS NAVIGATION */}
+      {/* TABS AND FILTERS NAVIGATION */}
       <div className="asymmetric-card p-3 mb-4">
         <div>
           <div className="d-flex justify-content-between align-items-center flex-wrap gap-3">

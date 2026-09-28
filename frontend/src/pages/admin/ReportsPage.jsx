@@ -309,7 +309,7 @@ export default function AdminReportsPage() {
 
   return (
     <div>
-      {/* 🌟 1. HERO HEADER */}
+      {/* 1. HERO HEADER */}
       <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
         <div className="d-flex align-items-center gap-3">
           <div
@@ -352,7 +352,7 @@ export default function AdminReportsPage() {
         </button>
       </div>
 
-      {/* 🌟 2. 4 TRI-COLOR OPERATIONAL KPI CARDS */}
+      {/* 2. 4 TRI-COLOR OPERATIONAL KPI CARDS */}
       <div className="row g-3 g-xl-4 mb-4">
         {/* Total Reports */}
         <div className="col-12 col-sm-6 col-xl-3">
@@ -483,7 +483,7 @@ export default function AdminReportsPage() {
         </div>
       </div>
 
-      {/* 🌟 3. ADMIN FILTER TOOLBAR */}
+      {/* 3. ADMIN FILTER TOOLBAR */}
       <AdminFilterToolbar
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
@@ -540,7 +540,7 @@ export default function AdminReportsPage() {
         }}
       />
 
-      {/* 🌟 4. MAINTENANCE REPORTS FEED CARD */}
+      {/* 4. MAINTENANCE REPORTS FEED CARD */}
       <div className="tri-card p-4">
         <div className="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom flex-wrap gap-2">
           <div>

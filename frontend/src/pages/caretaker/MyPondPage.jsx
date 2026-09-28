@@ -1153,7 +1153,7 @@ export default function MyPondPage() {
 
   return (
     <div className="caretaker-mypond-hub">
-      {/* 🌟 HERO CONTROL STRIP: STATUS BADGE, TITLE & DEMO DATE PILL */}
+      {/* HERO CONTROL STRIP: STATUS BADGE, TITLE & DEMO DATE PILL */}
       <div className="d-flex justify-content-between align-items-center mb-4 mb-xl-5 flex-wrap gap-3">
         <div>
           <h2 className="fw-extrabold mb-1 tracking-tight" style={{ color: '#0B2C5F', fontSize: '1.75rem', letterSpacing: '-0.03em' }}>
@@ -1203,7 +1203,7 @@ export default function MyPondPage() {
         </div>
       </div>
 
-      {/* 🌟 POND SELECTION & CULTURE STAGE FILTER HUB */}
+      {/* POND SELECTION & CULTURE STAGE FILTER HUB */}
       <div className="tri-card p-3.5 p-md-4 mb-4">
         <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 pb-3 border-bottom" style={{ borderColor: 'rgba(11, 44, 95, 0.08)' }}>
           <div className="d-flex align-items-center gap-2 flex-wrap">
@@ -1539,7 +1539,7 @@ export default function MyPondPage() {
                     className="badge rounded-pill extra-small fw-bold px-2.5 py-1"
                     style={{ backgroundColor: 'rgba(11, 44, 95, 0.07)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.18)' }}
                   >
-                    ✓ Verified Baseline
+                    Verified Baseline
                   </span>
                 </div>
                 <div className="d-flex align-items-center gap-3 flex-wrap mt-1 extra-small text-muted">
@@ -1926,7 +1926,7 @@ export default function MyPondPage() {
               </div>
               {normalizeTime(currentForm.feedingTime) === '6:00 AM' && previousDayLastFeed && !editingRecord && (
                 <div className="mt-1 extra-small fw-semibold d-flex align-items-center gap-1" style={{ color: '#EA580C' }}>
-                  <span>⚡ Auto-carried from previous 6:00 PM feed ({parseFloat(previousDayLastFeed.amount_grams || 0) || (parseFloat(previousDayLastFeed.amount_kg || 0) * 1000)}g)</span>
+                  <span>Auto-carried from previous 6:00 PM feed ({parseFloat(previousDayLastFeed.amount_grams || 0) || (parseFloat(previousDayLastFeed.amount_kg || 0) * 1000)}g)</span>
                 </div>
               )}
             </div>
@@ -2054,7 +2054,7 @@ export default function MyPondPage() {
             )}
           </div>
 
-          {/* 🌟 LOGGED FEEDS LIST FOR SELECTED DATE (With Edit & Delete) */}
+          {/* LOGGED FEEDS LIST FOR SELECTED DATE (With Edit & Delete) */}
           {todayLogs.length > 0 && (
             <div className="mt-4 pt-4 border-top">
               <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
@@ -2162,7 +2162,7 @@ export default function MyPondPage() {
         </div>
       </div>
 
-      {/* 🌟 DUAL-MODE OCR WATER QUALITY MODAL */}
+      {/* DUAL-MODE OCR WATER QUALITY MODAL */}
       <WaterQualityOcrModal
         isOpen={isOcrModalOpen}
         onClose={() => {
@@ -2182,7 +2182,7 @@ export default function MyPondPage() {
         }}
       />
 
-      {/* 🌟 WATER QUALITY LOG HISTORY & BACKFILL MODAL */}
+      {/* WATER QUALITY LOG HISTORY & BACKFILL MODAL */}
       <WaterQualityHistoryModal
         isOpen={isHistoryModalOpen}
         onClose={() => setIsHistoryModalOpen(false)}
@@ -2202,7 +2202,7 @@ export default function MyPondPage() {
         }}
       />
 
-      {/* 🌟 INSPECTION PHOTO PROOF MODAL */}
+      {/* INSPECTION PHOTO PROOF MODAL */}
       {inspectProofModal && (
         <div
           className="modal fade show d-block"
@@ -2257,7 +2257,7 @@ export default function MyPondPage() {
         </div>
       )}
 
-      {/* 🌟 POND CULTURE CYCLE CALENDAR MODAL */}
+      {/* POND CULTURE CYCLE CALENDAR MODAL */}
       {showCycleCalendar && (
         <div
           className="modal fade show d-block"
