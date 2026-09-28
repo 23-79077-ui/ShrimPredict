@@ -1357,10 +1357,12 @@ export default function AdminDashboard() {
                         return (
                           <div className={`col-12 col-md-${visiblePonds.length === 1 ? '12' : '6'}`} key={p.id}>
                             <div
-                              className="p-4 rounded-4 bg-white border d-flex flex-column justify-content-between h-100 transition-all hover-shadow"
+                              className="p-4 rounded-4 bg-white d-flex flex-column justify-content-between h-100 transition-all hover-shadow"
                               style={{
+                                borderTop: '1px solid rgba(11, 44, 95, 0.12)',
+                                borderRight: '1px solid rgba(11, 44, 95, 0.12)',
+                                borderBottom: '1px solid rgba(11, 44, 95, 0.12)',
                                 borderLeft: isIsolated ? '4px solid #7C3AED' : (isWarning ? '4px solid #EA580C' : (isCritical ? '4px solid #DC2626' : '4px solid #0B2C5F')),
-                                borderColor: 'rgba(11, 44, 95, 0.12)',
                                 boxShadow: '0 4px 16px rgba(11, 44, 95, 0.05)',
                                 minHeight: 235,
                                 overflow: 'hidden',

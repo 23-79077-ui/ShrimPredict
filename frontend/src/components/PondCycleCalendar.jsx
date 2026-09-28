@@ -76,29 +76,30 @@ export default function PondCycleCalendar({
   const [internalRecords, setInternalRecords] = useState(initialRecords || []);
   const [loadingRecords, setLoadingRecords] = useState(false);
 
-  // Automatically fetch complete feeding records for pondId if initialRecords is empty or single-day
+  // Automatically fetch complete feeding records for pondId if needed
   useEffect(() => {
+    let isMounted = true;
     if (pondId) {
-      const uniqueDates = new Set((initialRecords || []).map((r) => (r.record_date || r.created_at || '').slice(0, 10)).filter(Boolean));
-      if (uniqueDates.size <= 1) {
-        setLoadingRecords(true);
-        api.get('/feeding_records.php', { params: { pond_id: pondId } })
-          .then((res) => {
-            const recs = safeArray(res.data);
-            setInternalRecords(recs);
-          })
-          .catch((err) => {
-            console.error('Error fetching feeding records for PondCycleCalendar:', err);
-          })
-          .finally(() => {
-            setLoadingRecords(false);
-          });
-      } else {
-        setInternalRecords(initialRecords);
-      }
-    } else if (initialRecords) {
-      setInternalRecords(initialRecords);
+      setLoadingRecords(true);
+      api.get('/feeding_records.php', { params: { pond_id: pondId } })
+        .then((res) => {
+          if (!isMounted) return;
+          const recs = safeArray(res.data);
+          setInternalRecords(recs.length > 0 ? recs : (initialRecords || []));
+        })
+        .catch((err) => {
+          if (!isMounted) return;
+          console.error('Error fetching feeding records for PondCycleCalendar:', err);
+          setInternalRecords(initialRecords || []);
+        })
+        .finally(() => {
+          if (isMounted) setLoadingRecords(false);
+        });
+    } else {
+      setInternalRecords(initialRecords || []);
+      setLoadingRecords(false);
     }
+    return () => { isMounted = false; };
   }, [pondId, initialRecords]);
 
   // Parse stocking date

@@ -2264,7 +2264,7 @@ export default function MyPondPage() {
           style={{ backgroundColor: 'rgba(7, 23, 51, 0.72)', zIndex: 1060 }}
           tabIndex="-1"
         >
-          <div className="modal-dialog modal-dialog-centered modal-lg">
+          <div className="modal-dialog modal-dialog-centered modal-xl">
             <div className="modal-content border-0 rounded-4 overflow-hidden shadow-2xl">
               <PondCycleCalendar
                 pondId={selectedPond?.id}

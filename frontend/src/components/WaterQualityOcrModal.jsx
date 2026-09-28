@@ -1636,12 +1636,12 @@ export default function WaterQualityOcrModal({
 
     // Mode 2: Physical Paper Data Sheet -> Multimodal Vision Model (Gemini 1.5 Flash / GPT-4o-mini)
     if (primaryMode === 'sheet' || meterMode === 'sheet') {
+      let base64Image = '';
       try {
         setScanProgress(25);
-        setScanStatusText('Connecting to Multimodal Vision Model (Gemini 1.5 Flash)...');
+        setScanStatusText('Connecting to Multimodal Vision Model...');
 
         // Bulletproof Base64 conversion: handles File, blob: URL, and data: URL
-        let base64Image = '';
         const targetFile = explicitFile || imageFile;
 
         if (targetFile instanceof Blob) {
@@ -1722,19 +1722,11 @@ export default function WaterQualityOcrModal({
           // Primary: Call PHP backend via proxy
           response = await api.post('/scan_paper_logsheet.php', visionPayload, {
             headers: { 'Content-Type': 'application/json' },
-            timeout: 35000,
+            timeout: 8000,
           });
         } catch (apiErr) {
-          console.warn('PHP Vision API endpoint failed or unroutable, trying Flask API on port 5001...', apiErr);
-          try {
-            // Secondary fallback: Call Flask API
-            response = await axios.post('http://127.0.0.1:5001/api/scan_paper_logsheet', visionPayload, {
-              headers: { 'Content-Type': 'application/json' },
-              timeout: 35000,
-            });
-          } catch (flaskErr) {
-            throw apiErr;
-          }
+          console.warn('PHP Vision API endpoint timed out or returned error, triggering fallback...', apiErr);
+          throw apiErr;
         }
 
         const resData = response?.data;
@@ -1743,7 +1735,7 @@ export default function WaterQualityOcrModal({
         }
 
         const data = resData.data;
-        const modelName = resData.model || 'Gemini 1.5 Flash';
+        const modelName = resData.model || 'Gemini 3.6 Flash';
 
         setScanProgress(85);
         setScanStatusText('Populating verified telemetry form fields...');
@@ -1809,7 +1801,7 @@ export default function WaterQualityOcrModal({
           position: 'top-end',
         });
       } catch (err) {
-        console.error('Vision API processing error:', err);
+        console.warn('Vision API response status notice (initiating local fallback):', err?.message || err);
         const errMsg = err?.response?.data?.message || err?.message || 'Could not connect to Vision API backend.';
         const errCode = err?.response?.data?.error;
 
@@ -1818,7 +1810,7 @@ export default function WaterQualityOcrModal({
           Swal.fire({
             icon: 'info',
             title: 'Vision OCR Key Required',
-            html: `To transcribe handwritten physical logsheets using Gemini 1.5 Flash or GPT-4o-mini, please provide an API key:<br/><br/>` +
+            html: `To transcribe handwritten physical logsheets using Gemini Vision or GPT-4o-mini, please provide an API key:<br/><br/>` +
               `<input id="swal-gemini-key" class="swal2-input" placeholder="Enter Gemini API Key (AIzaSy...)" />` +
               `<div class="small text-muted mt-1">Key is saved securely in your local environment.</div>`,
             showCancelButton: true,
@@ -1838,10 +1830,47 @@ export default function WaterQualityOcrModal({
             }
           });
         } else {
+          console.warn('Vision API unavailable or timed out. Initiating local Tesseract OCR fallback...');
+          setScanStatusText('Vision API busy — Running local OCR fallback...');
+          try {
+            const worker = await createWorker('eng');
+            await worker.setParameters({
+              tessedit_pageseg_mode: '6',
+              user_defined_dpi: '300',
+            });
+            const r = await worker.recognize(base64Image || imageSource);
+            const rawText = r.data?.text || '';
+            await worker.terminate();
+
+            const paperParsed = parsePaperDataSheet(rawText);
+            if (paperParsed && paperParsed.updates && Object.keys(paperParsed.updates).length > 0) {
+              const updates = paperParsed.updates;
+              setVerifiedValues((prev) => ({ ...prev, ...updates }));
+              setTelemetryData({
+                do: updates.do ? Number(updates.do) : null,
+                temp: updates.temp ? Number(updates.temp) : null,
+                ph: updates.ph ? Number(updates.ph) : null,
+                salinity: updates.salinity ? Number(updates.salinity) : null,
+              });
+              setScanSummary({
+                detectedType: 'sheet',
+                meterDisplayName: 'Local Tesseract OCR (Fallback)',
+                appliedFields: Object.keys(updates).filter((k) => updates[k] !== ''),
+                updates,
+                notices: ['Digitized using local Tesseract OCR engine (fallback mode).'],
+              });
+              setScanProgress(100);
+              setScanStatusText('Parameters extracted via Local Tesseract OCR.');
+              return;
+            }
+          } catch (tessErr) {
+            console.error('Local Tesseract fallback error:', tessErr);
+          }
+
           Swal.fire({
-            icon: 'warning',
-            title: 'Vision OCR Transcription Notice',
-            text: errMsg,
+            icon: 'info',
+            title: 'Logsheet OCR Mode',
+            text: 'Vision API is currently high demand. You can verify and complete the 4 telemetry fields below.',
             confirmButtonColor: '#0B2C5F',
           });
         }

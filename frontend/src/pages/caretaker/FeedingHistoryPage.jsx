@@ -87,29 +87,17 @@ export default function FeedingHistoryPage() {
   }, [user?.id]);
 
   const assignedPonds = useMemo(() => {
-    let list = [];
-    if (dbPonds.length > 0) {
-      list = [...dbPonds];
-    } else if (user?.assigned_ponds?.length) {
-      list = [...user.assigned_ponds];
-    } else if (user?.pond_id) {
-      list = [{ id: user.pond_id, pond_name: 'Assigned Pond' }];
+    if (user?.assigned_ponds?.length) {
+      return [...user.assigned_ponds];
     }
-
-    const knownIds = new Set(list.map((p) => String(p.id)));
-    (records || []).forEach((r) => {
-      if (r.pond_id && !knownIds.has(String(r.pond_id))) {
-        knownIds.add(String(r.pond_id));
-        list.push({
-          id: r.pond_id,
-          pond_name: r.pond_name || `Pond #${r.pond_id}`,
-          stocking_date: r.stocking_date,
-        });
-      }
-    });
-
-    return list;
-  }, [dbPonds, user?.assigned_ponds, user?.pond_id, records]);
+    if (dbPonds.length > 0) {
+      return [...dbPonds];
+    }
+    if (user?.pond_id) {
+      return [{ id: user.pond_id, pond_name: 'Assigned Pond' }];
+    }
+    return [];
+  }, [dbPonds, user?.assigned_ponds, user?.pond_id]);
 
   const assignedPondIds = useMemo(() => (
     Array.from(new Set([...(assignedPonds.map((pond) => pond.id) || []), user?.pond_id].filter(Boolean).map(Number)))

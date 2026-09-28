@@ -705,10 +705,12 @@ export default function CaretakerDashboard() {
               return (
                 <div key={pond.id} className="col-12 col-md-6 col-lg-4">
                   <div
-                    className="p-4 rounded-4 bg-white border d-flex flex-column justify-content-between h-100 transition-all hover-shadow"
+                    className="p-4 rounded-4 bg-white d-flex flex-column justify-content-between h-100 transition-all hover-shadow"
                     style={{
+                      borderTop: '1px solid rgba(11, 44, 95, 0.12)',
+                      borderRight: '1px solid rgba(11, 44, 95, 0.12)',
+                      borderBottom: '1px solid rgba(11, 44, 95, 0.12)',
                       borderLeft: isVerified ? '4px solid #0B2C5F' : '4px solid #EA580C',
-                      borderColor: 'rgba(11, 44, 95, 0.12)',
                       boxShadow: '0 4px 16px rgba(11, 44, 95, 0.05)',
                       minHeight: 225,
                       overflow: 'hidden',
@@ -1492,8 +1494,8 @@ export default function CaretakerDashboard() {
           </div>
         ) : sortedSearchedTodayRecords.length > 0 ? (
           <div
-            className="table-responsive rounded-3 border"
-            style={{ maxHeight: '460px', overflowY: 'auto', borderColor: 'rgba(11, 44, 95, 0.1)' }}
+            className="table-responsive rounded-3"
+            style={{ maxHeight: '460px', overflowY: 'auto', border: '1px solid rgba(11, 44, 95, 0.1)' }}
           >
             <table className="table tri-table align-middle mb-0" style={{ fontSize: '0.86rem', minWidth: 880 }}>
               <thead
@@ -1588,7 +1590,7 @@ export default function CaretakerDashboard() {
             </table>
           </div>
         ) : (
-          <div className="p-5 text-center bg-white rounded-4 border" style={{ borderColor: 'rgba(11, 44, 95, 0.08)' }}>
+          <div className="p-5 text-center bg-white rounded-4" style={{ border: '1px solid rgba(11, 44, 95, 0.08)' }}>
             <p className="text-muted mb-3 small">
               {searchFilter
                 ? `No matching feeding logs found for "${searchFilter}".`
@@ -1645,13 +1647,13 @@ export default function CaretakerDashboard() {
               </div>
 
               {latestDisease ? (
-                <div className="d-flex align-items-center p-3 rounded-4 bg-white border" style={{ minHeight: 110, borderColor: 'rgba(11, 44, 95, 0.1)' }}>
+                <div className="d-flex align-items-center p-3 rounded-4 bg-white" style={{ minHeight: 110, border: '1px solid rgba(11, 44, 95, 0.1)' }}>
                   {latestDisease.image_path && (
                     <img
                       src={resolveImageUrl(latestDisease.image_path)}
                       alt="Latest disease scan"
-                      className="rounded-3 me-3 flex-shrink-0 border"
-                      style={{ width: 64, height: 64, objectFit: 'cover' }}
+                      className="rounded-3 me-3 flex-shrink-0"
+                      style={{ width: 64, height: 64, objectFit: 'cover', border: '1px solid rgba(11, 44, 95, 0.1)' }}
                     />
                   )}
                   <div>
@@ -1667,7 +1669,7 @@ export default function CaretakerDashboard() {
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-4 rounded-4 bg-white border text-muted small" style={{ borderColor: 'rgba(11, 44, 95, 0.08)' }}>
+                <div className="text-center py-4 rounded-4 bg-white text-muted small" style={{ border: '1px solid rgba(11, 44, 95, 0.08)' }}>
                   <FaStethoscope size={22} className="mb-2 opacity-40" style={{ color: '#0B2C5F' }} />
                   <p className="mb-0 fw-semibold" style={{ color: '#0B2C5F' }}>No disease scans recorded yet</p>
                   <small className="extra-small text-muted">Image inference is nominal.</small>
@@ -1714,7 +1716,7 @@ export default function CaretakerDashboard() {
                   <small className="text-muted" style={{ lineHeight: 1.45 }}>{latestAlert.message}</small>
                 </div>
               ) : (
-                <div className="text-center py-4 rounded-4 bg-white border text-muted small" style={{ borderColor: 'rgba(11, 44, 95, 0.08)' }}>
+                <div className="text-center py-4 rounded-4 bg-white text-muted small" style={{ border: '1px solid rgba(11, 44, 95, 0.08)' }}>
                   <FaShieldAlt size={22} className="mb-2 opacity-40" style={{ color: '#0B2C5F' }} />
                   <p className="mb-0 fw-semibold" style={{ color: '#0B2C5F' }}>No active alerts for your ponds</p>
                   <small className="extra-small text-muted">All ponds and telemetry parameters are stable.</small>

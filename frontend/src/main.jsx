@@ -27,7 +27,14 @@ export const applyAppTheme = (themeName) => {
 const savedTheme = localStorage.getItem('shrim_theme') || 'dark';
 applyAppTheme(savedTheme);
 
-ReactDOM.createRoot(document.getElementById('root')).render(
+const container = document.getElementById('root');
+let root = container._reactRootContainer;
+if (!root) {
+  root = ReactDOM.createRoot(container);
+  container._reactRootContainer = root;
+}
+
+root.render(
   <React.StrictMode>
     <App />
   </React.StrictMode>
