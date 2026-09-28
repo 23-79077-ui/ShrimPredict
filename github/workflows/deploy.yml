@@ -18,5 +18,3 @@ jobs:
           port: ${{ secrets.SSH_PORT }}
           script: |
             cd /home/u298077807/domains/shrimpredict.site/public_html && git pull origin main
-            cd public_html
-            git pull origin main
