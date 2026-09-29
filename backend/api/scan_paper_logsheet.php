@@ -102,9 +102,10 @@ Rules:
     if (!empty($geminiKey)) {
         @set_time_limit(10);
         $geminiModels = [
-            'gemini-3.6-flash',
+            'gemini-3.1-flash-lite',
+            'gemini-3-flash-preview',
+            'gemini-flash-lite-latest',
             'gemini-3.8-flash',
-            'gemini-3.5-flash',
             'gemini-flash-latest'
         ];
         
@@ -144,8 +145,8 @@ Rules:
                 CURLOPT_SSL_VERIFYPEER => false,
                 CURLOPT_SSL_VERIFYHOST => false,
                 CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
-                CURLOPT_TIMEOUT => 4,
-                CURLOPT_CONNECTTIMEOUT => 3
+                CURLOPT_TIMEOUT => 12,
+                CURLOPT_CONNECTTIMEOUT => 5
             ]);
 
             $response = curl_exec($ch);
@@ -174,9 +175,8 @@ Rules:
                 }
             } else {
                 $lastError = "Gemini API ($geminiModel) error (HTTP $httpCode): " . ($curlErr ?: $response);
-                if ($httpCode === 503 || $httpCode === 429) {
-                    break;
-                }
+                // Do not break on 503 or 429 - continue to try next fallback model
+                continue;
             }
         }
     }

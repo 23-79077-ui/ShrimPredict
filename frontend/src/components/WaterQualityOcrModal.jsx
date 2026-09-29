@@ -1722,7 +1722,7 @@ export default function WaterQualityOcrModal({
           // Primary: Call PHP backend via proxy
           response = await api.post('/scan_paper_logsheet.php', visionPayload, {
             headers: { 'Content-Type': 'application/json' },
-            timeout: 8000,
+            timeout: 15000,
           });
         } catch (apiErr) {
           console.warn('PHP Vision API endpoint timed out or returned error, triggering fallback...', apiErr);
