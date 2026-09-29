@@ -54,7 +54,16 @@ ChartJS.register(
 
 const feedingTimes = ['6:00 AM', '9:00 AM', '12:00 PM', '3:00 PM', '6:00 PM'];
 
-const normalizeFeedingTime = (value = '') => String(value).trim().replace(/^0(\d:)/, '$1').toUpperCase();
+const normalizeFeedingTime = (value = '') => {
+  if (!value) return '';
+  const s = String(value).toUpperCase().replace(/\s+/g, ' ').trim();
+  if (s.includes('6:00 PM') || s.includes('6:00PM') || s.includes('6 PM') || s.startsWith('18:00') || s.startsWith('18:')) return '6:00 PM';
+  if (s.includes('6:00 AM') || s.includes('6:00AM') || s.includes('6 AM') || (s.startsWith('6:') && !s.includes('PM')) || s.startsWith('06:00') || s.startsWith('06:')) return '6:00 AM';
+  if (s.includes('9:00 AM') || s.includes('9:00AM') || s.includes('9 AM') || s.startsWith('9:') || s.startsWith('09:00') || s.startsWith('09:')) return '9:00 AM';
+  if (s.includes('12:00 PM') || s.includes('12:00PM') || s.includes('12 PM') || s.startsWith('12:00') || s.startsWith('12:')) return '12:00 PM';
+  if (s.includes('3:00 PM') || s.includes('3:00PM') || s.includes('3 PM') || s.startsWith('15:00') || s.startsWith('15:') || (s.startsWith('3:') && !s.includes('AM'))) return '3:00 PM';
+  return s.replace(/^0(\d:)/, '$1');
+};
 
 export const getLocalDateString = (d = new Date()) => {
   const dateObj = d instanceof Date ? d : new Date(d);

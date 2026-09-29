@@ -27,7 +27,8 @@ import {
   FaTrash,
   FaUtensils,
   FaBalanceScale,
-  FaShieldAlt
+  FaShieldAlt,
+  FaClipboardCheck
 } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
@@ -87,7 +88,14 @@ function formatKg(value) {
 }
 
 function normalizeTime(value) {
-  return String(value || '').trim().toUpperCase().replace(/^0(\d:)/, '$1');
+  if (!value) return '';
+  const s = String(value).toUpperCase().replace(/\s+/g, ' ').trim();
+  if (s.includes('6:00 PM') || s.includes('6:00PM') || s.includes('6 PM') || s.startsWith('18:00') || s.startsWith('18:')) return '6:00 PM';
+  if (s.includes('6:00 AM') || s.includes('6:00AM') || s.includes('6 AM') || (s.startsWith('6:') && !s.includes('PM')) || s.startsWith('06:00') || s.startsWith('06:')) return '6:00 AM';
+  if (s.includes('9:00 AM') || s.includes('9:00AM') || s.includes('9 AM') || s.startsWith('9:') || s.startsWith('09:00') || s.startsWith('09:')) return '9:00 AM';
+  if (s.includes('12:00 PM') || s.includes('12:00PM') || s.includes('12 PM') || s.startsWith('12:00') || s.startsWith('12:')) return '12:00 PM';
+  if (s.includes('3:00 PM') || s.includes('3:00PM') || s.includes('3 PM') || s.startsWith('15:00') || s.startsWith('15:') || (s.startsWith('3:') && !s.includes('AM'))) return '3:00 PM';
+  return s.replace(/^0(\d:)/, '$1');
 }
 
 const getLocalDateString = (d = new Date()) => {
@@ -416,28 +424,7 @@ export default function MyPondPage() {
           const lastLog = sixPmLog || recordsOnLatestPastDate[0];
           setPreviousDayLastFeed(lastLog);
 
-          // Immediately populate into formState for 6:00 AM
-          if (lastLog) {
-            const rawG = lastLog.amount_grams !== null && lastLog.amount_grams !== undefined
-              ? parseFloat(lastLog.amount_grams)
-              : Math.round((parseFloat(lastLog.amount_kg) || 0) * 1000);
-            const pG = String(rawG);
-            const pK = String(lastLog.amount_kg || (rawG / 1000).toFixed(3));
-            setFormState((prev) => {
-              const current = prev[pondId] || emptyForm;
-              if (normalizeTime(current.feedingTime) === '6:00 AM') {
-                return {
-                  ...prev,
-                  [pondId]: {
-                    ...current,
-                    amountGrams: pG,
-                    amountKg: pK,
-                  },
-                };
-              }
-              return prev;
-            });
-          }
+
 
           return lastLog;
         }
@@ -558,11 +545,14 @@ export default function MyPondPage() {
     : '';
 
   const feedingPlan = useMemo(() => {
-    const rawGrams = parseFloat(currentForm.amountGrams);
-    const amountKg = !isNaN(rawGrams) ? rawGrams / 1000 : parseFloat(currentForm.amountKg);
-    if (isNaN(amountKg) || amountKg < 0) {
+    // Caretaker inputs kilograms directly
+    const rawKg = currentForm.amountKg !== undefined && currentForm.amountKg !== ''
+      ? parseFloat(currentForm.amountKg)
+      : (currentForm.amountGrams ? parseFloat(currentForm.amountGrams) / 1000 : NaN);
+    if (isNaN(rawKg) || rawKg < 0) {
       return null;
     }
+    const amountKg = rawKg;
 
     if (isNurseryStage) {
       return {
@@ -572,43 +562,56 @@ export default function MyPondPage() {
         trayCount: 0,
         trayFeedGrams: 0,
         totalTrayFeedGrams: 0,
+        totalTrayFeedKg: 0,
         broadcastFeedKg: amountKg,
+        formulaText: `${amountKg.toFixed(2)}kg (100% Broadcast • Nursery)`,
       };
     }
 
-    const shrimpWeightGrams = parseFloat(weeklySampling?.shrimpWeightGrams);
-    if (!amountKg || amountKg <= 0 || !shrimpWeightGrams || shrimpWeightGrams <= 0) {
-      return null;
-    }
-
-    const trayFeedGrams = amountKg * shrimpWeightGrams;
-    const totalTrayFeedGrams = trayFeedGrams * feedingTrayCount;
-    const broadcastFeedKg = Math.max(0, amountKg - (totalTrayFeedGrams / 1000));
+    // GROW-OUT STAGE (SUBTRACTION ONLY):
+    // 1. Total Scheduled Feed (kg) = Input Value ng Caretaker (hal. 4.0 kg)
+    // 2. Total Trays Feed (kg) = (Grams per Tray × 4 Trays) ÷ 1000 = (20g × 4) ÷ 1000 = 0.08 kg
+    // 3. Broadcast Feed (kg) = Total Scheduled Feed (kg) - Total Trays Feed (kg)
+    // Verification: Broadcast + All Trays = Total Scheduled Feed
+    const trayFeedGrams = 20; // 20g per check tray
+    const totalTrayFeedGrams = trayFeedGrams * feedingTrayCount; // 20 * 4 = 80g
+    const totalTrayFeedKg = totalTrayFeedGrams / 1000; // 0.08 kg
+    const broadcastFeedKg = Math.max(0, parseFloat((amountKg - totalTrayFeedKg).toFixed(3)));
+    const formulaText = `${amountKg.toFixed(2)}kg - ${totalTrayFeedKg.toFixed(2)}kg = ${broadcastFeedKg.toFixed(2)}kg`;
 
     return {
       amountKg,
       amountGrams: amountKg * 1000,
       isNursery: false,
-      shrimpWeightGrams,
       trayCount: feedingTrayCount,
       trayFeedGrams,
       totalTrayFeedGrams,
+      totalTrayFeedKg,
       broadcastFeedKg,
+      formulaText,
     };
-  }, [currentForm.amountKg, currentForm.amountGrams, weeklySampling, isNurseryStage]);
+  }, [currentForm.amountKg, currentForm.amountGrams, isNurseryStage]);
 
   // Auto-select first un-logged feeding time slot when changing pond or after log submission
   useEffect(() => {
     if (!selectedPondId) return;
     const availableSlot = feedingTimes.find((time) => !loggedTimesForPond.includes(time));
     if (availableSlot) {
-      setFormState((prev) => ({
-        ...prev,
-        [selectedPondId]: {
-          ...(prev[selectedPondId] || emptyForm),
-          feedingTime: availableSlot,
-        },
-      }));
+      setFormState((prev) => {
+        const current = prev[selectedPondId] || emptyForm;
+        if (current.feedingTime !== availableSlot) {
+          return {
+            ...prev,
+            [selectedPondId]: {
+              ...current,
+              feedingTime: availableSlot,
+              amountKg: '',
+              amountGrams: '',
+            },
+          };
+        }
+        return prev;
+      });
     }
   }, [selectedPondId, loggedTimesForPond]);
 
@@ -774,7 +777,25 @@ export default function MyPondPage() {
           };
         });
       } else {
-        handleChange('feedingTime', time);
+        setFormState((prev) => {
+          const current = prev[selectedPondId] || emptyForm;
+          return {
+            ...prev,
+            [selectedPondId]: {
+              ...current,
+              feedingTime: time,
+              amountKg: '',
+              amountGrams: '',
+            },
+          };
+        });
+
+        // Prompt tray inspection immediately when clicking an unlogged grow-out slot
+        if (!isNurseryStage && normalizeTime(time) !== '6:00 AM') {
+          setTimeout(() => {
+            requestTrayMonitoring(true, time);
+          }, 60);
+        }
       }
     }
   };
@@ -839,43 +860,48 @@ export default function MyPondPage() {
     }
   };
 
-  const requestTrayMonitoring = async () => {
-    if (!selectedSlotRequiresMonitoring) return 'first_feeding';
-    if (trayMonitoringKey && trayMonitoringBySlot[trayMonitoringKey]) {
-      return trayMonitoringBySlot[trayMonitoringKey];
+  const requestTrayMonitoring = async (forceOpen = false, targetTime = null) => {
+    const activeTime = targetTime || currentForm.feedingTime;
+    const activeSlotNorm = normalizeTime(activeTime);
+    if (activeSlotNorm === '6:00 AM' || isNurseryStage) return 'first_feeding';
+
+    const slotMonitoringKey = selectedPondId && activeTime
+      ? `${selectedPondId}-${todayDateStr}-${activeSlotNorm}`
+      : '';
+
+    if (!forceOpen && slotMonitoringKey && trayMonitoringBySlot[slotMonitoringKey]) {
+      return trayMonitoringBySlot[slotMonitoringKey];
     }
 
-    const prevGrams = Number(
-      previousFeedingLogForSelectedSlot?.amount_grams !== null && previousFeedingLogForSelectedSlot?.amount_grams !== undefined
-        ? previousFeedingLogForSelectedSlot.amount_grams
-        : (Number(previousFeedingLogForSelectedSlot?.amount_kg || 0) * 1000)
+    // Resolve previous feeding log on the same date (e.g. 6:00 AM before 9:00 AM)
+    const selectedIndex = feedingTimes.findIndex((t) => normalizeTime(t) === activeSlotNorm);
+    let previousLog = null;
+    if (selectedIndex > 0) {
+      for (let i = selectedIndex - 1; i >= 0; i--) {
+        const pTime = feedingTimes[i];
+        const match = todayLogs.find((l) => normalizeTime(l.feeding_time) === normalizeTime(pTime));
+        if (match) {
+          previousLog = match;
+          break;
+        }
+      }
+    }
+
+    const prevKg = Number(
+      previousLog?.amount_kg !== null && previousLog?.amount_kg !== undefined
+        ? previousLog.amount_kg
+        : (previousLog?.amount_grams ? Number(previousLog.amount_grams) / 1000 : (previousFeedingLogForSelectedSlot?.amount_kg || 0))
     );
-    const prevKg = Number(previousFeedingLogForSelectedSlot?.amount_kg || (prevGrams / 1000));
-    const previousTime = previousFeedingLogForSelectedSlot?.feeding_time || 'previous';
+    const previousTime = previousLog?.feeding_time || previousFeedingLogForSelectedSlot?.feeding_time || 'previous';
 
-    let amountIfConsumedGrams = 14;
-    let amountIfConsumedKg = 14.0;
-    let amountIfLeftoverGrams = 11;
-    let amountIfLeftoverKg = 11.0;
-
-    if (prevGrams > 0 && prevGrams <= 100) {
-      // User entered unit amount directly into the form (e.g. 13g -> 14g, or 14g)
-      amountIfConsumedGrams = Number((prevGrams + 1).toFixed(2));
-      amountIfConsumedKg = prevKg >= 1 ? Number((prevKg + 1.0).toFixed(2)) : Number((amountIfConsumedGrams / 1000).toFixed(3));
-      amountIfLeftoverGrams = Math.max(1, Number((prevGrams - 2).toFixed(2)));
-      amountIfLeftoverKg = prevKg >= 1 ? Math.max(0.5, Number((prevKg - 2.0).toFixed(2))) : Number((amountIfLeftoverGrams / 1000).toFixed(3));
-    } else if (prevGrams > 100) {
-      // User entered full gram amount (e.g. 13000g -> 14000g)
-      amountIfConsumedGrams = Math.round(prevGrams + 1000);
-      amountIfConsumedKg = Number((prevKg + 1.0).toFixed(2));
-      amountIfLeftoverGrams = Math.max(100, Math.round(prevGrams - 2000));
-      amountIfLeftoverKg = Math.max(0.5, Number((prevKg - 2.0).toFixed(2)));
-    } else {
-      amountIfConsumedGrams = 14;
-      amountIfConsumedKg = 14.0;
-      amountIfLeftoverGrams = 11;
-      amountIfLeftoverKg = 11.0;
-    }
+    // Farm Check Tray Protocol:
+    // - Unconsumed / Leftover: Reduce by 2.0 kg (-2.0 kg, min 0.5 kg)
+    // - Completely Consumed (Empty / Naubos): Increase by 1.0 kg (+1.0 kg)
+    const baseKg = prevKg > 0 ? prevKg : (previousDayLastFeed?.amount_kg ? Number(previousDayLastFeed.amount_kg) : 4.0);
+    const amountIfConsumedKg = Number((baseKg + 1.0).toFixed(2));
+    const amountIfConsumedGrams = Math.round(amountIfConsumedKg * 1000);
+    const amountIfLeftoverKg = Math.max(0.5, Number((baseKg - 2.0).toFixed(2)));
+    const amountIfLeftoverGrams = Math.round(amountIfLeftoverKg * 1000);
 
     const { value, isConfirmed } = await Swal.fire({
       title: 'Feeding Tray Inspection',
@@ -889,49 +915,74 @@ export default function MyPondPage() {
       html: `
         <div style="text-align:left; font-family: inherit;">
           <p class="text-secondary small mb-3">
-            Inspect all 4 check trays in <strong>${selectedPond?.pond_name || 'this pond'}</strong> following the <strong>${previousTime}</strong> feeding session:
+            Inspect all 4 check trays in <strong>${selectedPond?.pond_name || 'this pond'}</strong> following the <strong>${previousTime}</strong> feeding (<strong>${baseKg.toFixed(2)} kg</strong>):
           </p>
           <div class="tray-options d-flex flex-column gap-2 mb-3">
-            <label class="p-3 rounded-3 border d-flex align-items-start gap-2.5 cursor-pointer bg-white text-dark shadow-xs" style="cursor: pointer;">
-              <input type="radio" name="tray_status" value="consumed" checked style="margin-top: 3px;" />
+            <label id="lbl-tray-leftover" for="opt_tray_leftover" class="p-3 rounded-3 border d-flex align-items-start gap-2.5 cursor-pointer bg-white text-dark shadow-xs" style="cursor: pointer; border-color: #EA580C !important;">
+              <input type="radio" name="tray_status" id="opt_tray_leftover" value="leftover" checked style="margin-top: 3px; accent-color: #EA580C; width: 18px; height: 18px;" />
               <div>
-                <strong class="d-block text-dark">Completely Consumed (Empty)</strong>
-                <span class="text-muted extra-small">All feed on the 4 check trays has been fully consumed.</span>
+                <strong class="d-block" style="color: #EA580C !important; font-size: 0.95rem;">Unconsumed Feed Detected</strong>
+                <span class="text-muted extra-small">Feed residue remains on check trays. <strong>Reduce feed by 2 kg (-2.0 kg)</strong> &rarr; Scheduled feed becomes <strong>${amountIfLeftoverKg.toFixed(2)} kg</strong> (${amountIfLeftoverGrams.toLocaleString()} g).</span>
               </div>
             </label>
-            <label class="p-3 rounded-3 border d-flex align-items-start gap-2.5 cursor-pointer bg-white text-dark shadow-xs" style="cursor: pointer;">
-              <input type="radio" name="tray_status" value="leftover" style="margin-top: 3px;" />
+            <label id="lbl-tray-consumed" for="opt_tray_consumed" class="p-3 rounded-3 border d-flex align-items-start gap-2.5 cursor-pointer bg-white text-dark shadow-xs" style="cursor: pointer;">
+              <input type="radio" name="tray_status" id="opt_tray_consumed" value="consumed" style="margin-top: 3px; accent-color: #0B2C5F; width: 18px; height: 18px;" />
               <div>
-                <strong class="d-block text-dark">Leftover Feed Detected (Unconsumed)</strong>
-                <span class="text-muted extra-small">Feed residue remains on the check trays indicating slow feeding or satiation.</span>
+                <strong class="d-block text-dark" style="font-size: 0.95rem;">All 4 Check Trays Consumed</strong>
+                <span class="text-muted extra-small">Check trays are completely empty. <strong>Increase feed by 1 kg (+1.0 kg)</strong> &rarr; Scheduled feed becomes <strong>${amountIfConsumedKg.toFixed(2)} kg</strong> (${amountIfConsumedGrams.toLocaleString()} g).</span>
               </div>
             </label>
           </div>
         </div>
       `,
+      didOpen: () => {
+        const l1 = document.getElementById('lbl-tray-leftover');
+        const l2 = document.getElementById('lbl-tray-consumed');
+        const r1 = document.getElementById('opt_tray_leftover');
+        const r2 = document.getElementById('opt_tray_consumed');
+        if (l1 && r1) l1.onclick = () => { r1.checked = true; };
+        if (l2 && r2) l2.onclick = () => { r2.checked = true; };
+      },
       showCancelButton: true,
       confirmButtonText: 'Confirm Tray Inspection',
       cancelButtonText: 'Skip Inspection',
       preConfirm: () => {
         const checked = document.querySelector('input[name="tray_status"]:checked');
-        return checked ? checked.value : 'consumed';
+        return checked ? checked.value : 'leftover';
       },
     });
 
-    if (!isConfirmed) return null;
+    if (!isConfirmed) {
+      setFormState((prev) => {
+        const current = prev[selectedPondId] || emptyForm;
+        if (!current.amountKg || current.amountKg === '42' || current.amountKg === '42.00') {
+          return {
+            ...prev,
+            [selectedPondId]: {
+              ...current,
+              feedingTime: activeTime,
+              amountKg: String(amountIfLeftoverKg),
+              amountGrams: String(amountIfLeftoverGrams),
+            },
+          };
+        }
+        return prev;
+      });
+      return null;
+    }
 
-    let suggestedGrams = amountIfConsumedGrams;
-    let suggestedKg = amountIfConsumedKg;
-    let statusLabel = 'Completely Consumed (Empty)';
+    let suggestedGrams = amountIfLeftoverGrams;
+    let suggestedKg = amountIfLeftoverKg;
+    let statusLabel = 'Unconsumed Feed Detected (-2kg)';
 
-    if (value === 'leftover') {
-      suggestedGrams = amountIfLeftoverGrams;
-      suggestedKg = amountIfLeftoverKg;
-      statusLabel = 'Leftover Feed Detected';
-    } else {
+    if (value === 'consumed') {
       suggestedGrams = amountIfConsumedGrams;
       suggestedKg = amountIfConsumedKg;
-      statusLabel = 'Completely Consumed (Empty)';
+      statusLabel = 'Completely Consumed (Empty, +1kg)';
+    } else {
+      suggestedGrams = amountIfLeftoverGrams;
+      suggestedKg = amountIfLeftoverKg;
+      statusLabel = 'Unconsumed Feed Detected (-2kg)';
     }
 
     const monitoringResult = {
@@ -941,10 +992,10 @@ export default function MyPondPage() {
       suggestedAmountGrams: suggestedGrams,
     };
 
-    if (trayMonitoringKey) {
+    if (slotMonitoringKey) {
       setTrayMonitoringBySlot((prev) => ({
         ...prev,
-        [trayMonitoringKey]: monitoringResult,
+        [slotMonitoringKey]: monitoringResult,
       }));
     }
 
@@ -955,6 +1006,7 @@ export default function MyPondPage() {
         ...prev,
         [selectedPondId]: {
           ...current,
+          feedingTime: activeTime,
           amountKg: String(suggestedKg),
           amountGrams: String(suggestedGrams),
         },
@@ -965,10 +1017,8 @@ export default function MyPondPage() {
   };
 
   useEffect(() => {
-    if (justSubmittedRef.current) return;
     if (!selectedSlotRequiresMonitoring || !trayMonitoringKey || trayMonitoringBySlot[trayMonitoringKey]) return;
-    if (suppressAutoTrayPromptRef.current || submitting || trayPromptOpenRef.current) return;
-    if (editingRecord) return; // Only skip auto prompt if user is actively clicking to edit an existing record
+    if (submitting || trayPromptOpenRef.current || editingRecord) return;
 
     trayPromptOpenRef.current = true;
     requestTrayMonitoring().finally(() => {
@@ -1002,12 +1052,14 @@ export default function MyPondPage() {
     }
 
     const form = formState[selectedPondId] || emptyForm;
-    const rawGrams = form.amountGrams !== undefined && form.amountGrams !== '' ? parseFloat(form.amountGrams) : (parseFloat(form.amountKg) * 1000);
-    let grams = isNaN(rawGrams) ? 0 : rawGrams;
-    let amount = parseFloat((grams / 1000).toFixed(3));
+    const rawKg = form.amountKg !== undefined && form.amountKg !== ''
+      ? parseFloat(form.amountKg)
+      : (form.amountGrams ? parseFloat(form.amountGrams) / 1000 : 0);
+    let amount = isNaN(rawKg) ? 0 : parseFloat(rawKg.toFixed(3));
+    let grams = Math.round(amount * 1000);
 
-    if (isNaN(grams) || grams < 0) {
-      Swal.fire({ icon: 'warning', title: 'Invalid Amount', text: 'Please enter a valid feeding amount in grams (0 or more).' });
+    if (isNaN(amount) || amount < 0) {
+      Swal.fire({ icon: 'warning', title: 'Invalid Amount', text: 'Please enter a valid feeding amount in kg (0 or more).' });
       return;
     }
 
@@ -1055,25 +1107,35 @@ export default function MyPondPage() {
 
         if (trayMonitoring?.suggestedAmountKg !== undefined) {
           amount = trayMonitoring.suggestedAmountKg;
+          grams = Math.round(amount * 1000);
         }
-        if (trayMonitoring?.suggestedAmountGrams !== undefined) {
+        if (trayMonitoring?.suggestedAmountGrams !== undefined && trayMonitoring?.suggestedAmountKg === undefined) {
           grams = trayMonitoring.suggestedAmountGrams;
+          amount = parseFloat((grams / 1000).toFixed(3));
         }
       } else {
         trayMonitoring = { status: 'First Feeding (Maintained)' };
       }
     }
 
+    // Subtraction-only check tray logic:
+    // Total Scheduled Feed (kg) = input ($amount)
+    // Total Trays Feed (kg) = (20g × 4 trays) ÷ 1000 = 0.08 kg (80g)
+    // Broadcast Feed (kg) = Total Scheduled Feed - Total Trays Feed
     const shrimpWeightGrams = isNurseryStage ? null : Number(sampling?.shrimpWeightGrams || 3.0);
-    const trayFeedGrams = isNurseryStage ? 0 : amount * (shrimpWeightGrams || 3.0);
+    const trayFeedGrams = isNurseryStage ? 0 : 20.0;
     const totalTrayFeedGrams = isNurseryStage ? 0 : trayFeedGrams * feedingTrayCount;
-    const broadcastFeedKg = isNurseryStage ? amount : Math.max(0, amount - (totalTrayFeedGrams / 1000));
+    const totalTrayFeedKg = totalTrayFeedGrams / 1000;
+    const broadcastFeedKg = isNurseryStage ? amount : Math.max(0, parseFloat((amount - totalTrayFeedKg).toFixed(3)));
+    const formulaDisplay = isNurseryStage
+      ? `${amount.toFixed(2)}kg (100% Broadcast • Nursery)`
+      : `${amount.toFixed(2)}kg - ${totalTrayFeedKg.toFixed(2)}kg = ${broadcastFeedKg.toFixed(2)}kg`;
     const trayNotes = isNurseryStage
-      ? `Nursery Day ${currentDoc}: 100% Broadcast (${grams}g / ${formatKg(amount)}kg)`
+      ? `Nursery Day ${currentDoc}: 100% Broadcast (${amount.toFixed(2)}kg)`
       : [
-          `Sample: ${shrimpWeightGrams}g avg shrimp`,
-          `Trays (${feedingTrayCount}): ${formatKg(totalTrayFeedGrams)}g`,
-          `Broadcast: ${formatKg(broadcastFeedKg)}kg`,
+          `Scheduled: ${amount.toFixed(2)}kg`,
+          `Trays (${feedingTrayCount}): ${totalTrayFeedGrams}g (${totalTrayFeedKg.toFixed(2)}kg)`,
+          `Broadcast: ${broadcastFeedKg.toFixed(2)}kg`,
           `Tray check: ${trayMonitoring?.status || trayMonitoring}`,
         ].join(' | ');
 
@@ -1121,7 +1183,7 @@ export default function MyPondPage() {
       await Swal.fire({
         icon: 'success',
         title: editingRecord ? 'Feeding Log Updated!' : 'Feeding Logged Successfully!',
-        text: `${grams}g (${formatKg(amount)}kg) recorded for ${selectedPond.pond_name} on ${todayDateStr} (${form.feedingTime}). Returning to dashboard...`,
+        text: `${amount.toFixed(2)}kg recorded for ${selectedPond.pond_name} on ${todayDateStr} (${form.feedingTime}). Returning to dashboard...`,
         timer: 1600,
         showConfirmButton: false,
       });
@@ -1739,22 +1801,35 @@ export default function MyPondPage() {
                         : '4 trays are reserved first; remaining feed is broadcast to the pond.'}
                     </p>
                   </div>
-                  <span
-                    className="badge rounded-pill extra-small fw-bold px-2.5 py-1"
-                    style={{ backgroundColor: '#FFFFFF', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.16)' }}
-                  >
-                    {isNurseryStage ? 'Trays: None (Nursery)' : `Tray count: ${feedingTrayCount}`}
-                  </span>
+                  <div className="d-flex align-items-center gap-2">
+                    {!isNurseryStage && selectedSlotRequiresMonitoring && (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-primary rounded-pill px-2.5 py-0.5 extra-small fw-bold d-inline-flex align-items-center gap-1 shadow-xs"
+                        onClick={() => requestTrayMonitoring(true)}
+                        title="Click to re-open tray inspection and recalculate feed"
+                      >
+                        <FaClipboardCheck size={11} />
+                        <span>Re-inspect Trays</span>
+                      </button>
+                    )}
+                    <span
+                      className="badge rounded-pill extra-small fw-bold px-2.5 py-1"
+                      style={{ backgroundColor: '#FFFFFF', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.16)' }}
+                    >
+                      {isNurseryStage ? 'Trays: None (Nursery)' : `Tray count: ${feedingTrayCount}`}
+                    </span>
+                  </div>
                 </div>
                 {isNurseryStage ? (
                   <div className="row g-2">
                     <div className="col-6 col-md-4">
-                      <small className="text-muted d-block extra-small">Feed Mass (grams)</small>
-                      <strong className="fs-6 text-dark">{currentForm.amountGrams ? `${currentForm.amountGrams} g` : '0 g'}</strong>
+                      <small className="text-muted d-block extra-small">Scheduled Feed</small>
+                      <strong className="fs-6" style={{ color: '#0B2C5F' }}>{feedingPlan ? `${feedingPlan.amountKg.toFixed(2)} kg` : '0.00 kg'}</strong>
                     </div>
                     <div className="col-6 col-md-4">
-                      <small className="text-muted d-block extra-small">Mass in Kilograms</small>
-                      <strong className="fs-6" style={{ color: '#0B2C5F' }}>{feedingPlan ? `${formatKg(feedingPlan.amountKg)} kg` : '0 kg'}</strong>
+                      <small className="text-muted d-block extra-small">Equivalent in Grams</small>
+                      <strong className="fs-6 text-dark">{feedingPlan ? `${Math.round(feedingPlan.amountKg * 1000).toLocaleString()} g` : '0 g'}</strong>
                     </div>
                     <div className="col-12 col-md-4">
                       <small className="text-muted d-block extra-small">Broadcast Mode</small>
@@ -1767,23 +1842,38 @@ export default function MyPondPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="row g-2">
-                    <div className="col-6 col-md-3">
-                      <small className="text-muted d-block extra-small">Per tray</small>
-                      <strong className="fs-6 text-dark">{feedingPlan ? `${formatKg(feedingPlan.trayFeedGrams)}g` : '-'}</strong>
+                  <div>
+                    <div className="row g-2 align-items-center mb-2.5">
+                      <div className="col-4">
+                        <small className="text-muted d-block extra-small">Scheduled Feed</small>
+                        <strong className="fs-6 text-dark font-mono">{feedingPlan ? `${feedingPlan.amountKg.toFixed(2)} kg` : '-'}</strong>
+                      </div>
+                      <div className="col-4">
+                        <small className="text-muted d-block extra-small">Tray Feed (4 Trays Total)</small>
+                        <strong className="fs-6 text-dark font-mono">{feedingPlan ? `${feedingPlan.totalTrayFeedGrams}g / ${feedingPlan.totalTrayFeedKg.toFixed(2)} kg` : '-'}</strong>
+                      </div>
+                      <div className="col-4">
+                        <small className="text-muted d-block extra-small">Broadcast Feed</small>
+                        <strong className="fs-6 font-mono" style={{ color: '#0B2C5F' }}>{feedingPlan ? `${feedingPlan.broadcastFeedKg.toFixed(2)} kg` : '-'}</strong>
+                      </div>
                     </div>
-                    <div className="col-6 col-md-3">
-                      <small className="text-muted d-block extra-small">All trays</small>
-                      <strong className="fs-6 text-dark">{feedingPlan ? `${formatKg(feedingPlan.totalTrayFeedGrams)}g` : '-'}</strong>
-                    </div>
-                    <div className="col-6 col-md-3">
-                      <small className="text-muted d-block extra-small">Broadcast</small>
-                      <strong className="fs-6" style={{ color: '#0B2C5F' }}>{feedingPlan ? `${formatKg(feedingPlan.broadcastFeedKg)}kg` : '-'}</strong>
-                    </div>
-                    <div className="col-6 col-md-3">
-                      <small className="text-muted d-block extra-small">Formula</small>
-                      <strong className="fs-6 text-dark text-truncate d-block" title={feedingPlan ? `${formatKg(feedingPlan.amountKg)} x ${feedingPlan.shrimpWeightGrams}g` : '-'}>
-                        {feedingPlan ? `${formatKg(feedingPlan.amountKg)} x ${feedingPlan.shrimpWeightGrams}g` : '-'}
+                    <div
+                      className="px-3 py-2 rounded-2 d-flex align-items-center justify-content-between flex-wrap gap-2"
+                      style={{ backgroundColor: '#FFFFFF', border: '1px solid rgba(11, 44, 95, 0.14)' }}
+                    >
+                      <div className="d-flex align-items-center gap-1.5">
+                        <span className="badge rounded-pill px-2 py-0.5 extra-small fw-bold" style={{ backgroundColor: '#0B2C5F', color: '#FFFFFF' }}>
+                          Formula Text Display
+                        </span>
+                        <span className="extra-small text-muted">
+                          (Scheduled Feed − 4 Trays = Broadcast Feed):
+                        </span>
+                      </div>
+                      <strong
+                        className="fs-6 font-mono fw-bold"
+                        style={{ color: '#0B2C5F', letterSpacing: '0.2px' }}
+                      >
+                        {feedingPlan ? feedingPlan.formulaText : '-'}
                       </strong>
                     </div>
                   </div>
@@ -1835,8 +1925,8 @@ export default function MyPondPage() {
                       }}
                     >
                       {parseFloat(matchingLog.amount_kg) === 0
-                        ? '0g (No Feed)'
-                        : `${matchingLog.amount_grams ?? Math.round(parseFloat(matchingLog.amount_kg) * 1000)}g (${matchingLog.amount_kg}kg)`}
+                        ? '0 kg (No Feed)'
+                        : `${parseFloat(matchingLog.amount_kg).toFixed(2)} kg`}
                     </span>
                   )}
                 </button>
@@ -1898,35 +1988,35 @@ export default function MyPondPage() {
           <div className="row g-3 mb-3">
             <div className="col-12 col-md-6">
               <label className="form-label fw-semibold text-dark mb-1">
-                Feed Amount (grams)
+                Feed Amount (kg)
               </label>
               <div className="input-group">
                 <input
                   type="number"
                   min="0"
-                  step="10"
+                  step="0.05"
                   className="form-control fw-bold"
-                  value={currentForm.amountGrams ?? ''}
-                  onChange={(event) => handleChange('amountGrams', event.target.value)}
-                  placeholder="e.g. 500 (or 0 for no feed)"
+                  value={currentForm.amountKg ?? ''}
+                  onChange={(event) => handleChange('amountKg', event.target.value)}
+                  placeholder="e.g. 4.0 (kg)"
                   disabled={submitting || (allSlotsCompleted && !editingRecord)}
                   style={{ fontSize: '1rem' }}
                 />
                 <span className="input-group-text bg-light text-muted fw-semibold px-3">
-                  grams
+                  kg
                 </span>
               </div>
               <div className="d-flex justify-content-between align-items-center mt-1 extra-small">
-                <span className="text-muted">Equivalent mass:</span>
+                <span className="text-muted">Equivalent in grams:</span>
                 <strong className="font-mono" style={{ color: '#0B2C5F' }}>
-                  {currentForm.amountGrams !== '' && !isNaN(parseFloat(currentForm.amountGrams))
-                    ? `${(parseFloat(currentForm.amountGrams) / 1000).toFixed(3)} kg`
-                    : (currentForm.amountKg ? `${parseFloat(currentForm.amountKg).toFixed(3)} kg` : '0.000 kg')}
+                  {currentForm.amountKg !== '' && !isNaN(parseFloat(currentForm.amountKg))
+                    ? `${Math.round(parseFloat(currentForm.amountKg) * 1000).toLocaleString()} g`
+                    : (currentForm.amountGrams ? `${parseFloat(currentForm.amountGrams)} g` : '0 g')}
                 </strong>
               </div>
               {normalizeTime(currentForm.feedingTime) === '6:00 AM' && previousDayLastFeed && !editingRecord && (
                 <div className="mt-1 extra-small fw-semibold d-flex align-items-center gap-1" style={{ color: '#EA580C' }}>
-                  <span>Auto-carried from previous 6:00 PM feed ({parseFloat(previousDayLastFeed.amount_grams || 0) || (parseFloat(previousDayLastFeed.amount_kg || 0) * 1000)}g)</span>
+                  <span>Auto-carried from previous 6:00 PM feed ({parseFloat(previousDayLastFeed.amount_kg || 0).toFixed(2)} kg)</span>
                 </div>
               )}
             </div>

@@ -62,6 +62,13 @@ function ensureHarvestTables(PDO $conn): void {
         }
     }
 
+    try {
+        $idCol = $conn->query("SHOW COLUMNS FROM harvest_predictions WHERE Field = 'id'")->fetch(PDO::FETCH_ASSOC);
+        if ($idCol && strpos(strtolower($idCol['Extra'] ?? ''), 'auto_increment') === false) {
+            $conn->exec("ALTER TABLE harvest_predictions MODIFY id INT(11) NOT NULL AUTO_INCREMENT");
+        }
+    } catch (Throwable $e) {}
+
     $conn->exec("
         CREATE TABLE IF NOT EXISTS harvest_history (
             harvest_id INT AUTO_INCREMENT PRIMARY KEY,

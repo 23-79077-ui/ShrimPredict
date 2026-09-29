@@ -91,6 +91,27 @@ $ensureFeedingTable = function ($conn): void {
 
 $ensureFeedingTable($conn);
 
+function syncPondFeedTotals($conn, $pondId) {
+    if (!$pondId) return;
+    try {
+        $syncStmt = $conn->prepare("
+            UPDATE ponds SET
+                feed_today_kg = (
+                    SELECT COALESCE(SUM(amount_kg), 0)
+                    FROM feeding_records
+                    WHERE pond_id = :p1 AND record_date = CURDATE()
+                ),
+                total_feed_kg = (
+                    SELECT COALESCE(SUM(amount_kg), 0)
+                    FROM feeding_records
+                    WHERE pond_id = :p2
+                )
+            WHERE id = :p3
+        ");
+        $syncStmt->execute([':p1' => $pondId, ':p2' => $pondId, ':p3' => $pondId]);
+    } catch (Throwable $e) {}
+}
+
 $rawBody = file_get_contents('php://input');
 $data = json_decode($rawBody, true);
 if (!is_array($data)) {
@@ -112,8 +133,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE' || ($_SERVER['REQUEST_METHOD'] === '
     }
 
     try {
+        $getPond = $conn->prepare('SELECT pond_id FROM feeding_records WHERE id = :id');
+        $getPond->execute([':id' => $recordId]);
+        $delPondId = (int)$getPond->fetchColumn();
+
         $delStmt = $conn->prepare('DELETE FROM feeding_records WHERE id = :id');
         $delStmt->execute([':id' => $recordId]);
+
+        if ($delPondId > 0) {
+            syncPondFeedTotals($conn, $delPondId);
+        }
+
         echo json_encode(['success' => true, 'message' => 'Feeding record removed successfully.']);
         exit;
     } catch (Throwable $e) {
@@ -161,11 +191,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'PUT
     $recordedByName = isset($data['recorded_by_name']) ? trim((string)$data['recorded_by_name']) : (isset($data['recorded_by']) ? trim((string)$data['recorded_by']) : '');
     $userId = isset($data['user_id']) ? (int)$data['user_id'] : 0;
     $shrimpWeightGrams = isset($data['shrimp_weight_grams']) && is_numeric($data['shrimp_weight_grams']) ? (float)$data['shrimp_weight_grams'] : null;
-    $trayCount = isset($data['tray_count']) && is_numeric($data['tray_count']) ? max(1, (int)$data['tray_count']) : 4;
+    $trayCount = isset($data['tray_count']) && is_numeric($data['tray_count']) ? (int)$data['tray_count'] : 4;
     $trayFeedGrams = isset($data['tray_feed_grams']) && is_numeric($data['tray_feed_grams']) ? (float)$data['tray_feed_grams'] : null;
     $totalTrayFeedGrams = isset($data['total_tray_feed_grams']) && is_numeric($data['total_tray_feed_grams']) ? (float)$data['total_tray_feed_grams'] : null;
     $broadcastFeedKg = isset($data['broadcast_feed_kg']) && is_numeric($data['broadcast_feed_kg']) ? (float)$data['broadcast_feed_kg'] : null;
     $trayMonitoringStatus = isset($data['tray_monitoring_status']) ? trim((string)$data['tray_monitoring_status']) : '';
+
+    // Correct Subtraction Logic for Feeding Trays:
+    // Total Scheduled Feed (kg) = input ($amountKg)
+    // Total Trays Feed (kg) = (Grams per Tray * 4) / 1000 (80g = 0.08kg for Growout)
+    // Broadcast Feed (kg) = Total Scheduled Feed (kg) - Total Trays Feed (kg)
+    $isNursery = !empty($data['is_nursery']) || $trayCount === 0;
+    if ($isNursery) {
+        $trayCount = 0;
+        $trayFeedGrams = 0.00;
+        $totalTrayFeedGrams = 0.00;
+        $broadcastFeedKg = $amountKg;
+    } else {
+        $trayCount = 4;
+        if ($trayFeedGrams === null || $trayFeedGrams <= 0) {
+            $trayFeedGrams = 20.00;
+        }
+        $totalTrayFeedGrams = $trayFeedGrams * $trayCount;
+        $totalTrayFeedKg = $totalTrayFeedGrams / 1000.0;
+        if ($broadcastFeedKg === null) {
+            $broadcastFeedKg = max(0.000, round($amountKg - $totalTrayFeedKg, 3));
+        }
+    }
 
     // Farm SOP: 5 daily feedings. Vitamins can be consumed across all feedings in both Nursery and Grow-out stages.
     if (!$pondId || $amountKg < 0 || !$feedingTime || !$productCode) {
@@ -291,6 +343,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'PUT
             $stmt = $conn->prepare($updateSql);
             $stmt->execute($updateParams);
 
+            syncPondFeedTotals($conn, $pondId);
+
             echo json_encode(['success' => true, 'message' => 'Feeding record updated successfully.', 'id' => $recordId]);
             exit;
         } catch (Throwable $e) {
@@ -393,6 +447,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'PUT
         $stmt->execute($params);
         $newId = $conn->lastInsertId();
 
+        syncPondFeedTotals($conn, $pondId);
+
         // Helper to notify admin of caretaker feeding action
         $pondName = 'Pond #' . $pondId;
         try {
@@ -426,6 +482,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'PUT
             ':notes' => $notes,
         ]);
         $newId = $conn->lastInsertId();
+
+        syncPondFeedTotals($conn, $pondId);
 
         $cName = $recordedByName ?: 'Caretaker';
         $notifMsg = "{$cName} logged {$amountKg}kg of {$productCode} feed for Pond #{$pondId} on {$recordDate} at {$feedingTime}.";

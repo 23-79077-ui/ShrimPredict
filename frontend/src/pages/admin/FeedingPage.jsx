@@ -69,6 +69,17 @@ function computeDoc(stockingDateStr, targetDateStr) {
   return Math.floor(diffTime / 86400000) + 1;
 }
 
+function normalizeTime(value) {
+  if (!value) return '';
+  const s = String(value).toUpperCase().replace(/\s+/g, ' ').trim();
+  if (s.includes('6:00 PM') || s.includes('6:00PM') || s.includes('6 PM') || s.startsWith('18:00') || s.startsWith('18:')) return '6:00 PM';
+  if (s.includes('6:00 AM') || s.includes('6:00AM') || s.includes('6 AM') || (s.startsWith('6:') && !s.includes('PM')) || s.startsWith('06:00') || s.startsWith('06:')) return '6:00 AM';
+  if (s.includes('9:00 AM') || s.includes('9:00AM') || s.includes('9 AM') || s.startsWith('9:') || s.startsWith('09:00') || s.startsWith('09:')) return '9:00 AM';
+  if (s.includes('12:00 PM') || s.includes('12:00PM') || s.includes('12 PM') || s.startsWith('12:00') || s.startsWith('12:')) return '12:00 PM';
+  if (s.includes('3:00 PM') || s.includes('3:00PM') || s.includes('3 PM') || s.startsWith('15:00') || s.startsWith('15:') || (s.startsWith('3:') && !s.includes('AM'))) return '3:00 PM';
+  return s.replace(/^0(\d:)/, '$1');
+}
+
 export default function FeedingPage() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
@@ -89,6 +100,7 @@ export default function FeedingPage() {
   const [stageFilter, setStageFilter] = useState('all'); // 'all' | 'nursery' | 'growout'
   const [calendarModalPond, setCalendarModalPond] = useState(null);
   const [sortBy, setSortBy] = useState('date-desc'); // 'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc' | 'pond-asc'
+  const [feedingChartRange, setFeedingChartRange] = useState('7_days'); // '7_days' | '14_days' | '30_days' | 'by_pond'
 
   // Admin Log Feeding Modal State
   const [showLogModal, setShowLogModal] = useState(false);
@@ -302,76 +314,236 @@ export default function FeedingPage() {
     document.body.removeChild(link);
   };
 
-  // Chart Data Preparation (Daily Feeding Consumption Wave)
-  const chartData = useMemo(() => {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const dailyTotals = Array(7).fill(0);
+  // Daily Feed Consumption Trend Data (Chronological Calendar Dates or Pond Breakdown)
+  const feedingTrendData = useMemo(() => {
+    if (feedingChartRange === 'by_pond') {
+      const pondMap = {};
+      ponds.forEach((p) => {
+        const name = p.pond_name || p.name || `Pond #${p.id}`;
+        pondMap[name] = { id: p.id, pondName: name, totalKg: 0, count: 0 };
+      });
+      records.forEach((r) => {
+        const name = r.pond_name || `Pond #${r.pond_id}`;
+        if (!pondMap[name]) {
+          pondMap[name] = { id: r.pond_id, pondName: name, totalKg: 0, count: 0 };
+        }
+        pondMap[name].totalKg += Number(r.amount_kg) || 0;
+        pondMap[name].count += 1;
+      });
 
-    records.forEach((r) => {
-      const d = new Date(r.record_date || r.created_at);
-      if (!isNaN(d.getTime())) {
-        const dayIdx = (d.getDay() + 6) % 7;
-        dailyTotals[dayIdx] += Number(r.amount_kg) || 0;
-      }
-    });
+      const list = Object.values(pondMap);
+      list.sort((a, b) => a.pondName.localeCompare(b.pondName, undefined, { numeric: true }));
+
+      return list.map((item) => ({
+        key: `pond_${item.id || item.pondName}`,
+        label: item.pondName,
+        subLabel: `${item.count} ${item.count === 1 ? 'log' : 'logs'}`,
+        axisLabel: item.pondName,
+        totalKg: item.totalKg,
+        count: item.count,
+        isToday: false,
+      }));
+    }
+
+    const daysCount = feedingChartRange === '14_days' ? 14 : feedingChartRange === '30_days' ? 30 : 7;
+    const days = [];
+    const ref = new Date();
+
+    for (let i = daysCount - 1; i >= 0; i--) {
+      const d = new Date(ref);
+      d.setDate(ref.getDate() - i);
+      const ymd = formatYMD(d);
+      const monthShort = d.toLocaleString('en-US', { month: 'short' });
+      const dayNum = d.getDate();
+      const displayDate = `${monthShort} ${dayNum}`;
+      const isToday = ymd === todayYMD;
+
+      const dayRecords = records.filter((r) => formatYMD(r.record_date || r.created_at) === ymd);
+      const totalKg = dayRecords.reduce((sum, r) => sum + (Number(r.amount_kg) || 0), 0);
+
+      days.push({
+        key: `day_${ymd}`,
+        dateStr: ymd,
+        label: displayDate,
+        subLabel: isToday ? 'Today' : ymd,
+        axisLabel: isToday ? [displayDate, '(Today)'] : displayDate,
+        totalKg,
+        count: dayRecords.length,
+        isToday,
+      });
+    }
+
+    return days;
+  }, [records, ponds, feedingChartRange, todayYMD]);
+
+  // Chart Summary Metrics
+  const chartMetrics = useMemo(() => {
+    const totalKg = feedingTrendData.reduce((sum, d) => sum + d.totalKg, 0);
+    const totalLogs = feedingTrendData.reduce((sum, d) => sum + d.count, 0);
+    const avgKg = feedingTrendData.length > 0 ? (totalKg / feedingTrendData.length).toFixed(1) : '0.0';
 
     return {
-      labels: days,
+      totalKg: totalKg.toFixed(1),
+      avgKg: `${avgKg} kg/day`,
+      totalLogs,
+    };
+  }, [feedingTrendData]);
+
+  // Chart Data Preparation (Daily Feeding Trend or Pond Breakdown)
+  const chartData = useMemo(() => {
+    const isPond = feedingChartRange === 'by_pond';
+    return {
+      labels: feedingTrendData.map((d) => d.axisLabel),
       datasets: [
         {
-          label: 'Daily Feed Dispersal (kg)',
-          data: dailyTotals,
-          borderColor: '#0284C7',
+          label: isPond ? 'Feed Consumed by Pond (kg)' : 'Daily Feed Dispensed (kg)',
+          data: feedingTrendData.map((d) => d.totalKg),
+          borderColor: isPond ? '#0B2C5F' : '#0284C7',
           backgroundColor: (context) => {
-            const ctx = context.chart.ctx;
+            const ctx = context.chart?.ctx;
+            if (!ctx) return 'rgba(2, 132, 199, 0.24)';
             const gradient = ctx.createLinearGradient(0, 0, 0, 240);
-            gradient.addColorStop(0, 'rgba(2, 132, 199, 0.22)');
-            gradient.addColorStop(1, 'rgba(2, 132, 199, 0.00)');
+            if (isPond) {
+              gradient.addColorStop(0, 'rgba(11, 44, 95, 0.85)');
+              gradient.addColorStop(1, 'rgba(30, 58, 138, 0.45)');
+            } else {
+              gradient.addColorStop(0, 'rgba(2, 132, 199, 0.24)');
+              gradient.addColorStop(1, 'rgba(2, 132, 199, 0.01)');
+            }
             return gradient;
           },
-          fill: true,
-          tension: 0.42,
-          pointBackgroundColor: '#EA580C',
+          fill: !isPond,
+          tension: 0.38,
+          pointBackgroundColor: feedingTrendData.map((d) => (d.isToday ? '#0284C7' : '#EA580C')),
           pointBorderColor: '#ffffff',
           pointBorderWidth: 2,
-          pointRadius: 5,
+          pointRadius: feedingTrendData.map((d) => (d.isToday ? 7 : 5)),
           pointHoverRadius: 8,
-          borderWidth: 2.8,
+          borderWidth: isPond ? 1 : 2.8,
+          borderRadius: isPond ? 6 : 0,
         },
       ],
     };
-  }, [records]);
+  }, [feedingTrendData, feedingChartRange]);
 
-  // Chart Options for Line Chart
-  const chartOptions = {
+  // Custom Chart.js Plugin to render exact values above points or bars
+  const valueLabelPlugin = useMemo(() => ({
+    id: 'pointValueLabels',
+    afterDatasetsDraw(chart) {
+      const { ctx } = chart;
+      chart.data.datasets.forEach((dataset, i) => {
+        const meta = chart.getDatasetMeta(i);
+        meta.data.forEach((element, index) => {
+          const val = dataset.data[index];
+          if (val === undefined || val === null) return;
+          const num = Number(val);
+          const text = `${num.toFixed(1)} kg`;
+
+          ctx.save();
+          ctx.font = 'bold 10px system-ui, -apple-system, sans-serif';
+          const textWidth = ctx.measureText(text).width;
+          const x = element.x;
+          const y = element.y - 12;
+
+          // Draw pill background
+          ctx.fillStyle = num > 0 ? '#0B2C5F' : 'rgba(100, 116, 139, 0.75)';
+          const pillWidth = textWidth + 10;
+          const pillHeight = 16;
+          const pillX = x - pillWidth / 2;
+          const pillY = y - 11;
+          const radius = 5;
+
+          ctx.beginPath();
+          if (typeof ctx.roundRect === 'function') {
+            ctx.roundRect(pillX, pillY, pillWidth, pillHeight, radius);
+          } else {
+            ctx.rect(pillX, pillY, pillWidth, pillHeight);
+          }
+          ctx.fill();
+
+          // Draw text
+          ctx.fillStyle = '#FFFFFF';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(text, x, pillY + pillHeight / 2);
+          ctx.restore();
+        });
+      });
+    },
+  }), []);
+
+  // Chart Options for Line / Bar Chart
+  const chartOptions = useMemo(() => ({
     responsive: true,
     maintainAspectRatio: false,
+    layout: {
+      padding: {
+        top: 24,
+        bottom: 6,
+        left: 8,
+        right: 8,
+      },
+    },
     plugins: {
       legend: { display: false },
       tooltip: {
         backgroundColor: '#0B2C5F',
         titleColor: '#FFFFFF',
         bodyColor: '#FFFFFF',
-        padding: 10,
+        padding: 12,
         cornerRadius: 10,
         displayColors: false,
         callbacks: {
-          label: (context) => ` ${context.parsed.y.toFixed(1)} kg dispensed`,
+          title: (items) => {
+            if (!items.length) return '';
+            const idx = items[0].dataIndex;
+            const d = feedingTrendData[idx];
+            if (!d) return items[0].label;
+            if (feedingChartRange === 'by_pond') return d.label;
+            return `${d.label}${d.isToday ? ' • TODAY' : ''}`;
+          },
+          label: (context) => ` ${Number(context.parsed.y).toFixed(1)} kg dispensed`,
+          afterLabel: (context) => {
+            const idx = context.dataIndex;
+            const d = feedingTrendData[idx];
+            return d ? ` ${d.count} feeding ${d.count === 1 ? 'log' : 'logs'} recorded` : '';
+          },
         },
       },
     },
     scales: {
       y: {
-        grid: { color: 'rgba(11, 44, 95, 0.05)' },
-        ticks: { color: '#64748B', font: { size: 11 } },
+        grid: { color: 'rgba(11, 44, 95, 0.06)' },
+        ticks: {
+          color: '#64748B',
+          font: { size: 11 },
+          callback: (val) => `${val} kg`,
+        },
         beginAtZero: true,
       },
       x: {
-        grid: { display: false },
-        ticks: { color: '#64748B', font: { size: 11, weight: '600' } },
+        grid: {
+          display: true,
+          color: 'rgba(11, 44, 95, 0.08)',
+          borderDash: [4, 4],
+          drawTicks: true,
+        },
+        ticks: {
+          color: (ctx) => {
+            const idx = ctx.index;
+            return feedingTrendData[idx]?.isToday ? '#0284C7' : '#334155';
+          },
+          font: (ctx) => {
+            const idx = ctx.index;
+            return {
+              size: 11,
+              weight: feedingTrendData[idx]?.isToday ? 'bold' : '600',
+            };
+          },
+        },
       },
     },
-  };
+  }), [feedingTrendData, feedingChartRange]);
 
   // Feed Type Breakdown Bar Chart Data
   const feedTypeChartData = useMemo(() => {
@@ -638,29 +810,14 @@ export default function FeedingPage() {
     const rawPrevKg = Number(prevRecord?.amount_kg || (rawPrevGrams / 1000));
     const prevTime = prevRecord?.feeding_time || 'previous';
 
-    let amountIfConsumedGrams = 14;
-    let amountIfConsumedKg = 14.0;
-    let amountIfLeftoverGrams = 11;
-    let amountIfLeftoverKg = 11.0;
-
-    if (rawPrevGrams > 0 && rawPrevGrams <= 100) {
-      // User entered unit amount directly into the form (e.g. 13g -> 14g, or 14g)
-      amountIfConsumedGrams = Number((rawPrevGrams + 1).toFixed(2));
-      amountIfConsumedKg = rawPrevKg >= 1 ? Number((rawPrevKg + 1.0).toFixed(2)) : Number((amountIfConsumedGrams / 1000).toFixed(3));
-      amountIfLeftoverGrams = Math.max(1, Number((rawPrevGrams - 2).toFixed(2)));
-      amountIfLeftoverKg = rawPrevKg >= 1 ? Math.max(0.5, Number((rawPrevKg - 2.0).toFixed(2))) : Number((amountIfLeftoverGrams / 1000).toFixed(3));
-    } else if (rawPrevGrams > 100) {
-      // User entered full gram amount (e.g. 13000g -> 14000g)
-      amountIfConsumedGrams = Math.round(rawPrevGrams + 1000);
-      amountIfConsumedKg = Number((rawPrevKg + 1.0).toFixed(2));
-      amountIfLeftoverGrams = Math.max(100, Math.round(rawPrevGrams - 2000));
-      amountIfLeftoverKg = Math.max(0.5, Number((rawPrevKg - 2.0).toFixed(2)));
-    } else {
-      amountIfConsumedGrams = 14;
-      amountIfConsumedKg = 14.0;
-      amountIfLeftoverGrams = 11;
-      amountIfLeftoverKg = 11.0;
-    }
+    // Farm Check Tray Protocol:
+    // - Unconsumed / Leftover: Reduce by 2.0 kg (-2.0 kg, min 0.5 kg)
+    // - Completely Consumed (Empty / Naubos): Increase by 1.0 kg (+1.0 kg)
+    const baseKg = rawPrevKg > 0 ? rawPrevKg : 4.0;
+    const amountIfConsumedKg = Number((baseKg + 1.0).toFixed(2));
+    const amountIfConsumedGrams = Math.round(amountIfConsumedKg * 1000);
+    const amountIfLeftoverKg = Math.max(0.5, Number((baseKg - 2.0).toFixed(2)));
+    const amountIfLeftoverGrams = Math.round(amountIfLeftoverKg * 1000);
 
     const { value, isConfirmed } = await Swal.fire({
       title: 'Feeding Tray Inspection',
@@ -674,21 +831,21 @@ export default function FeedingPage() {
       html: `
         <div style="text-align:left; font-family: inherit;">
           <p class="text-secondary small mb-3">
-            Inspect all 4 check trays in <strong>${targetPondObj?.pond_name || 'this pond'}</strong> following the <strong>${prevTime}</strong> feeding session:
+            Inspect all 4 check trays in <strong>${targetPondObj?.pond_name || 'this pond'}</strong> following the <strong>${prevTime}</strong> feeding (${baseKg.toFixed(2)} kg):
           </p>
           <div class="tray-options d-flex flex-column gap-2 mb-3">
             <label class="p-3 rounded-3 border d-flex align-items-start gap-2.5 cursor-pointer bg-white text-dark shadow-xs" style="cursor: pointer;">
               <input type="radio" name="admin_tray_status" value="consumed" checked style="margin-top: 3px;" />
               <div>
-                <strong class="d-block text-dark">Completely Consumed (Empty)</strong>
-                <span class="text-muted extra-small">All feed on the 4 check trays has been fully consumed.</span>
+                <strong class="d-block text-dark">All 4 Check Trays Consumed</strong>
+                <span class="text-muted extra-small">Check trays are completely empty. Add 1 kg (+1.0 kg) &rarr; Scheduled feed becomes <strong>${amountIfConsumedKg.toFixed(2)} kg</strong> (${amountIfConsumedGrams.toLocaleString()} g).</span>
               </div>
             </label>
             <label class="p-3 rounded-3 border d-flex align-items-start gap-2.5 cursor-pointer bg-white text-dark shadow-xs" style="cursor: pointer;">
               <input type="radio" name="admin_tray_status" value="leftover" style="margin-top: 3px;" />
               <div>
-                <strong class="d-block text-dark">Leftover Feed Detected (Unconsumed)</strong>
-                <span class="text-muted extra-small">Feed residue remains on the check trays indicating slow feeding or satiation.</span>
+                <strong class="d-block text-dark">Unconsumed Feed Detected</strong>
+                <span class="text-muted extra-small">Feed residue remains on check trays. Reduce by 2 kg (-2.0 kg) &rarr; Scheduled feed becomes <strong>${amountIfLeftoverKg.toFixed(2)} kg</strong> (${amountIfLeftoverGrams.toLocaleString()} g).</span>
               </div>
             </label>
           </div>
@@ -706,16 +863,16 @@ export default function FeedingPage() {
     if (isConfirmed && value) {
       let suggestedGrams = amountIfConsumedGrams;
       let suggestedKg = amountIfConsumedKg;
-      let statusLabel = 'Completely Consumed (Empty)';
+      let statusLabel = 'Completely Consumed (Empty, +1kg)';
 
       if (value === 'leftover') {
         suggestedGrams = amountIfLeftoverGrams;
         suggestedKg = amountIfLeftoverKg;
-        statusLabel = 'Leftover Feed Detected';
+        statusLabel = 'Unconsumed Feed Detected (-2kg)';
       } else {
         suggestedGrams = amountIfConsumedGrams;
         suggestedKg = amountIfConsumedKg;
-        statusLabel = 'Completely Consumed (Empty)';
+        statusLabel = 'Completely Consumed (Empty, +1kg)';
       }
 
       setAdminLogForm((prev) => ({
@@ -784,16 +941,21 @@ export default function FeedingPage() {
       amt = promptResult.amount_kg;
     }
 
-    if (isNaN(amt) || amt < 0 || isNaN(grams) || grams < 0) {
-      Swal.fire({ icon: 'warning', title: 'Invalid Amount', text: 'Please enter a valid amount in grams (0 or greater).' });
+    if (isNaN(amt) || amt < 0) {
+      Swal.fire({ icon: 'warning', title: 'Invalid Amount', text: 'Please enter a valid amount in kg (0 or greater).' });
       return;
     }
 
+    // Subtraction-only tray calculation (NO shrimp weight multiplication):
+    // Total Scheduled Feed (kg) = amt
+    // Total Trays Feed (kg) = (20g * 4 trays) / 1000 = 0.08 kg
+    // Broadcast Feed (kg) = amt - 0.08 kg
     const shrimpWeightGrams = isNursery ? null : 3.0;
     const trayCount = isNursery ? 0 : 4;
-    const trayFeedGrams = isNursery ? 0 : amt * (shrimpWeightGrams || 3.0);
+    const trayFeedGrams = isNursery ? 0 : 20.0;
     const totalTrayFeedGrams = isNursery ? 0 : trayFeedGrams * trayCount;
-    const broadcastFeedKg = isNursery ? amt : Math.max(0, amt - (totalTrayFeedGrams / 1000));
+    const totalTrayFeedKg = totalTrayFeedGrams / 1000;
+    const broadcastFeedKg = isNursery ? amt : Math.max(0, parseFloat((amt - totalTrayFeedKg).toFixed(3)));
 
     const vit = adminLogForm.vitamin_name || 'Sanolife PRO-2, Sano Top-S';
 
@@ -815,7 +977,7 @@ export default function FeedingPage() {
         broadcast_feed_kg: Number(broadcastFeedKg.toFixed(3)),
         tray_monitoring_status: adminLogForm.tray_monitoring_status || (isNursery ? 'Nursery (100% Broadcast)' : 'First Feeding (Maintained)'),
         record_date: adminLogForm.record_date,
-        notes: adminLogForm.notes || (grams === 0 ? 'No feed logged (0g)' : ''),
+        notes: adminLogForm.notes || (amt === 0 ? 'No feed logged (0 kg)' : ''),
         recorded_by: user?.full_name || 'Administrator',
         recorded_by_name: user?.full_name || 'Administrator',
         user_id: Number(user?.id || 9),
@@ -826,7 +988,7 @@ export default function FeedingPage() {
         Swal.fire({
           icon: 'success',
           title: 'Feeding Record Saved!',
-          text: `${grams}g (${amt.toFixed(1)}kg) of ${adminLogForm.product_code} on ${adminLogForm.record_date} (${adminLogForm.feeding_time}) recorded.`,
+          text: `${amt.toFixed(2)}kg of ${adminLogForm.product_code} on ${adminLogForm.record_date} (${adminLogForm.feeding_time}) recorded.`,
           timer: 2000,
           showConfirmButton: false,
         });
@@ -1122,12 +1284,12 @@ export default function FeedingPage() {
           </div>
         </div>
 
-        {/* Card 4: Average Feed Rate & Velocity */}
+        {/* Card 4: Average Daily Feed */}
         <div className="col-12 col-sm-6 col-xl-3">
           <div className="tri-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Dispersion Velocity</span>
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Average Daily Feed</span>
                 <div className="tri-kpi-icon tri-kpi-icon-orange">
                   <FaChartLine size={17} />
                 </div>
@@ -1144,9 +1306,9 @@ export default function FeedingPage() {
                 />
               </div>
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small">98.2% Adherence</span>
+                <span className="text-muted extra-small">Daily Consumption</span>
                 <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: '#FFF7ED', color: '#EA580C', border: '1px solid rgba(234, 88, 12, 0.25)' }}>
-                  Per Active Pond
+                  Active Cycle
                 </span>
               </div>
             </div>
@@ -1154,48 +1316,135 @@ export default function FeedingPage() {
         </div>
       </div>
 
-      {/* 3. CHARTS ROW: WAVE LINE CHART (8 cols) + FEED TYPE BREAKDOWN (4 cols) */}
+      {/* 3. CHARTS ROW: DAILY FEEDING TREND (8 cols) + FEED TYPE BREAKDOWN (4 cols) */}
       <div className="row g-4 mb-4">
-        {/* Left: 7-Day Feed Consumption Wave Chart */}
+        {/* Left: Daily Feed Consumption Trend Chart */}
         <div className="col-12 col-xl-8">
           <div className="tri-card p-4 h-100">
             <div className="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
               <div>
-                <h5 className="fw-extrabold text-dark mb-0 tracking-tight">Daily Feed Consumption Wave</h5>
+                <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                  <h5 className="fw-extrabold text-dark mb-0 tracking-tight">Daily Feed Consumption Trend</h5>
+                  <span className="tag-cyan-active">
+                    {feedingChartRange === 'by_pond' ? 'Pond Comparison' : 'Daily Feed Intake (kg)'}
+                  </span>
+                </div>
                 <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
-                  Total feed volume delivered per day across all active ponds during the current week.
+                  {feedingChartRange === 'by_pond'
+                    ? 'Cumulative feed mass dispensed across individual active ponds.'
+                    : feedingChartRange === '14_days'
+                      ? 'Daily feeding mass delivered across ponds over the past 14 consecutive calendar dates.'
+                      : feedingChartRange === '30_days'
+                        ? 'Daily feeding mass delivered across ponds over the past 30 consecutive calendar dates.'
+                        : 'Daily feeding mass delivered across ponds over the past 7 consecutive calendar dates.'}
                 </p>
               </div>
-              <span className="tag-cyan-active">
-                7-Day Dispersal Curve
-              </span>
+
+              {/* Timeframe & View Scope Selector */}
+              <div className="d-flex align-items-center gap-1 p-1 rounded-pill bg-light border">
+                <button
+                  type="button"
+                  className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${feedingChartRange === '7_days' ? 'btn-tri-navy shadow-xs' : 'btn-light text-muted'}`}
+                  onClick={() => setFeedingChartRange('7_days')}
+                >
+                  Last 7 Days
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${feedingChartRange === '14_days' ? 'btn-tri-navy shadow-xs' : 'btn-light text-muted'}`}
+                  onClick={() => setFeedingChartRange('14_days')}
+                >
+                  Last 14 Days
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${feedingChartRange === '30_days' ? 'btn-tri-navy shadow-xs' : 'btn-light text-muted'}`}
+                  onClick={() => setFeedingChartRange('30_days')}
+                >
+                  Last 30 Days
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${feedingChartRange === 'by_pond' ? 'btn-tri-navy shadow-xs' : 'btn-light text-muted'}`}
+                  onClick={() => setFeedingChartRange('by_pond')}
+                >
+                  By Pond
+                </button>
+              </div>
             </div>
 
-            {/* High-Contrast Mini Highlights */}
+            {/* High-Contrast Period Highlights */}
             <div className="row g-2.5 mb-3">
               <div className="col-4">
                 <div className="tri-mini-stat text-center">
-                  <span className="extra-small text-muted text-uppercase fw-bold d-block">Filtered Mass</span>
-                  <strong className="text-dark fs-6">{metrics.filteredTotalKg} kg</strong>
+                  <span className="extra-small text-muted text-uppercase fw-bold d-block">
+                    {feedingChartRange === 'by_pond' ? 'Total Fleet Feed' : 'Period Total Feed'}
+                  </span>
+                  <strong className="text-dark fs-6">{chartMetrics.totalKg} kg</strong>
                 </div>
               </div>
               <div className="col-4">
                 <div className="tri-mini-stat text-center">
-                  <span className="extra-small text-muted text-uppercase fw-bold d-block">Active Logs</span>
-                  <strong className="text-dark fs-6">{filteredRecords.length} Entries</strong>
+                  <span className="extra-small text-muted text-uppercase fw-bold d-block">
+                    {feedingChartRange === 'by_pond' ? 'Active Ponds' : 'Daily Average'}
+                  </span>
+                  <strong className="text-dark fs-6">
+                    {feedingChartRange === 'by_pond' ? `${feedingTrendData.length} Ponds` : chartMetrics.avgKg}
+                  </strong>
                 </div>
               </div>
               <div className="col-4">
                 <div className="tri-mini-stat text-center">
-                  <span className="extra-small text-muted text-uppercase fw-bold d-block">Waste Reduction</span>
-                  <strong className="text-success fs-6">99.1% Optimal</strong>
+                  <span className="extra-small text-muted text-uppercase fw-bold d-block">Recorded Logs</span>
+                  <strong className="text-primary fs-6">{chartMetrics.totalLogs} Entries</strong>
                 </div>
               </div>
             </div>
 
-            {/* Line Chart */}
-            <div style={{ height: 250 }}>
-              <Line data={chartData} options={chartOptions} />
+            {/* Chart Canvas: Line Chart for Dates, Bar Chart for Pond Comparison */}
+            <div style={{ height: 260 }}>
+              {feedingChartRange === 'by_pond' ? (
+                <Bar data={chartData} options={chartOptions} plugins={[valueLabelPlugin]} />
+              ) : (
+                <Line data={chartData} options={chartOptions} plugins={[valueLabelPlugin]} />
+              )}
+            </div>
+
+            {/* Day-by-Day or Pond-by-Pond Distinction Strip: Clear dates/ponds, kg amounts, and TODAY highlight */}
+            <div className="d-flex gap-2 mt-3 pt-3 border-top overflow-auto pb-1" style={{ scrollbarWidth: 'thin' }}>
+              {feedingTrendData.map((d) => (
+                <div
+                  key={d.key}
+                  className={`p-2 rounded-3 text-center transition-all flex-shrink-0 ${d.isToday ? 'shadow-sm' : 'bg-light'}`}
+                  style={{
+                    backgroundColor: d.isToday ? '#0B2C5F' : '#F8FAFC',
+                    color: d.isToday ? '#FFFFFF' : '#1E293B',
+                    border: d.isToday ? '2px solid #0284C7' : '1px solid rgba(11, 44, 95, 0.1)',
+                    minWidth: 84,
+                    flex: feedingTrendData.length <= 7 ? 1 : '0 0 auto',
+                  }}
+                >
+                  <div className="d-flex align-items-center justify-content-center gap-1 mb-0.5">
+                    <span className={`extra-small fw-extrabold ${d.isToday ? 'text-white' : 'text-secondary'}`} style={{ fontSize: '0.74rem' }}>
+                      {d.label}
+                    </span>
+                    {d.isToday && (
+                      <span className="badge rounded-pill px-1.5 py-0.5 extra-small fw-bold" style={{ backgroundColor: '#EA580C', color: '#FFFFFF', fontSize: '0.55rem' }}>
+                        TODAY
+                      </span>
+                    )}
+                  </div>
+                  <div className={`extra-small mb-1 ${d.isToday ? 'text-light opacity-90' : 'text-muted'}`} style={{ fontSize: '0.67rem', fontWeight: 500 }}>
+                    {d.subLabel}
+                  </div>
+                  <strong className="d-block font-mono" style={{ fontSize: '0.86rem', color: d.isToday ? '#FFFFFF' : '#0B2C5F' }}>
+                    {d.totalKg.toFixed(1)} <span style={{ fontSize: '0.62rem', fontWeight: 'normal' }}>kg</span>
+                  </strong>
+                  <span className={`extra-small d-block ${d.isToday ? 'text-light opacity-75' : 'text-muted'}`} style={{ fontSize: '0.62rem' }}>
+                    {d.count} {d.count === 1 ? 'log' : 'logs'}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -1856,32 +2105,32 @@ export default function FeedingPage() {
                       </div>
                     </div>
 
-                    {/* Amount in grams & kg */}
+                    {/* Amount in kg */}
                     <div className="col-md-6">
                       <label className="form-label extra-small fw-bold text-dark mb-1">
-                        Feed Amount (grams)
-                        {adminLogForm.amount_grams !== '' && !isNaN(parseFloat(adminLogForm.amount_grams)) && (
+                        Feed Amount (kg)
+                        {adminLogForm.amount_kg !== '' && !isNaN(parseFloat(adminLogForm.amount_kg)) && (
                           <span className="text-success ms-1 fw-bold">
-                            ≈ {(parseFloat(adminLogForm.amount_grams) / 1000).toFixed(1)} kg
+                            ≈ {Math.round(parseFloat(adminLogForm.amount_kg) * 1000).toLocaleString()} grams
                           </span>
                         )}
                       </label>
                       <input
                         type="number"
                         min="0"
-                        step="1"
+                        step="0.1"
                         className="form-control form-control-sm fw-bold"
-                        placeholder="e.g. 13000 (13 kg)"
-                        value={adminLogForm.amount_grams}
+                        placeholder="e.g. 4.0 (kg)"
+                        value={adminLogForm.amount_kg}
                         onChange={(e) => {
-                          const gVal = e.target.value;
-                          const kgVal = gVal === '' ? '' : (parseFloat(gVal) / 1000).toString();
-                          setAdminLogForm({ ...adminLogForm, amount_grams: gVal, amount_kg: kgVal });
+                          const kgVal = e.target.value;
+                          const gVal = kgVal === '' ? '' : Math.round(parseFloat(kgVal) * 1000).toString();
+                          setAdminLogForm({ ...adminLogForm, amount_kg: kgVal, amount_grams: gVal });
                         }}
                         required
                       />
                       <small className="extra-small text-muted mt-1 d-block">
-                        Auto-adjusted based on 4-tray monitoring inspection.
+                        Auto-adjusted based on 4 check trays (20g/tray).
                       </small>
                     </div>
 

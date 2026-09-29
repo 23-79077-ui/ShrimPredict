@@ -55,12 +55,12 @@ function formatKg(gramsOrKg) {
 function normalizeSlot(timeStr) {
   if (!timeStr) return '';
   const s = String(timeStr).toUpperCase().replace(/\s+/g, ' ').trim();
-  if (s.includes('6:00 AM') || s.startsWith('6:00') || s.startsWith('06:00')) return '6:00 AM';
-  if (s.includes('9:00 AM') || s.startsWith('9:00') || s.startsWith('09:00')) return '9:00 AM';
-  if (s.includes('12:00 PM') || s.startsWith('12:00')) return '12:00 PM';
-  if (s.includes('3:00 PM') || s.startsWith('15:00') || s.startsWith('3:00')) return '3:00 PM';
-  if (s.includes('6:00 PM') || s.startsWith('18:00')) return '6:00 PM';
-  return s;
+  if (s.includes('6:00 PM') || s.includes('6:00PM') || s.includes('6 PM') || s.startsWith('18:00') || s.startsWith('18:')) return '6:00 PM';
+  if (s.includes('6:00 AM') || s.includes('6:00AM') || s.includes('6 AM') || (s.startsWith('6:') && !s.includes('PM')) || s.startsWith('06:00') || s.startsWith('06:')) return '6:00 AM';
+  if (s.includes('9:00 AM') || s.includes('9:00AM') || s.includes('9 AM') || s.startsWith('9:') || s.startsWith('09:00') || s.startsWith('09:')) return '9:00 AM';
+  if (s.includes('12:00 PM') || s.includes('12:00PM') || s.includes('12 PM') || s.startsWith('12:00') || s.startsWith('12:')) return '12:00 PM';
+  if (s.includes('3:00 PM') || s.includes('3:00PM') || s.includes('3 PM') || s.startsWith('15:00') || s.startsWith('15:') || (s.startsWith('3:') && !s.includes('AM'))) return '3:00 PM';
+  return s.replace(/^0(\d:)/, '$1');
 }
 
 export default function FeedingHistoryPage() {
@@ -235,15 +235,15 @@ export default function FeedingHistoryPage() {
   const handleSaveBackfill = async (e) => {
     e?.preventDefault();
     const pid = Number(backfillForm.pond_id);
-    const grams = backfillForm.amount_grams !== '' ? parseFloat(backfillForm.amount_grams) : (parseFloat(backfillForm.amount_kg) * 1000 || 0);
-    const amt = backfillForm.amount_kg !== '' ? parseFloat(backfillForm.amount_kg) : (grams / 1000);
+    const amt = backfillForm.amount_kg !== '' ? parseFloat(backfillForm.amount_kg) : (parseFloat(backfillForm.amount_grams) / 1000 || 0);
+    const grams = Math.round(amt * 1000);
 
     if (!pid) {
       Swal.fire({ icon: 'warning', title: 'Pond Basin Required', text: 'Please select an assigned pond basin.' });
       return;
     }
-    if (isNaN(amt) || amt < 0 || isNaN(grams) || grams < 0) {
-      Swal.fire({ icon: 'warning', title: 'Invalid Feed Mass', text: 'Please enter a valid amount in grams (0 or greater).' });
+    if (isNaN(amt) || amt < 0) {
+      Swal.fire({ icon: 'warning', title: 'Invalid Feed Mass', text: 'Please enter a valid amount in kg (0 or greater).' });
       return;
     }
     if (!backfillForm.record_date) {
@@ -252,6 +252,12 @@ export default function FeedingHistoryPage() {
     }
 
     const vit = backfillForm.vitamin_name || 'None';
+    const isNursery = String(backfillForm.product_code).toLowerCase().includes('starter') && (editingModalRecord?.doc ? editingModalRecord.doc <= 19 : false);
+    const trayCount = isNursery ? 0 : 4;
+    const trayFeedGrams = isNursery ? 0 : 20.0;
+    const totalTrayFeedGrams = isNursery ? 0 : 80.0;
+    const totalTrayFeedKg = totalTrayFeedGrams / 1000;
+    const broadcastFeedKg = isNursery ? amt : Math.max(0, parseFloat((amt - totalTrayFeedKg).toFixed(3)));
 
     setSavingBackfill(true);
     try {
@@ -260,14 +266,18 @@ export default function FeedingHistoryPage() {
         record_id: editingModalRecord ? editingModalRecord.id : undefined,
         is_update: Boolean(editingModalRecord),
         pond_id: pid,
-        amount_grams: grams,
         amount_kg: amt,
+        amount_grams: grams,
         feeding_time: backfillForm.feeding_time,
         product_code: backfillForm.product_code,
         vitamin_name: vit,
         has_vitamin: vit && vit !== 'None' ? 1 : 0,
+        tray_count: trayCount,
+        tray_feed_grams: trayFeedGrams,
+        total_tray_feed_grams: totalTrayFeedGrams,
+        broadcast_feed_kg: broadcastFeedKg,
         record_date: backfillForm.record_date,
-        notes: backfillForm.notes || (grams === 0 ? 'No feed logged (0g)' : ''),
+        notes: backfillForm.notes || (amt === 0 ? 'No feed logged (0 kg)' : ''),
         recorded_by: user?.full_name || 'Caretaker',
         recorded_by_name: user?.full_name || 'Caretaker',
         user_id: Number(user?.id || 0),
@@ -278,7 +288,7 @@ export default function FeedingHistoryPage() {
         Swal.fire({
           icon: 'success',
           title: editingModalRecord ? 'Record Updated!' : 'Feeding Record Logged!',
-          text: `${grams}g (${amt.toFixed(2)}kg) of ${backfillForm.product_code} on ${backfillForm.record_date} (${backfillForm.feeding_time}) recorded.`,
+          text: `${amt.toFixed(2)}kg of ${backfillForm.product_code} recorded for ${backfillForm.record_date} (${backfillForm.feeding_time}).`,
           timer: 2000,
           showConfirmButton: false,
         });
@@ -1365,18 +1375,18 @@ export default function FeedingHistoryPage() {
                           </td>
 
                           <td>
-                            {Number(record.amount_grams) > 0 ? (
+                            {Number(record.amount_kg) > 0 || Number(record.amount_grams) > 0 ? (
                               <div>
                                 <span className="fw-bold text-dark font-mono" style={{ fontSize: '0.92rem' }}>
-                                  {record.amount_grams} g ({formatKg(record.amount_grams)} kg)
+                                  {Number(record.amount_kg || 0).toFixed(2)} kg
                                 </span>
                                 <span className="extra-small text-muted d-block font-mono">
-                                  {record.feed_type || record.product_code || 'Starter Feed'}
+                                  {Math.round(Number(record.amount_grams || (Number(record.amount_kg || 0) * 1000))).toLocaleString()} g • {record.feed_type || record.product_code || 'Starter Feed'}
                                 </span>
                               </div>
                             ) : (
                               <div>
-                                <span className="fw-bold text-muted font-mono">0 g (0.00 kg)</span>
+                                <span className="fw-bold text-muted font-mono">0.00 kg (0 g)</span>
                                 <span className="extra-small text-muted d-block font-mono">
                                   No feed logged • {record.feed_type || record.product_code || 'Starter'}
                                 </span>
@@ -1613,7 +1623,7 @@ export default function FeedingHistoryPage() {
                         <small className="fs-6 text-muted fw-semibold">kg</small>
                       </h4>
                       <span className="extra-small text-muted font-mono d-block">
-                        ≈ {Number(selectedRecordDetails.amount_grams || (Number(selectedRecordDetails.amount_kg || 0) * 1000)).toLocaleString()} grams
+                        ≈ {Math.round(Number(selectedRecordDetails.amount_grams || (Number(selectedRecordDetails.amount_kg || 0) * 1000))).toLocaleString()} grams
                       </span>
                     </div>
                   </div>
@@ -1703,6 +1713,57 @@ export default function FeedingHistoryPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* CHECK TRAY & BROADCAST BREAKDOWN */}
+                {(() => {
+                  const amtKg = Number(selectedRecordDetails.amount_kg || 0);
+                  const isNursery = (selectedRecordDetails.doc ? selectedRecordDetails.doc <= 19 : false) || (selectedRecordDetails.tray_count === 0);
+                  const trayFeedKg = isNursery ? 0 : 0.08;
+                  const trayFeedGrams = isNursery ? 0 : 80;
+                  const bcastKg = Number(selectedRecordDetails.broadcast_feed_kg !== null && selectedRecordDetails.broadcast_feed_kg !== undefined
+                    ? selectedRecordDetails.broadcast_feed_kg
+                    : (isNursery ? amtKg : Math.max(0, amtKg - 0.08)));
+                  const formulaText = isNursery
+                    ? `${amtKg.toFixed(2)}kg (100% Direct Broadcast • Nursery)`
+                    : `${amtKg.toFixed(2)}kg - ${trayFeedKg.toFixed(2)}kg = ${bcastKg.toFixed(2)}kg`;
+
+                  return (
+                    <div
+                      className="rounded-4 p-3 mb-2.5 bg-white shadow-xs"
+                      style={{ border: '1px solid rgba(11, 44, 95, 0.12)' }}
+                    >
+                      <div className="d-flex align-items-center justify-content-between mb-2">
+                        <span className="text-uppercase fw-bold extra-small tracking-wider text-muted" style={{ fontSize: '0.68rem' }}>
+                          Feed Allocation Breakdown
+                        </span>
+                        <span
+                          className="badge rounded-pill extra-small px-2 py-0.5"
+                          style={{ backgroundColor: '#F8FAFD', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.16)' }}
+                        >
+                          {isNursery ? 'Trays: None (Nursery)' : '4 Check Trays (20g/tray)'}
+                        </span>
+                      </div>
+                      <div className="row g-2">
+                        <div className="col-4">
+                          <small className="text-muted d-block extra-small">Scheduled Feed</small>
+                          <strong className="fs-6 text-dark font-mono">{amtKg.toFixed(2)} kg</strong>
+                        </div>
+                        <div className="col-4">
+                          <small className="text-muted d-block extra-small">Check Trays (Total)</small>
+                          <strong className="fs-6 text-dark font-mono">{trayFeedGrams}g / {trayFeedKg.toFixed(2)} kg</strong>
+                        </div>
+                        <div className="col-4">
+                          <small className="text-muted d-block extra-small">Broadcast Feed</small>
+                          <strong className="fs-6 font-mono" style={{ color: '#0B2C5F' }}>{bcastKg.toFixed(2)} kg</strong>
+                        </div>
+                        <div className="col-12 mt-1 pt-1 border-top">
+                          <small className="text-muted extra-small me-1">Formula Display:</small>
+                          <span className="extra-small fw-bold text-dark font-mono">{formulaText}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* NOTES / REMARKS CARD */}
                 <div
@@ -1881,33 +1942,33 @@ export default function FeedingHistoryPage() {
                       </select>
                     </div>
 
-                    {/* Amount in Grams */}
+                    {/* Amount in kg */}
                     <div className="col-md-6">
                       <label className="form-label extra-small fw-bold text-dark mb-1">
-                        Amount (grams) <span className="text-danger">*</span>
-                        {backfillForm.amount_grams !== '' && !isNaN(parseFloat(backfillForm.amount_grams)) && (
+                        Feed Amount (kg) <span className="text-danger">*</span>
+                        {backfillForm.amount_kg !== '' && !isNaN(parseFloat(backfillForm.amount_kg)) && (
                           <span className="ms-1 fw-bold" style={{ color: '#EA580C' }}>
-                            ≈ {(parseFloat(backfillForm.amount_grams) / 1000).toFixed(2)} kg
+                            ≈ {Math.round(parseFloat(backfillForm.amount_kg) * 1000).toLocaleString()} grams
                           </span>
                         )}
                       </label>
                       <input
                         type="number"
                         min="0"
-                        step="1"
+                        step="0.05"
                         className="form-control form-control-sm fw-bold rounded-3 font-mono"
-                        placeholder="e.g. 500 (or 0 for no feed)"
-                        value={backfillForm.amount_grams}
+                        placeholder="e.g. 4.0 (kg)"
+                        value={backfillForm.amount_kg}
                         onChange={(e) => {
-                          const gVal = e.target.value;
-                          const kgVal = gVal === '' ? '' : (parseFloat(gVal) / 1000).toString();
-                          setBackfillForm({ ...backfillForm, amount_grams: gVal, amount_kg: kgVal });
+                          const kgVal = e.target.value;
+                          const gVal = kgVal === '' ? '' : Math.round(parseFloat(kgVal) * 1000).toString();
+                          setBackfillForm({ ...backfillForm, amount_kg: kgVal, amount_grams: gVal });
                         }}
                         required
                         style={{ border: '1px solid rgba(11, 44, 95, 0.18)' }}
                       />
                       <small className="extra-small text-muted mt-1 d-block">
-                        Enter in grams (e.g. 500g). Use 0 for "No feed logged".
+                        Enter in kilograms (e.g. 4.0 kg). Use 0 for "No feed logged".
                       </small>
                     </div>
 
