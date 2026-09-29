@@ -205,7 +205,19 @@ def _try_load_unified_model():
 _try_load_unified_model()
 
 app = Flask(__name__)
-CORS(app)
+@app.route("/", methods=["GET"])
+def root_status_endpoint():
+    return jsonify({
+        "success": True,
+        "service": "ShrimPredict AI Local Inference API",
+        "status": "online",
+        "endpoints": [
+            "/count",
+            "/predict",
+            "/scan_paper_logsheet",
+            "/health"
+        ]
+    })
 
 
 @app.route("/reload_models", methods=["GET", "POST"])

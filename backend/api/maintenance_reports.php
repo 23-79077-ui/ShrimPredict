@@ -59,7 +59,11 @@ $ensureMaintenanceSchema = function ($conn): void {
     }
 
     if ($idColumn && stripos($idColumn['Extra'] ?? '', 'auto_increment') === false) {
-        $conn->exec("ALTER TABLE maintenance_reports MODIFY id INT NOT NULL AUTO_INCREMENT");
+        try {
+            $conn->exec("ALTER TABLE maintenance_reports MODIFY id INT NOT NULL AUTO_INCREMENT");
+        } catch (Throwable $e) {
+            error_log("Schema migration notice: " . $e->getMessage());
+        }
     }
 };
 

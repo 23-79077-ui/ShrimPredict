@@ -361,6 +361,27 @@ export default function FeedingPage() {
       const dayRecords = records.filter((r) => formatYMD(r.record_date || r.created_at) === ymd);
       const totalKg = dayRecords.reduce((sum, r) => sum + (Number(r.amount_kg) || 0), 0);
 
+      // Per-pond feed consumption breakdown for this date
+      const pondMapForDay = {};
+      ponds.forEach((p) => {
+        const pName = p.pond_name || p.name || `Pond #${p.id}`;
+        pondMapForDay[pName] = 0;
+      });
+
+      dayRecords.forEach((r) => {
+        const pName = r.pond_name || (r.pond_id ? `Pond #${r.pond_id}` : 'Unassigned Pond');
+        if (pondMapForDay[pName] === undefined) {
+          pondMapForDay[pName] = 0;
+        }
+        pondMapForDay[pName] += Number(r.amount_kg) || 0;
+      });
+
+      const pondBreakdown = Object.entries(pondMapForDay).map(([pondName, kg]) => ({
+        pondName,
+        totalKg: Number(kg.toFixed(1)),
+      }));
+      pondBreakdown.sort((a, b) => a.pondName.localeCompare(b.pondName, undefined, { numeric: true }));
+
       days.push({
         key: `day_${ymd}`,
         dateStr: ymd,
@@ -370,6 +391,7 @@ export default function FeedingPage() {
         totalKg,
         count: dayRecords.length,
         isToday,
+        pondBreakdown,
       });
     }
 
@@ -502,11 +524,29 @@ export default function FeedingPage() {
             if (feedingChartRange === 'by_pond') return d.label;
             return `${d.label}${d.isToday ? ' • TODAY' : ''}`;
           },
-          label: (context) => ` ${Number(context.parsed.y).toFixed(1)} kg dispensed`,
+          label: (context) => {
+            const idx = context.dataIndex;
+            const d = feedingTrendData[idx];
+            if (feedingChartRange === 'by_pond') {
+              return ` Total Consumed: ${Number(context.parsed.y).toFixed(1)} kg`;
+            }
+            return ` Total Dispensed: ${Number(context.parsed.y).toFixed(1)} kg (${d ? d.count : 0} ${d && d.count === 1 ? 'log' : 'logs'})`;
+          },
           afterLabel: (context) => {
             const idx = context.dataIndex;
             const d = feedingTrendData[idx];
-            return d ? ` ${d.count} feeding ${d.count === 1 ? 'log' : 'logs'} recorded` : '';
+            if (!d) return '';
+            if (feedingChartRange === 'by_pond') {
+              return ` ${d.count} feeding ${d.count === 1 ? 'log' : 'logs'} recorded`;
+            }
+
+            if (d.pondBreakdown && d.pondBreakdown.length > 0) {
+              const lines = d.pondBreakdown.map(
+                (pb) => ` • ${pb.pondName}: ${pb.totalKg.toFixed(1)} kg`
+              );
+              return ['----------------------------------', ' Ponds Feed Consumption:', ...lines];
+            }
+            return ' • No feeding logs recorded';
           },
         },
       },

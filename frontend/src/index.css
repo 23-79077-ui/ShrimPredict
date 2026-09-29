@@ -7049,3 +7049,86 @@ body.dark-theme .tri-mini-stat {
   background: rgba(15, 23, 42, 0.6) !important;
   border-color: rgba(56, 189, 248, 0.18) !important;
 }
+
+
+/* ==========================================================================
+   UNIVERSAL DROPDOWN INDICATOR & FILTER CHEVRON ARROW STYLES
+   Guarantees visible dropdown arrows across all admin & caretaker filters
+   ========================================================================== */
+
+/* 1. Global Select & Form-Select Dropdown Chevron Indicator */
+select,
+select.form-select,
+.form-select,
+select.form-select-sm,
+.form-select-sm,
+.admin-filter-control {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%230B2C5F' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 0.85rem center !important;
+  background-size: 14px 14px !important;
+  padding-right: 2.2rem !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  cursor: pointer !important;
+}
+
+/* 2. Admin Filter Control Active State & Specific Chevron Alignment */
+.admin-filter-control {
+  height: 40px !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(11, 44, 95, 0.18) !important;
+  background-color: #F8FAFD !important;
+  color: #0B2C5F !important;
+  font-size: 0.84rem !important;
+  font-weight: 600 !important;
+  padding-left: 0.9rem !important;
+  transition: all 0.2s ease-in-out !important;
+  box-shadow: 0 1px 3px rgba(11, 44, 95, 0.04) !important;
+}
+
+.admin-filter-control:hover,
+.admin-filter-control:focus {
+  background-color: #FFFFFF !important;
+  border-color: #0B2C5F !important;
+  box-shadow: 0 0 0 3px rgba(11, 44, 95, 0.12) !important;
+}
+
+/* 3. Orange Variant Dropdown Select (e.g. Total Feed KPI Card) */
+.tri-feed-pond-select,
+.select-orange-dropdown {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23EA580C' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 0.6rem center !important;
+  background-size: 12px 12px !important;
+  padding-right: 1.8rem !important;
+  border-color: rgba(234, 88, 12, 0.35) !important;
+  background-color: #FFF7ED !important;
+  color: #EA580C !important;
+}
+
+/* 4. Caretaker Specific Filter Controls */
+.caretaker-history-filter .form-select,
+.caretaker-mypond-selector .form-select,
+.caretaker-scan-filter .form-select,
+.caretaker-panel-tools .form-select {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%230B2C5F' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 0.75rem center !important;
+  background-size: 14px 14px !important;
+  padding-right: 2.2rem !important;
+}
+
+/* 5. Dark Mode Dropdown Indicator Contrast */
+[data-theme="dark"] select,
+[data-theme="dark"] .form-select,
+[data-theme="dark"] .admin-filter-control,
+body.dark-theme select,
+body.dark-theme .form-select,
+body.dark-theme .admin-filter-control {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2338BDF8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e") !important;
+  background-color: #0F172A !important;
+  color: #F8FAFC !important;
+  border-color: rgba(56, 189, 248, 0.25) !important;
+}

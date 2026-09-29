@@ -817,28 +817,34 @@ export default function CaretakerDashboard() {
                         }}
                       >
                         {isVerified ? (
-                          <div className="d-flex align-items-center justify-content-around text-center">
+                          <div className="d-flex align-items-center justify-content-between text-center px-1">
                             <div>
-                              <span className="text-muted extra-small d-block" style={{ fontSize: '0.68rem' }}>DO</span>
-                              <strong style={{ color: '#0B2C5F', fontSize: '0.88rem' }}>{readings?.dissolved_oxygen ?? '—'}</strong>
+                              <span className="text-muted extra-small d-block fw-bold" style={{ fontSize: '0.68rem', color: '#64748B' }}>DO</span>
+                              <strong style={{ color: '#0B2C5F', fontSize: '0.9rem' }}>{readings?.dissolved_oxygen ?? '—'}</strong>
                               <small className="text-muted" style={{ fontSize: '0.62rem' }}> mg/L</small>
                             </div>
                             <div style={{ width: 1, height: 22, backgroundColor: 'rgba(11, 44, 95, 0.1)' }} />
                             <div>
-                              <span className="text-muted extra-small d-block" style={{ fontSize: '0.68rem' }}>Temp</span>
-                              <strong style={{ color: '#0B2C5F', fontSize: '0.88rem' }}>{readings?.temperature ?? '—'}</strong>
+                              <span className="text-muted extra-small d-block fw-bold" style={{ fontSize: '0.68rem', color: '#64748B' }}>Temp</span>
+                              <strong style={{ color: '#0B2C5F', fontSize: '0.9rem' }}>{readings?.temperature ?? '—'}</strong>
                               <small className="text-muted" style={{ fontSize: '0.62rem' }}> °C</small>
                             </div>
                             <div style={{ width: 1, height: 22, backgroundColor: 'rgba(11, 44, 95, 0.1)' }} />
                             <div>
-                              <span className="text-muted extra-small d-block" style={{ fontSize: '0.68rem' }}>pH</span>
-                              <strong style={{ color: '#0B2C5F', fontSize: '0.88rem' }}>{readings?.ph_level ?? '—'}</strong>
+                              <span className="text-muted extra-small d-block fw-bold" style={{ fontSize: '0.68rem', color: '#64748B' }}>pH</span>
+                              <strong style={{ color: '#0B2C5F', fontSize: '0.9rem' }}>{readings?.ph_level ?? '—'}</strong>
+                            </div>
+                            <div style={{ width: 1, height: 22, backgroundColor: 'rgba(11, 44, 95, 0.1)' }} />
+                            <div>
+                              <span className="text-muted extra-small d-block fw-bold" style={{ fontSize: '0.68rem', color: '#64748B' }}>Salinity</span>
+                              <strong style={{ color: '#0B2C5F', fontSize: '0.9rem' }}>{readings?.salinity ?? '—'}</strong>
+                              <small className="text-muted" style={{ fontSize: '0.62rem' }}> ppt</small>
                             </div>
                           </div>
                         ) : (
                           <div className="d-flex align-items-center gap-2 extra-small py-0.5 px-1">
                             <FaLock size={11} style={{ color: '#EA580C', flexShrink: 0 }} />
-                            <span style={{ color: '#EA580C', fontWeight: 500, fontSize: '0.74rem' }}>
+                            <span style={{ color: '#EA580C', fontWeight: 600, fontSize: '0.76rem' }}>
                               Pre-stocking OCR scan required before monitoring
                             </span>
                           </div>
@@ -850,23 +856,23 @@ export default function CaretakerDashboard() {
                     <div className="d-flex align-items-center justify-content-between gap-2 pt-3 mt-1 border-top" style={{ borderColor: 'rgba(11, 44, 95, 0.08)' }}>
                       <button
                         type="button"
-                        className="btn btn-sm btn-tri-outline px-3.5 py-1.5 extra-small shadow-xs"
-                        style={{ fontSize: '0.75rem' }}
+                        className="btn btn-sm btn-tri-outline px-3 py-1.5 extra-small fw-bold shadow-xs d-inline-flex align-items-center gap-1.5"
+                        style={{ fontSize: '0.78rem' }}
                         onClick={() => {
                           setHistoryTargetPond(pond);
                           setIsHistoryModalOpen(true);
                         }}
                         title="View Water Quality Log History and past date records"
                       >
-                        <FaHistory size={10} style={{ color: '#0B2C5F' }} />
+                        <FaHistory size={11} style={{ color: '#0B2C5F' }} />
                         <span>History</span>
                       </button>
 
                       {!isVerified ? (
                         <button
                           type="button"
-                          className="btn btn-sm btn-tri-orange px-3.5 py-1.5 extra-small shadow-xs"
-                          style={{ fontSize: '0.75rem' }}
+                          className="btn btn-sm btn-tri-orange px-3.5 py-1.5 extra-small fw-bold shadow-xs d-inline-flex align-items-center gap-1.5"
+                          style={{ fontSize: '0.78rem' }}
                           onClick={() => {
                             setEditingWqRecord(null);
                             setOcrTargetPondId(String(pond.id));
@@ -874,14 +880,14 @@ export default function CaretakerDashboard() {
                             setIsOcrModalOpen(true);
                           }}
                         >
-                          <FaCamera size={11} />
+                          <FaCamera size={12} />
                           <span>Scan Readings</span>
                         </button>
                       ) : (
                         <button
                           type="button"
-                          className="btn btn-sm btn-tri-navy px-3.5 py-1.5 extra-small shadow-xs"
-                          style={{ fontSize: '0.75rem' }}
+                          className="btn btn-sm btn-tri-navy px-3.5 py-1.5 extra-small fw-bold shadow-xs d-inline-flex align-items-center gap-1.5"
+                          style={{ fontSize: '0.78rem' }}
                           onClick={() => {
                             setEditingWqRecord(checkItem?.today_record || null);
                             setOcrTargetPondId(String(pond.id));
@@ -890,7 +896,7 @@ export default function CaretakerDashboard() {
                           }}
                           title="Re-scan / Update Today's Readings"
                         >
-                          <FaSync size={10} />
+                          <FaSync size={11} />
                           <span>Re-test (OCR)</span>
                         </button>
                       )}

@@ -560,8 +560,32 @@ export default function AdminDashboard() {
         cornerRadius: 12,
         displayColors: false,
         callbacks: {
-          label: (context) => `Feed Mass: ${context.parsed.y} kg`,
-          afterLabel: () => 'Feeder Adherence: 100%'
+          label: (context) => ` Total Feed Mass: ${context.parsed.y} kg`,
+          afterLabel: (context) => {
+            const idx = context.dataIndex;
+            const datesToShow = availableDates.slice(0, 7).reverse();
+            const targetDateObj = datesToShow[idx];
+            if (!targetDateObj || !targetDateObj.date) return '';
+
+            const targetYmd = targetDateObj.date;
+            const dayRecords = filteredFeedingRecords.filter(
+              (r) => String(r.record_date || r.created_at || '').slice(0, 10) === targetYmd
+            );
+
+            if (dayRecords.length === 0) return '';
+
+            const pondMap = {};
+            dayRecords.forEach((r) => {
+              const pName = r.pond_name || (r.pond_id ? `Pond #${r.pond_id}` : 'Pond');
+              pondMap[pName] = (pondMap[pName] || 0) + (parseFloat(r.amount_kg) || 0);
+            });
+
+            const lines = Object.entries(pondMap)
+              .sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true }))
+              .map(([pName, kg]) => ` • ${pName}: ${kg.toFixed(1)} kg`);
+
+            return ['----------------------------------', ' Ponds Feed Consumption:', ...lines];
+          }
         }
       }
     },
@@ -897,12 +921,9 @@ export default function AdminDashboard() {
               {availableCaretakerPonds.length > 0 && (
                 <div className="mb-2">
                   <select
-                    className="form-select form-select-sm extra-small py-0.5 px-2 fw-bold"
+                    className="form-select form-select-sm extra-small py-0.5 ps-2 pe-4 fw-bold tri-feed-pond-select"
                     style={{
                       fontSize: '0.73rem',
-                      borderColor: 'rgba(234, 88, 12, 0.35)',
-                      backgroundColor: '#FFF7ED',
-                      color: '#EA580C',
                       borderRadius: 6,
                       height: 27,
                       cursor: 'pointer',
@@ -1620,8 +1641,19 @@ export default function AdminDashboard() {
                         >
                           <FaWater style={{ color: '#0B2C5F', fontSize: '0.82rem' }} />
                           <select
-                            className="form-select form-select-sm border-0 bg-transparent fw-semibold p-0 ps-1 cursor-pointer"
-                            style={{ width: 'auto', minWidth: 175, fontSize: '0.82rem', outline: 'none', color: '#0B2C5F' }}
+                            className="form-select form-select-sm border-0 bg-transparent fw-semibold p-0 ps-1 pe-4 cursor-pointer"
+                            style={{
+                              width: 'auto',
+                              minWidth: 185,
+                              fontSize: '0.82rem',
+                              outline: 'none',
+                              color: '#0B2C5F',
+                              backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%230B2C5F' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
+                              backgroundRepeat: 'no-repeat',
+                              backgroundPosition: 'right 0.2rem center',
+                              backgroundSize: '12px 12px',
+                              paddingRight: '1.4rem'
+                            }}
                             value={selectedForecastPondId === 'auto' ? String(focusedPond.id) : selectedForecastPondId}
                             onChange={(e) => setSelectedForecastPondId(e.target.value)}
                             title="Select Pond to filter harvest forecast"

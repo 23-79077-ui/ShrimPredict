@@ -161,11 +161,17 @@ export default function ReportsPage() {
 
       try {
         const res = await api.get('/caretaker_ponds.php', { params: { user_id: user.id } });
-        const apiAssignedPonds = res.data?.success && Array.isArray(res.data.ponds) ? res.data.ponds : [];
-        const loginAssignedPonds = Array.isArray(user?.assigned_ponds) ? user.assigned_ponds : [];
-        const list = apiAssignedPonds.length > 0 ? apiAssignedPonds : loginAssignedPonds;
-        setPonds(list);
-        setForm((prev) => ({ ...prev, pondId: list.length > 0 ? String(list[0].id) : '' }));
+        let list = res.data?.success && Array.isArray(res.data.ponds) ? res.data.ponds : [];
+        if (list.length === 0) {
+          const allRes = await api.get('/ponds.php');
+          if (allRes.data?.success && Array.isArray(allRes.data.ponds)) {
+            list = allRes.data.ponds;
+          }
+        }
+        const loginAssigned = Array.isArray(user?.assigned_ponds) ? user.assigned_ponds : [];
+        const finalList = list.length > 0 ? list : loginAssigned;
+        setPonds(finalList);
+        setForm((prev) => ({ ...prev, pondId: finalList.length > 0 ? String(finalList[0].id) : '' }));
       } catch (e) {
         console.error('Error loading ponds:', e);
         const assigned = Array.isArray(user?.assigned_ponds) ? user.assigned_ponds : [];
@@ -277,18 +283,21 @@ export default function ReportsPage() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     if (!form.pondId) {
-      Swal.fire({ icon: 'warning', title: 'Select Basin', text: 'Please select an assigned shrimp pond.' });
+      Swal.fire({ icon: 'warning', title: 'Select Basin', text: 'Please select an affected shrimp pond basin.' });
       return;
     }
-    if (!form.description.trim()) {
-      Swal.fire({ icon: 'warning', title: 'Description Required', text: 'Please enter detailed observations of the incident.' });
+    if (!form.description || !form.description.trim()) {
+      Swal.fire({ icon: 'warning', title: 'Observations Required', text: 'Please enter detailed field observations of the incident.' });
       return;
     }
 
     const selectedPondObj = ponds.find((p) => String(p.id) === String(form.pondId));
     const pondName = selectedPondObj ? (selectedPondObj.pond_name || `Pond #${selectedPondObj.id}`) : `Pond #${form.pondId}`;
+    const finalSpecificIssue = (form.specificIssue && form.specificIssue.trim())
+      ? form.specificIssue.trim()
+      : (form.description.trim().length > 35 ? form.description.trim().substring(0, 35) + '...' : form.description.trim());
 
     setSubmitting(true);
     try {
@@ -299,21 +308,35 @@ export default function ReportsPage() {
         pond_id: parseInt(form.pondId, 10),
         pond_name: pondName,
         problem_type: form.problemType,
-        specific_issue: form.specificIssue || form.problemType,
+        specific_issue: finalSpecificIssue,
         severity_level: form.severityLevel,
-        description: form.description,
+        description: form.description.trim(),
         suggested_action: form.suggestedAction,
         photo_url: form.photoUrl,
         video_url: form.videoUrl,
       });
 
       if (response.data?.success) {
-        Swal.fire({
+        const reportId = response.data?.id || response.data?.report_id || '';
+        await Swal.fire({
           icon: 'success',
-          title: 'Incident Report Logged!',
-          text: `Report #${response.data?.report_id || ''} for ${pondName} has been transmitted to Administration.`,
-          timer: 2200,
-          showConfirmButton: false,
+          title: 'Incident Report Submitted Successfully!',
+          html: `
+            <div class="text-start mt-2 p-3 bg-light rounded-3 border">
+              <div class="fw-bold text-dark mb-1">
+                Report ${reportId ? `#${reportId}` : ''} for <span class="text-primary">${pondName}</span>
+              </div>
+              <div class="extra-small text-muted mb-2">
+                • <strong>Problem:</strong> ${finalSpecificIssue} (${form.problemType})<br/>
+                • <strong>Severity:</strong> <span class="badge ${form.severityLevel === 'High' || form.severityLevel === 'Critical' ? 'bg-danger' : 'bg-warning text-dark'}">${form.severityLevel}</span>
+              </div>
+              <div class="extra-small text-success fw-bold d-flex align-items-center gap-1">
+                ✓ System notification sent to Farm Management &amp; Admin.
+              </div>
+            </div>
+          `,
+          confirmButtonText: 'OK',
+          confirmButtonColor: '#0B2C5F',
         });
 
         setForm((prev) => ({
@@ -337,12 +360,19 @@ export default function ReportsPage() {
         }
         loadMyReports();
         setActiveTab('history');
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Submission Error',
+          text: response.data?.message || 'Failed to submit incident report.',
+        });
       }
     } catch (error) {
+      console.error('Submit incident report error:', error);
       Swal.fire({
         icon: 'error',
         title: 'Submission Failed',
-        text: error.response?.data?.message || 'Unable to submit incident report. Please try again.',
+        text: error.response?.data?.message || error?.message || 'Unable to submit incident report. Please try again.',
       });
     } finally {
       setSubmitting(false);
@@ -642,7 +672,6 @@ export default function ReportsPage() {
                       className="form-select form-select-sm fw-bold"
                       value={form.pondId}
                       onChange={(e) => setForm({ ...form, pondId: e.target.value })}
-                      required
                       style={{ borderColor: 'rgba(11, 44, 95, 0.18)' }}
                     >
                       {ponds.map((p) => (
@@ -726,7 +755,6 @@ export default function ReportsPage() {
                 placeholder="e.g. Aerator motor failure or select from quick suggestions below"
                 value={form.specificIssue}
                 onChange={(e) => setForm({ ...form, specificIssue: e.target.value })}
-                required
                 style={{ borderColor: 'rgba(11, 44, 95, 0.18)' }}
               />
 
@@ -763,7 +791,6 @@ export default function ReportsPage() {
                 placeholder="Describe exactly what happened: exact location in the basin, sounds, smell, color change, time of observation, and immediate actions taken."
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
-                required
                 style={{ borderColor: 'rgba(11, 44, 95, 0.18)', fontSize: '0.86rem' }}
               />
             </div>
@@ -914,6 +941,7 @@ export default function ReportsPage() {
                 </button>
                 <button
                   type="submit"
+                  onClick={handleSubmit}
                   className="btn btn-tri-orange px-4 py-2 fw-bold shadow-sm hover-lift d-inline-flex align-items-center gap-2"
                   disabled={submitting || uploadingImage || uploadingVideo}
                 >
@@ -1027,8 +1055,17 @@ export default function ReportsPage() {
               >
                 <FaWater size={11} style={{ color: '#0B2C5F' }} />
                 <select
-                  className="form-select form-select-sm border-0 bg-transparent fw-bold p-0 extra-small shadow-none cursor-pointer"
-                  style={{ width: 110, outline: 'none', color: '#0B2C5F' }}
+                  className="form-select form-select-sm border-0 bg-transparent fw-bold p-0 pe-3 extra-small shadow-none cursor-pointer"
+                  style={{
+                    width: 'auto',
+                    outline: 'none',
+                    color: '#0B2C5F',
+                    backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%230B2C5F' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'right center',
+                    backgroundSize: '11px 11px',
+                    paddingRight: '1.1rem'
+                  }}
                   value={historyPondFilter}
                   onChange={(e) => setHistoryPondFilter(e.target.value)}
                 >
@@ -1046,8 +1083,17 @@ export default function ReportsPage() {
               >
                 <FaExclamationTriangle size={11} style={{ color: '#EA580C' }} />
                 <select
-                  className="form-select form-select-sm border-0 bg-transparent fw-bold p-0 extra-small shadow-none cursor-pointer"
-                  style={{ width: 105, outline: 'none', color: '#0B2C5F' }}
+                  className="form-select form-select-sm border-0 bg-transparent fw-bold p-0 pe-3 extra-small shadow-none cursor-pointer"
+                  style={{
+                    width: 'auto',
+                    outline: 'none',
+                    color: '#0B2C5F',
+                    backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%230B2C5F' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'right center',
+                    backgroundSize: '11px 11px',
+                    paddingRight: '1.1rem'
+                  }}
                   value={historySeverityFilter}
                   onChange={(e) => setHistorySeverityFilter(e.target.value)}
                 >
@@ -1119,13 +1165,14 @@ export default function ReportsPage() {
                   <article
                     key={report.id}
                     id={`caretaker-report-${report.id}`}
-                    className={`tri-incident-card ${isTargetHighlighted ? 'highlighted' : ''}`}
+                    className={`tri-incident-card p-4 rounded-4 mb-3 ${isTargetHighlighted ? 'highlighted' : ''}`}
+                    style={{ backgroundColor: '#FFFFFF', border: '1px solid rgba(11, 44, 95, 0.1)', boxShadow: '0 1px 4px rgba(11, 44, 95, 0.04)' }}
                   >
                     {/* CARD HEADER */}
-                    <div className="d-flex justify-content-between align-items-start gap-2 mb-2 flex-wrap">
+                    <div className="d-flex justify-content-between align-items-start gap-2 mb-3 flex-wrap">
                       <div>
                         {/* BADGES ROW */}
-                        <div className="d-flex align-items-center gap-1.5 flex-wrap mb-1.5">
+                        <div className="d-flex align-items-center gap-2 flex-wrap mb-2">
                           {/* Severity Badge */}
                           <span
                             className="badge rounded-pill fw-bold extra-small px-2.5 py-1"
@@ -1180,7 +1227,7 @@ export default function ReportsPage() {
                         </div>
 
                         {/* Specific Issue Title */}
-                        <h6 className="fw-extrabold mb-0 text-dark" style={{ fontSize: '1.05rem', color: '#0B2C5F' }}>
+                        <h6 className="fw-extrabold mb-0 text-dark mt-1" style={{ fontSize: '1.1rem', color: '#0B2C5F' }}>
                           {report.specific_issue}
                         </h6>
                       </div>
@@ -1216,14 +1263,16 @@ export default function ReportsPage() {
                       </span>
                     </div>
 
-                    {/* Description Text */}
-                    <p className="text-secondary small mb-2.5 fw-medium" style={{ lineHeight: 1.5, fontSize: '0.86rem' }}>
-                      {report.description}
-                    </p>
+                    {/* Description Text Box */}
+                    <div className="p-3.5 rounded-3 mb-3" style={{ backgroundColor: '#F8FAFD', border: '1px solid rgba(11, 44, 95, 0.08)' }}>
+                      <p className="text-dark mb-0 fw-medium" style={{ lineHeight: 1.6, fontSize: '0.9rem' }}>
+                        {report.description}
+                      </p>
+                    </div>
 
                     {/* Media Attachments Gallery */}
                     {(resPhoto || resVideo) && (
-                      <div className="d-flex align-items-center gap-2 mb-2.5 flex-wrap">
+                      <div className="d-flex align-items-center gap-2 mb-3 flex-wrap">
                         {resPhoto && (
                           <div
                             className="position-relative rounded-3 overflow-hidden border shadow-xs cursor-pointer hover-lift"
@@ -1252,7 +1301,7 @@ export default function ReportsPage() {
                     {/* Suggested Action Note */}
                     {report.suggested_action && (
                       <div
-                        className="rounded-3 p-2.5 mb-2.5 extra-small"
+                        className="rounded-3 p-3 mb-3 extra-small"
                         style={{
                           background: '#F8FAFD',
                           borderLeft: '3px solid #EA580C',
@@ -1266,7 +1315,7 @@ export default function ReportsPage() {
                     {/* Admin Resolution Callout Strip */}
                     {report.admin_notes && (
                       <div
-                        className="rounded-3 p-2.5 mb-2.5 extra-small"
+                        className="rounded-3 p-3 mb-3 extra-small"
                         style={{
                           background: isDone ? '#ECFDF5' : '#F1F5F9',
                           border: `1px solid ${isDone ? '#A7F3D0' : '#CBD5E1'}`,
@@ -1276,7 +1325,7 @@ export default function ReportsPage() {
                         <div className="d-flex align-items-center gap-1.5 mb-1 fw-bold" style={{ color: isDone ? '#047857' : '#0B2C5F' }}>
                           <FaCheckCircle /> <span>Management Resolution Note:</span>
                         </div>
-                        <p className="mb-0 text-dark fw-medium" style={{ fontSize: '0.82rem' }}>
+                        <p className="mb-0 text-dark fw-medium" style={{ fontSize: '0.84rem' }}>
                           {report.admin_notes}
                         </p>
                         {report.resolved_by && (
@@ -1288,13 +1337,13 @@ export default function ReportsPage() {
                     )}
 
                     {/* Card Footer: Timestamp & Caretaker */}
-                    <div className="d-flex align-items-center justify-content-between pt-2 border-top extra-small text-muted" style={{ borderColor: 'rgba(11, 44, 95, 0.06)' }}>
+                    <div className="d-flex align-items-center justify-content-between pt-3 mt-3 border-top extra-small text-muted" style={{ borderColor: 'rgba(11, 44, 95, 0.08)' }}>
                       <div className="d-flex align-items-center gap-2">
                         <span>Pond: <strong className="text-dark">{report.pond_name || `Pond #${report.pond_id}`}</strong></span>
                         <span>•</span>
                         <span>Submitted by: <strong className="text-dark">{report.caretaker_name || user?.full_name || 'Caretaker'}</strong></span>
                       </div>
-                      <div className="font-mono text-secondary">
+                      <div className="font-mono text-secondary fw-semibold">
                         {new Date(report.created_at || Date.now()).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
                       </div>
                     </div>

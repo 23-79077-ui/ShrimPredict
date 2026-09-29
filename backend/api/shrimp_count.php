@@ -4,12 +4,21 @@ header('Content-Type: application/json; charset=UTF-8');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+$requestMethod = $_SERVER['REQUEST_METHOD'] ?? '';
+
+if ($requestMethod === 'OPTIONS') {
     http_response_code(200);
     exit;
 }
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+// 1. Include dynamic configuration file (Checks api/config.php and config/config.php)
+if (file_exists(__DIR__ . '/config.php')) {
+    require_once __DIR__ . '/config.php';
+} elseif (file_exists(__DIR__ . '/../config/config.php')) {
+    require_once __DIR__ . '/../config/config.php';
+}
+
+if ($requestMethod !== 'POST') {
     http_response_code(405);
     echo json_encode(['success' => false, 'shrimp_detected' => false, 'shrimp_count' => 0, 'valid_shrimp_present' => false, 'message' => 'Method not allowed.']);
     exit;
@@ -21,7 +30,10 @@ if (!isset($_FILES['image']) || !is_uploaded_file($_FILES['image']['tmp_name']))
     exit;
 }
 
-$flaskUrl = getenv('SHRIMP_AI_COUNT_URL') ?: 'http://127.0.0.1:5001/count';
+// 2. Dynamic Flask URL resolution (Priority: ENV -> Config constant/variable -> Localhost fallback)
+$flaskUrl = getenv('SHRIMP_AI_COUNT_URL')
+    ?: (defined('FLASK_SHRIMP_COUNT_URL') ? FLASK_SHRIMP_COUNT_URL
+    : ($FLASK_SHRIMP_COUNT_URL ?? ($FLASK_URL ?? 'http://127.0.0.1:5001/count')));
 
 if (!function_exists('curl_init')) {
     http_response_code(500);
@@ -41,6 +53,8 @@ curl_setopt_array($curl, [
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_TIMEOUT => 60,
     CURLOPT_POSTFIELDS => ['image' => $file],
+    CURLOPT_SSL_VERIFYPEER => false,
+    CURLOPT_SSL_VERIFYHOST => false,
 ]);
 
 $rawResponse = curl_exec($curl);
@@ -56,7 +70,7 @@ if ($rawResponse === false || $httpCode >= 400) {
         'shrimp_detected' => false,
         'shrimp_count' => 0,
         'valid_shrimp_present' => false,
-        'message' => $decoded['message'] ?? ($curlError ?: 'Shrimp preview detection is unavailable. Start the Flask API and retry.'),
+        'message' => $decoded['message'] ?? ($curlError ?: 'Shrimp preview detection is unavailable. Verify your ngrok URL in config.php and restart Flask API.'),
     ]);
     exit;
 }

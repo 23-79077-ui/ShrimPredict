@@ -738,7 +738,7 @@ export default function UsersPage() {
                   <th className="border-0 py-3" style={{ minWidth: 120 }}>Access Role</th>
                   <th className="border-0 py-3" style={{ minWidth: 110 }}>Status</th>
                   <th className="border-0 py-3" style={{ minWidth: 200 }}>Assigned Basins</th>
-                  <th className="border-0 pe-3 py-3 text-end" style={{ minWidth: 140 }}>Actions</th>
+                  <th className="border-0 pe-3 py-3 text-end text-nowrap" style={{ width: '1%' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -846,7 +846,7 @@ export default function UsersPage() {
                       </td>
 
                       {/* Action Buttons */}
-                      <td className="pe-3 py-3 text-end">
+                      <td className="pe-3 py-3 text-end text-nowrap" style={{ width: '1%' }}>
                         <div className="d-flex align-items-center justify-content-end gap-1.5">
                           {/* View Profile */}
                           <button

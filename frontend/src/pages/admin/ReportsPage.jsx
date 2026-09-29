@@ -599,18 +599,18 @@ export default function AdminReportsPage() {
                   <div
                     key={report.id}
                     id={`maintenance-report-${report.id}`}
-                    className={`rounded-3 p-3.5 border transition-all ${isHighlighted ? 'highlighted-report-card' : ''}`}
+                    className={`rounded-4 p-4 border transition-all ${isHighlighted ? 'highlighted-report-card' : ''}`}
                     style={{
                       backgroundColor: '#FFFFFF',
                       borderLeft: `4px solid ${leftAccentColor}`,
-                      boxShadow: '0 1px 3px rgba(11, 44, 95, 0.04), 0 4px 12px -2px rgba(11, 44, 95, 0.03)'
+                      boxShadow: '0 1px 4px rgba(11, 44, 95, 0.05), 0 6px 16px -4px rgba(11, 44, 95, 0.04)'
                     }}
                   >
                     {/* Top Row: Badges, Title, Status & Actions */}
-                    <div className="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-2.5">
+                    <div className="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
                       <div>
                         {/* Meta Tags */}
-                        <div className="d-flex align-items-center gap-2 flex-wrap mb-1.5">
+                        <div className="d-flex align-items-center gap-2 flex-wrap mb-2">
                           {renderSeverityBadge(report.severity_level)}
                           <span
                             className="badge rounded-pill px-2.5 py-1 extra-small fw-semibold"
@@ -624,7 +624,7 @@ export default function AdminReportsPage() {
                           >
                             <FaWater className="me-1" /> {report.pond_name}
                           </span>
-                          <div className="d-inline-flex align-items-center gap-1.5 bg-light border rounded-pill px-2 py-0.5">
+                          <div className="d-inline-flex align-items-center gap-1.5 bg-light border rounded-pill px-2.5 py-0.5">
                             <div
                               className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0"
                               style={{ width: 18, height: 18, fontSize: '0.62rem', background: '#0B2C5F' }}
@@ -636,7 +636,7 @@ export default function AdminReportsPage() {
                         </div>
 
                         {/* Incident Title */}
-                        <h5 className="fw-bold mb-0" style={{ color: '#0B2C5F', fontSize: '1.05rem', letterSpacing: '-0.01em' }}>
+                        <h5 className="fw-extrabold mb-0 mt-1" style={{ color: '#0B2C5F', fontSize: '1.1rem', letterSpacing: '-0.01em' }}>
                           {report.specific_issue}
                         </h5>
                       </div>
@@ -692,18 +692,18 @@ export default function AdminReportsPage() {
 
                     {/* Description & Suggested Action Box */}
                     <div
-                      className="p-3 rounded-3 mb-2.5"
-                      style={{ backgroundColor: '#F8FAFD', border: '1px solid rgba(11, 44, 95, 0.07)' }}
+                      className="p-3.5 rounded-3 mb-3"
+                      style={{ backgroundColor: '#F8FAFD', border: '1px solid rgba(11, 44, 95, 0.08)' }}
                     >
-                      <p className="text-dark mb-0" style={{ fontSize: '0.86rem', lineHeight: '1.55' }}>
+                      <p className="text-dark mb-0 fw-medium" style={{ fontSize: '0.9rem', lineHeight: '1.6' }}>
                         {report.description}
                       </p>
                       {report.suggested_action && (
                         <div
-                          className="mt-2 pt-2 border-top d-flex align-items-baseline gap-1.5 extra-small"
+                          className="mt-2.5 pt-2.5 border-top d-flex align-items-baseline gap-2 extra-small"
                           style={{ borderColor: 'rgba(11, 44, 95, 0.08)' }}
                         >
-                          <span className="badge bg-light text-primary border extra-small fw-semibold">Suggested Action</span>
+                          <span className="badge bg-light text-primary border extra-small fw-bold">Suggested Action</span>
                           <span className="text-secondary fst-italic">"{report.suggested_action}"</span>
                         </div>
                       )}
@@ -712,7 +712,7 @@ export default function AdminReportsPage() {
                     {/* Attached Media Evidence Gallery */}
                     {(resolvedPhotoUrl || resolvedVideoUrl) && (
                       <div
-                        className="p-3 rounded-3 mb-2.5"
+                        className="p-3.5 rounded-3 mb-3"
                         style={{ backgroundColor: 'rgba(11, 44, 95, 0.02)', border: '1px solid rgba(11, 44, 95, 0.08)' }}
                       >
                         <div className="d-flex align-items-center justify-content-between mb-2">
@@ -794,14 +794,14 @@ export default function AdminReportsPage() {
                     {/* Resolution Notes Callout */}
                     {report.admin_notes && (
                       <div
-                        className="p-2.5 rounded-3 mb-2 d-flex align-items-start gap-2"
-                        style={{ backgroundColor: '#ECFDF5', border: '1px solid #A7F3D0', fontSize: '0.82rem' }}
+                        className="p-3 rounded-3 mb-3 d-flex align-items-start gap-2"
+                        style={{ backgroundColor: '#ECFDF5', border: '1px solid #A7F3D0', fontSize: '0.84rem' }}
                       >
                         <div
                           className="rounded-circle d-flex align-items-center justify-content-center text-success flex-shrink-0 mt-0.5"
-                          style={{ width: 22, height: 22, backgroundColor: 'rgba(4, 120, 87, 0.1)' }}
+                          style={{ width: 24, height: 24, backgroundColor: 'rgba(4, 120, 87, 0.12)' }}
                         >
-                          <FaCommentDots size={11} />
+                          <FaCommentDots size={12} />
                         </div>
                         <div className="flex-grow-1">
                           <div className="d-flex align-items-center justify-content-between flex-wrap gap-1">
@@ -818,8 +818,11 @@ export default function AdminReportsPage() {
                     )}
 
                     {/* Footer: Date Stamp */}
-                    <div className="d-flex justify-content-between align-items-center flex-wrap pt-1 text-muted extra-small">
-                      <span>Report ID #{report.id}</span>
+                    <div
+                      className="d-flex justify-content-between align-items-center flex-wrap pt-3 mt-3 border-top text-muted extra-small"
+                      style={{ borderColor: 'rgba(11, 44, 95, 0.08)' }}
+                    >
+                      <span className="fw-semibold">Report ID #{report.id}</span>
                       <span>
                         Filed on:{' '}
                         {new Date(report.created_at || Date.now()).toLocaleString('en-US', {

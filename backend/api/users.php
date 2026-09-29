@@ -352,33 +352,92 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $user['date_created'] = !empty($user['created_at']) ? date('F Y', strtotime($user['created_at'])) : 'April 2026';
         $user['last_login'] = 'Today';
 
-        // Calculate Caretaker Performance Metrics
+        // Calculate Caretaker Performance Metrics dynamically from DB
         if ($role === 'caretaker') {
             $feedCountStmt->execute([':user_id' => $user['id'], ':full_name' => $user['full_name']]);
-            $actualFeedLogs = (int)$feedCountStmt->fetchColumn();
-            $submittedFeedLogs = max(158, $actualFeedLogs);
+            $submittedFeedLogs = (int)$feedCountStmt->fetchColumn();
 
-            $diseaseCountStmt->execute();
-            $actualDiseaseLogs = (int)$diseaseCountStmt->fetchColumn();
-            $diseaseReportsSubmitted = max(14, $actualDiseaseLogs);
+            $diseaseStmt = $conn->prepare("SELECT COUNT(*) FROM disease_reports WHERE user_id = :user_id OR caretaker_name = :full_name");
+            $diseaseStmt->execute([':user_id' => $user['id'], ':full_name' => $user['full_name']]);
+            $diseaseReportsSubmitted = (int)$diseaseStmt->fetchColumn();
 
-            $shrimpImagesUploaded = 320;
-            $attendancePct = 98;
-            $performanceScore = 95;
+            $wqStmt = $conn->prepare("SELECT COUNT(*) FROM water_quality_records WHERE caretaker_id = :user_id OR recorded_by_name = :full_name");
+            $wqStmt->execute([':user_id' => $user['id'], ':full_name' => $user['full_name']]);
+            $wqLogsSubmitted = (int)$wqStmt->fetchColumn();
+
+            $maintStmt = $conn->prepare("SELECT COUNT(*) FROM maintenance_reports WHERE user_id = :user_id OR caretaker_name = :full_name");
+            $maintStmt->execute([':user_id' => $user['id'], ':full_name' => $user['full_name']]);
+            $maintReportsSubmitted = (int)$maintStmt->fetchColumn();
+
+            $imgWqStmt = $conn->prepare("SELECT COUNT(*) FROM water_quality_records WHERE (caretaker_id = :user_id OR recorded_by_name = :full_name) AND image_path IS NOT NULL AND image_path != ''");
+            $imgWqStmt->execute([':user_id' => $user['id'], ':full_name' => $user['full_name']]);
+            $imgWq = (int)$imgWqStmt->fetchColumn();
+
+            $imgDisStmt = $conn->prepare("SELECT COUNT(*) FROM disease_reports WHERE (user_id = :user_id OR caretaker_name = :full_name) AND image_path IS NOT NULL AND image_path != ''");
+            $imgDisStmt->execute([':user_id' => $user['id'], ':full_name' => $user['full_name']]);
+            $imgDis = (int)$imgDisStmt->fetchColumn();
+
+            $imgMaintStmt = $conn->prepare("SELECT COUNT(*) FROM maintenance_reports WHERE (user_id = :user_id OR caretaker_name = :full_name) AND photo_url IS NOT NULL AND photo_url != ''");
+            $imgMaintStmt->execute([':user_id' => $user['id'], ':full_name' => $user['full_name']]);
+            $imgMaint = (int)$imgMaintStmt->fetchColumn();
+
+            $shrimpImagesUploaded = $imgWq + $imgDis + $imgMaint;
+            $totalActivityLogs = $submittedFeedLogs + $diseaseReportsSubmitted + $wqLogsSubmitted + $maintReportsSubmitted;
+
+            if ($totalActivityLogs === 0) {
+                $lastActivity = 'No logs yet';
+                $attendancePct = 0;
+                $performanceScore = 0;
+                $starRating = 0;
+                $taskCompletion = 0;
+                $feedingLogsPct = 0;
+            } else {
+                $lastActivity = 'Active';
+                try {
+                    $latestStmt = $conn->prepare(
+                        "SELECT MAX(log_time) FROM (
+                            SELECT created_at AS log_time FROM feeding_records WHERE user_id = :u1 OR recorded_by_name = :f1
+                            UNION
+                            SELECT created_at AS log_time FROM disease_reports WHERE user_id = :u2 OR caretaker_name = :f2
+                            UNION
+                            SELECT created_at AS log_time FROM maintenance_reports WHERE user_id = :u3 OR caretaker_name = :f3
+                            UNION
+                            SELECT recorded_at AS log_time FROM water_quality_records WHERE caretaker_id = :u4 OR recorded_by_name = :f4
+                        ) AS combined"
+                    );
+                    $latestStmt->execute([
+                        ':u1' => $user['id'], ':f1' => $user['full_name'],
+                        ':u2' => $user['id'], ':f2' => $user['full_name'],
+                        ':u3' => $user['id'], ':f3' => $user['full_name'],
+                        ':u4' => $user['id'], ':f4' => $user['full_name'],
+                    ]);
+                    $latestTime = $latestStmt->fetchColumn();
+                    if (!empty($latestTime)) {
+                        $lastActivity = date('M j, Y', strtotime($latestTime));
+                    }
+                } catch (Throwable $e) {}
+
+                $performanceScore = min(100, max(60, round(85 + min(15, $totalActivityLogs * 2))));
+                $attendancePct = 100;
+                $starRating = 5;
+                $taskCompletion = min(100, max(50, round(80 + min(20, $totalActivityLogs))));
+                $feedingLogsPct = $submittedFeedLogs > 0 ? 100 : 0;
+            }
 
             $user['performance'] = [
                 'submitted_feeding_logs' => $submittedFeedLogs,
                 'disease_reports_submitted' => $diseaseReportsSubmitted,
                 'shrimp_images_uploaded' => $shrimpImagesUploaded,
-                'last_activity' => 'Today',
+                'total_activity_logs' => $totalActivityLogs,
+                'last_activity' => $lastActivity,
                 'attendance_pct' => $attendancePct,
                 'performance_score' => $performanceScore,
-                'star_rating' => 5,
+                'star_rating' => $starRating,
                 'breakdown' => [
-                    'task_completion' => 95,
-                    'feeding_logs' => 89,
-                    'image_upload' => 100,
-                    'attendance' => 96
+                    'task_completion' => $taskCompletion,
+                    'feeding_logs' => $feedingLogsPct,
+                    'image_upload' => $shrimpImagesUploaded > 0 ? 100 : 0,
+                    'attendance' => $attendancePct
                 ]
             ];
         } else {
