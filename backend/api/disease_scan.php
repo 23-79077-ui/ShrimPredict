@@ -2,6 +2,13 @@
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../utils/notifications_helper.php';
 
+// Dynamic configuration file (ngrok tunnel / Flask API endpoints)
+if (file_exists(__DIR__ . '/config.php')) {
+    require_once __DIR__ . '/config.php';
+} elseif (file_exists(__DIR__ . '/../config/config.php')) {
+    require_once __DIR__ . '/../config/config.php';
+}
+
 header('Access-Control-Allow-Origin: *');
 header('Content-Type: application/json; charset=UTF-8');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
@@ -16,7 +23,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 function callShrimpCountApi($imagePath) {
-    $aiUrl = getenv('SHRIMP_AI_COUNT_URL') ?: 'http://127.0.0.1:5001/count';
+    $aiUrl = getenv('SHRIMP_AI_COUNT_URL')
+        ?: (defined('FLASK_SHRIMP_COUNT_URL') ? FLASK_SHRIMP_COUNT_URL
+        : ($GLOBALS['FLASK_SHRIMP_COUNT_URL'] ?? ($GLOBALS['FLASK_URL'] ?? (defined('FLASK_BASE_URL') ? FLASK_BASE_URL . '/count' : 'http://127.0.0.1:5001/count'))));
+
+    if (!preg_match('#/(count|detect-preview)$#i', $aiUrl)) {
+        $aiUrl = rtrim($aiUrl, '/') . '/count';
+    }
 
     if (!function_exists('curl_init')) {
         return ['success' => false, 'message' => 'PHP cURL is required to call the shrimp preview API.'];
@@ -33,8 +46,13 @@ function callShrimpCountApi($imagePath) {
         CURLOPT_POST => true,
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT => 60,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_POSTREDIR => CURL_REDIR_POST_ALL,
         CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
         CURLOPT_POSTFIELDS => ['image' => $file],
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYHOST => false,
+        CURLOPT_HTTPHEADER => ['ngrok-skip-browser-warning: 1'],
     ]);
 
     $response = curl_exec($curl);
@@ -78,7 +96,15 @@ if ($hasExplicitPreviewNoShrimp) {
     exit;
 }
 
-$aiUrl = getenv('SHRIMP_AI_API_URL') ?: 'http://127.0.0.1:5001/predict';
+$aiUrl = getenv('SHRIMP_AI_API_URL')
+    ?: (defined('FLASK_DISEASE_PREDICT_URL') ? FLASK_DISEASE_PREDICT_URL
+    : (defined('FLASK_PREDICT_URL') ? FLASK_PREDICT_URL
+    : (defined('FLASK_BASE_URL') ? FLASK_BASE_URL . '/predict'
+    : ($GLOBALS['FLASK_DISEASE_PREDICT_URL'] ?? ($GLOBALS['FLASK_PREDICT_URL'] ?? ($GLOBALS['NGROK_BASE_URL'] ?? 'http://127.0.0.1:5001/predict'))))));
+
+if (!preg_match('#/(predict|scan|pipeline)$#i', $aiUrl)) {
+    $aiUrl = rtrim($aiUrl, '/') . '/predict';
+}
 
 if (!function_exists('curl_init')) {
     http_response_code(500);
@@ -98,11 +124,16 @@ curl_setopt_array($curl, [
     CURLOPT_POST => true,
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_TIMEOUT => 120,
+    CURLOPT_FOLLOWLOCATION => true,
+    CURLOPT_POSTREDIR => CURL_REDIR_POST_ALL,
     CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
     CURLOPT_POSTFIELDS => [
         'image' => $file,
         'enable_additional' => $enableAdditional ? 'true' : 'false',
     ],
+    CURLOPT_SSL_VERIFYPEER => false,
+    CURLOPT_SSL_VERIFYHOST => false,
+    CURLOPT_HTTPHEADER => ['ngrok-skip-browser-warning: 1'],
 ]);
 
 $aiResponse = curl_exec($curl);

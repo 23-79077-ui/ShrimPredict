@@ -207,6 +207,37 @@ _try_load_unified_model()
 app = Flask(__name__)
 @app.route("/", methods=["GET"])
 def root_status_endpoint():
+    accept = request.headers.get("Accept", "")
+    if "text/html" in accept:
+        return """<!DOCTYPE html>
+<html>
+<head>
+    <title>ShrimPredict AI API - Online</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #071733; color: #fff; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; padding: 1rem; box-sizing: border-box; }
+        .card { background: #0B2C5F; padding: 2.5rem; border-radius: 1rem; border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 10px 25px rgba(0,0,0,0.4); text-align: center; max-width: 480px; width: 100%; }
+        .badge { background: #16A34A; color: white; padding: 0.35rem 0.85rem; border-radius: 9999px; font-weight: bold; font-size: 0.85rem; display: inline-block; margin-bottom: 1rem; }
+        h1 { margin: 0 0 0.5rem; font-size: 1.6rem; }
+        p { color: #94A3B8; font-size: 0.95rem; margin-bottom: 1.5rem; line-height: 1.5; }
+        .endpoints { text-align: left; background: rgba(7,23,51,0.7); padding: 1rem 1.25rem; border-radius: 0.5rem; font-family: monospace; font-size: 0.85rem; }
+        .endpoints div { margin: 0.35rem 0; color: #38BDF8; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <span class="badge">&#9679; Online &amp; Connected</span>
+        <h1>ShrimPredict AI API</h1>
+        <p>Local Flask AI Model Inference Server is active and accepting requests from ngrok and Hostinger.</p>
+        <div class="endpoints">
+            <strong style="color:#FFF;">Active Endpoints:</strong>
+            <div>POST /predict &mdash; Disease Scanning</div>
+            <div>POST /count &mdash; Shrimp Detection &amp; Count</div>
+            <div>GET  /health &mdash; System Diagnostics</div>
+        </div>
+    </div>
+</body>
+</html>"""
     return jsonify({
         "success": True,
         "service": "ShrimPredict AI Local Inference API",
@@ -664,9 +695,16 @@ def health():
     })
 
 
-@app.post("/count")
-@app.post("/detect-preview")
+@app.route("/count", methods=["GET", "POST"])
+@app.route("/detect-preview", methods=["GET", "POST"])
 def count_preview_endpoint():
+    if request.method == "GET":
+        return jsonify({
+            "success": True,
+            "service": "ShrimPredict AI Shrimp Counter API",
+            "status": "ready",
+            "message": "Send a POST request with an 'image' file to detect and count shrimp."
+        })
     uploaded = request.files.get("image") or request.files.get("file")
     if not uploaded:
         return jsonify({"success": False, "shrimp_detected": False, "shrimp_count": 0, "valid_shrimp_present": False, "message": "No image uploaded."}), 400
@@ -901,13 +939,21 @@ def scan_paper_logsheet_endpoint():
 
 
 
-@app.post("/predict")
-@app.post("/scan")
-@app.post("/pipeline")
-@app.post("/api/pipeline")
-@app.post("/api/process")
-@app.post("/api/scan")
+@app.route("/", methods=["POST"])
+@app.route("/predict", methods=["GET", "POST"])
+@app.route("/scan", methods=["GET", "POST"])
+@app.route("/pipeline", methods=["GET", "POST"])
+@app.route("/api/pipeline", methods=["GET", "POST"])
+@app.route("/api/process", methods=["GET", "POST"])
+@app.route("/api/scan", methods=["GET", "POST"])
 def predict_endpoint():
+    if request.method == "GET":
+        return jsonify({
+            "success": True,
+            "service": "ShrimPredict AI Disease Prediction API",
+            "status": "ready",
+            "message": "Send a POST request with an 'image' file to diagnose shrimp disease."
+        })
     # Support both 'image' and 'file' payload keys
     uploaded = request.files.get("image") or request.files.get("file")
     if not uploaded:

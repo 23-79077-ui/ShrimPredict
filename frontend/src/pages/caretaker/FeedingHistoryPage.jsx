@@ -1,4 +1,27 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
+import { Line } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler,
+} from 'chart.js';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+);
 import {
   FaCalendarAlt,
   FaFilter,
@@ -110,6 +133,8 @@ export default function FeedingHistoryPage() {
   const [customDate, setCustomDate] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState('daily'); // 'daily' | 'slot'
+  const [chartRange, setChartRange] = useState('7_days'); // '7_days' | '14_days' | '30_days' | 'all_cycle'
+  const [showChart, setShowChart] = useState(true);
 
   // Selected Log Details Modal State & Cycle Calendar Modal State
   const [selectedRecordDetails, setSelectedRecordDetails] = useState(null);
@@ -143,6 +168,168 @@ export default function FeedingHistoryPage() {
   };
 
   const todayYMD = formatYMD(new Date());
+
+  // Active Pond for the Cumulative Feeding Trend Chart
+  const activePondForChart = useMemo(() => {
+    if (selectedPondFilter !== 'all') {
+      return assignedPonds.find((p) => String(p.id) === String(selectedPondFilter)) || null;
+    }
+    return assignedPonds[0] || null;
+  }, [selectedPondFilter, assignedPonds]);
+
+  // Cumulative Feed Trend Data for Caretaker's Pond
+  const cumulativeTrendData = useMemo(() => {
+    const targetPondId = activePondForChart ? String(activePondForChart.id) : '';
+    const targetPondName = activePondForChart ? (activePondForChart.pond_name || '').toLowerCase().trim() : '';
+
+    const pondRecords = records.filter((r) => {
+      if (!activePondForChart) return true;
+      const rId = String(r.pond_id || '');
+      const rName = (r.pond_name || '').toLowerCase().trim();
+      return (targetPondId && rId === targetPondId) || (targetPondName && rName === targetPondName);
+    });
+
+    let dateStrings = [];
+    if (chartRange === 'all_cycle') {
+      const allDates = Array.from(new Set(pondRecords.map((r) => formatYMD(r.record_date || r.created_at)).filter(Boolean)));
+      if (!allDates.includes(todayYMD)) allDates.push(todayYMD);
+      allDates.sort();
+      dateStrings = allDates;
+    } else {
+      const daysCount = chartRange === '14_days' ? 14 : chartRange === '30_days' ? 30 : 7;
+      const ref = new Date();
+      for (let i = daysCount - 1; i >= 0; i--) {
+        const d = new Date(ref);
+        d.setDate(ref.getDate() - i);
+        dateStrings.push(formatYMD(d));
+      }
+    }
+
+    return dateStrings.map((ymd) => {
+      const dObj = new Date(ymd + 'T00:00:00');
+      const monthShort = isNaN(dObj.getTime()) ? ymd : dObj.toLocaleString('en-US', { month: 'short' });
+      const dayNum = isNaN(dObj.getTime()) ? '' : dObj.getDate();
+      const displayDate = `${monthShort} ${dayNum}`;
+      const isToday = ymd === todayYMD;
+
+      const dayRecords = pondRecords.filter((r) => formatYMD(r.record_date || r.created_at) === ymd);
+      const dayIncrementalKg = dayRecords.reduce((sum, r) => sum + (parseFloat(r.amount_kg) || ((parseFloat(r.amount_grams) || 0) / 1000)), 0);
+
+      const cumulativeRecords = pondRecords.filter((r) => {
+        const rYmd = formatYMD(r.record_date || r.created_at);
+        return rYmd && rYmd <= ymd;
+      });
+      const cumulativeKg = cumulativeRecords.reduce((sum, r) => sum + (parseFloat(r.amount_kg) || ((parseFloat(r.amount_grams) || 0) / 1000)), 0);
+
+      return {
+        key: `day_${ymd}`,
+        dateStr: ymd,
+        label: displayDate,
+        subLabel: isToday ? 'Today' : ymd,
+        axisLabel: isToday ? [displayDate, '(Today)'] : displayDate,
+        totalKg: Number(cumulativeKg.toFixed(1)),
+        cumulativeKg: Number(cumulativeKg.toFixed(1)),
+        incrementalKg: Number(dayIncrementalKg.toFixed(1)),
+        count: dayRecords.length,
+        isToday,
+      };
+    });
+  }, [records, activePondForChart, chartRange, todayYMD]);
+
+  const caretakerChartMetrics = useMemo(() => {
+    if (cumulativeTrendData.length === 0) {
+      return { currentTotalKg: '0.0', todayFeedKg: '0.0', totalLogs: 0 };
+    }
+    const todayEntry = cumulativeTrendData.find((d) => d.isToday);
+    const lastEntry = cumulativeTrendData[cumulativeTrendData.length - 1];
+    const currentTotalKg = (todayEntry ? todayEntry.cumulativeKg : (lastEntry ? lastEntry.cumulativeKg : 0)).toFixed(1);
+    const todayFeedKg = (todayEntry ? todayEntry.incrementalKg : 0).toFixed(1);
+    const totalLogs = cumulativeTrendData.reduce((sum, d) => sum + d.count, 0);
+
+    return {
+      currentTotalKg,
+      todayFeedKg,
+      totalLogs,
+    };
+  }, [cumulativeTrendData]);
+
+  const caretakerChartData = useMemo(() => {
+    const pondName = activePondForChart?.pond_name || 'Assigned Basin';
+    return {
+      labels: cumulativeTrendData.map((d) => d.axisLabel),
+      datasets: [
+        {
+          label: `${pondName} Cumulative Feed (kg)`,
+          data: cumulativeTrendData.map((d) => d.cumulativeKg),
+          borderColor: '#0284C7',
+          backgroundColor: (context) => {
+            const ctx = context.chart?.ctx;
+            if (!ctx) return 'rgba(2, 132, 199, 0.22)';
+            const gradient = ctx.createLinearGradient(0, 0, 0, 240);
+            gradient.addColorStop(0, 'rgba(2, 132, 199, 0.32)');
+            gradient.addColorStop(1, 'rgba(2, 132, 199, 0.01)');
+            return gradient;
+          },
+          fill: true,
+          tension: 0.35,
+          pointBackgroundColor: cumulativeTrendData.map((d) => (d.isToday ? '#EA580C' : '#0284C7')),
+          pointBorderColor: '#ffffff',
+          pointBorderWidth: 2,
+          pointRadius: cumulativeTrendData.map((d) => (d.isToday ? 7 : 5)),
+          pointHoverRadius: 8,
+          borderWidth: 2.8,
+        },
+      ],
+    };
+  }, [cumulativeTrendData, activePondForChart]);
+
+  const caretakerChartOptions = useMemo(() => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    layout: { padding: { top: 20, bottom: 6, left: 8, right: 8 } },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#0B2C5F',
+        titleColor: '#FFFFFF',
+        bodyColor: '#FFFFFF',
+        padding: 12,
+        cornerRadius: 10,
+        displayColors: false,
+        callbacks: {
+          title: (items) => {
+            if (!items.length) return '';
+            const idx = items[0].dataIndex;
+            const d = cumulativeTrendData[idx];
+            const pName = activePondForChart?.pond_name || 'Assigned Basin';
+            return `${pName} • ${d ? d.label : items[0].label}${d?.isToday ? ' (TODAY)' : ''}`;
+          },
+          label: (context) => {
+            const idx = context.dataIndex;
+            const d = cumulativeTrendData[idx];
+            return [
+              ` Cumulative Total: ${Number(context.parsed.y).toFixed(1)} kg`,
+              ` Added Today / on this date: +${d?.incrementalKg?.toFixed(1) || 0} kg (${d ? d.count : 0} logs)`,
+            ];
+          },
+        },
+      },
+    },
+    scales: {
+      y: {
+        grid: { color: 'rgba(11, 44, 95, 0.06)' },
+        ticks: { color: '#64748B', font: { size: 11 }, callback: (val) => `${val} kg` },
+        beginAtZero: true,
+      },
+      x: {
+        grid: { display: true, color: 'rgba(11, 44, 95, 0.08)', borderDash: [4, 4] },
+        ticks: {
+          color: (ctx) => (cumulativeTrendData[ctx.index]?.isToday ? '#0284C7' : '#334155'),
+          font: (ctx) => ({ size: 11, weight: cumulativeTrendData[ctx.index]?.isToday ? 'bold' : '600' }),
+        },
+      },
+    },
+  }), [cumulativeTrendData, activePondForChart]);
 
   const loadHistory = useCallback(async (isManualRefresh = false) => {
     if (isManualRefresh) setRefreshing(true);
@@ -917,6 +1104,150 @@ export default function FeedingHistoryPage() {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* CUMULATIVE FEED INTAKE & GROWTH TREND CARD */}
+      <div className="tri-card p-4 mb-4">
+        <div className="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+          <div>
+            <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
+              <h5 className="fw-extrabold text-dark mb-0 tracking-tight">Cumulative Feed Intake &amp; Growth Trend</h5>
+              <span className="tag-cyan-active">
+                {activePondForChart?.pond_name || 'Assigned Basin'} Cumulative (kg)
+              </span>
+            </div>
+            <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
+              Cumulative feed mass over time. Each new feed logged adds directly onto the previous total.
+            </p>
+          </div>
+
+          {/* Timeframe Scope Selector */}
+          <div className="d-flex align-items-center gap-1 p-1 rounded-pill bg-light border">
+            <button
+              type="button"
+              className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${chartRange === '7_days' ? 'btn-tri-navy shadow-xs' : 'btn-light text-muted'}`}
+              onClick={() => setChartRange('7_days')}
+            >
+              7 Days
+            </button>
+            <button
+              type="button"
+              className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${chartRange === '14_days' ? 'btn-tri-navy shadow-xs' : 'btn-light text-muted'}`}
+              onClick={() => setChartRange('14_days')}
+            >
+              14 Days
+            </button>
+            <button
+              type="button"
+              className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${chartRange === '30_days' ? 'btn-tri-navy shadow-xs' : 'btn-light text-muted'}`}
+              onClick={() => setChartRange('30_days')}
+            >
+              30 Days
+            </button>
+            <button
+              type="button"
+              className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${chartRange === 'all_cycle' ? 'btn-tri-navy shadow-xs' : 'btn-light text-muted'}`}
+              onClick={() => setChartRange('all_cycle')}
+            >
+              Full Cycle
+            </button>
+          </div>
+        </div>
+
+        {/* High-Contrast Highlights (Cumulative KPIs) */}
+        <div className="row g-2.5 mb-3">
+          <div className="col-6 col-sm-3">
+            <div className="tri-mini-stat text-center">
+              <span className="extra-small text-muted text-uppercase fw-bold d-block">
+                Cumulative Total Feed
+              </span>
+              <strong className="text-dark fs-6 font-mono">
+                {caretakerChartMetrics.currentTotalKg} kg
+              </strong>
+            </div>
+          </div>
+          <div className="col-6 col-sm-3">
+            <div className="tri-mini-stat text-center">
+              <span className="extra-small text-muted text-uppercase fw-bold d-block">
+                Today's Feed Added
+              </span>
+              <strong className="fs-6 font-mono" style={{ color: '#EA580C' }}>
+                +{caretakerChartMetrics.todayFeedKg} kg
+              </strong>
+            </div>
+          </div>
+          <div className="col-6 col-sm-3">
+            <div className="tri-mini-stat text-center">
+              <span className="extra-small text-muted text-uppercase fw-bold d-block">
+                Selected Basin
+              </span>
+              <strong className="text-dark fs-6">
+                {activePondForChart?.pond_name || 'Assigned Basin'}
+              </strong>
+            </div>
+          </div>
+          <div className="col-6 col-sm-3">
+            <div className="tri-mini-stat text-center">
+              <span className="extra-small text-muted text-uppercase fw-bold d-block">
+                Recorded Sessions
+              </span>
+              <strong className="text-primary fs-6 font-mono">
+                {caretakerChartMetrics.totalLogs} logs
+              </strong>
+            </div>
+          </div>
+        </div>
+
+        {/* Chart Canvas */}
+        <div style={{ height: 240 }}>
+          <Line data={caretakerChartData} options={caretakerChartOptions} />
+        </div>
+
+        {/* Day-by-Day Progression Strip */}
+        <div className="d-flex gap-2 mt-3 pt-3 border-top overflow-auto pb-1" style={{ scrollbarWidth: 'thin' }}>
+          {cumulativeTrendData.map((d) => (
+            <div
+              key={d.key}
+              className={`p-2 rounded-3 text-center transition-all flex-shrink-0 ${d.isToday ? 'shadow-sm' : 'bg-light'}`}
+              style={{
+                backgroundColor: d.isToday ? '#0B2C5F' : '#F8FAFC',
+                color: d.isToday ? '#FFFFFF' : '#1E293B',
+                border: d.isToday ? '2px solid #0284C7' : '1px solid rgba(11, 44, 95, 0.1)',
+                minWidth: 92,
+                flex: cumulativeTrendData.length <= 7 ? 1 : '0 0 auto',
+              }}
+            >
+              <div className="d-flex align-items-center justify-content-center gap-1 mb-0.5">
+                <span className={`extra-small fw-extrabold ${d.isToday ? 'text-white' : 'text-secondary'}`} style={{ fontSize: '0.74rem' }}>
+                  {d.label}
+                </span>
+                {d.isToday && (
+                  <span className="badge rounded-pill px-1.5 py-0.5 extra-small fw-bold" style={{ backgroundColor: '#EA580C', color: '#FFFFFF', fontSize: '0.55rem' }}>
+                    TODAY
+                  </span>
+                )}
+              </div>
+              <div className="mb-1">
+                <span
+                  className="badge rounded-pill px-2 py-0.5 extra-small fw-bold"
+                  style={{
+                    backgroundColor: d.isToday ? 'rgba(234, 88, 12, 0.9)' : (d.incrementalKg > 0 ? '#E0F2FE' : '#F1F5F9'),
+                    color: d.isToday ? '#FFFFFF' : (d.incrementalKg > 0 ? '#0369A1' : '#94A3B8'),
+                    fontSize: '0.66rem',
+                  }}
+                >
+                  +{d.incrementalKg.toFixed(1)} kg
+                </span>
+              </div>
+              <strong className="d-block font-mono" style={{ fontSize: '0.88rem', color: d.isToday ? '#FFFFFF' : '#0B2C5F' }}>
+                {d.cumulativeKg.toFixed(1)} <span style={{ fontSize: '0.62rem', fontWeight: 'normal' }}>kg</span>
+              </strong>
+              <span className={`extra-small d-block ${d.isToday ? 'text-light opacity-75' : 'text-muted'}`} style={{ fontSize: '0.62rem' }}>
+                {d.count} {d.count === 1 ? 'log' : 'logs'}
+              </span>
+            </div>
+          ))}
         </div>
       </div>
 

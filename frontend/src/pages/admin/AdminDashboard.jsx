@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api, { safeArray } from '../../services/api';
 import { downloadDashboardPDF } from '../../utils/pdfExport';
-import { Line, Doughnut } from 'react-chartjs-2';
+import { Line, Doughnut, Bar } from 'react-chartjs-2';
 import Swal from 'sweetalert2';
 import AdminFilterToolbar from '../../components/AdminFilterToolbar';
 import {
@@ -27,7 +27,8 @@ import {
   FaCalendarAlt,
   FaClock,
   FaLeaf,
-  FaGasPump
+  FaGasPump,
+  FaChartBar
 } from 'react-icons/fa';
 import {
   Chart as ChartJS,
@@ -35,13 +36,14 @@ import {
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
   ArcElement,
   Tooltip,
   Legend,
   Filler
 } from 'chart.js';
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, ArcElement, Tooltip, Legend, Filler);
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Tooltip, Legend, Filler);
 
 function computeDoc(stockingDateStr, targetDateStr) {
   if (!stockingDateStr) return null;
@@ -58,7 +60,11 @@ export default function AdminDashboard() {
   const [selectedCaretakerId, setSelectedCaretakerId] = useState('all');
   const [selectedPondFilter, setSelectedPondFilter] = useState('all');
   const [feedCardPondFilter, setFeedCardPondFilter] = useState('all');
+  const [feedChartViewMode, setFeedChartViewMode] = useState('by_pond'); // Default: Horizontal Bar Chart (Y-Axis = Pond Name, X-Axis = Date)
   const [pondStatusFilter, setPondStatusFilter] = useState('all'); // 'all' | 'healthy' | 'warning' | 'critical' | 'isolated' | 'unmonitored'
+
+
+
   const [isolatedPonds, setIsolatedPonds] = useState(() => {
     try {
       localStorage.removeItem('shrim_isolated_ponds'); // clear old stale test data so it starts unisolated
@@ -252,14 +258,16 @@ export default function AdminDashboard() {
       }
 
       if (selectedCaretakerId !== 'all') {
-        const caretakerIdMatch = String(p.caretaker_id || '') === String(selectedCaretakerId);
+        const pCid = String(p.assigned_caretaker_id ?? p.caretaker_id ?? '');
+        const caretakerIdMatch = pCid !== '' && pCid === String(selectedCaretakerId);
+        const pCaretakerName = (p.assigned_caretaker_name || p.caretaker_name || '').toLowerCase().trim();
+        const selName = selectedCaretakerObj ? (selectedCaretakerObj.full_name || '').toLowerCase().trim() : '';
         const caretakerNameMatch =
-          selectedCaretakerObj &&
-          (p.caretaker_name || p.assigned_caretaker_name || '')
-            .toLowerCase()
-            .includes(selectedCaretakerObj.full_name.toLowerCase());
+          Boolean(selName) &&
+          (pCaretakerName.includes(selName) || selName.includes(pCaretakerName));
         if (!caretakerIdMatch && !caretakerNameMatch) return false;
       }
+
 
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
@@ -327,8 +335,13 @@ export default function AdminDashboard() {
             (selFirstName.length >= 2 && repCName.includes(selFirstName)));
 
         const caretakerAssignedPonds = ponds
-          .filter((p) => String(p.caretaker_id || '') === String(selectedCaretakerId) ||
-            (selFullName && (p.caretaker_name || p.assigned_caretaker_name || '').toLowerCase().includes(selFullName)))
+          .filter((p) => {
+            const pCid = String(p.assigned_caretaker_id ?? p.caretaker_id ?? '');
+            const matchId = pCid !== '' && pCid === String(selectedCaretakerId);
+            const pName = (p.assigned_caretaker_name || p.caretaker_name || '').toLowerCase().trim();
+            const matchName = Boolean(selFullName) && (pName.includes(selFullName) || selFullName.includes(pName));
+            return matchId || matchName;
+          })
           .map((p) => (p.pond_name || '').toLowerCase().trim());
         const repPond = (rep.pond_name || '').toLowerCase().trim();
         const matchAssignedPond = caretakerAssignedPonds.includes(repPond);
@@ -374,12 +387,15 @@ export default function AdminDashboard() {
     // 1. Ponds assigned in ponds table
     const assignedNames = ponds
       .filter((p) => {
-        const matchId = String(p.caretaker_id || '') === String(selectedCaretakerId);
-        const matchName = Boolean(selFullName) && (p.caretaker_name || p.assigned_caretaker_name || '').toLowerCase().includes(selFullName);
+        const pCid = String(p.assigned_caretaker_id ?? p.caretaker_id ?? '');
+        const matchId = pCid !== '' && pCid === String(selectedCaretakerId);
+        const pName = (p.assigned_caretaker_name || p.caretaker_name || '').toLowerCase().trim();
+        const matchName = Boolean(selFullName) && (pName.includes(selFullName) || selFullName.includes(pName));
         return matchId || matchName;
       })
       .map((p) => p.pond_name || p.name)
       .filter(Boolean);
+
 
     // 2. Ponds from feeding_records where this caretaker recorded feeds
     const feedPonds = allFeedingRecords
@@ -473,133 +489,487 @@ export default function AdminDashboard() {
     };
   }, [displayedPonds, filteredDiseaseReports, allDiseaseReports, totalFilteredFeedKg, filteredFeedingRecords, caretakers, selectedCaretakerId, selectedPondFilter, searchQuery, dateFilterType]);
 
-  // Dynamic Chart for Feed Consumption (Wave-Line with Navy & Orange Tri-Color Styling)
-  const feedChart = useMemo(() => {
-    const labels = [];
-    const data = [];
+  // Always default to 'by_pond' (Horizontal Bar Chart: Y-axis Pond Name, X-axis Date)
+  const effectiveFeedChartMode = feedChartViewMode === 'auto'
+    ? 'by_pond'
+    : feedChartViewMode;
 
+
+
+  // Chronological recent dates (oldest -> newest for natural left-to-right progression)
+  const recentChronologicalDates = useMemo(() => {
+    if (availableDates.length > 0) {
+      return availableDates.slice(0, 7).reverse().map((d) => d.date);
+    }
+    const dates = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      dates.push(d.toISOString().slice(0, 10));
+    }
+    return dates;
+  }, [availableDates]);
+
+  // Color palette for dates and ponds (Navy & Orange brand theme with harmonized complementary tones)
+  const feedColorPalette = [
+    '#0B2C5F', // Deep Navy
+    '#0284C7', // Sky Blue
+    '#06B6D4', // Vibrant Cyan
+    '#0D9488', // Teal
+    '#10B981', // Emerald Green
+    '#84CC16', // Lime Green
+    '#EAB308', // Amber / Gold
+    '#F97316', // Warm Orange
+    '#EA580C', // Vibrant Coral / Primary Orange
+    '#8B5CF6', // Purple
+    '#EC4899', // Pink
+    '#6366F1', // Indigo
+  ];
+
+  // Dynamic vibrant gradients for the horizontal bar graph matching user uploaded layout:
+  // Sky Blue -> Mint Green -> Amber Gold -> Coral Red -> Violet Purple -> Deep Navy -> Sunburst Orange
+  const feedGradientPalette = [
+    'linear-gradient(135deg, #0284C7 0%, #38BDF8 100%)', // 1. Sky/Ocean Blue (like #44 in pic)
+    'linear-gradient(135deg, #059669 0%, #10B981 100%)', // 2. Emerald/Mint Green (like #53 in pic)
+    'linear-gradient(135deg, #D97706 0%, #FBBF24 100%)', // 3. Amber/Warm Gold (like #12 in pic)
+    'linear-gradient(135deg, #E11D48 0%, #FB7185 100%)', // 4. Coral/Rose Red (like #9 in pic)
+    'linear-gradient(135deg, #7C3AED 0%, #A855F7 100%)', // 5. Deep Purple/Violet (like #25 in pic)
+    'linear-gradient(135deg, #0B2C5F 0%, #1D4ED8 100%)', // 6. Deep Navy to Royal Blue
+    'linear-gradient(135deg, #EA580C 0%, #FB923C 100%)', // 7. Primary Coral Orange
+    'linear-gradient(135deg, #0D9488 0%, #2DD4BF 100%)', // 8. Deep Teal to Bright Aqua
+    'linear-gradient(135deg, #4338CA 0%, #6366F1 100%)', // 9. Indigo to Slate Blue
+    'linear-gradient(135deg, #BE185D 0%, #EC4899 100%)', // 10. Deep Berry to Rose
+  ];
+
+  // Dedicated Horizontal Bar Data Matrix for Mode 1 ('by_pond'):
+  // - Left: Pond Name only (no caretaker, no Y-axis label)
+  // - Bar: Connected/stacked horizontal bars ("dikit-dikit") with consumed kg inside each gradient segment
+  const feedHorizontalGridData = useMemo(() => {
+    const isSingleDate =
+      dateFilterType === 'today' ||
+      dateFilterType === 'yesterday' ||
+      Boolean(dateFilterType.match(/^\d{4}-\d{2}-\d{2}$/)) ||
+      Boolean(dateFilterType === 'custom' && customDate);
+
+    const isFiltered = selectedCaretakerId !== 'all' || selectedPondFilter !== 'all' || searchQuery.trim() !== '';
+    const pondList = isFiltered
+      ? displayedPonds
+      : (displayedPonds.length > 0 ? displayedPonds : ponds);
+
+    let columns = [];
+    if (isSingleDate) {
+      const slots = ['6:00 AM', '9:00 AM', '12:00 PM', '3:00 PM', '6:00 PM'];
+      columns = slots.map((slot, idx) => ({
+        key: slot,
+        label: slot,
+        color: feedColorPalette[idx % feedColorPalette.length],
+        gradient: feedGradientPalette[idx % feedGradientPalette.length],
+      }));
+    } else {
+      columns = recentChronologicalDates.map((dStr, idx) => {
+        const dObj = new Date(dStr + 'T00:00:00');
+        const label = isNaN(dObj.getTime())
+          ? dStr
+          : dObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        return {
+          key: dStr,
+          label: label,
+          color: feedColorPalette[idx % feedColorPalette.length],
+          gradient: feedGradientPalette[idx % feedGradientPalette.length],
+        };
+      });
+    }
+
+    const rows = pondList.map((p) => {
+      const pId = String(p.id);
+      const pName = (p.pond_name || p.name || `Pond #${p.id}`).trim();
+      const cleanPName = pName.toLowerCase();
+      const caretaker = p.assigned_caretaker_name || p.caretaker_name || 'Assigned Staff';
+      const status = p.status || 'Active';
+
+      let totalPondKg = 0;
+      const values = columns.map((col) => {
+        let sum = 0;
+        if (isSingleDate) {
+          sum = filteredFeedingRecords.reduce((acc, r) => {
+            const normTime = String(r.feeding_time || '').trim().replace(/^0(\d:)/, '$1').toUpperCase();
+            const rPondId = String(r.pond_id || '');
+            const rPondName = (r.pond_name || '').toLowerCase().trim();
+            if (normTime === col.key.toUpperCase() && (rPondId === pId || rPondName === cleanPName)) {
+              return acc + (parseFloat(r.amount_kg) || 0);
+            }
+            return acc;
+          }, 0);
+        } else {
+          sum = allFeedingRecords.reduce((acc, r) => {
+            const rDate = String(r.record_date || r.created_at || '').slice(0, 10);
+            const rPondId = String(r.pond_id || '');
+            const rPondName = (r.pond_name || '').toLowerCase().trim();
+            if (rDate === col.key && (rPondId === pId || rPondName === cleanPName)) {
+              return acc + (parseFloat(r.amount_kg) || 0);
+            }
+            return acc;
+          }, 0);
+        }
+
+        const rounded = Math.round(sum * 10) / 10;
+        totalPondKg += rounded;
+        return {
+          ...col,
+          amount: rounded,
+          formattedKg: rounded > 0 ? `${rounded.toFixed(1)} kg` : '0 kg',
+        };
+      });
+
+      return {
+        pondId: pId,
+        pondName: pName,
+        caretaker,
+        status,
+        totalPondKg: Math.round(totalPondKg * 10) / 10,
+        values,
+      };
+    });
+
+    const maxTotalKg = Math.max(...rows.map((r) => r.totalPondKg), 1);
+    return { isSingleDate, columns, rows, maxTotalKg };
+  }, [
+    dateFilterType,
+    customDate,
+    selectedCaretakerId,
+    selectedPondFilter,
+    searchQuery,
+    displayedPonds,
+    ponds,
+    recentChronologicalDates,
+    filteredFeedingRecords,
+    allFeedingRecords,
+    feedColorPalette,
+    feedGradientPalette,
+  ]);
+
+  // Dynamic Bar Chart for Feed Consumption:
+  // Mode 1: 'by_pond' -> Horizontal Bar Chart (Y-Axis = Pond Names, X-Axis = Feed kg across dates)
+  // Mode 2: 'by_date' -> Vertical Bar Chart (X-Axis = Dates, Y-Axis = Feed kg ascending "pataas")
+  const feedChart = useMemo(() => {
     const isSingleDate = dateFilterType === 'today' ||
       dateFilterType === 'yesterday' ||
       dateFilterType.match(/^\d{4}-\d{2}-\d{2}$/) ||
       (dateFilterType === 'custom' && customDate);
 
+    // ==========================================
+    // MODE 1: BY POND (Horizontal Bar Chart)
+    // Y-Axis = Pond Name, X-Axis = Feed Mass
+    // ==========================================
+    if (effectiveFeedChartMode === 'by_pond') {
+      const isFiltered = selectedCaretakerId !== 'all' || selectedPondFilter !== 'all';
+      const pondList = isFiltered
+        ? displayedPonds
+        : (displayedPonds.length > 0 ? displayedPonds : ponds);
+      const labels = pondList.length > 0
+        ? pondList.map((p) => p.pond_name || p.name || `Pond #${p.id}`)
+        : ['No Assigned Ponds'];
+
+      if (isSingleDate) {
+        const slots = ['6:00 AM', '9:00 AM', '12:00 PM', '3:00 PM', '6:00 PM'];
+        const datasets = slots.map((slot, idx) => {
+          const color = feedColorPalette[idx % feedColorPalette.length];
+          const data = pondList.length > 0 ? pondList.map((p) => {
+            const pId = String(p.id);
+            const pName = (p.pond_name || p.name || '').toLowerCase().trim();
+            const sum = filteredFeedingRecords.reduce((acc, r) => {
+              const normTime = String(r.feeding_time || '').trim().replace(/^0(\d:)/, '$1').toUpperCase();
+              const rPondId = String(r.pond_id || '');
+              const rPondName = (r.pond_name || '').toLowerCase().trim();
+              if (normTime === slot.toUpperCase() && (rPondId === pId || rPondName === pName)) {
+                return acc + (parseFloat(r.amount_kg) || 0);
+              }
+              return acc;
+            }, 0);
+            return Math.round(sum * 100) / 100;
+          }) : [0];
+
+          return {
+            label: slot,
+            data,
+            backgroundColor: color,
+            borderColor: '#FFFFFF',
+            borderWidth: 1,
+            borderRadius: 6,
+            borderSkipped: false,
+            maxBarThickness: 38,
+          };
+        });
+
+        return { labels, datasets };
+      }
+
+      // Multi-date / Recent Days: Each date is a colored segment for each pond
+      const datesToUse = recentChronologicalDates;
+      const datasets = datesToUse.map((dStr, idx) => {
+        const dObj = new Date(dStr + 'T00:00:00');
+        const dateLabel = isNaN(dObj.getTime())
+          ? dStr
+          : dObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        const color = feedColorPalette[idx % feedColorPalette.length];
+
+        const data = pondList.length > 0 ? pondList.map((p) => {
+          const pId = String(p.id);
+          const pName = (p.pond_name || p.name || '').toLowerCase().trim();
+          const sum = allFeedingRecords.reduce((acc, r) => {
+            const rDate = String(r.record_date || r.created_at || '').slice(0, 10);
+            const rPondId = String(r.pond_id || '');
+            const rPondName = (r.pond_name || '').toLowerCase().trim();
+            if (rDate === dStr && (rPondId === pId || rPondName === pName)) {
+              return acc + (parseFloat(r.amount_kg) || 0);
+            }
+            return acc;
+          }, 0);
+          return Math.round(sum * 100) / 100;
+        }) : [0];
+
+        return {
+          label: dateLabel,
+          data,
+          backgroundColor: color,
+          borderColor: '#FFFFFF',
+          borderWidth: 1,
+          borderRadius: 6,
+          borderSkipped: false,
+          maxBarThickness: 38,
+        };
+      });
+
+      return { labels, datasets };
+    }
+
+
+    // ==========================================
+    // MODE 2: BY DATE (Vertical Bar Chart)
+    // X-Axis = Date (or Time Slot), Y-Axis = Feed kg (Bars ascending "pataas")
+    // ==========================================
     if (isSingleDate) {
-      const slots = ['6:00 AM', '9:00 AM', '12:00 PM', '3:00 PM', '6:00 PM'];
-      slots.forEach((slot) => {
-        labels.push(slot);
+      const labels = ['6:00 AM', '9:00 AM', '12:00 PM', '3:00 PM', '6:00 PM'];
+      const data = labels.map((slot) => {
         const sum = filteredFeedingRecords.reduce((acc, r) => {
           const normTime = String(r.feeding_time || '').trim().replace(/^0(\d:)/, '$1').toUpperCase();
           if (normTime === slot.toUpperCase()) return acc + (parseFloat(r.amount_kg) || 0);
           return acc;
         }, 0);
-        data.push(Math.round(sum * 100) / 100);
+        return Math.round(sum * 100) / 100;
       });
-    } else {
-      const datesToShow = availableDates.slice(0, 7).reverse();
-      if (datesToShow.length > 0) {
-        datesToShow.forEach((item) => {
-          const dObj = new Date(item.date + 'T00:00:00');
-          labels.push(dObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
-          data.push(Math.round(item.totalKg * 100) / 100);
-        });
-      } else {
-        for (let i = 6; i >= 0; i--) {
-          const d = new Date();
-          d.setDate(d.getDate() - i);
-          labels.push(d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
-          data.push(0);
-        }
-      }
+
+      return {
+        labels,
+        datasets: [
+          {
+            label: 'Feed Dispensed (kg)',
+            data,
+            backgroundColor: (context) => {
+              const ctx = context.chart?.ctx;
+              if (!ctx) return '#EA580C';
+              const gradient = ctx.createLinearGradient(0, 260, 0, 0);
+              gradient.addColorStop(0, '#0B2C5F');
+              gradient.addColorStop(1, '#EA580C');
+              return gradient;
+            },
+            borderColor: '#0B2C5F',
+            borderWidth: 1.5,
+            borderRadius: { topLeft: 6, topRight: 6 },
+          },
+        ],
+      };
     }
+
+    // Multi-date vertical trend (ascending timeline)
+    const datesToUse = recentChronologicalDates;
+    const labels = datesToUse.map((dStr) => {
+      const dObj = new Date(dStr + 'T00:00:00');
+      return isNaN(dObj.getTime())
+        ? dStr
+        : dObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    });
+
+    // Multi-date vertical trend: Date at bottom (X-axis), All Ponds on the side (Legend)
+    const activePonds = displayedPonds.length > 0 ? displayedPonds : ponds;
+    const recordsPool = allFeedingRecords.length > 0 ? allFeedingRecords : filteredFeedingRecords;
+
+    if (activePonds.length > 0 && selectedPondFilter === 'all') {
+      const datasets = activePonds.map((p, idx) => {
+        const pId = String(p.id);
+        const pName = (p.pond_name || p.name || '').toLowerCase().trim();
+        const color = feedColorPalette[idx % feedColorPalette.length];
+
+        const data = datesToUse.map((dStr) => {
+          const sum = recordsPool.reduce((acc, r) => {
+            const rDate = String(r.record_date || r.created_at || '').slice(0, 10);
+            const rPondId = String(r.pond_id || '');
+            const rPondName = (r.pond_name || '').toLowerCase().trim();
+            if (rDate === dStr && (rPondId === pId || rPondName === pName)) {
+              return acc + (parseFloat(r.amount_kg) || 0);
+            }
+            return acc;
+          }, 0);
+          return Math.round(sum * 100) / 100;
+        });
+
+        return {
+          label: p.pond_name || p.name || `Pond #${p.id}`,
+          data,
+          backgroundColor: color,
+          borderColor: '#FFFFFF',
+          borderWidth: 1,
+          borderRadius: 4,
+          stack: 'feedStack',
+        };
+      });
+
+      return { labels, datasets };
+    }
+
+    // Single pond or overall total per date
+    const data = datesToUse.map((dStr) => {
+      const sum = filteredFeedingRecords.reduce((acc, r) => {
+        const rDate = String(r.record_date || r.created_at || '').slice(0, 10);
+        if (rDate === dStr) return acc + (parseFloat(r.amount_kg) || 0);
+        return acc;
+      }, 0);
+      return Math.round(sum * 100) / 100;
+    });
+
+    const datasetLabel = selectedPondFilter !== 'all'
+      ? `${selectedPondFilter} Feed (kg)`
+      : (selectedCaretakerObj ? `${selectedCaretakerObj.full_name} Feed (kg)` : 'Daily Feed (kg)');
 
     return {
       labels,
       datasets: [
         {
-          label: 'Feed Dispensed (kg)',
+          label: datasetLabel,
           data,
-          borderColor: '#0B2C5F',
-          borderWidth: 2.5,
           backgroundColor: (context) => {
-            const ctx = context.chart.ctx;
-            const gradient = ctx.createLinearGradient(0, 0, 0, 260);
-            gradient.addColorStop(0, 'rgba(11, 44, 95, 0.16)');
-            gradient.addColorStop(1, 'rgba(11, 44, 95, 0.01)');
+            const ctx = context.chart?.ctx;
+            if (!ctx) return '#EA580C';
+            const gradient = ctx.createLinearGradient(0, 260, 0, 0);
+            gradient.addColorStop(0, '#0B2C5F');
+            gradient.addColorStop(1, '#EA580C');
             return gradient;
           },
-          tension: 0.4,
-          fill: true,
-          pointBackgroundColor: '#EA580C',
-          pointBorderColor: '#FFFFFF',
-          pointBorderWidth: 2,
-          pointRadius: 4,
-          pointHoverRadius: 7,
-          pointHoverBackgroundColor: '#EA580C',
-          pointHoverBorderColor: '#FFFFFF',
-          pointHoverBorderWidth: 2.5,
+          borderColor: '#0B2C5F',
+          borderWidth: 1.5,
+          borderRadius: { topLeft: 6, topRight: 6 },
         },
       ],
     };
-  }, [filteredFeedingRecords, dateFilterType, customDate, availableDates]);
+  }, [
+    effectiveFeedChartMode,
+    displayedPonds,
+    ponds,
+    filteredFeedingRecords,
+    allFeedingRecords,
+    dateFilterType,
+    customDate,
+    recentChronologicalDates,
+    selectedPondFilter,
+    selectedCaretakerObj
+  ]);
 
-  const feedChartOptions = useMemo(() => ({
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        enabled: true,
-        backgroundColor: '#0B2C5F',
-        titleColor: '#FFFFFF',
-        bodyColor: '#EA580C',
-        titleFont: { size: 12, weight: '700', family: "'Poppins', sans-serif" },
-        bodyFont: { size: 13, weight: '700', family: "'Poppins', sans-serif" },
-        borderColor: 'rgba(234, 88, 12, 0.3)',
-        borderWidth: 1,
-        padding: 12,
-        cornerRadius: 12,
-        displayColors: false,
-        callbacks: {
-          label: (context) => ` Total Feed Mass: ${context.parsed.y} kg`,
-          afterLabel: (context) => {
-            const idx = context.dataIndex;
-            const datesToShow = availableDates.slice(0, 7).reverse();
-            const targetDateObj = datesToShow[idx];
-            if (!targetDateObj || !targetDateObj.date) return '';
+  const feedChartOptions = useMemo(() => {
+    const isHorizontal = effectiveFeedChartMode === 'by_pond';
 
-            const targetYmd = targetDateObj.date;
-            const dayRecords = filteredFeedingRecords.filter(
-              (r) => String(r.record_date || r.created_at || '').slice(0, 10) === targetYmd
-            );
-
-            if (dayRecords.length === 0) return '';
-
-            const pondMap = {};
-            dayRecords.forEach((r) => {
-              const pName = r.pond_name || (r.pond_id ? `Pond #${r.pond_id}` : 'Pond');
-              pondMap[pName] = (pondMap[pName] || 0) + (parseFloat(r.amount_kg) || 0);
-            });
-
-            const lines = Object.entries(pondMap)
-              .sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true }))
-              .map(([pName, kg]) => ` • ${pName}: ${kg.toFixed(1)} kg`);
-
-            return ['----------------------------------', ' Ponds Feed Consumption:', ...lines];
-          }
-        }
-      }
-    },
-    scales: {
-      x: {
-        grid: { color: 'rgba(11, 44, 95, 0.05)', drawBorder: false },
-        ticks: { color: '#64748B', font: { size: 11, family: "'Poppins', sans-serif" } }
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      indexAxis: isHorizontal ? 'y' : 'x',
+      plugins: {
+        legend: {
+          display: true,
+          position: isHorizontal ? 'top' : 'right', // Ponds on the side (nasa gilid)
+          align: isHorizontal ? 'end' : 'start',
+          labels: {
+            boxWidth: 12,
+            boxHeight: 12,
+            usePointStyle: true,
+            pointStyle: 'rectRounded',
+            font: { size: 10.5, weight: '700', family: "'Poppins', sans-serif" },
+            color: '#0B2C5F',
+            padding: 10,
+          },
+        },
+        tooltip: {
+          enabled: true,
+          backgroundColor: '#0B2C5F',
+          titleColor: '#FFFFFF',
+          bodyColor: '#FF7B38',
+          footerColor: '#38BDF8',
+          titleFont: { size: 12, weight: '700', family: "'Poppins', sans-serif" },
+          bodyFont: { size: 12, weight: '600', family: "'Poppins', sans-serif" },
+          footerFont: { size: 11, weight: '700', family: "'Poppins', sans-serif" },
+          borderColor: 'rgba(234, 88, 12, 0.35)',
+          borderWidth: 1.5,
+          padding: 12,
+          cornerRadius: 10,
+          callbacks: {
+            label: (context) => {
+              const labelName = context.dataset.label || '';
+              const val = isHorizontal ? context.parsed.x : context.parsed.y;
+              return ` ${labelName}: ${val} kg`;
+            },
+            footer: (items) => {
+              if (!items || items.length === 0) return '';
+              const sum = items.reduce((acc, curr) => {
+                const val = isHorizontal ? curr.parsed.x : curr.parsed.y;
+                return acc + (val || 0);
+              }, 0);
+              return `Total: ${sum.toFixed(2)} kg`;
+            },
+          },
+        },
       },
-      y: {
-        grid: { color: 'rgba(11, 44, 95, 0.05)', drawBorder: false },
-        ticks: { color: '#64748B', font: { size: 11, family: "'Poppins', sans-serif" }, callback: (v) => `${v} kg` }
-      }
-    }
-  }), []);
+      scales: {
+        x: {
+          type: isHorizontal ? 'linear' : 'category',
+          stacked: true,
+          grid: { color: 'rgba(11, 44, 95, 0.06)', drawBorder: false },
+          title: {
+            display: true,
+            text: isHorizontal ? 'Feed Dispensed (kg)' : (dateFilterType === 'today' ? 'Feeding Session' : 'Date Timeline'),
+            color: '#64748B',
+            font: { size: 11, weight: '700', family: "'Poppins', sans-serif" },
+          },
+          ticks: {
+            color: '#0B2C5F',
+            font: { size: 11, weight: '700', family: "'Poppins', sans-serif" },
+            callback: function (v) {
+              if (isHorizontal) return `${v} kg`;
+              return this.getLabelForValue ? (this.getLabelForValue(v) || v) : v;
+            },
+          },
+        },
+        y: {
+          type: isHorizontal ? 'category' : 'linear',
+          stacked: true,
+          grid: { color: 'rgba(11, 44, 95, 0.06)', drawBorder: false },
+          title: {
+            display: true,
+            text: isHorizontal ? 'Pond Name' : 'Feed Consumed (kg)',
+            color: '#64748B',
+            font: { size: 11, weight: '700', family: "'Poppins', sans-serif" },
+          },
+          ticks: {
+            color: '#0B2C5F',
+            font: { size: 11, weight: '700', family: "'Poppins', sans-serif" },
+            callback: function (val) {
+              if (isHorizontal) {
+                return this.getLabelForValue ? (this.getLabelForValue(val) || val) : val;
+              }
+              return `${val} kg`;
+            },
+          },
+        },
+      },
+    };
+  }, [effectiveFeedChartMode, dateFilterType]);
 
   // Quick Action Handlers
   const handleQuickAcknowledge = (item) => {
@@ -1821,19 +2191,75 @@ export default function AdminDashboard() {
         {/* WIDGET 3: FEEDING LOGS & TRENDS */}
         <div className="col-12 col-xl-8">
           <div className="tri-card p-4 h-100">
-            {/* Chart Header with High-Contrast Numerical Highlights */}
+            {/* Chart Header with High-Contrast Numerical Highlights & Bar View Mode Controls */}
             <div className="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
               <div>
-                <h5 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#0B2C5F', fontSize: '1.15rem' }}>
-                  Daily Feed Monitoring &amp; Trend
-                </h5>
+                <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                  <h5 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#0B2C5F', fontSize: '1.15rem' }}>
+                    Daily Feed Monitoring &amp; Trend
+                  </h5>
+                  <span
+                    className="badge rounded-pill extra-small fw-bold px-2.5 py-0.5"
+                    style={{ backgroundColor: 'rgba(11, 44, 95, 0.08)', color: '#0B2C5F' }}
+                  >
+                    <FaChartBar className="me-1" style={{ color: '#EA580C' }} /> Bar Graph
+                  </span>
+                  {selectedPondFilter !== 'all' && (
+                    <span className="badge rounded-pill extra-small fw-bold px-2 py-0.5 bg-warning-subtle text-warning-emphasis border border-warning-subtle">
+                      Filter: {selectedPondFilter}
+                    </span>
+                  )}
+                  {selectedCaretakerObj && (
+                    <span className="badge rounded-pill extra-small fw-bold px-2 py-0.5 bg-info-subtle text-info-emphasis border border-info-subtle">
+                      Caretaker: {selectedCaretakerObj.full_name}
+                    </span>
+                  )}
+                </div>
                 <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
-                  Continuous feed mass distribution from caretaker logs. Hover curve to inspect details.
+                  {effectiveFeedChartMode === 'by_date'
+                    ? 'Dates on bottom (X-axis) with feed consumption partitioned across all ponds on the side.'
+                    : 'Y-axis displays Pond Names with feed consumption partitioned across recent dates.'}
                 </p>
               </div>
-              <Link to="/admin/feeding" className="btn btn-sm btn-tri-outline px-3 py-1 extra-small shadow-xs">
-                Feeder Schedule →
-              </Link>
+
+              <div className="d-flex align-items-center gap-2 flex-wrap">
+                {/* View Switcher Pills */}
+                <div
+                  className="btn-group btn-group-sm p-0.5 rounded-pill bg-light border shadow-2xs"
+                  role="group"
+                  aria-label="Feed bar chart mode switcher"
+                >
+                  <button
+                    type="button"
+                    className={`btn btn-xs rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${
+                      effectiveFeedChartMode === 'by_pond'
+                        ? 'btn-tri-navy text-white shadow-xs'
+                        : 'text-muted border-0 bg-transparent'
+                    }`}
+                    onClick={() => setFeedChartViewMode('by_pond')}
+                    title="Y-axis: Pond Name, X-axis: Feed kg across Dates (Horizontal Bar Chart)"
+                  >
+                    📊 Horizontal Bar (By Pond)
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn btn-xs rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${
+                      effectiveFeedChartMode === 'by_date'
+                        ? 'btn-tri-navy text-white shadow-xs'
+                        : 'text-muted border-0 bg-transparent'
+                    }`}
+                    onClick={() => setFeedChartViewMode('by_date')}
+                    title="X-axis: Date, Y-axis: Feed kg (Vertical Bar Chart)"
+                  >
+                    📈 Vertical Bar (By Date)
+                  </button>
+                </div>
+
+
+                <Link to="/admin/feeding" className="btn btn-sm btn-tri-outline px-3 py-1 extra-small shadow-xs">
+                  Feeder Schedule →
+                </Link>
+              </div>
             </div>
 
             {/* High-Contrast Numerical Highlights */}
@@ -1863,10 +2289,240 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* Wave-Line Chart */}
-            <div style={{ height: 260 }}>
-              <Line data={feedChart} options={feedChartOptions} />
-            </div>
+            {/* Bar Chart Container / Custom Horizontal Matrix */}
+            {effectiveFeedChartMode === 'by_pond' ? (
+              <div className="feed-horizontal-matrix-container mt-1">
+                {/* Top Legend: Dates with matching color indicators */}
+                <div className="d-flex align-items-center justify-content-end flex-wrap gap-2 mb-2.5">
+                  {feedHorizontalGridData.columns.map((col, idx) => (
+                    <span
+                      key={col.key || idx}
+                      className="d-inline-flex align-items-center gap-1.5 extra-small fw-bold"
+                      style={{ color: '#0B2C5F', fontSize: '0.74rem' }}
+                    >
+                      <span
+                        style={{
+                          width: 12,
+                          height: 12,
+                          borderRadius: 3,
+                          background: col.gradient || col.color,
+                          display: 'inline-block',
+                          boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
+                        }}
+                      />
+                      {col.label}
+                    </span>
+                  ))}
+                </div>
+
+                {/* Matrix Bar Graph Board */}
+                <div
+                  className="p-3 rounded-3"
+                  style={{
+                    background: '#FFFFFF',
+                    border: '1px solid rgba(11, 44, 95, 0.09)',
+                    boxShadow: '0 1px 4px rgba(11, 44, 95, 0.04)',
+                    overflowX: 'auto',
+                  }}
+                >
+                  <div
+                    style={{
+                      minWidth: Math.max(660, feedHorizontalGridData.columns.length * 105 + 220),
+                    }}
+                  >
+                    {/* Header Row */}
+                    <div className="d-flex align-items-center pb-2 mb-2.5 border-bottom border-light">
+                      <div style={{ width: 110 }} className="pe-2 flex-shrink-0">
+                        <span
+                          className="fw-bold extra-small text-uppercase tracking-wider"
+                          style={{ color: '#64748B', fontSize: '0.72rem' }}
+                        >
+                          Pond Name
+                        </span>
+                      </div>
+                      <div className="flex-grow-1" />
+                      <div style={{ width: 85 }} className="ps-2 flex-shrink-0 text-end">
+                        <span
+                          className="fw-bold extra-small text-uppercase tracking-wider"
+                          style={{ color: '#64748B', fontSize: '0.72rem' }}
+                        >
+                          Total Feed
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Rows of Ponds (Stacked Horizontal Bars like uploaded pic) */}
+                    {feedHorizontalGridData.rows.length === 0 ? (
+                      <div className="text-center py-4 text-muted extra-small">
+                        No feeding data or ponds match the current filter selection.
+                      </div>
+                    ) : (
+                      feedHorizontalGridData.rows.map((row) => {
+                        const activeSegments = row.values.filter((v) => v.amount > 0);
+                        const barWidthPercent =
+                          row.totalPondKg > 0 && feedHorizontalGridData.maxTotalKg > 0
+                            ? Math.max(16, Math.min(100, Math.round((row.totalPondKg / feedHorizontalGridData.maxTotalKg) * 100)))
+                            : 0;
+
+                        return (
+                          <div
+                            key={row.pondId}
+                            className="d-flex align-items-center mb-2.5 pb-2.5 border-bottom border-light"
+                            style={{ minHeight: 44 }}
+                          >
+                            {/* Pond Name Only (No caretaker, no Y-axis label) */}
+                            <div
+                              className="d-flex align-items-center pe-2 flex-shrink-0"
+                              style={{ width: 110 }}
+                            >
+                              <span
+                                className="fw-extrabold text-truncate"
+                                style={{ color: '#0B2C5F', fontSize: '0.88rem' }}
+                                title={row.pondName}
+                              >
+                                {row.pondName}
+                              </span>
+                            </div>
+
+                            {/* Center: Stacked Horizontal Bar with Segments touching each other ("dikit-dikit") */}
+                            <div
+                              className="flex-grow-1 position-relative d-flex align-items-center"
+                              style={{
+                                height: 38,
+                                backgroundColor: '#F8FAFC',
+                                borderRadius: 8,
+                                border: '1px solid #E2E8F0',
+                                padding: '2px',
+                                overflow: 'hidden',
+                              }}
+                            >
+                              {/* Background Guide Lines */}
+                              <div
+                                className="position-absolute top-0 bottom-0"
+                                style={{ left: '25%', width: 1, backgroundColor: '#E2E8F0', opacity: 0.7, pointerEvents: 'none' }}
+                              />
+                              <div
+                                className="position-absolute top-0 bottom-0"
+                                style={{ left: '50%', width: 1, backgroundColor: '#E2E8F0', opacity: 0.7, pointerEvents: 'none' }}
+                              />
+                              <div
+                                className="position-absolute top-0 bottom-0"
+                                style={{ left: '75%', width: 1, backgroundColor: '#E2E8F0', opacity: 0.7, pointerEvents: 'none' }}
+                              />
+
+                              {row.totalPondKg > 0 && activeSegments.length > 0 ? (
+                                <div
+                                  className="d-flex align-items-center h-100 position-relative transition-all"
+                                  style={{
+                                    width: `${barWidthPercent}%`,
+                                    borderRadius: 6,
+                                    overflow: 'hidden',
+                                    boxShadow: '0 2px 6px rgba(11, 44, 95, 0.14)',
+                                  }}
+                                >
+                                  {activeSegments.map((v, sIdx) => {
+                                    const segWidthPct = (v.amount / row.totalPondKg) * 100;
+                                    return (
+                                      <div
+                                        key={v.key || sIdx}
+                                        className="d-flex align-items-center justify-content-center h-100 position-relative fw-bold text-white transition-all"
+                                        style={{
+                                          width: `${segWidthPct}%`,
+                                          background: v.gradient || v.color,
+                                          borderRight: sIdx < activeSegments.length - 1 ? '1.5px solid rgba(255, 255, 255, 0.9)' : 'none',
+                                          fontSize: segWidthPct < 9 ? '0.72rem' : '0.8rem',
+                                          fontWeight: 800,
+                                          letterSpacing: '-0.01em',
+                                          textShadow: '0 1px 2px rgba(0, 0, 0, 0.55)',
+                                          whiteSpace: 'nowrap',
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis',
+                                          padding: '0 4px',
+                                          cursor: 'pointer',
+                                          userSelect: 'none',
+                                        }}
+                                        title={`${row.pondName} • ${v.label}: ${v.formattedKg}`}
+                                        onMouseEnter={(e) => {
+                                          e.currentTarget.style.filter = 'brightness(1.15)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                          e.currentTarget.style.filter = 'none';
+                                        }}
+                                      >
+                                        {segWidthPct >= 11
+                                          ? `${v.amount.toFixed(1)} kg`
+                                          : (segWidthPct >= 6 ? `${v.amount.toFixed(1)}` : `${Math.round(v.amount)}`)}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <div className="ps-2 text-muted extra-small fst-italic">
+                                  No feed dispensed
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Right: Pond Total Feed */}
+                            <div
+                              className="d-flex align-items-center justify-content-end ps-2 flex-shrink-0"
+                              style={{ width: 85 }}
+                            >
+                              <span
+                                className="badge rounded-pill px-2.5 py-1.5 extra-small fw-extrabold"
+                                style={{
+                                  backgroundColor: row.totalPondKg > 0 ? 'rgba(11, 44, 95, 0.08)' : '#F1F5F9',
+                                  color: row.totalPondKg > 0 ? '#0B2C5F' : '#94A3B8',
+                                  fontSize: '0.8rem',
+                                }}
+                                title={`Total period feed for ${row.pondName}`}
+                              >
+                                {row.totalPondKg.toFixed(1)} kg
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+
+                    {/* Dates at the Bottom (Replacing the kg scale with the dates) */}
+                    <div className="d-flex align-items-center pt-2 mt-1">
+                      <div style={{ width: 110 }} className="pe-2 flex-shrink-0" />
+                      <div
+                        className="flex-grow-1 d-flex justify-content-between align-items-center px-1"
+                        style={{ minHeight: 24 }}
+                      >
+                        {feedHorizontalGridData.columns.map((col, idx) => (
+                          <div key={col.key || idx} className="text-center d-flex flex-column align-items-center">
+                            <div
+                              style={{
+                                width: 2,
+                                height: 6,
+                                backgroundColor: '#94A3B8',
+                                marginBottom: 3,
+                                borderRadius: 1,
+                              }}
+                            />
+                            <span
+                              className="fw-extrabold extra-small text-truncate"
+                              style={{ color: '#0B2C5F', fontSize: '0.78rem' }}
+                              title={col.label}
+                            >
+                              {col.label}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{ width: 85 }} className="ps-2 flex-shrink-0" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div style={{ minHeight: 280, height: 280 }}>
+                <Bar data={feedChart} options={feedChartOptions} />
+              </div>
+            )}
           </div>
         </div>
 

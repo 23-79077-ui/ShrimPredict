@@ -100,7 +100,8 @@ export default function FeedingPage() {
   const [stageFilter, setStageFilter] = useState('all'); // 'all' | 'nursery' | 'growout'
   const [calendarModalPond, setCalendarModalPond] = useState(null);
   const [sortBy, setSortBy] = useState('date-desc'); // 'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc' | 'pond-asc'
-  const [feedingChartRange, setFeedingChartRange] = useState('7_days'); // '7_days' | '14_days' | '30_days' | 'by_pond'
+  const [feedingChartRange, setFeedingChartRange] = useState('7_days'); // '7_days' | '14_days' | '30_days' | 'all_cycle' | 'by_pond'
+  const [chartPond, setChartPond] = useState(targetPond || 'Pond D1');
 
   // Admin Log Feeding Modal State
   const [showLogModal, setShowLogModal] = useState(false);
@@ -142,6 +143,12 @@ export default function FeedingPage() {
     loadData();
   }, [loadData]);
 
+  useEffect(() => {
+    if (selectedPond && selectedPond !== 'all') {
+      setChartPond(selectedPond);
+    }
+  }, [selectedPond]);
+
   // Format Helper for YYYY-MM-DD
   const formatYMD = (date) => {
     if (!date) return '';
@@ -179,6 +186,26 @@ export default function FeedingPage() {
       return d !== null && d >= 20;
     }).length;
   }, [ponds, effectiveFilterDate]);
+
+  // Selected Pond for the Cumulative Feeding Graph
+  const activeChartPondObj = useMemo(() => {
+    if (chartPond === 'all') return null;
+    return (
+      ponds.find((p) => {
+        const pName = (p.pond_name || p.name || '').toLowerCase().trim();
+        const target = String(chartPond).toLowerCase().trim();
+        return pName === target || String(p.id) === target;
+      }) ||
+      ponds.find((p) => (p.pond_name || '').toLowerCase().includes('d1')) ||
+      ponds[0] ||
+      null
+    );
+  }, [chartPond, ponds]);
+
+  const activeChartPondDoc = useMemo(() => {
+    if (!activeChartPondObj) return null;
+    return computeDoc(activeChartPondObj.stocking_date, todayYMD);
+  }, [activeChartPondObj, todayYMD]);
 
   // Filtered & Sorted Records
   const filteredRecords = useMemo(() => {
@@ -314,7 +341,7 @@ export default function FeedingPage() {
     document.body.removeChild(link);
   };
 
-  // Daily Feed Consumption Trend Data (Chronological Calendar Dates or Pond Breakdown)
+  // Cumulative Feed Consumption Trend Data (Per Pond Cumulative Trajectory or Pond Breakdown)
   const feedingTrendData = useMemo(() => {
     if (feedingChartRange === 'by_pond') {
       const pondMap = {};
@@ -323,7 +350,8 @@ export default function FeedingPage() {
         pondMap[name] = { id: p.id, pondName: name, totalKg: 0, count: 0 };
       });
       records.forEach((r) => {
-        const name = r.pond_name || `Pond #${r.pond_id}`;
+        const pObj = ponds.find((p) => String(p.id) === String(r.pond_id) || p.pond_name === r.pond_name);
+        const name = pObj ? (pObj.pond_name || `Pond #${pObj.id}`) : (r.pond_name || `Pond #${r.pond_id}`);
         if (!pondMap[name]) {
           pondMap[name] = { id: r.pond_id, pondName: name, totalKg: 0, count: 0 };
         }
@@ -339,114 +367,186 @@ export default function FeedingPage() {
         label: item.pondName,
         subLabel: `${item.count} ${item.count === 1 ? 'log' : 'logs'}`,
         axisLabel: item.pondName,
-        totalKg: item.totalKg,
+        totalKg: Number(item.totalKg.toFixed(1)),
+        cumulativeKg: Number(item.totalKg.toFixed(1)),
+        incrementalKg: Number(item.totalKg.toFixed(1)),
         count: item.count,
         isToday: false,
       }));
     }
 
-    const daysCount = feedingChartRange === '14_days' ? 14 : feedingChartRange === '30_days' ? 30 : 7;
-    const days = [];
-    const ref = new Date();
+    // Per-Pond Cumulative Running Total over Chronological Calendar Dates
+    const targetPondName = activeChartPondObj ? (activeChartPondObj.pond_name || '').toLowerCase().trim() : '';
+    const targetPondId = activeChartPondObj ? String(activeChartPondObj.id) : '';
 
-    for (let i = daysCount - 1; i >= 0; i--) {
-      const d = new Date(ref);
-      d.setDate(ref.getDate() - i);
-      const ymd = formatYMD(d);
-      const monthShort = d.toLocaleString('en-US', { month: 'short' });
-      const dayNum = d.getDate();
+    const pondRecords = records.filter((r) => {
+      if (!activeChartPondObj) return true; // if 'all', sum across fleet
+      const rId = String(r.pond_id || '');
+      const rName = (r.pond_name || '').toLowerCase().trim();
+      return (targetPondId && rId === targetPondId) || (targetPondName && rName === targetPondName);
+    });
+
+    let dateStrings = [];
+    if (feedingChartRange === 'all_cycle') {
+      const allDates = Array.from(new Set(pondRecords.map((r) => formatYMD(r.record_date || r.created_at)).filter(Boolean)));
+      if (!allDates.includes(todayYMD)) allDates.push(todayYMD);
+      allDates.sort();
+      dateStrings = allDates;
+    } else {
+      const daysCount = feedingChartRange === '14_days' ? 14 : feedingChartRange === '30_days' ? 30 : 7;
+      const ref = new Date();
+      for (let i = daysCount - 1; i >= 0; i--) {
+        const d = new Date(ref);
+        d.setDate(ref.getDate() - i);
+        dateStrings.push(formatYMD(d));
+      }
+    }
+
+    const days = dateStrings.map((ymd) => {
+      const dObj = new Date(ymd + 'T00:00:00');
+      const monthShort = isNaN(dObj.getTime()) ? ymd : dObj.toLocaleString('en-US', { month: 'short' });
+      const dayNum = isNaN(dObj.getTime()) ? '' : dObj.getDate();
       const displayDate = `${monthShort} ${dayNum}`;
       const isToday = ymd === todayYMD;
 
-      const dayRecords = records.filter((r) => formatYMD(r.record_date || r.created_at) === ymd);
-      const totalKg = dayRecords.reduce((sum, r) => sum + (Number(r.amount_kg) || 0), 0);
+      // Incremental feed logged specifically on this single calendar date
+      const dayRecords = pondRecords.filter((r) => formatYMD(r.record_date || r.created_at) === ymd);
+      const dayIncrementalKg = dayRecords.reduce((sum, r) => sum + (Number(r.amount_kg) || 0), 0);
 
-      // Per-pond feed consumption breakdown for this date
-      const pondMapForDay = {};
-      ponds.forEach((p) => {
-        const pName = p.pond_name || p.name || `Pond #${p.id}`;
-        pondMapForDay[pName] = 0;
+      // Cumulative running total up to and including this calendar date (C(t) = sum_{tau <= t} feed(tau))
+      const cumulativeRecords = pondRecords.filter((r) => {
+        const rYmd = formatYMD(r.record_date || r.created_at);
+        return rYmd && rYmd <= ymd;
       });
+      const cumulativeKg = cumulativeRecords.reduce((sum, r) => sum + (Number(r.amount_kg) || 0), 0);
 
-      dayRecords.forEach((r) => {
-        const pName = r.pond_name || (r.pond_id ? `Pond #${r.pond_id}` : 'Unassigned Pond');
-        if (pondMapForDay[pName] === undefined) {
-          pondMapForDay[pName] = 0;
-        }
-        pondMapForDay[pName] += Number(r.amount_kg) || 0;
-      });
-
-      const pondBreakdown = Object.entries(pondMapForDay).map(([pondName, kg]) => ({
-        pondName,
-        totalKg: Number(kg.toFixed(1)),
-      }));
-      pondBreakdown.sort((a, b) => a.pondName.localeCompare(b.pondName, undefined, { numeric: true }));
-
-      days.push({
+      return {
         key: `day_${ymd}`,
         dateStr: ymd,
         label: displayDate,
         subLabel: isToday ? 'Today' : ymd,
         axisLabel: isToday ? [displayDate, '(Today)'] : displayDate,
-        totalKg,
+        totalKg: Number(cumulativeKg.toFixed(1)),
+        cumulativeKg: Number(cumulativeKg.toFixed(1)),
+        incrementalKg: Number(dayIncrementalKg.toFixed(1)),
         count: dayRecords.length,
         isToday,
-        pondBreakdown,
-      });
-    }
+      };
+    });
 
     return days;
-  }, [records, ponds, feedingChartRange, todayYMD]);
+  }, [records, ponds, feedingChartRange, todayYMD, activeChartPondObj]);
 
   // Chart Summary Metrics
   const chartMetrics = useMemo(() => {
-    const totalKg = feedingTrendData.reduce((sum, d) => sum + d.totalKg, 0);
+    if (feedingTrendData.length === 0) {
+      return { currentTotalKg: '0.0', todayFeedKg: '0.0', totalLogs: 0, avgKg: '0.0', totalKg: '0.0' };
+    }
+    const todayEntry = feedingTrendData.find((d) => d.isToday);
+    const lastEntry = feedingTrendData[feedingTrendData.length - 1];
+    const currentTotalKg = (todayEntry ? todayEntry.cumulativeKg : (lastEntry ? lastEntry.cumulativeKg : 0)).toFixed(1);
+    const todayFeedKg = (todayEntry ? todayEntry.incrementalKg : 0).toFixed(1);
     const totalLogs = feedingTrendData.reduce((sum, d) => sum + d.count, 0);
-    const avgKg = feedingTrendData.length > 0 ? (totalKg / feedingTrendData.length).toFixed(1) : '0.0';
+    const avgKg = feedingTrendData.length > 0 ? (Number(currentTotalKg) / feedingTrendData.length).toFixed(1) : '0.0';
 
     return {
-      totalKg: totalKg.toFixed(1),
-      avgKg: `${avgKg} kg/day`,
+      currentTotalKg,
+      todayFeedKg,
+      totalKg: currentTotalKg,
       totalLogs,
+      avgKg: `${avgKg} kg/day`,
     };
   }, [feedingTrendData]);
 
-  // Chart Data Preparation (Daily Feeding Trend or Pond Breakdown)
+  // Chart Data Preparation (Per Pond Cumulative Curve or Multi-Pond Comparison)
   const chartData = useMemo(() => {
     const isPond = feedingChartRange === 'by_pond';
+    if (isPond) {
+      return {
+        labels: feedingTrendData.map((d) => d.axisLabel),
+        datasets: [
+          {
+            label: 'Cumulative Feed Consumed by Pond (kg)',
+            data: feedingTrendData.map((d) => d.totalKg),
+            borderColor: '#0B2C5F',
+            backgroundColor: (context) => {
+              const ctx = context.chart?.ctx;
+              if (!ctx) return 'rgba(11, 44, 95, 0.85)';
+              const gradient = ctx.createLinearGradient(0, 0, 0, 240);
+              gradient.addColorStop(0, 'rgba(11, 44, 95, 0.85)');
+              gradient.addColorStop(1, 'rgba(30, 58, 138, 0.45)');
+              return gradient;
+            },
+            borderRadius: 6,
+            borderWidth: 1,
+          },
+        ],
+      };
+    }
+
+    if (chartPond === 'all') {
+      const palette = ['#0284C7', '#EA580C', '#10B981', '#8B5CF6', '#F59E0B', '#EC4899', '#06B6D4', '#0B2C5F'];
+      const datasets = ponds.map((p, pIdx) => {
+        const pId = String(p.id);
+        const pName = p.pond_name || p.name || `Pond #${p.id}`;
+        const pRecords = records.filter(
+          (r) => String(r.pond_id || '') === pId || (r.pond_name || '').toLowerCase() === pName.toLowerCase()
+        );
+        const data = feedingTrendData.map((d) => {
+          const cumRecs = pRecords.filter((r) => {
+            const rYmd = formatYMD(r.record_date || r.created_at);
+            return rYmd && rYmd <= d.dateStr;
+          });
+          return Number(cumRecs.reduce((sum, r) => sum + (Number(r.amount_kg) || 0), 0).toFixed(1));
+        });
+        const col = palette[pIdx % palette.length];
+        return {
+          label: pName,
+          data,
+          borderColor: col,
+          backgroundColor: col,
+          tension: 0.35,
+          borderWidth: 2.2,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          fill: false,
+        };
+      });
+
+      return {
+        labels: feedingTrendData.map((d) => d.axisLabel),
+        datasets,
+      };
+    }
+
+    const currentPondDisplayName = activeChartPondObj?.pond_name || chartPond;
     return {
       labels: feedingTrendData.map((d) => d.axisLabel),
       datasets: [
         {
-          label: isPond ? 'Feed Consumed by Pond (kg)' : 'Daily Feed Dispensed (kg)',
-          data: feedingTrendData.map((d) => d.totalKg),
-          borderColor: isPond ? '#0B2C5F' : '#0284C7',
+          label: `${currentPondDisplayName} Cumulative Feed (kg)`,
+          data: feedingTrendData.map((d) => d.cumulativeKg),
+          borderColor: '#0284C7',
           backgroundColor: (context) => {
             const ctx = context.chart?.ctx;
-            if (!ctx) return 'rgba(2, 132, 199, 0.24)';
+            if (!ctx) return 'rgba(2, 132, 199, 0.22)';
             const gradient = ctx.createLinearGradient(0, 0, 0, 240);
-            if (isPond) {
-              gradient.addColorStop(0, 'rgba(11, 44, 95, 0.85)');
-              gradient.addColorStop(1, 'rgba(30, 58, 138, 0.45)');
-            } else {
-              gradient.addColorStop(0, 'rgba(2, 132, 199, 0.24)');
-              gradient.addColorStop(1, 'rgba(2, 132, 199, 0.01)');
-            }
+            gradient.addColorStop(0, 'rgba(2, 132, 199, 0.32)');
+            gradient.addColorStop(1, 'rgba(2, 132, 199, 0.01)');
             return gradient;
           },
-          fill: !isPond,
-          tension: 0.38,
-          pointBackgroundColor: feedingTrendData.map((d) => (d.isToday ? '#0284C7' : '#EA580C')),
+          fill: true,
+          tension: 0.35,
+          pointBackgroundColor: feedingTrendData.map((d) => (d.isToday ? '#EA580C' : '#0284C7')),
           pointBorderColor: '#ffffff',
           pointBorderWidth: 2,
           pointRadius: feedingTrendData.map((d) => (d.isToday ? 7 : 5)),
           pointHoverRadius: 8,
-          borderWidth: isPond ? 1 : 2.8,
-          borderRadius: isPond ? 6 : 0,
+          borderWidth: 2.8,
         },
       ],
     };
-  }, [feedingTrendData, feedingChartRange]);
+  }, [feedingTrendData, feedingChartRange, chartPond, ponds, records, activeChartPondObj]);
 
   // Custom Chart.js Plugin to render exact values above points or bars
   const valueLabelPlugin = useMemo(() => ({
@@ -507,7 +607,11 @@ export default function FeedingPage() {
       },
     },
     plugins: {
-      legend: { display: false },
+      legend: {
+        display: chartPond === 'all' && feedingChartRange !== 'by_pond',
+        position: 'top',
+        labels: { boxWidth: 12, font: { size: 11, weight: 'bold' }, color: '#0B2C5F' },
+      },
       tooltip: {
         backgroundColor: '#0B2C5F',
         titleColor: '#FFFFFF',
@@ -522,15 +626,23 @@ export default function FeedingPage() {
             const d = feedingTrendData[idx];
             if (!d) return items[0].label;
             if (feedingChartRange === 'by_pond') return d.label;
-            return `${d.label}${d.isToday ? ' • TODAY' : ''}`;
+            const pondTitle = chartPond === 'all' ? 'All Ponds Fleet' : (activeChartPondObj?.pond_name || chartPond);
+            return `${pondTitle} • ${d.label}${d.isToday ? ' • TODAY' : ''}`;
           },
           label: (context) => {
             const idx = context.dataIndex;
             const d = feedingTrendData[idx];
+            const datasetLabel = context.dataset?.label || 'Feed';
             if (feedingChartRange === 'by_pond') {
               return ` Total Consumed: ${Number(context.parsed.y).toFixed(1)} kg`;
             }
-            return ` Total Dispensed: ${Number(context.parsed.y).toFixed(1)} kg (${d ? d.count : 0} ${d && d.count === 1 ? 'log' : 'logs'})`;
+            if (chartPond === 'all') {
+              return ` ${datasetLabel}: ${Number(context.parsed.y).toFixed(1)} kg cumulative`;
+            }
+            return [
+              ` Cumulative Total: ${Number(context.parsed.y).toFixed(1)} kg`,
+              ` Added on this date: +${d?.incrementalKg?.toFixed(1) || 0} kg (${d ? d.count : 0} logs)`,
+            ];
           },
           afterLabel: (context) => {
             const idx = context.dataIndex;
@@ -539,14 +651,7 @@ export default function FeedingPage() {
             if (feedingChartRange === 'by_pond') {
               return ` ${d.count} feeding ${d.count === 1 ? 'log' : 'logs'} recorded`;
             }
-
-            if (d.pondBreakdown && d.pondBreakdown.length > 0) {
-              const lines = d.pondBreakdown.map(
-                (pb) => ` • ${pb.pondName}: ${pb.totalKg.toFixed(1)} kg`
-              );
-              return ['----------------------------------', ' Ponds Feed Consumption:', ...lines];
-            }
-            return ' • No feeding logs recorded';
+            return '';
           },
         },
       },
@@ -583,7 +688,7 @@ export default function FeedingPage() {
         },
       },
     },
-  }), [feedingTrendData, feedingChartRange]);
+  }), [feedingTrendData, feedingChartRange, chartPond, activeChartPondObj]);
 
   // Feed Type Breakdown Bar Chart Data
   const feedTypeChartData = useMemo(() => {
@@ -1364,84 +1469,138 @@ export default function FeedingPage() {
             <div className="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
               <div>
                 <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
-                  <h5 className="fw-extrabold text-dark mb-0 tracking-tight">Daily Feed Consumption Trend</h5>
+                  <h5 className="fw-extrabold text-dark mb-0 tracking-tight">Cumulative Feed Intake &amp; Growth Trend</h5>
                   <span className="tag-cyan-active">
-                    {feedingChartRange === 'by_pond' ? 'Pond Comparison' : 'Daily Feed Intake (kg)'}
+                    {feedingChartRange === 'by_pond' ? 'Pond Comparison' : (chartPond === 'all' ? 'All Ponds Fleet' : `${activeChartPondObj?.pond_name || chartPond} Cumulative (kg)`)}
                   </span>
                 </div>
                 <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
                   {feedingChartRange === 'by_pond'
-                    ? 'Cumulative feed mass dispensed across individual active ponds.'
-                    : feedingChartRange === '14_days'
-                      ? 'Daily feeding mass delivered across ponds over the past 14 consecutive calendar dates.'
-                      : feedingChartRange === '30_days'
-                        ? 'Daily feeding mass delivered across ponds over the past 30 consecutive calendar dates.'
-                        : 'Daily feeding mass delivered across ponds over the past 7 consecutive calendar dates.'}
+                    ? 'Total cumulative feed mass dispensed across individual active ponds.'
+                    : `Per-pond running total feed mass over timeline. Each new feed logged adds directly onto the previous total.`}
                 </p>
               </div>
 
-              {/* Timeframe & View Scope Selector */}
-              <div className="d-flex align-items-center gap-1 p-1 rounded-pill bg-light border">
-                <button
-                  type="button"
-                  className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${feedingChartRange === '7_days' ? 'btn-tri-navy shadow-xs' : 'btn-light text-muted'}`}
-                  onClick={() => setFeedingChartRange('7_days')}
-                >
-                  Last 7 Days
-                </button>
-                <button
-                  type="button"
-                  className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${feedingChartRange === '14_days' ? 'btn-tri-navy shadow-xs' : 'btn-light text-muted'}`}
-                  onClick={() => setFeedingChartRange('14_days')}
-                >
-                  Last 14 Days
-                </button>
-                <button
-                  type="button"
-                  className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${feedingChartRange === '30_days' ? 'btn-tri-navy shadow-xs' : 'btn-light text-muted'}`}
-                  onClick={() => setFeedingChartRange('30_days')}
-                >
-                  Last 30 Days
-                </button>
-                <button
-                  type="button"
-                  className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${feedingChartRange === 'by_pond' ? 'btn-tri-navy shadow-xs' : 'btn-light text-muted'}`}
-                  onClick={() => setFeedingChartRange('by_pond')}
-                >
-                  By Pond
-                </button>
+              {/* Pond Selector & Timeframe Scope Controls */}
+              <div className="d-flex align-items-center gap-2 flex-wrap">
+                {/* Dedicated Pond Selector */}
+                {feedingChartRange !== 'by_pond' && (
+                  <div className="d-flex align-items-center gap-1.5">
+                    <span className="extra-small fw-bold text-muted text-uppercase" style={{ fontSize: '0.72rem' }}>Pond:</span>
+                    <select
+                      className="form-select form-select-sm fw-bold border rounded-pill px-3 shadow-xs"
+                      style={{
+                        fontSize: '0.78rem',
+                        color: '#0B2C5F',
+                        borderColor: '#0284C7',
+                        backgroundColor: '#F0F9FF',
+                        cursor: 'pointer',
+                        minWidth: 130,
+                      }}
+                      value={chartPond}
+                      onChange={(e) => setChartPond(e.target.value)}
+                    >
+                      {ponds.map((p) => {
+                        const name = p.pond_name || p.name || `Pond #${p.id}`;
+                        return (
+                          <option key={p.id} value={name}>
+                            {name}
+                          </option>
+                        );
+                      })}
+                      <option value="all">Fleet Multi-Line (All Ponds)</option>
+                    </select>
+                  </div>
+                )}
+
+                {/* Range Buttons */}
+                <div className="d-flex align-items-center gap-1 p-1 rounded-pill bg-light border">
+                  <button
+                    type="button"
+                    className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${feedingChartRange === '7_days' ? 'btn-tri-navy shadow-xs' : 'btn-light text-muted'}`}
+                    onClick={() => setFeedingChartRange('7_days')}
+                  >
+                    7 Days
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${feedingChartRange === '14_days' ? 'btn-tri-navy shadow-xs' : 'btn-light text-muted'}`}
+                    onClick={() => setFeedingChartRange('14_days')}
+                  >
+                    14 Days
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${feedingChartRange === '30_days' ? 'btn-tri-navy shadow-xs' : 'btn-light text-muted'}`}
+                    onClick={() => setFeedingChartRange('30_days')}
+                  >
+                    30 Days
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${feedingChartRange === 'all_cycle' ? 'btn-tri-navy shadow-xs' : 'btn-light text-muted'}`}
+                    onClick={() => setFeedingChartRange('all_cycle')}
+                  >
+                    Full Cycle
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${feedingChartRange === 'by_pond' ? 'btn-tri-navy shadow-xs' : 'btn-light text-muted'}`}
+                    onClick={() => setFeedingChartRange('by_pond')}
+                  >
+                    By Pond
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* High-Contrast Period Highlights */}
+            {/* High-Contrast Period Highlights (Cumulative & Running Total KPIs) */}
             <div className="row g-2.5 mb-3">
-              <div className="col-4">
+              <div className="col-6 col-sm-3">
                 <div className="tri-mini-stat text-center">
                   <span className="extra-small text-muted text-uppercase fw-bold d-block">
-                    {feedingChartRange === 'by_pond' ? 'Total Fleet Feed' : 'Period Total Feed'}
+                    Cumulative Total Feed
                   </span>
-                  <strong className="text-dark fs-6">{chartMetrics.totalKg} kg</strong>
-                </div>
-              </div>
-              <div className="col-4">
-                <div className="tri-mini-stat text-center">
-                  <span className="extra-small text-muted text-uppercase fw-bold d-block">
-                    {feedingChartRange === 'by_pond' ? 'Active Ponds' : 'Daily Average'}
-                  </span>
-                  <strong className="text-dark fs-6">
-                    {feedingChartRange === 'by_pond' ? `${feedingTrendData.length} Ponds` : chartMetrics.avgKg}
+                  <strong className="text-dark fs-6 font-mono">
+                    {chartMetrics.currentTotalKg} kg
                   </strong>
                 </div>
               </div>
-              <div className="col-4">
+              <div className="col-6 col-sm-3">
                 <div className="tri-mini-stat text-center">
-                  <span className="extra-small text-muted text-uppercase fw-bold d-block">Recorded Logs</span>
-                  <strong className="text-primary fs-6">{chartMetrics.totalLogs} Entries</strong>
+                  <span className="extra-small text-muted text-uppercase fw-bold d-block">
+                    Today's Feed Added
+                  </span>
+                  <strong className="fs-6 font-mono" style={{ color: '#EA580C' }}>
+                    +{chartMetrics.todayFeedKg} kg
+                  </strong>
+                </div>
+              </div>
+              <div className="col-6 col-sm-3">
+                <div className="tri-mini-stat text-center">
+                  <span className="extra-small text-muted text-uppercase fw-bold d-block">
+                    {feedingChartRange === 'by_pond' ? 'Active Ponds' : 'Culture Milestone'}
+                  </span>
+                  <strong className="text-dark fs-6">
+                    {feedingChartRange === 'by_pond'
+                      ? `${feedingTrendData.length} Ponds`
+                      : (activeChartPondDoc ? `Day ${activeChartPondDoc} DOC` : 'Active Cycle')}
+                  </strong>
+                </div>
+              </div>
+              <div className="col-6 col-sm-3">
+                <div className="tri-mini-stat text-center">
+                  <span className="extra-small text-muted text-uppercase fw-bold d-block">
+                    Assigned Caretaker
+                  </span>
+                  <strong className="text-truncate d-block fs-6" style={{ color: '#0B2C5F', fontSize: '0.86rem' }}>
+                    {activeChartPondObj?.assigned_caretaker_name || 'Assigned Staff'}
+                  </strong>
                 </div>
               </div>
             </div>
 
-            {/* Chart Canvas: Line Chart for Dates, Bar Chart for Pond Comparison */}
+            {/* Chart Canvas: Line Chart for Cumulative Dates, Bar Chart for Pond Comparison */}
             <div style={{ height: 260 }}>
               {feedingChartRange === 'by_pond' ? (
                 <Bar data={chartData} options={chartOptions} plugins={[valueLabelPlugin]} />
@@ -1450,7 +1609,7 @@ export default function FeedingPage() {
               )}
             </div>
 
-            {/* Day-by-Day or Pond-by-Pond Distinction Strip: Clear dates/ponds, kg amounts, and TODAY highlight */}
+            {/* Day-by-Day Progression Strip: Incremental Feed Added and Cumulative Total */}
             <div className="d-flex gap-2 mt-3 pt-3 border-top overflow-auto pb-1" style={{ scrollbarWidth: 'thin' }}>
               {feedingTrendData.map((d) => (
                 <div
@@ -1460,7 +1619,7 @@ export default function FeedingPage() {
                     backgroundColor: d.isToday ? '#0B2C5F' : '#F8FAFC',
                     color: d.isToday ? '#FFFFFF' : '#1E293B',
                     border: d.isToday ? '2px solid #0284C7' : '1px solid rgba(11, 44, 95, 0.1)',
-                    minWidth: 84,
+                    minWidth: 92,
                     flex: feedingTrendData.length <= 7 ? 1 : '0 0 auto',
                   }}
                 >
@@ -1474,11 +1633,20 @@ export default function FeedingPage() {
                       </span>
                     )}
                   </div>
-                  <div className={`extra-small mb-1 ${d.isToday ? 'text-light opacity-90' : 'text-muted'}`} style={{ fontSize: '0.67rem', fontWeight: 500 }}>
-                    {d.subLabel}
+                  <div className="mb-1">
+                    <span
+                      className="badge rounded-pill px-2 py-0.5 extra-small fw-bold"
+                      style={{
+                        backgroundColor: d.isToday ? 'rgba(234, 88, 12, 0.9)' : (d.incrementalKg > 0 ? '#E0F2FE' : '#F1F5F9'),
+                        color: d.isToday ? '#FFFFFF' : (d.incrementalKg > 0 ? '#0369A1' : '#94A3B8'),
+                        fontSize: '0.66rem',
+                      }}
+                    >
+                      +{d.incrementalKg.toFixed(1)} kg
+                    </span>
                   </div>
-                  <strong className="d-block font-mono" style={{ fontSize: '0.86rem', color: d.isToday ? '#FFFFFF' : '#0B2C5F' }}>
-                    {d.totalKg.toFixed(1)} <span style={{ fontSize: '0.62rem', fontWeight: 'normal' }}>kg</span>
+                  <strong className="d-block font-mono" style={{ fontSize: '0.88rem', color: d.isToday ? '#FFFFFF' : '#0B2C5F' }}>
+                    {d.cumulativeKg.toFixed(1)} <span style={{ fontSize: '0.62rem', fontWeight: 'normal' }}>kg</span>
                   </strong>
                   <span className={`extra-small d-block ${d.isToday ? 'text-light opacity-75' : 'text-muted'}`} style={{ fontSize: '0.62rem' }}>
                     {d.count} {d.count === 1 ? 'log' : 'logs'}

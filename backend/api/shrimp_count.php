@@ -33,7 +33,13 @@ if (!isset($_FILES['image']) || !is_uploaded_file($_FILES['image']['tmp_name']))
 // 2. Dynamic Flask URL resolution (Priority: ENV -> Config constant/variable -> Localhost fallback)
 $flaskUrl = getenv('SHRIMP_AI_COUNT_URL')
     ?: (defined('FLASK_SHRIMP_COUNT_URL') ? FLASK_SHRIMP_COUNT_URL
-    : ($FLASK_SHRIMP_COUNT_URL ?? ($FLASK_URL ?? 'http://127.0.0.1:5001/count')));
+    : (defined('FLASK_COUNT_URL') ? FLASK_COUNT_URL
+    : (defined('FLASK_BASE_URL') ? FLASK_BASE_URL . '/count'
+    : ($FLASK_SHRIMP_COUNT_URL ?? ($FLASK_URL ?? ($NGROK_BASE_URL ?? 'http://127.0.0.1:5001/count'))))));
+
+if (!preg_match('#/(count|detect-preview)$#i', $flaskUrl)) {
+    $flaskUrl = rtrim($flaskUrl, '/') . '/count';
+}
 
 if (!function_exists('curl_init')) {
     http_response_code(500);
@@ -52,9 +58,12 @@ curl_setopt_array($curl, [
     CURLOPT_POST => true,
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_TIMEOUT => 60,
+    CURLOPT_FOLLOWLOCATION => true,
+    CURLOPT_POSTREDIR => CURL_REDIR_POST_ALL,
     CURLOPT_POSTFIELDS => ['image' => $file],
     CURLOPT_SSL_VERIFYPEER => false,
     CURLOPT_SSL_VERIFYHOST => false,
+    CURLOPT_HTTPHEADER => ['ngrok-skip-browser-warning: 1'],
 ]);
 
 $rawResponse = curl_exec($curl);

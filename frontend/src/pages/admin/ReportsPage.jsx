@@ -24,17 +24,21 @@ import {
 // Helper to resolve media URLs to absolute Apache XAMPP server address
 const resolveMediaUrl = (url) => {
   if (!url) return '';
-  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:') || url.startsWith('data:')) {
+  if (url.startsWith('blob:') || url.startsWith('data:')) {
+    return url;
+  }
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    if (url.includes('localhost') || url.includes('127.0.0.1')) {
+      const cleaned = url.replace(/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/shrim_predict_api)?/i, '');
+      return cleaned.startsWith('/') ? cleaned : `/${cleaned}`;
+    }
     return url;
   }
   const cleanPath = url.startsWith('/') ? url : `/${url}`;
   if (cleanPath.startsWith('/shrim_predict_api')) {
-    return `http://localhost${cleanPath}`;
+    return cleanPath.replace(/^\/shrim_predict_api/, '');
   }
-  if (cleanPath.startsWith('/backend')) {
-    return `http://localhost/shrim_predict_api${cleanPath}`;
-  }
-  return `http://localhost/shrim_predict_api/${cleanPath.replace(/^\/+/, '')}`;
+  return cleanPath;
 };
 
 export default function AdminReportsPage() {

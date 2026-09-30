@@ -34,11 +34,17 @@ import { useAuth } from '../../context/AuthContext';
 
 const resolveMediaUrl = (url) => {
   if (!url) return '';
-  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:') || url.startsWith('data:')) return url;
+  if (url.startsWith('blob:') || url.startsWith('data:')) return url;
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    if (url.includes('localhost') || url.includes('127.0.0.1')) {
+      const cleaned = url.replace(/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/shrim_predict_api)?/i, '');
+      return cleaned.startsWith('/') ? cleaned : `/${cleaned}`;
+    }
+    return url;
+  }
   const cleanPath = url.startsWith('/') ? url : `/${url}`;
-  if (cleanPath.startsWith('/shrim_predict_api')) return `http://localhost${cleanPath}`;
-  if (cleanPath.startsWith('/backend')) return `http://localhost/shrim_predict_api${cleanPath}`;
-  return `http://localhost/shrim_predict_api/${cleanPath.replace(/^\/+/, '')}`;
+  if (cleanPath.startsWith('/shrim_predict_api')) return cleanPath.replace(/^\/shrim_predict_api/, '');
+  return cleanPath;
 };
 
 const quickSuggestionsByProblemType = {

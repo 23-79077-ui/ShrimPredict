@@ -351,11 +351,22 @@ export default function DiseaseScanPage() {
       // Success diagnosis
       const isHealthy = prediction.status === 'Healthy';
       const diagnosisLabel = prediction.prediction || prediction.disease_name || 'Unknown';
+      const successText = isHealthy
+        ? 'The shrimp is with Healthy condition (no disease signs).'
+        : `The shrimp is with "${diagnosisLabel}".`;
+
       Swal.fire({
         icon: isHealthy ? 'success' : 'warning',
-        title: 'Scan Completed',
-        text: `The shrimp was detected as "${diagnosisLabel}"`,
+        title: isHealthy ? 'Healthy Shrimp' : 'Disease Detected',
+        text: successText,
+        customClass: {
+          popup: 'shrim-swal-popup',
+          title: 'shrim-swal-title',
+          confirmButton: 'btn btn-tri-navy px-4 py-2.5 rounded-pill fw-bold shadow-sm',
+        },
+        buttonsStyling: false,
       });
+
     } catch (error) {
       const message = error.response?.data?.message
         || error.response?.data?.ai_response?.message

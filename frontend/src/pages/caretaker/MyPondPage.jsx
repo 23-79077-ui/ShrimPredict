@@ -38,17 +38,21 @@ import PondCycleCalendar from '../../components/PondCycleCalendar';
 
 const resolveImageUrl = (url) => {
   if (!url) return '';
-  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:') || url.startsWith('data:')) {
+  if (url.startsWith('blob:') || url.startsWith('data:')) {
+    return url;
+  }
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    if (url.includes('localhost') || url.includes('127.0.0.1')) {
+      const cleaned = url.replace(/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/shrim_predict_api)?/i, '');
+      return cleaned.startsWith('/') ? cleaned : `/${cleaned}`;
+    }
     return url;
   }
   const cleanPath = url.startsWith('/') ? url : `/${url}`;
   if (cleanPath.startsWith('/shrim_predict_api')) {
-    return `http://localhost${cleanPath}`;
+    return cleanPath.replace(/^\/shrim_predict_api/, '');
   }
-  if (cleanPath.startsWith('/backend')) {
-    return `http://localhost/shrim_predict_api${cleanPath}`;
-  }
-  return `http://localhost/shrim_predict_api/backend/${cleanPath.replace(/^\/+/, '')}`;
+  return cleanPath;
 };
 
 const feedingTimes = ['6:00 AM', '9:00 AM', '12:00 PM', '3:00 PM', '6:00 PM'];
@@ -122,6 +126,8 @@ export default function MyPondPage() {
   const suppressAutoTrayPromptRef = useRef(false);
   const trayPromptOpenRef = useRef(false);
   const justSubmittedRef = useRef(false);
+  const hasJustSubmittedFeedRef = useRef(false);
+
 
   const [dbPonds, setDbPonds] = useState([]);
   const [selectedPondId, setSelectedPondId] = useState('');
@@ -915,22 +921,16 @@ export default function MyPondPage() {
       html: `
         <div style="text-align:left; font-family: inherit;">
           <p class="text-secondary small mb-3">
-            Inspect all 4 check trays in <strong>${selectedPond?.pond_name || 'this pond'}</strong> following the <strong>${previousTime}</strong> feeding (<strong>${baseKg.toFixed(2)} kg</strong>):
+            Inspect all 4 check trays in <strong>${selectedPond?.pond_name || 'this pond'}</strong>:
           </p>
           <div class="tray-options d-flex flex-column gap-2 mb-3">
-            <label id="lbl-tray-leftover" for="opt_tray_leftover" class="p-3 rounded-3 border d-flex align-items-start gap-2.5 cursor-pointer bg-white text-dark shadow-xs" style="cursor: pointer; border-color: #EA580C !important;">
-              <input type="radio" name="tray_status" id="opt_tray_leftover" value="leftover" checked style="margin-top: 3px; accent-color: #EA580C; width: 18px; height: 18px;" />
-              <div>
-                <strong class="d-block" style="color: #EA580C !important; font-size: 0.95rem;">Unconsumed Feed Detected</strong>
-                <span class="text-muted extra-small">Feed residue remains on check trays. <strong>Reduce feed by 2 kg (-2.0 kg)</strong> &rarr; Scheduled feed becomes <strong>${amountIfLeftoverKg.toFixed(2)} kg</strong> (${amountIfLeftoverGrams.toLocaleString()} g).</span>
-              </div>
+            <label id="lbl-tray-leftover" for="opt_tray_leftover" class="p-3 rounded-3 border d-flex align-items-center gap-3 cursor-pointer bg-white text-dark shadow-xs" style="cursor: pointer; border: 2px solid #EA580C !important; transition: all 0.2s ease;">
+              <input type="radio" name="tray_status" id="opt_tray_leftover" value="leftover" checked style="accent-color: #EA580C; width: 18px; height: 18px; cursor: pointer;" />
+              <strong class="d-block" style="color: #EA580C !important; font-size: 0.95rem; font-weight: 700;">Unconsumed Feed Detected</strong>
             </label>
-            <label id="lbl-tray-consumed" for="opt_tray_consumed" class="p-3 rounded-3 border d-flex align-items-start gap-2.5 cursor-pointer bg-white text-dark shadow-xs" style="cursor: pointer;">
-              <input type="radio" name="tray_status" id="opt_tray_consumed" value="consumed" style="margin-top: 3px; accent-color: #0B2C5F; width: 18px; height: 18px;" />
-              <div>
-                <strong class="d-block text-dark" style="font-size: 0.95rem;">All 4 Check Trays Consumed</strong>
-                <span class="text-muted extra-small">Check trays are completely empty. <strong>Increase feed by 1 kg (+1.0 kg)</strong> &rarr; Scheduled feed becomes <strong>${amountIfConsumedKg.toFixed(2)} kg</strong> (${amountIfConsumedGrams.toLocaleString()} g).</span>
-              </div>
+            <label id="lbl-tray-consumed" for="opt_tray_consumed" class="p-3 rounded-3 border d-flex align-items-center gap-3 cursor-pointer bg-white text-dark shadow-xs" style="cursor: pointer; border: 1.5px solid #CBD5E1; transition: all 0.2s ease;">
+              <input type="radio" name="tray_status" id="opt_tray_consumed" value="consumed" style="accent-color: #0B2C5F; width: 18px; height: 18px; cursor: pointer;" />
+              <strong class="d-block text-dark" style="font-size: 0.95rem; font-weight: 700;">All 4 Check Trays Consumed</strong>
             </label>
           </div>
         </div>
@@ -940,8 +940,23 @@ export default function MyPondPage() {
         const l2 = document.getElementById('lbl-tray-consumed');
         const r1 = document.getElementById('opt_tray_leftover');
         const r2 = document.getElementById('opt_tray_consumed');
-        if (l1 && r1) l1.onclick = () => { r1.checked = true; };
-        if (l2 && r2) l2.onclick = () => { r2.checked = true; };
+        const updateStyles = () => {
+          if (r1 && r1.checked) {
+            if (l1) l1.style.border = '2px solid #EA580C';
+            if (l2) l2.style.border = '1.5px solid #CBD5E1';
+          } else if (r2 && r2.checked) {
+            if (l2) l2.style.border = '2px solid #0B2C5F';
+            if (l1) l1.style.border = '1.5px solid #CBD5E1';
+          }
+        };
+        if (l1 && r1) {
+          l1.onclick = () => { r1.checked = true; updateStyles(); };
+          r1.onchange = updateStyles;
+        }
+        if (l2 && r2) {
+          l2.onclick = () => { r2.checked = true; updateStyles(); };
+          r2.onchange = updateStyles;
+        }
       },
       showCancelButton: true,
       confirmButtonText: 'Confirm Tray Inspection',
@@ -1017,6 +1032,8 @@ export default function MyPondPage() {
   };
 
   useEffect(() => {
+    // Suppress automatic tray monitoring prompt immediately after submitting feed
+    if (hasJustSubmittedFeedRef.current || suppressAutoTrayPromptRef.current || justSubmittedRef.current) return;
     if (!selectedSlotRequiresMonitoring || !trayMonitoringKey || trayMonitoringBySlot[trayMonitoringKey]) return;
     if (submitting || trayPromptOpenRef.current || editingRecord) return;
 
@@ -1025,6 +1042,7 @@ export default function MyPondPage() {
       trayPromptOpenRef.current = false;
     });
   }, [selectedSlotRequiresMonitoring, trayMonitoringKey, trayMonitoringBySlot, submitting, editingRecord]);
+
 
   const handleSubmit = async () => {
     if (!selectedPond) return;
@@ -1172,6 +1190,7 @@ export default function MyPondPage() {
 
       suppressAutoTrayPromptRef.current = true;
       justSubmittedRef.current = true;
+      hasJustSubmittedFeedRef.current = true;
 
       if (typeof window !== 'undefined') {
         localStorage.setItem('shrim-feed-updated', String(Date.now()));
@@ -1183,15 +1202,22 @@ export default function MyPondPage() {
       await Swal.fire({
         icon: 'success',
         title: editingRecord ? 'Feeding Log Updated!' : 'Feeding Logged Successfully!',
-        text: `${amount.toFixed(2)}kg recorded for ${selectedPond.pond_name} on ${todayDateStr} (${form.feedingTime}). Returning to dashboard...`,
-        timer: 1600,
+        text: `${amount.toFixed(2)}kg recorded for ${selectedPond.pond_name} on ${todayDateStr} (${form.feedingTime}). Redirecting to dashboard...`,
+        timer: 1400,
         showConfirmButton: false,
+        customClass: {
+          popup: 'shrim-swal-popup',
+          title: 'shrim-swal-title',
+        },
       });
 
+      // Close all modals and reset edit state before navigating
+      Swal.close();
       setEditingRecord(null);
 
-      // Automatically return to dashboard after logging
+      // Directly redirect to dashboard
       navigate('/caretaker/dashboard', { replace: true });
+
     } catch (error) {
       const backendMessage = error.response?.data?.message || error.response?.data?.error || error.message || 'Unable to save feeding record.';
       console.error('Feeding save error', error);
