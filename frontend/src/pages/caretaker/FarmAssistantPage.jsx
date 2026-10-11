@@ -39,7 +39,7 @@ function AssistantChart({ chart }) {
       label: chart?.title || 'Farm data',
       data: safeArray(chart?.data).map((value) => Number(value || 0)),
       backgroundColor: '#F59E0B',
-      borderColor: '#0B2C5F',
+      borderColor: '#FC563C',
       borderWidth: 2,
       tension: 0.35,
     }],
@@ -63,7 +63,7 @@ function exportAssistantPdf(messages) {
     .filter((message) => message.role === 'assistant')
     .map((message) => `
       <section style="margin-bottom:18px;">
-        <h2 style="font-size:15px;color:#0B2C5F;margin:0 0 6px;">${message.intent || 'Assistant Response'}</h2>
+        <h2 style="font-size:15px;color:#FC563C;margin:0 0 6px;">${message.intent || 'Assistant Response'}</h2>
         <p style="margin:0 0 8px;line-height:1.5;">${message.answer || ''}</p>
         <strong>Recommendation:</strong>
         <p style="margin:4px 0 0;line-height:1.5;">${message.recommendation || ''}</p>
@@ -77,8 +77,8 @@ function exportAssistantPdf(messages) {
       <head>
         <title>ShrimPredict Caretaker AI Assistant Report</title>
         <style>
-          body { font-family: Arial, sans-serif; color: #10294A; padding: 28px; }
-          h1 { margin: 0 0 18px; color: #0B2C5F; }
+          body { font-family: Arial, sans-serif; color: #172A39; padding: 28px; }
+          h1 { margin: 0 0 18px; color: #FC563C; }
         </style>
       </head>
       <body>
@@ -154,13 +154,15 @@ export default function FarmAssistantPage() {
         <div className="col-xl-8">
           <div className="card border-0 shadow-sm">
             <div className="card-body p-0">
-              <div className="p-4 text-white" style={{ background: 'linear-gradient(135deg, #0B2C5F, #123E7A)' }}>
+              <div className="p-4 text-white" style={{ background: 'linear-gradient(135deg, #FC563C, #123E7A)' }}>
                 <div className="d-flex align-items-center gap-3">
                   <span className="rounded-circle bg-warning text-dark d-flex align-items-center justify-content-center" style={{ width: 42, height: 42 }}>
                     <FaRobot />
                   </span>
                   <div>
-                    <h5 className="fw-bold mb-0">ShrimPredict Assistant</h5>
+                    <h5 className="fw-bold mb-0">
+                      Shrimp<span style={{ color: '#FCD34D' }}>Predict</span> Assistant
+                    </h5>
                   </div>
                 </div>
               </div>

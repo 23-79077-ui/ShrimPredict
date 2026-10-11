@@ -9,8 +9,24 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
-    <script type="module" crossorigin src="/assets/index-DDg765o-.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-C5EEr2TC.css">
+    <script>
+      (function () {
+        try {
+          var pref = localStorage.getItem('shrim_theme_preference');
+          var theme;
+          if (pref === 'light' || pref === 'dark') {
+            theme = pref;
+          } else {
+            var hour = new Date().getHours();
+            theme = (hour >= 6 && hour < 18) ? 'light' : 'dark';
+          }
+          document.documentElement.setAttribute('data-theme', theme);
+          document.documentElement.setAttribute('data-bs-theme', theme);
+        } catch (e) {}
+      })();
+    </script>
+    <script type="module" crossorigin src="/assets/index-wMvyShOE.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-CQbrYeQ2.css">
   </head>
   <body>
     <div id="root"></div>

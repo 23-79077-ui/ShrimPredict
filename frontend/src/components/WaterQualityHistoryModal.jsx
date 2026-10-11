@@ -149,7 +149,7 @@ export default function WaterQualityHistoryModal({
           {/* Header */}
           <div
             className="p-3.5 px-4 text-white d-flex justify-content-between align-items-center flex-wrap gap-2"
-            style={{ background: 'linear-gradient(135deg, #071733 0%, #0B2C5F 60%, #0E3D7D 100%)' }}
+            style={{ background: 'linear-gradient(135deg, #172A39 0%, #FC563C 60%, #0E3D7D 100%)' }}
           >
             <div className="d-flex align-items-center gap-3">
               <div
@@ -157,7 +157,7 @@ export default function WaterQualityHistoryModal({
                 style={{
                   width: 42,
                   height: 42,
-                  background: 'linear-gradient(135deg, #0284C7 0%, #0369A1 100%)',
+                  background: 'linear-gradient(135deg, #FC563C 0%, #FC563C 100%)',
                   color: '#FFFFFF',
                   fontSize: '1.2rem',
                 }}
@@ -167,14 +167,14 @@ export default function WaterQualityHistoryModal({
               <div>
                 <div className="d-flex align-items-center gap-2 flex-wrap">
                   <h5 className="fw-extrabold mb-0 text-white tracking-tight">
-                    Water Quality Log History &amp; Backfill
+                    Water Quality Records &amp; Past Logs
                   </h5>
                   <span className="badge bg-info bg-opacity-25 text-white border border-info border-opacity-50 rounded-pill extra-small">
                     {pondName}
                   </span>
                 </div>
                 <p className="mb-0 text-white text-opacity-70 small">
-                  Review, edit past physical farm logsheets, and backfill historical water quality telemetry.
+                  Review, edit past paper logsheets, and add missed water quality records.
                 </p>
               </div>
             </div>
@@ -244,19 +244,19 @@ export default function WaterQualityHistoryModal({
           </div>
 
           {/* Table / Log List */}
-          <div className="modal-body p-3 p-lg-4" style={{ backgroundColor: '#F8FAFC', maxHeight: '68vh', overflowY: 'auto' }}>
+          <div className="modal-body p-3 p-lg-4" style={{ backgroundColor: '#E9E4E0', maxHeight: '68vh', overflowY: 'auto' }}>
             {loading ? (
               <div className="text-center py-5">
                 <div className="spinner-border text-primary" role="status" style={{ width: '2.5rem', height: '2.5rem' }}>
                   <span className="visually-hidden">Loading...</span>
                 </div>
-                <p className="text-muted small mt-2 mb-0">Retrieving historical telemetry logs for {pondName}...</p>
+                <p className="text-muted small mt-2 mb-0">Loading past water quality records for {pondName}...</p>
               </div>
             ) : filteredRecords.length === 0 ? (
               <div className="text-center py-5 bg-white rounded-4 border p-4">
                 <div
                   className="rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3"
-                  style={{ width: 56, height: 56, background: '#E0F2FE', color: '#0284C7', fontSize: '1.5rem' }}
+                  style={{ width: 56, height: 56, background: '#E0F2FE', color: '#FC563C', fontSize: '1.5rem' }}
                 >
                   <FaWater />
                 </div>
@@ -281,9 +281,9 @@ export default function WaterQualityHistoryModal({
                 )}
               </div>
             ) : (
-              <div className="table-responsive bg-white rounded-4 border shadow-xs overflow-hidden">
+              <div className="table-responsive bg-white rounded-4 border shadow-xs admin-scrollable-table-4rows" style={{ maxHeight: 290, overflowY: 'auto', border: '1.5px solid #CBD5E1' }}>
                 <table className="table table-hover align-middle mb-0">
-                  <thead style={{ backgroundColor: '#0B2C5F', color: '#FFFFFF' }}>
+                  <thead className="sticky-top shadow-xs" style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: '#FC563C', color: '#FFFFFF' }}>
                     <tr className="extra-small text-uppercase tracking-wider">
                       <th className="py-3 px-3">Record Date / Age</th>
                       <th className="py-3 px-2 text-center">DO (mg/L)</th>

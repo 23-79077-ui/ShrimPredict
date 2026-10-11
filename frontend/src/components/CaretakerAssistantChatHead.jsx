@@ -49,7 +49,7 @@ function ChatChart({ chart }) {
       label: chart?.title || 'Farm data',
       data: safeArray(chart?.data).map((value) => Number(value || 0)),
       backgroundColor: '#F59E0B',
-      borderColor: '#0B2C5F',
+      borderColor: '#FC563C',
       borderWidth: 2,
     }],
   }), [chart]);

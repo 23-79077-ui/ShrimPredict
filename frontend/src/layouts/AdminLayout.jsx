@@ -15,6 +15,9 @@ import {
   FaCog,
   FaSlidersH
 } from 'react-icons/fa';
+import { getEffectiveTheme, getThemePreference, setManualTheme, resetThemeToAuto } from '../utils/theme';
+import { useLanguage } from '../context/LanguageContext';
+import LanguageToggle from '../components/LanguageToggle';
 
 // Minimalist vector icons for the Top Dock Tabs
 const dockIcons = {
@@ -82,23 +85,26 @@ const dockIcons = {
 
 // Navigation Links for the Floating Top Dock
 const dockLinks = [
-  { to: '/admin/dashboard', label: 'Dashboard', icon: dockIcons.dashboard },
-  { to: '/admin/disease-reports', label: 'Disease Reports', icon: dockIcons.diseaseReports },
-  { to: '/admin/feeding', label: 'Feeding Logs', icon: dockIcons.feeding },
-  { to: '/admin/harvest', label: 'Harvest', icon: dockIcons.harvest },
-  { to: '/admin/ponds', label: 'Ponds', icon: dockIcons.ponds },
-  { to: '/admin/alerts', label: 'Alerts', icon: dockIcons.alerts },
-  { to: '/admin/users', label: 'Users', icon: dockIcons.users },
-  { to: '/admin/reports', label: 'Reports', icon: dockIcons.reports },
-  { to: '/admin/settings', label: 'Settings', icon: dockIcons.settings },
+  { to: '/admin/dashboard', key: 'nav.dashboard', label: 'Dashboard', icon: dockIcons.dashboard },
+  { to: '/admin/disease-reports', key: 'nav.diseaseReports', label: 'Disease Reports', icon: dockIcons.diseaseReports },
+  { to: '/admin/feeding', key: 'nav.feeding', label: 'Feeding Logs', icon: dockIcons.feeding },
+  { to: '/admin/harvest', key: 'nav.harvest', label: 'Harvest', icon: dockIcons.harvest },
+  { to: '/admin/ponds', key: 'nav.ponds', label: 'Ponds', icon: dockIcons.ponds },
+  { to: '/admin/alerts', key: 'nav.alerts', label: 'Alerts', icon: dockIcons.alerts },
+  { to: '/admin/users', key: 'nav.users', label: 'Users', icon: dockIcons.users },
+  { to: '/admin/reports', key: 'nav.reports', label: 'Reports', icon: dockIcons.reports },
+  { to: '/admin/settings', key: 'nav.settings', label: 'Settings', icon: dockIcons.settings },
 ];
 
 export default function AdminLayout() {
   const { logout, user } = useAuth();
+  const { t, isFilipino } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [theme, setTheme] = useState(() => localStorage.getItem('shrim_theme') || 'light');
+  const [theme, setTheme] = useState(() => getEffectiveTheme());
+  const [themePreference, setThemePreference] = useState(() => getThemePreference());
+  const isAuto = themePreference === 'auto';
   const [unreadCount, setUnreadCount] = useState(0);
   const [recentNotifs, setRecentNotifs] = useState([]);
   const [showNotifMenu, setShowNotifMenu] = useState(false);
@@ -113,19 +119,22 @@ export default function AdminLayout() {
 
   const handleToggleTheme = () => {
     const nextTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(nextTheme);
-    localStorage.setItem('shrim_theme', nextTheme);
-    document.documentElement.setAttribute('data-theme', nextTheme);
-    document.documentElement.setAttribute('data-bs-theme', nextTheme);
-    if (nextTheme === 'dark') {
-      document.body.classList.add('dark-theme');
-      document.body.classList.remove('light-theme');
-    } else {
-      document.body.classList.add('light-theme');
-      document.body.classList.remove('dark-theme');
-    }
-    window.dispatchEvent(new CustomEvent('shrim-theme-changed', { detail: { theme: nextTheme } }));
+    setManualTheme(nextTheme);
   };
+
+  const handleResetToAuto = (e) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+    resetThemeToAuto();
+  };
+
+  useEffect(() => {
+    const handleThemeEvent = (e) => {
+      if (e.detail?.theme) setTheme(e.detail.theme);
+      if (e.detail?.preference !== undefined) setThemePreference(e.detail.preference);
+    };
+    window.addEventListener('shrim-theme-changed', handleThemeEvent);
+    return () => window.removeEventListener('shrim-theme-changed', handleThemeEvent);
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -267,7 +276,7 @@ export default function AdminLayout() {
               />
               <div>
                 <span className="fw-extrabold text-white tracking-tight d-block" style={{ fontSize: '1.18rem', letterSpacing: '-0.02em', lineHeight: 1.15 }}>
-                  Shrimp<span style={{ color: '#FF7B38' }}>Predict</span>
+                  Shrimp<span style={{ color: '#FC563C' }}>Predict</span>
                 </span>
                 <span className="d-block text-white-50" style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.04em', lineHeight: 1, marginTop: 2 }}>
                   O & B AQUAFARM
@@ -279,7 +288,7 @@ export default function AdminLayout() {
               className="badge rounded-pill extra-small fw-bold d-none d-sm-inline-block px-2.5 py-1"
               style={{
                 backgroundColor: 'rgba(255, 255, 255, 0.15)',
-                color: '#38BDF8',
+                color: '#FC563C',
                 border: '1px solid rgba(56, 189, 248, 0.4)',
                 fontSize: '0.72rem',
                 letterSpacing: '0.06em'
@@ -291,12 +300,15 @@ export default function AdminLayout() {
             {/* Live Operational Pulse Indicator */}
             <span className="dock-live-indicator d-none d-md-inline-flex align-items-center gap-1.5">
               <span className="pulse-dot"></span>
-              <span>Admin Active</span>
+              <span>{t('common.adminActive', 'Admin Active')}</span>
             </span>
           </div>
 
-          {/* 2. Utility Controls Cluster (Clock, Theme, Notifications, User) */}
+          {/* 2. Utility Controls Cluster (Clock, Language, Theme, Notifications, User) */}
           <div className="d-flex align-items-center gap-2 flex-shrink-0">
+            {/* Language Switcher Pill */}
+            <LanguageToggle isDark={true} />
+
             {/* Real-time Clock & Date Pill */}
             <div
               className="d-none d-sm-flex align-items-center gap-2 px-3 py-1.5 rounded-pill border text-white extra-small"
@@ -307,26 +319,79 @@ export default function AdminLayout() {
                 borderColor: 'rgba(255, 255, 255, 0.2)'
               }}
             >
-              <FaClock size={11} style={{ color: '#38BDF8' }} />
+              <FaClock size={11} style={{ color: '#FC563C' }} />
               <span className="fw-bold font-mono text-white">{clockDigits}</span>
               <span className="opacity-40 text-white">•</span>
               <span className="fw-semibold text-white-50">{formattedDate}</span>
             </div>
 
-            {/* Theme Toggle Pill */}
+            {/* Theme Toggle Pill & Auto Reset */}
+            {!isAuto && (
+              <button
+                type="button"
+                onClick={handleResetToAuto}
+                className="btn btn-sm rounded-pill d-inline-flex align-items-center gap-1.5 shadow-xs px-2.5 py-1"
+                style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                  border: '1px solid rgba(255, 255, 255, 0.25)',
+                  color: '#FFFFFF',
+                  fontSize: '0.74rem',
+                  fontWeight: 600,
+                  transition: 'all 0.2s ease',
+                  height: 38,
+                  cursor: 'pointer',
+                }}
+                title={t('common.autoSchedule', 'Reset to Auto Schedule: 6 AM–6 PM Light, 6 PM–6 AM Dark')}
+                aria-label="Reset to Auto Theme Schedule"
+              >
+                <FaClock size={11} style={{ color: '#FC563C' }} />
+                <span>{t('common.auto', 'Auto')}</span>
+              </button>
+            )}
+
             <button
               type="button"
-              className="btn border rounded-pill d-flex align-items-center justify-content-center p-0"
+              className="btn border rounded-pill position-relative d-flex align-items-center justify-content-center p-0"
               style={{
                 width: 38,
                 height: 38,
                 backgroundColor: 'rgba(255, 255, 255, 0.12)',
-                borderColor: 'rgba(255, 255, 255, 0.2)'
+                borderColor: 'rgba(255, 255, 255, 0.2)',
+                transition: 'all 0.2s ease',
+                cursor: 'pointer',
               }}
               onClick={handleToggleTheme}
-              title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`}
+              title={
+                isAuto
+                  ? `Theme: Auto (${theme === 'dark' ? 'Dark mode 6 PM–6 AM' : 'Light mode 6 AM–6 PM'}) • Click to set ${theme === 'dark' ? 'Light' : 'Dark'} mode`
+                  : `Theme: ${theme === 'dark' ? 'Dark' : 'Light'} (Manual) • Click to switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`
+              }
+              aria-label={
+                isAuto
+                  ? `Theme is Auto. Click to switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode.`
+                  : `Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`
+              }
             >
               {theme === 'dark' ? <FaSun size={13} className="text-warning" /> : <FaMoon size={12} className="text-white" />}
+              {isAuto && (
+                <span
+                  className="position-absolute d-flex align-items-center justify-content-center rounded-circle"
+                  style={{
+                    bottom: -2,
+                    right: -2,
+                    width: 14,
+                    height: 14,
+                    backgroundColor: '#FC563C',
+                    color: '#FFFFFF',
+                    fontSize: 8,
+                    fontWeight: 700,
+                    boxShadow: '0 0 4px rgba(0,0,0,0.3)',
+                  }}
+                  title="Auto Day/Night Mode (6am–6pm Light, 6pm–6am Dark)"
+                >
+                  <FaClock size={8} />
+                </span>
+              )}
             </button>
 
             {/* Notifications Dropdown Pill */}
@@ -366,22 +431,22 @@ export default function AdminLayout() {
                 >
                   <div
                     className="p-3 px-3.5 d-flex align-items-center justify-content-between text-white"
-                    style={{ background: 'linear-gradient(135deg, #071733 0%, #0B2C5F 55%, #0E3D7D 100%)' }}
+                    style={{ background: 'linear-gradient(135deg, #172A39 0%, #203A4F 100%)' }}
                   >
                     <div className="d-flex align-items-center gap-2">
                       <FaBell size={13} />
-                      <span className="fw-bold small">Pond Incident Feed</span>
+                      <span className="fw-bold small">{t('Pond Incident Feed')}</span>
                     </div>
                     <div className="d-flex align-items-center gap-2">
                       <span className="badge bg-white text-dark rounded-pill extra-small px-2 py-0.5">
-                        {unreadCount} Active
+                        {unreadCount} {t('Active')}
                       </span>
                       {unreadCount > 0 && (
                         <button
                           type="button"
                           className="btn btn-sm btn-link text-white p-0 text-decoration-none extra-small opacity-80 hover-opacity-100"
                           onClick={handleMarkAllRead}
-                          title="Mark all as read"
+                          title={t('Mark all as read')}
                         >
                           <FaCheckDouble size={11} />
                         </button>
@@ -393,7 +458,7 @@ export default function AdminLayout() {
                     {recentNotifs.length === 0 ? (
                       <div className="p-4 text-center text-muted">
                         <FaBell size={24} className="opacity-20 mb-2" />
-                        <p className="mb-0 extra-small">No new incident telemetry alerts.</p>
+                        <p className="mb-0 extra-small">{t('No new incident telemetry alerts.')}</p>
                       </div>
                     ) : (
                       recentNotifs.map((n) => (
@@ -419,8 +484,8 @@ export default function AdminLayout() {
                           <p className="text-muted mb-1 extra-small" style={{ fontSize: '0.75rem', lineHeight: 1.4 }}>
                             {n.message}
                           </p>
-                          <span className="fw-bold extra-small" style={{ color: '#FF7A00', fontSize: '0.72rem' }}>
-                            View Telemetry Details →
+                          <span className="fw-bold extra-small" style={{ color: '#FC563C', fontSize: '0.72rem' }}>
+                            {t('View Telemetry Details →')}
                           </span>
                         </div>
                       ))
@@ -431,13 +496,13 @@ export default function AdminLayout() {
                     <button
                       type="button"
                       className="btn btn-link btn-sm text-decoration-none fw-semibold p-0 extra-small"
-                      style={{ color: '#0284C7' }}
+                      style={{ color: '#FC563C' }}
                       onClick={() => {
                         setShowNotifMenu(false);
                         navigate('/admin/alerts');
                       }}
                     >
-                      All Farm Notifications →
+                      {t('All Farm Notifications →')}
                     </button>
                   </div>
                 </div>
@@ -462,7 +527,7 @@ export default function AdminLayout() {
                     width: 28,
                     height: 28,
                     fontSize: '0.72rem',
-                    background: 'linear-gradient(135deg, #0284C7 0%, #FF7A00 100%)'
+                    background: 'linear-gradient(135deg, #FC563C 0%, #6E7575 100%)'
                   }}
                 >
                   {(user?.full_name || 'Admin').slice(0, 2).toUpperCase()}
@@ -472,7 +537,7 @@ export default function AdminLayout() {
                     {user?.full_name || 'Administrator'}
                   </span>
                   <span className="text-white-50" style={{ fontSize: '0.64rem', fontWeight: 600 }}>
-                    Admin
+                    {t('Admin')}
                   </span>
                 </div>
               </button>
@@ -499,14 +564,14 @@ export default function AdminLayout() {
                       navigate('/admin/settings');
                     }}
                   >
-                    <FaCog size={12} className="text-primary" /> Settings &amp; Preferences
+                    <FaCog size={12} className="text-primary" /> {t('common.settings', 'Settings & Preferences')}
                   </button>
                   <button
                     type="button"
                     className="dropdown-item rounded-2 small py-1.5 text-danger d-flex align-items-center gap-2"
                     onClick={handleLogout}
                   >
-                    <FaSignOutAlt size={12} /> Log Out
+                    <FaSignOutAlt size={12} /> {t('common.logout', 'Log Out')}
                   </button>
                 </div>
               )}
@@ -528,18 +593,18 @@ export default function AdminLayout() {
         <div className="top-dock-divider d-none d-lg-block" />
 
         {/* Tier 2: Floating Dock Navigation Tabs (Spacious, Dedicated Full-Width Row) */}
-        <nav className="top-dock-nav-row d-none d-lg-flex align-items-center gap-2 flex-nowrap overflow-x-auto w-100 py-0.5">
+        <nav className="top-dock-nav-row d-none d-lg-flex align-items-center justify-content-between flex-nowrap overflow-x-auto w-100 py-0.5">
           {dockLinks.map((link) => (
             <NavLink
               key={link.to}
               to={link.to}
               className={({ isActive }) => `dock-nav-pill ${isActive ? 'active' : ''}`}
             >
-              <span className="opacity-80">{link.icon}</span>
-              <span>{link.label}</span>
+              <span className="opacity-80 flex-shrink-0">{link.icon}</span>
+              <span className="text-nowrap">{t(link.key, link.label)}</span>
               {link.to === '/admin/alerts' && unreadCount > 0 && (
                 <span
-                  className="badge rounded-pill"
+                  className="badge rounded-pill flex-shrink-0"
                   style={{
                     backgroundColor: '#F43F5E',
                     color: '#FFFFFF',
@@ -567,7 +632,7 @@ export default function AdminLayout() {
                   onClick={() => setShowMobileNav(false)}
                 >
                   <span>{link.icon}</span>
-                  <span>{link.label}</span>
+                  <span>{t(link.key, link.label)}</span>
                   {link.to === '/admin/alerts' && unreadCount > 0 && (
                     <span
                       className="badge rounded-pill bg-danger text-white ms-1"
@@ -586,7 +651,7 @@ export default function AdminLayout() {
     </div>
 
       {/* MAIN PAGE CONTENT (Full Width Responsive Canvas) */}
-      <main className="container-fluid px-3 px-md-4 px-xl-5 pb-5" style={{ maxWidth: '100%', width: '100%' }}>
+      <main className="container-fluid px-3 px-md-4 px-xl-5 pt-3 pt-md-4 pb-5" style={{ maxWidth: '100%', width: '100%' }}>
         <Outlet />
       </main>
     </div>

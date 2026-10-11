@@ -32,6 +32,7 @@ import {
 } from 'react-icons/fa';
 import api, { safeArray } from '../../services/api';
 import Swal from 'sweetalert2';
+import { useLanguage } from '../../context/LanguageContext';
 
 // Helper to format string to Title Case
 function toTitleCase(str) {
@@ -46,20 +47,21 @@ function toTitleCase(str) {
 // Avatar Gradient Color Palette Generator
 function getAvatarBg(user) {
   if (user.role === 'admin') {
-    return 'linear-gradient(135deg, #071733 0%, #0B2C5F 100%)';
+    return 'linear-gradient(135deg, #172A39 0%, #203A4F 100%)';
   }
   const id = Number(user.id) || 1;
   const gradients = [
-    'linear-gradient(135deg, #0284C7 0%, #38BDF8 100%)',
+    'linear-gradient(135deg, #FC563C 0%, #FC563C 100%)',
     'linear-gradient(135deg, #16A34A 0%, #4ADE80 100%)',
-    'linear-gradient(135deg, #FF7A00 0%, #FBBF24 100%)',
-    'linear-gradient(135deg, #0B2C5F 0%, #0284C7 100%)',
+    'linear-gradient(135deg, #FC563C 0%, #FBBF24 100%)',
+    'linear-gradient(135deg, #FC563C 0%, #FC563C 100%)',
     'linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)'
   ];
   return gradients[id % gradients.length];
 }
 
 export default function UsersPage() {
+  const { t } = useLanguage();
   const [users, setUsers] = useState([]);
   const [ponds, setPonds] = useState([]);
   const [summary, setSummary] = useState({
@@ -245,7 +247,7 @@ export default function UsersPage() {
             icon: 'warning',
             title: 'Quota Reached',
             text: 'Maximum quota of 3 active production ponds per caretaker.',
-            confirmButtonColor: '#0B2C5F'
+            confirmButtonColor: '#FC563C'
           });
           return prev;
         }
@@ -292,20 +294,20 @@ export default function UsersPage() {
 
     if (!editingUser) {
       if (formData.password !== formData.confirm_password) {
-        Swal.fire({ icon: 'error', title: 'Password Mismatch', text: 'Passwords do not match. Please verify.', confirmButtonColor: '#0B2C5F' });
+        Swal.fire({ icon: 'error', title: 'Password Mismatch', text: 'Passwords do not match. Please verify.', confirmButtonColor: '#FC563C' });
         return;
       }
       if (formData.password.length < 6) {
-        Swal.fire({ icon: 'error', title: 'Weak Password', text: 'Password must be at least 6 characters.', confirmButtonColor: '#0B2C5F' });
+        Swal.fire({ icon: 'error', title: 'Weak Password', text: 'Password must be at least 6 characters.', confirmButtonColor: '#FC563C' });
         return;
       }
     } else if (formData.password) {
       if (formData.password !== formData.confirm_password) {
-        Swal.fire({ icon: 'error', title: 'Password Mismatch', text: 'New passwords do not match. Please verify.', confirmButtonColor: '#0B2C5F' });
+        Swal.fire({ icon: 'error', title: 'Password Mismatch', text: 'New passwords do not match. Please verify.', confirmButtonColor: '#FC563C' });
         return;
       }
       if (formData.password.length < 6) {
-        Swal.fire({ icon: 'error', title: 'Weak Password', text: 'New password must be at least 6 characters.', confirmButtonColor: '#0B2C5F' });
+        Swal.fire({ icon: 'error', title: 'Weak Password', text: 'New password must be at least 6 characters.', confirmButtonColor: '#FC563C' });
         return;
       }
     }
@@ -370,7 +372,7 @@ export default function UsersPage() {
         icon: 'error',
         title: editingUser ? 'Update Failed' : 'Registration Failed',
         text: errMsg,
-        confirmButtonColor: '#0B2C5F'
+        confirmButtonColor: '#FC563C'
       });
     } finally {
       setIsSaving(false);
@@ -434,7 +436,7 @@ export default function UsersPage() {
       icon: 'warning',
       showCancelButton: true,
       confirmButtonText: 'Yes, Archive Caretaker',
-      confirmButtonColor: '#FF7A00',
+      confirmButtonColor: '#FC563C',
       cancelButtonText: 'Cancel',
       preConfirm: () => {
         const reasonSelect = document.getElementById('archive-reason-select');
@@ -464,32 +466,23 @@ export default function UsersPage() {
   return (
     <div className="users-page-container pb-5" style={{ fontFamily: "'Poppins', sans-serif" }}>
       {/* 1. HERO INTELLIGENCE & CONTROL BANNER */}
-      <div className="user-hero-banner d-flex justify-content-between align-items-center flex-wrap gap-3">
+      <div className="disease-hero-banner d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
         <div className="d-flex align-items-center gap-3">
-          <div
-            className="rounded-circle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0"
-            style={{
-              width: 52,
-              height: 52,
-              background: 'linear-gradient(135deg, #0B2C5F 0%, #0284C7 100%)',
-              color: '#FFFFFF',
-              fontSize: '1.35rem'
-            }}
-          >
+          <div className="hero-icon-badge shadow-xs">
             <FaUsers />
           </div>
           <div>
             <div className="d-flex align-items-center gap-2 flex-wrap">
-              <h4 className="fw-extrabold text-dark mb-0 tracking-tight" style={{ letterSpacing: '-0.02em' }}>
-                Team & Caretaker Operations
-              </h4>
+              <h3 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#FC563C', fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
+                {t('Team & Caretaker Operations')}
+              </h3>
               <span className="tag-green-safe d-inline-flex align-items-center gap-1">
                 <span className="rounded-circle" style={{ width: 6, height: 6, background: '#16A34A' }}></span>
-                Role-Based Access Active
+                {t('Role-Based Access Active')}
               </span>
             </div>
             <p className="text-muted mb-0 small" style={{ fontSize: '0.84rem' }}>
-              Manage farm supervisor credentials, assign active production basins, and audit caretaker telemetry records.
+              {t('Manage farm supervisor credentials, assign active production basins, and audit caretaker telemetry records.')}
             </p>
           </div>
         </div>
@@ -502,7 +495,7 @@ export default function UsersPage() {
             style={{ fontSize: '0.82rem', height: 40 }}
             onClick={loadUsers}
           >
-            <FaSync size={11} className={loading ? 'fa-spin me-1.5' : 'me-1.5'} /> Refresh
+            <FaSync size={11} className={loading ? 'fa-spin me-1.5' : 'me-1.5'} /> {t('Refresh')}
           </button>
 
           <button
@@ -511,7 +504,7 @@ export default function UsersPage() {
             style={{ fontSize: '0.82rem', height: 40 }}
             onClick={handleExportCSV}
           >
-            <FaFileCsv size={12} className="me-1.5" /> Export CSV
+            <FaFileCsv size={12} className="me-1.5" /> {t('Export CSV')}
           </button>
 
           <button
@@ -520,7 +513,7 @@ export default function UsersPage() {
             style={{ height: 40, fontSize: '0.82rem' }}
             onClick={openCreateModal}
           >
-            <FaPlus size={12} className="me-1.5" /> Register Caretaker
+            <FaPlus size={12} className="me-1.5" /> {t('+ Add New User')}
           </button>
         </div>
       </div>
@@ -528,27 +521,27 @@ export default function UsersPage() {
       {/* 2. 4 TRI-COLOR OPERATIONAL TELEMETRY CARDS */}
       <div className="row g-3 g-xl-4 mb-4">
         {/* Card 1: Total Users */}
-        <div className="col-12 col-sm-6 col-md-3">
+        <div className="col-12 col-sm-6 col-xl-3">
           <div className="tri-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Total Directory</span>
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">{t('Total Directory')}</span>
                 <div className="tri-kpi-icon tri-kpi-icon-blue">
                   <FaUsers size={17} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#0B2C5F', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+              <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
                 {summary.total_users}
               </h2>
             </div>
             <div>
               <div className="tri-progress-track my-2.5">
-                <div className="tri-progress-bar" style={{ width: '100%', background: 'linear-gradient(90deg, #0B2C5F, #1E3A8A)' }} />
+                <div className="tri-progress-bar" style={{ width: '100%', background: 'linear-gradient(90deg, #FC563C, #172A39)' }} />
               </div>
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small">Active Accounts</span>
-                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(11, 44, 95, 0.06)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.15)' }}>
-                  All Personnel
+                <span className="text-muted extra-small">{t('Active Accounts')}</span>
+                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.06)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.15)' }}>
+                  {t('All Personnel')}
                 </span>
               </div>
             </div>
@@ -556,27 +549,27 @@ export default function UsersPage() {
         </div>
 
         {/* Card 2: Admins */}
-        <div className="col-12 col-sm-6 col-md-3">
+        <div className="col-12 col-sm-6 col-xl-3">
           <div className="tri-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">System Admins</span>
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">{t('System Admins')}</span>
                 <div className="tri-kpi-icon tri-kpi-icon-blue">
                   <FaUserShield size={17} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#0B2C5F', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+              <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
                 {summary.admin_count}
               </h2>
             </div>
             <div>
               <div className="tri-progress-track my-2.5">
-                <div className="tri-progress-bar" style={{ width: summary.total_users > 0 ? `${(summary.admin_count / summary.total_users) * 100}%` : '40%', background: 'linear-gradient(90deg, #0B2C5F, #1E3A8A)' }} />
+                <div className="tri-progress-bar" style={{ width: summary.total_users > 0 ? `${(summary.admin_count / summary.total_users) * 100}%` : '40%', background: 'linear-gradient(90deg, #FC563C, #172A39)' }} />
               </div>
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small">Root Access</span>
-                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(11, 44, 95, 0.06)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.15)' }}>
-                  Full Authority
+                <span className="text-muted extra-small">{t('Root Access')}</span>
+                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.06)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.15)' }}>
+                  {t('Full Authority')}
                 </span>
               </div>
             </div>
@@ -584,27 +577,27 @@ export default function UsersPage() {
         </div>
 
         {/* Card 3: Caretakers */}
-        <div className="col-12 col-sm-6 col-md-3">
+        <div className="col-12 col-sm-6 col-xl-3">
           <div className="tri-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Field Caretakers</span>
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">{t('Field Caretakers')}</span>
                 <div className="tri-kpi-icon tri-kpi-icon-orange">
                   <FaUserTie size={17} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#EA580C', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+              <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
                 {summary.caretaker_count}
               </h2>
             </div>
             <div>
-              <div className="tri-progress-track my-2.5" style={{ backgroundColor: 'rgba(234, 88, 12, 0.1)' }}>
-                <div className="tri-progress-bar" style={{ width: summary.total_users > 0 ? `${(summary.caretaker_count / summary.total_users) * 100}%` : '60%', background: 'linear-gradient(90deg, #EA580C, #F97316)' }} />
+              <div className="tri-progress-track my-2.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.1)' }}>
+                <div className="tri-progress-bar" style={{ width: summary.total_users > 0 ? `${(summary.caretaker_count / summary.total_users) * 100}%` : '60%', background: 'linear-gradient(90deg, #FC563C, #F97316)' }} />
               </div>
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small">Basin Supervisors</span>
-                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: '#FFF7ED', color: '#EA580C', border: '1px solid rgba(234, 88, 12, 0.25)' }}>
-                  Field Operations
+                <span className="text-muted extra-small">{t('Basin Supervisors')}</span>
+                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: '#E9E4E0', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.25)' }}>
+                  {t('Field Operations')}
                 </span>
               </div>
             </div>
@@ -612,16 +605,16 @@ export default function UsersPage() {
         </div>
 
         {/* Card 4: Active Accounts */}
-        <div className="col-12 col-sm-6 col-md-3">
+        <div className="col-12 col-sm-6 col-xl-3">
           <div className="tri-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Operational Health</span>
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">{t('Operational Health')}</span>
                 <div className="tri-kpi-icon tri-kpi-icon-blue">
                   <FaCheckCircle size={17} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#0B2C5F', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+              <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
                 {summary.active_count}
               </h2>
             </div>
@@ -630,9 +623,9 @@ export default function UsersPage() {
                 <div className="tri-progress-bar" style={{ width: '100%', background: 'linear-gradient(90deg, #16A34A, #22C55E)' }} />
               </div>
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small">Zero Locked</span>
+                <span className="text-muted extra-small">{t('Zero Locked')}</span>
                 <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: '#F0FDF4', color: '#16A34A', border: '1px solid #BBF7D0' }}>
-                  100% Operational
+                  {t('100% Operational')}
                 </span>
               </div>
             </div>
@@ -644,57 +637,57 @@ export default function UsersPage() {
       <AdminFilterToolbar
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
-        searchPlaceholder="Search user name, email, or phone..."
+        searchPlaceholder={t('Search user name, email, or phone...')}
         showFilters={true}
         onExportCSV={handleExportCSV}
         onRefresh={loadUsers}
         loading={loading}
         tabs={[
-          { id: 'All', label: 'All Personnel', count: users.length },
-          { id: 'admin', label: 'Admins', count: summary.admin_count },
-          { id: 'caretaker', label: 'Caretakers', count: summary.caretaker_count }
+          { id: 'All', label: t('All Personnel'), count: users.length },
+          { id: 'admin', label: t('Admins'), count: summary.admin_count },
+          { id: 'caretaker', label: t('Caretakers'), count: summary.caretaker_count }
         ]}
         activeTab={roleFilter}
         onTabChange={setRoleFilter}
         metaRight={
           <>
-            Access Control: <strong>Enterprise User Management</strong>
+            {t('Access Control:')} <strong>{t('Enterprise User Management')}</strong>
           </>
         }
         filterFields={[
           {
-            label: 'Account Status',
+            label: t('Account Status'),
             type: 'select',
             value: statusFilter,
             onChange: setStatusFilter,
             colClass: 'col-12 col-md-3',
             options: [
-              { value: 'All', label: 'All Statuses' },
-              { value: 'Active', label: 'Active' },
-              { value: 'Inactive', label: 'Inactive' }
+              { value: 'All', label: t('All Statuses') },
+              { value: 'Active', label: t('Active') },
+              { value: 'Inactive', label: t('Inactive') }
             ]
           },
           {
-            label: 'Assigned Pond',
+            label: t('Assigned Pond'),
             type: 'select',
             value: pondFilter,
             onChange: setPondFilter,
             colClass: 'col-12 col-md-3',
             options: [
-              { value: 'All', label: 'All Assigned Ponds' },
+              { value: 'All', label: t('All Assigned Ponds') },
               ...ponds.map((p) => ({ value: p.id, label: p.pond_name }))
             ]
           },
           {
-            label: 'Sort Sequence',
+            label: t('Sort Sequence'),
             type: 'select',
             value: sortBy,
             onChange: setSortBy,
             colClass: 'col-12 col-md-3',
             options: [
-              { value: 'newest', label: 'Newest First' },
-              { value: 'name', label: 'Name (A - Z)' },
-              { value: 'role', label: 'Role Classification' }
+              { value: 'newest', label: t('Newest First') },
+              { value: 'name', label: t('Name (A - Z)') },
+              { value: 'role', label: t('Role Classification') }
             ]
           }
         ]}
@@ -711,40 +704,41 @@ export default function UsersPage() {
       <div className="tri-card p-4">
         <div className="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
           <div>
-            <h5 className="fw-extrabold text-dark mb-0 tracking-tight">System Personnel Directory</h5>
+            <h5 className="fw-extrabold text-dark mb-0 tracking-tight">{t('System Personnel Directory')}</h5>
             <p className="text-muted small mb-0" style={{ fontSize: '0.82rem' }}>
-              Authorized administrator profiles and operational field farm caretakers.
+              {t('Authorized administrator profiles and operational field farm caretakers.')}
             </p>
           </div>
           <span className="tag-cyan-active">
-            Showing {sortedUsers.length} of {users.length} Users
+            {t('Showing')} {sortedUsers.length} {t('of')} {users.length} {t('Users')}
           </span>
         </div>
 
         <div className="table-responsive rounded-4 border" style={{ maxHeight: '560px', overflowY: 'auto' }}>
           {loading ? (
             <div className="text-center py-5 text-muted">
-              <FaSync className="fa-spin text-primary me-2" /> Loading System Personnel Directory...
+              <FaSync className="fa-spin text-primary me-2" /> {t('Loading System Personnel Directory...')}
             </div>
           ) : sortedUsers.length === 0 ? (
-            <div className="text-center py-5 text-muted">No personnel records found matching filter criteria.</div>
+            <div className="text-center py-5 text-muted">{t('No personnel records found matching filter criteria.')}</div>
           ) : (
-            <table className="table tri-table align-middle mb-0" style={{ fontSize: '0.85rem' }}>
-              <thead style={{ position: 'sticky', top: 0, zIndex: 5, background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                <tr className="text-muted extra-small text-uppercase fw-bold">
-                  <th className="border-0 ps-3 py-3" style={{ minWidth: 220 }}>User Profile</th>
-                  <th className="border-0 py-3" style={{ minWidth: 190 }}>Contact Email</th>
-                  <th className="border-0 py-3" style={{ minWidth: 140 }}>Mobile Number</th>
-                  <th className="border-0 py-3" style={{ minWidth: 120 }}>Access Role</th>
-                  <th className="border-0 py-3" style={{ minWidth: 110 }}>Status</th>
-                  <th className="border-0 py-3" style={{ minWidth: 200 }}>Assigned Basins</th>
-                  <th className="border-0 pe-3 py-3 text-end text-nowrap" style={{ width: '1%' }}>Actions</th>
+            <div className="table-responsive admin-scrollable-table-4rows" style={{ maxHeight: 215, overflowY: 'auto' }}>
+              <table className="table tri-table align-middle mb-0" style={{ fontSize: '0.85rem' }}>
+              <thead className="admin-sticky-thead" style={{ position: 'sticky', top: 0, zIndex: 5 }}>
+                <tr className="extra-small text-uppercase fw-bold">
+                  <th className="ps-3 py-3" style={{ minWidth: 220 }}>{t('User Profile')}</th>
+                  <th className="py-3" style={{ minWidth: 190 }}>{t('Contact Email')}</th>
+                  <th className="py-3" style={{ minWidth: 140 }}>{t('Mobile Number')}</th>
+                  <th className="py-3" style={{ minWidth: 120 }}>{t('Access Role')}</th>
+                  <th className="py-3" style={{ minWidth: 110 }}>{t('Status')}</th>
+                  <th className="py-3" style={{ minWidth: 200 }}>{t('Assigned Basins')}</th>
+                  <th className="pe-3 py-3 text-end text-nowrap" style={{ width: '1%' }}>{t('Actions')}</th>
                 </tr>
               </thead>
               <tbody>
                 {sortedUsers.map((user) => {
                   const formattedName = toTitleCase(user.full_name);
-                  const roleSubtitle = user.role === 'admin' ? 'System Administrator' : 'Pond Caretaker';
+                  const roleSubtitle = user.role === 'admin' ? t('System Administrator') : t('Pond Caretaker');
 
                   return (
                     <tr key={user.id} className="border-bottom">
@@ -790,17 +784,17 @@ export default function UsersPage() {
                           className="badge rounded-pill fw-bold px-2.5 py-1"
                           style={
                             user.role === 'admin'
-                              ? { background: 'rgba(11, 44, 95, 0.08)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.2)' }
-                              : { background: '#F0F9FF', color: '#0284C7', border: '1px solid #BAE6FD' }
+                              ? { background: 'rgba(252, 86, 60, 0.08)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.2)' }
+                              : { background: '#F0F9FF', color: '#FC563C', border: '1px solid #BAE6FD' }
                           }
                         >
                           {user.role === 'admin' ? (
                             <>
-                              <FaUserShield className="me-1" size={11} /> Admin
+                              <FaUserShield className="me-1" size={11} /> {t('Admin')}
                             </>
                           ) : (
                             <>
-                              <FaUserTie className="me-1" size={11} /> Caretaker
+                              <FaUserTie className="me-1" size={11} /> {t('Caretaker')}
                             </>
                           )}
                         </span>
@@ -815,7 +809,7 @@ export default function UsersPage() {
                               : { background: '#FFF1F2', color: '#E11D48', border: '1px solid #FECDD3' }
                           }
                         >
-                          {user.status === 'Active' ? 'Active' : 'Inactive'}
+                          {user.status === 'Active' ? t('Active') : t('Inactive')}
                         </span>
                       </td>
 
@@ -827,7 +821,7 @@ export default function UsersPage() {
                               <span
                                 key={p.id}
                                 className="badge rounded-pill fw-bold px-2.5 py-1"
-                                style={{ background: '#F0F9FF', color: '#0284C7', border: '1px solid #BAE6FD', fontSize: '0.75rem' }}
+                                style={{ background: '#F0F9FF', color: '#FC563C', border: '1px solid #BAE6FD', fontSize: '0.75rem' }}
                               >
                                 <FaWater className="me-1" size={10} /> {p.pond_name}
                               </span>
@@ -836,12 +830,12 @@ export default function UsersPage() {
                         ) : user.pond_name ? (
                           <span
                             className="badge rounded-pill fw-bold px-2.5 py-1"
-                            style={{ background: '#F0F9FF', color: '#0284C7', border: '1px solid #BAE6FD', fontSize: '0.75rem' }}
+                            style={{ background: '#F0F9FF', color: '#FC563C', border: '1px solid #BAE6FD', fontSize: '0.75rem' }}
                           >
                             <FaWater className="me-1" size={10} /> {user.pond_name}
                           </span>
                         ) : (
-                          <span className="text-muted extra-small italic">— Unassigned</span>
+                          <span className="text-muted extra-small italic">— {t('Unassigned')}</span>
                         )}
                       </td>
 
@@ -852,8 +846,8 @@ export default function UsersPage() {
                           <button
                             type="button"
                             className="btn btn-sm rounded-circle d-inline-flex align-items-center justify-content-center p-0 shadow-xs"
-                            style={{ width: 34, height: 34, background: '#F0F9FF', color: '#0284C7', border: '1px solid #BAE6FD' }}
-                            title="Inspect Profile & Telemetry Performance"
+                            style={{ width: 34, height: 34, background: '#F0F9FF', color: '#FC563C', border: '1px solid #BAE6FD' }}
+                            title={t('Inspect Profile & Telemetry Performance')}
                             onClick={() => setViewingUser(user)}
                           >
                             <FaEye size={13} />
@@ -863,8 +857,8 @@ export default function UsersPage() {
                           <button
                             type="button"
                             className="btn btn-sm rounded-circle d-inline-flex align-items-center justify-content-center p-0 shadow-xs"
-                            style={{ width: 34, height: 34, background: '#F8FAFC', color: '#475569', border: '1px solid #E2E8F0' }}
-                            title="Edit User Credentials & Basin Assignments"
+                            style={{ width: 34, height: 34, background: '#E9E4E0', color: '#475569', border: '1px solid #E2E8F0' }}
+                            title={t('Edit User Credentials & Basin Assignments')}
                             onClick={() => openEditModal(user)}
                           >
                             <FaEdit size={13} />
@@ -876,8 +870,8 @@ export default function UsersPage() {
                               <button
                                 type="button"
                                 className="btn btn-sm rounded-circle d-inline-flex align-items-center justify-content-center p-0 shadow-xs"
-                                style={{ width: 34, height: 34, background: '#FFF7ED', color: '#EA580C', border: '1px solid #FFEDD5' }}
-                                title="Archive Caretaker (Resigned / Inactive)"
+                                style={{ width: 34, height: 34, background: '#E9E4E0', color: '#FC563C', border: '1px solid #6E7575' }}
+                                title={t('Archive Caretaker (Resigned / Inactive)')}
                                 onClick={() => handleArchiveCaretaker(user)}
                               >
                                 <FaCalendarCheck size={12} />
@@ -886,7 +880,7 @@ export default function UsersPage() {
                                 type="button"
                                 className="btn btn-sm rounded-circle d-inline-flex align-items-center justify-content-center p-0 shadow-xs"
                                 style={{ width: 34, height: 34, background: '#FFF1F2', color: '#E11D48', border: '1px solid #FECDD3' }}
-                                title="Delete Caretaker Account"
+                                title={t('Delete Caretaker Account')}
                                 onClick={() => handleDeleteUser(user)}
                               >
                                 <FaTrashAlt size={12} />
@@ -900,7 +894,8 @@ export default function UsersPage() {
                 })}
               </tbody>
             </table>
-          )}
+          </div>
+        )}
         </div>
       </div>
 
@@ -922,7 +917,7 @@ export default function UsersPage() {
                       width: 48,
                       height: 48,
                       background: 'rgba(255, 122, 0, 0.18)',
-                      color: '#FF7A00',
+                      color: '#FC563C',
                       fontSize: '1.25rem',
                       border: '1px solid rgba(255, 122, 0, 0.35)'
                     }}
@@ -931,10 +926,10 @@ export default function UsersPage() {
                   </div>
                   <div>
                     <h5 className="fw-extrabold text-white mb-0 tracking-tight" style={{ fontSize: '1.2rem' }}>
-                      {editingUser ? 'Update Caretaker Credentials' : 'Register New Caretaker'}
+                      {editingUser ? t('Update Caretaker Credentials') : t('Register New Caretaker')}
                     </h5>
                     <p className="text-white text-opacity-75 mb-0 small" style={{ fontSize: '0.8rem' }}>
-                      Assign field basin permissions and configure mobile telemetry credentials.
+                      {t('Assign field basin permissions and configure mobile telemetry credentials.')}
                     </p>
                   </div>
                 </div>
@@ -956,13 +951,13 @@ export default function UsersPage() {
                   {/* Section 1: Personal & Contact Information */}
                   <div className="mb-4">
                     <span className="extra-small text-muted text-uppercase fw-bold tracking-wider d-block mb-2">
-                      1. Personal & Contact Details
+                      {t('1. Personal & Contact Details')}
                     </span>
 
                     <div className="row g-3">
                       {/* Full Name */}
                       <div className="col-12 col-md-6">
-                        <label className="form-label small fw-bold text-dark mb-1">Full Name</label>
+                        <label className="form-label small fw-bold text-dark mb-1">{t('Full Name')}</label>
                         <div className="input-icon-group">
                           <input
                             type="text"
@@ -978,7 +973,7 @@ export default function UsersPage() {
 
                       {/* Phone Number */}
                       <div className="col-12 col-md-6">
-                        <label className="form-label small fw-bold text-dark mb-1">Mobile Contact</label>
+                        <label className="form-label small fw-bold text-dark mb-1">{t('Mobile Contact')}</label>
                         <div className="input-icon-group">
                           <input
                             type="text"
@@ -993,7 +988,7 @@ export default function UsersPage() {
 
                       {/* Email Address */}
                       <div className="col-12">
-                        <label className="form-label small fw-bold text-dark mb-1">Email Address</label>
+                        <label className="form-label small fw-bold text-dark mb-1">{t('Email Address')}</label>
                         <div className="input-icon-group">
                           <input
                             type="email"
@@ -1012,13 +1007,13 @@ export default function UsersPage() {
                   {/* Section 2: Security Credentials / Status */}
                   <div className="mb-4 pt-3 border-top">
                     <span className="extra-small text-muted text-uppercase fw-bold tracking-wider d-block mb-2">
-                      2. Security & Account Status
+                      {t('2. Security & Account Status')}
                     </span>
 
                     {!editingUser ? (
                       <div className="row g-3">
                         <div className="col-12 col-md-6">
-                          <label className="form-label small fw-bold text-dark mb-1">Password</label>
+                          <label className="form-label small fw-bold text-dark mb-1">{t('Password')}</label>
                           <div className="input-icon-group">
                             <input
                               type="password"
@@ -1034,7 +1029,7 @@ export default function UsersPage() {
                         </div>
 
                         <div className="col-12 col-md-6">
-                          <label className="form-label small fw-bold text-dark mb-1">Confirm Password</label>
+                          <label className="form-label small fw-bold text-dark mb-1">{t('Confirm Password')}</label>
                           <div className="input-icon-group">
                             <input
                               type="password"
@@ -1052,19 +1047,19 @@ export default function UsersPage() {
                     ) : (
                       <div className="row g-3">
                         <div className="col-12 col-md-4">
-                          <label className="form-label small fw-bold text-dark mb-1">Account Operational Status</label>
+                          <label className="form-label small fw-bold text-dark mb-1">{t('Account Operational Status')}</label>
                           <select
                             className="form-select form-control"
                             value={formData.status}
                             onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                             style={{ borderRadius: 12, height: 42, fontSize: '0.88rem' }}
                           >
-                            <option value="Active">Active Operational</option>
-                            <option value="Inactive">Inactive Suspended</option>
+                            <option value="Active">{t('Active Operational')}</option>
+                            <option value="Inactive">{t('Inactive Suspended')}</option>
                           </select>
                         </div>
                         <div className="col-12 col-md-4">
-                          <label className="form-label small fw-bold text-dark mb-1">New Password (Optional)</label>
+                          <label className="form-label small fw-bold text-dark mb-1">{t('New Password (Optional)')}</label>
                           <div className="input-icon-group">
                             <input
                               type="password"
@@ -1078,7 +1073,7 @@ export default function UsersPage() {
                           </div>
                         </div>
                         <div className="col-12 col-md-4">
-                          <label className="form-label small fw-bold text-dark mb-1">Confirm New Password</label>
+                          <label className="form-label small fw-bold text-dark mb-1">{t('Confirm New Password')}</label>
                           <div className="input-icon-group">
                             <input
                               type="password"
@@ -1100,22 +1095,22 @@ export default function UsersPage() {
                     <div className="d-flex justify-content-between align-items-center mb-2">
                       <div>
                         <span className="extra-small text-muted text-uppercase fw-bold tracking-wider d-block">
-                          3. Pond Assignments
+                          {t('3. Pond Assignments')}
                         </span>
                         <p className="text-muted extra-small mb-0">
-                          Select up to 3 active production ponds this caretaker will monitor daily.
+                          {t('Select up to 3 active production ponds this caretaker will monitor daily.')}
                         </p>
                       </div>
                       <span
                         className="badge rounded-pill fw-bold"
                         style={{
-                          background: formData.selected_ponds.length === 3 ? '#FFF7ED' : '#F0F9FF',
-                          color: formData.selected_ponds.length === 3 ? '#EA580C' : '#0284C7',
-                          border: formData.selected_ponds.length === 3 ? '1px solid #FFEDD5' : '1px solid #BAE6FD',
+                          background: formData.selected_ponds.length === 3 ? '#E9E4E0' : '#F0F9FF',
+                          color: formData.selected_ponds.length === 3 ? '#FC563C' : '#FC563C',
+                          border: formData.selected_ponds.length === 3 ? '1px solid #6E7575' : '1px solid #BAE6FD',
                           fontSize: '0.78rem'
                         }}
                       >
-                        Selected: {formData.selected_ponds.length} / 3 Max
+                        {t('Selected:')} {formData.selected_ponds.length} / 3 {t('Max')}
                       </span>
                     </div>
 
@@ -1144,8 +1139,8 @@ export default function UsersPage() {
                                     style={{
                                       width: 32,
                                       height: 32,
-                                      background: isChecked ? '#0284C7' : isAssignedToOther ? '#E2E8F0' : 'rgba(2, 132, 199, 0.1)',
-                                      color: isChecked ? '#FFFFFF' : isAssignedToOther ? '#94A3B8' : '#0284C7'
+                                      background: isChecked ? '#FC563C' : isAssignedToOther ? '#E2E8F0' : 'rgba(2, 132, 199, 0.1)',
+                                      color: isChecked ? '#FFFFFF' : isAssignedToOther ? '#94A3B8' : '#FC563C'
                                     }}
                                   >
                                     <FaWater size={13} />
@@ -1155,7 +1150,7 @@ export default function UsersPage() {
                                       {displayName}
                                     </strong>
                                     <span className="extra-small text-muted" style={{ fontSize: '0.72rem' }}>
-                                      {isAssignedToOther ? `Assigned: ${assignedUserName}` : 'Active Basin'}
+                                      {isAssignedToOther ? `Assigned: ${assignedUserName}` : t('Active Basin')}
                                     </span>
                                   </div>
                                 </div>
@@ -1164,7 +1159,7 @@ export default function UsersPage() {
                                   {isAssignedToOther ? (
                                     <FaLock size={12} className="text-muted opacity-50" />
                                   ) : isChecked ? (
-                                    <FaCheckCircle size={16} style={{ color: '#0284C7' }} />
+                                    <FaCheckCircle size={16} style={{ color: '#FC563C' }} />
                                   ) : (
                                     <div
                                       className="rounded-circle border"
@@ -1192,7 +1187,7 @@ export default function UsersPage() {
                       setEditingUser(null);
                     }}
                   >
-                    Cancel
+                    {t('Cancel')}
                   </button>
 
                   <button
@@ -1200,7 +1195,7 @@ export default function UsersPage() {
                     disabled={isSaving}
                     className="btn btn-sm rounded-pill px-4 py-2 d-flex align-items-center gap-2 fw-bold text-white shadow-sm"
                     style={{
-                      background: 'linear-gradient(135deg, #0B2C5F 0%, #0284C7 100%)',
+                      background: 'linear-gradient(135deg, #FC563C 0%, #FC563C 100%)',
                       border: 'none',
                       fontSize: '0.85rem',
                       opacity: isSaving ? 0.7 : 1,
@@ -1210,12 +1205,12 @@ export default function UsersPage() {
                     {isSaving ? (
                       <>
                         <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                        <span>{editingUser ? 'Saving...' : 'Registering...'}</span>
+                        <span>{editingUser ? t('Saving...') : t('Registering...')}</span>
                       </>
                     ) : (
                       <>
                         <FaCheckCircle size={13} />
-                        {editingUser ? 'Save Changes' : 'Register Caretaker'}
+                        {editingUser ? t('Save Changes') : t('Register Caretaker')}
                       </>
                     )}
                   </button>
@@ -1253,11 +1248,11 @@ export default function UsersPage() {
                         className="badge rounded-pill fw-bold extra-small"
                         style={{ background: '#ECFDF5', color: '#16A34A', border: '1px solid #BBF7D0' }}
                       >
-                        {viewingUser.status || 'Active'}
+                        {viewingUser.status ? t(viewingUser.status) : t('Active')}
                       </span>
                     </div>
                     <p className="text-white text-opacity-75 mb-0 small" style={{ fontSize: '0.82rem' }}>
-                      Role: <strong>{viewingUser.role === 'admin' ? 'System Administrator' : 'Pond Caretaker'}</strong>
+                      {t('Role:')} <strong>{viewingUser.role === 'admin' ? t('System Administrator') : t('Pond Caretaker')}</strong>
                     </p>
                   </div>
                 </div>
@@ -1274,11 +1269,11 @@ export default function UsersPage() {
               {/* Modal Body */}
               <div className="modal-body p-4 bg-white">
                 {/* Basic Info Chips */}
-                <h6 className="fw-extrabold text-dark mb-3">User Profile Details</h6>
+                <h6 className="fw-extrabold text-dark mb-3">{t('User Profile Details')}</h6>
                 <div className="row g-2.5 mb-4">
                   <div className="col-12 col-md-4">
                     <div className="p-3 rounded-3 bg-light border">
-                      <span className="extra-small text-muted text-uppercase fw-bold d-block mb-1">Email Address</span>
+                      <span className="extra-small text-muted text-uppercase fw-bold d-block mb-1">{t('Email Address')}</span>
                       <strong className="text-dark small d-flex align-items-center gap-1.5" style={{ wordBreak: 'break-all' }}>
                         <FaEnvelope className="text-primary flex-shrink-0" /> {viewingUser.email}
                       </strong>
@@ -1287,7 +1282,7 @@ export default function UsersPage() {
 
                   <div className="col-12 col-md-4">
                     <div className="p-3 rounded-3 bg-light border">
-                      <span className="extra-small text-muted text-uppercase fw-bold d-block mb-1">Mobile Contact</span>
+                      <span className="extra-small text-muted text-uppercase fw-bold d-block mb-1">{t('Mobile Contact')}</span>
                       <strong className="text-dark small d-flex align-items-center gap-1.5">
                         <FaPhone className="text-primary flex-shrink-0" /> {viewingUser.phone || '09123456789'}
                       </strong>
@@ -1296,20 +1291,20 @@ export default function UsersPage() {
 
                   <div className="col-12 col-md-4">
                     <div className="p-3 rounded-3 bg-light border">
-                      <span className="extra-small text-muted text-uppercase fw-bold d-block mb-1">Assigned Basins</span>
+                      <span className="extra-small text-muted text-uppercase fw-bold d-block mb-1">{t('Assigned Basins')}</span>
                       <div className="d-flex flex-wrap gap-1 mt-1">
                         {viewingUser.assigned_ponds && viewingUser.assigned_ponds.length > 0 ? (
                           viewingUser.assigned_ponds.map((p) => (
-                            <span key={p.id} className="badge rounded-pill fw-bold" style={{ background: '#F0F9FF', color: '#0284C7', border: '1px solid #BAE6FD', fontSize: '0.72rem' }}>
+                            <span key={p.id} className="badge rounded-pill fw-bold" style={{ background: '#F0F9FF', color: '#FC563C', border: '1px solid #BAE6FD', fontSize: '0.72rem' }}>
                               <FaWater className="me-1" size={10} /> {p.pond_name}
                             </span>
                           ))
                         ) : viewingUser.pond_name ? (
-                          <span className="badge rounded-pill fw-bold" style={{ background: '#F0F9FF', color: '#0284C7', border: '1px solid #BAE6FD', fontSize: '0.72rem' }}>
+                          <span className="badge rounded-pill fw-bold" style={{ background: '#F0F9FF', color: '#FC563C', border: '1px solid #BAE6FD', fontSize: '0.72rem' }}>
                             <FaWater className="me-1" size={10} /> {viewingUser.pond_name}
                           </span>
                         ) : (
-                          <span className="text-muted extra-small">None Assigned</span>
+                          <span className="text-muted extra-small">{t('None Assigned')}</span>
                         )}
                       </div>
                     </div>
@@ -1321,7 +1316,7 @@ export default function UsersPage() {
                   <div className="p-4 rounded-4 bg-light border border-primary border-opacity-25 mb-2">
                     <div className="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
                       <h6 className="fw-extrabold text-primary mb-0 d-flex align-items-center gap-2">
-                        <FaChartLine /> Caretaker Telemetry & Performance
+                        <FaChartLine /> {t('Caretaker Telemetry & Performance')}
                       </h6>
                       <span className="text-warning fs-6">
                         <FaStar /> <FaStar /> <FaStar /> <FaStar /> <FaStar />
@@ -1332,42 +1327,42 @@ export default function UsersPage() {
                     <div className="row g-2.5 mb-3 text-center align-items-stretch">
                       <div className="col-6 col-md-2">
                         <div className="p-2.5 rounded-3 bg-white border h-100 d-flex flex-column justify-content-between">
-                          <span className="extra-small text-muted text-uppercase fw-bold d-block">Feed Logs</span>
+                          <span className="extra-small text-muted text-uppercase fw-bold d-block">{t('Feed Logs')}</span>
                           <strong className="fs-5 text-primary d-block mt-1">{viewingUser.performance.submitted_feeding_logs}</strong>
                         </div>
                       </div>
 
                       <div className="col-6 col-md-2">
                         <div className="p-2.5 rounded-3 bg-white border h-100 d-flex flex-column justify-content-between">
-                          <span className="extra-small text-muted text-uppercase fw-bold d-block">Disease Rep.</span>
+                          <span className="extra-small text-muted text-uppercase fw-bold d-block">{t('Disease Rep.')}</span>
                           <strong className="fs-5 text-dark d-block mt-1">{viewingUser.performance.disease_reports_submitted}</strong>
                         </div>
                       </div>
 
                       <div className="col-6 col-md-2">
                         <div className="p-2.5 rounded-3 bg-white border h-100 d-flex flex-column justify-content-between">
-                          <span className="extra-small text-muted text-uppercase fw-bold d-block">Images</span>
+                          <span className="extra-small text-muted text-uppercase fw-bold d-block">{t('Images')}</span>
                           <strong className="fs-5 text-dark d-block mt-1">{viewingUser.performance.shrimp_images_uploaded}</strong>
                         </div>
                       </div>
 
                       <div className="col-6 col-md-2">
                         <div className="p-2.5 rounded-3 bg-white border h-100 d-flex flex-column justify-content-between">
-                          <span className="extra-small text-muted text-uppercase fw-bold d-block">Activity</span>
-                          <strong className="small text-dark d-block mt-1 fw-bold">{viewingUser.performance.last_activity}</strong>
+                          <span className="extra-small text-muted text-uppercase fw-bold d-block">{t('Activity')}</span>
+                          <strong className="small text-dark d-block mt-1 fw-bold">{t(viewingUser.performance.last_activity)}</strong>
                         </div>
                       </div>
 
                       <div className="col-6 col-md-2">
                         <div className="p-2.5 rounded-3 bg-white border border-success h-100 d-flex flex-column justify-content-between">
-                          <span className="extra-small text-muted text-uppercase fw-bold d-block">Attendance</span>
+                          <span className="extra-small text-muted text-uppercase fw-bold d-block">{t('Attendance')}</span>
                           <strong className="fs-5 text-success d-block mt-1">{viewingUser.performance.attendance_pct}%</strong>
                         </div>
                       </div>
 
                       <div className="col-6 col-md-2">
                         <div className="p-2.5 rounded-3 bg-white border border-primary h-100 d-flex flex-column justify-content-between">
-                          <span className="extra-small text-muted text-uppercase fw-bold d-block">Score</span>
+                          <span className="extra-small text-muted text-uppercase fw-bold d-block">{t('Score')}</span>
                           <strong className="fs-5 text-primary d-block mt-1">{viewingUser.performance.performance_score}%</strong>
                         </div>
                       </div>
@@ -1377,20 +1372,20 @@ export default function UsersPage() {
                     <div className="d-flex flex-column gap-2.5">
                       <div>
                         <div className="d-flex justify-content-between small fw-bold text-dark mb-1">
-                          <span>Task Completion</span>
+                          <span>{t('Task Completion')}</span>
                           <span className="text-primary">{viewingUser.performance.breakdown.task_completion}%</span>
                         </div>
                         <div className="feeding-progress-track">
                           <div
                             className="feeding-progress-bar"
-                            style={{ width: `${viewingUser.performance.breakdown.task_completion}%`, background: '#0284C7' }}
+                            style={{ width: `${viewingUser.performance.breakdown.task_completion}%`, background: '#FC563C' }}
                           ></div>
                         </div>
                       </div>
 
                       <div>
                         <div className="d-flex justify-content-between small fw-bold text-dark mb-1">
-                          <span>Feeding Schedule Adherence</span>
+                          <span>{t('Feeding Schedule Adherence')}</span>
                           <span className="text-success">{viewingUser.performance.breakdown.feeding_logs}%</span>
                         </div>
                         <div className="feeding-progress-track">
@@ -1404,7 +1399,7 @@ export default function UsersPage() {
                   </div>
                 ) : (
                   <div className="p-3 rounded-3 bg-light text-center text-muted small">
-                    System Administrator Profile (Full Administrative Authority Active).
+                    {t('System Administrator Profile (Full Administrative Authority Active).')}
                   </div>
                 )}
               </div>
@@ -1416,14 +1411,14 @@ export default function UsersPage() {
                     <button
                       type="button"
                       className="btn btn-sm rounded-pill px-3 py-1.5 fw-semibold d-inline-flex align-items-center gap-1.5"
-                      style={{ background: '#F0F9FF', color: '#0284C7', border: '1px solid #BAE6FD' }}
+                      style={{ background: '#F0F9FF', color: '#FC563C', border: '1px solid #BAE6FD' }}
                       onClick={() => {
                         const userToEdit = viewingUser;
                         setViewingUser(null);
                         openEditModal(userToEdit);
                       }}
                     >
-                      <FaEdit size={12} /> Edit Account
+                      <FaEdit size={12} /> {t('Edit Account')}
                     </button>
                   )}
                 </div>
@@ -1432,7 +1427,7 @@ export default function UsersPage() {
                   className="btn btn-sm rounded-pill px-4 py-2 text-secondary fw-semibold border bg-white"
                   onClick={() => setViewingUser(null)}
                 >
-                  Close Profile
+                  {t('Close Profile')}
                 </button>
               </div>
             </div>

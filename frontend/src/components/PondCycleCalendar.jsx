@@ -399,7 +399,7 @@ export default function PondCycleCalendar({
           <div className="d-flex align-items-center gap-2">
             <span
               className="badge rounded-pill px-2.5 py-1 text-white fw-bold"
-              style={{ background: 'linear-gradient(135deg, #0284C7 0%, #0B2C5F 100%)', fontSize: '0.8rem' }}
+              style={{ background: 'linear-gradient(135deg, #FC563C 0%, #FC563C 100%)', fontSize: '0.8rem' }}
             >
               <FaWater className="me-1" /> {pondName}
             </span>
@@ -567,7 +567,7 @@ export default function PondCycleCalendar({
           }
 
           if (isSelected) {
-            border = '2.5px solid #FF7A00';
+            border = '2.5px solid #FC563C';
             bg = isTransferDay ? '#FEF3C7' : (isNursery ? '#DCFCE7' : (isGrowout ? '#DBEAFE' : '#F3F4F6'));
           }
 
@@ -599,10 +599,10 @@ export default function PondCycleCalendar({
                 {hasLogs && (
                   <span
                     className="d-inline-flex align-items-center gap-1 px-1.5 py-0.5 rounded-pill"
-                    style={{ backgroundColor: 'rgba(2, 132, 199, 0.12)', color: '#0284C7', fontSize: '0.65rem', fontWeight: 700 }}
+                    style={{ backgroundColor: 'rgba(2, 132, 199, 0.12)', color: '#FC563C', fontSize: '0.65rem', fontWeight: 700 }}
                     title="Feeding records logged on this date"
                   >
-                    <span className="rounded-circle" style={{ width: 6, height: 6, backgroundColor: '#0284C7' }}></span>
+                    <span className="rounded-circle" style={{ width: 6, height: 6, backgroundColor: '#FC563C' }}></span>
                     Logged
                   </span>
                 )}
@@ -653,7 +653,7 @@ export default function PondCycleCalendar({
                 ? '#EFF6FF'
                 : selectedInfo.stageTone === 'upcoming'
                 ? '#F9FAFB'
-                : '#F8FAFC',
+                : '#E9E4E0',
             borderColor:
               selectedInfo.stageTone === 'transfer'
                 ? '#FDE68A'
@@ -762,9 +762,9 @@ export default function PondCycleCalendar({
                 </div>
               </div>
 
-              <div className="table-responsive rounded-3 border bg-white shadow-xs" style={{ overflowX: 'auto', maxWidth: '100%' }}>
+              <div className="table-responsive rounded-3 bg-white shadow-xs admin-scrollable-table-4rows" style={{ overflowX: 'auto', maxWidth: '100%', maxHeight: 290, overflowY: 'auto', border: '1.5px solid #CBD5E1' }}>
                 <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.83rem', minWidth: '1050px', tableLayout: 'auto' }}>
-                  <thead className="table-light">
+                  <thead className="table-light sticky-top">
                     <tr className="text-muted extra-small text-uppercase">
                       <th className="ps-3 py-2.5" style={{ width: '130px', whiteSpace: 'nowrap' }}>Time Slot</th>
                       <th className="py-2.5" style={{ width: '160px', whiteSpace: 'nowrap' }}>Mass (Grams / Kg)</th>

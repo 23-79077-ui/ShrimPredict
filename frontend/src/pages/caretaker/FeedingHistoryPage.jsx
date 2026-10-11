@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { Line } from 'react-chartjs-2';
+import { Link } from 'react-router-dom';
+import { Line, Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
   Title,
   Tooltip,
   Legend,
@@ -17,6 +19,7 @@ ChartJS.register(
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
   Title,
   Tooltip,
   Legend,
@@ -51,10 +54,14 @@ import {
   FaListUl,
   FaUndo,
   FaCheck,
-  FaExclamationTriangle
+  FaExclamationTriangle,
+  FaChartLine,
+  FaChartBar
 } from 'react-icons/fa';
 import Swal from 'sweetalert2';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
+import { getEffectiveTheme } from '../../utils/theme';
 import api, { safeArray } from '../../services/api';
 import PondCycleCalendar from '../../components/PondCycleCalendar';
 
@@ -87,7 +94,16 @@ function normalizeSlot(timeStr) {
 }
 
 export default function FeedingHistoryPage() {
+  const { t, isFilipino } = useLanguage();
   const { user } = useAuth();
+
+  const [currentTheme, setCurrentTheme] = useState(() => getEffectiveTheme());
+  useEffect(() => {
+    const handleThemeChange = () => setCurrentTheme(getEffectiveTheme());
+    window.addEventListener('themeChanged', handleThemeChange);
+    return () => window.removeEventListener('themeChanged', handleThemeChange);
+  }, []);
+  const isDark = currentTheme === 'dark';
 
   const [dbPonds, setDbPonds] = useState([]);
   const [records, setRecords] = useState([]);
@@ -169,21 +185,33 @@ export default function FeedingHistoryPage() {
 
   const todayYMD = formatYMD(new Date());
 
+  // Integrated Analytics Hub States (Cumulative Growth + Daily Consumption)
+  const [analyticsTab, setAnalyticsTab] = useState('cumulative'); // 'cumulative' | 'consumption'
+  const [analyticsPondFilter, setAnalyticsPondFilter] = useState('all');
+  const [consumptionRange, setConsumptionRange] = useState('7days'); // 'todaySlots' | '7days' | '14days'
+  const [consumptionType, setConsumptionType] = useState('line'); // 'line' | 'bar'
+  const [consumptionUnit, setConsumptionUnit] = useState('auto'); // 'auto' | 'kg' | 'g'
+
+  // Keep analyticsPondFilter in sync when main pond filter is clicked
+  useEffect(() => {
+    setAnalyticsPondFilter(selectedPondFilter);
+  }, [selectedPondFilter]);
+
   // Active Pond for the Cumulative Feeding Trend Chart
   const activePondForChart = useMemo(() => {
-    if (selectedPondFilter !== 'all') {
-      return assignedPonds.find((p) => String(p.id) === String(selectedPondFilter)) || null;
+    if (analyticsPondFilter !== 'all') {
+      return assignedPonds.find((p) => String(p.id) === String(analyticsPondFilter)) || null;
     }
     return assignedPonds[0] || null;
-  }, [selectedPondFilter, assignedPonds]);
+  }, [analyticsPondFilter, assignedPonds]);
 
   // Cumulative Feed Trend Data for Caretaker's Pond
   const cumulativeTrendData = useMemo(() => {
-    const targetPondId = activePondForChart ? String(activePondForChart.id) : '';
-    const targetPondName = activePondForChart ? (activePondForChart.pond_name || '').toLowerCase().trim() : '';
+    const targetPondId = (analyticsPondFilter !== 'all' && activePondForChart) ? String(activePondForChart.id) : '';
+    const targetPondName = (analyticsPondFilter !== 'all' && activePondForChart) ? (activePondForChart.pond_name || '').toLowerCase().trim() : '';
 
     const pondRecords = records.filter((r) => {
-      if (!activePondForChart) return true;
+      if (analyticsPondFilter === 'all') return true;
       const rId = String(r.pond_id || '');
       const rName = (r.pond_name || '').toLowerCase().trim();
       return (targetPondId && rId === targetPondId) || (targetPondName && rName === targetPondName);
@@ -254,14 +282,16 @@ export default function FeedingHistoryPage() {
   }, [cumulativeTrendData]);
 
   const caretakerChartData = useMemo(() => {
-    const pondName = activePondForChart?.pond_name || 'Assigned Basin';
+    const pondName = analyticsPondFilter === 'all'
+      ? 'All Assigned Basins'
+      : (activePondForChart?.pond_name || 'Assigned Basin');
     return {
       labels: cumulativeTrendData.map((d) => d.axisLabel),
       datasets: [
         {
           label: `${pondName} Cumulative Feed (kg)`,
           data: cumulativeTrendData.map((d) => d.cumulativeKg),
-          borderColor: '#0284C7',
+          borderColor: '#FC563C',
           backgroundColor: (context) => {
             const ctx = context.chart?.ctx;
             if (!ctx) return 'rgba(2, 132, 199, 0.22)';
@@ -272,7 +302,7 @@ export default function FeedingHistoryPage() {
           },
           fill: true,
           tension: 0.35,
-          pointBackgroundColor: cumulativeTrendData.map((d) => (d.isToday ? '#EA580C' : '#0284C7')),
+          pointBackgroundColor: cumulativeTrendData.map((d) => (d.isToday ? '#FC563C' : '#FC563C')),
           pointBorderColor: '#ffffff',
           pointBorderWidth: 2,
           pointRadius: cumulativeTrendData.map((d) => (d.isToday ? 7 : 5)),
@@ -281,7 +311,7 @@ export default function FeedingHistoryPage() {
         },
       ],
     };
-  }, [cumulativeTrendData, activePondForChart]);
+  }, [cumulativeTrendData, activePondForChart, analyticsPondFilter]);
 
   const caretakerChartOptions = useMemo(() => ({
     responsive: true,
@@ -290,7 +320,7 @@ export default function FeedingHistoryPage() {
     plugins: {
       legend: { display: false },
       tooltip: {
-        backgroundColor: '#0B2C5F',
+        backgroundColor: '#FC563C',
         titleColor: '#FFFFFF',
         bodyColor: '#FFFFFF',
         padding: 12,
@@ -301,7 +331,7 @@ export default function FeedingHistoryPage() {
             if (!items.length) return '';
             const idx = items[0].dataIndex;
             const d = cumulativeTrendData[idx];
-            const pName = activePondForChart?.pond_name || 'Assigned Basin';
+            const pName = analyticsPondFilter === 'all' ? 'All Basins' : (activePondForChart?.pond_name || 'Assigned Basin');
             return `${pName} • ${d ? d.label : items[0].label}${d?.isToday ? ' (TODAY)' : ''}`;
           },
           label: (context) => {
@@ -317,19 +347,234 @@ export default function FeedingHistoryPage() {
     },
     scales: {
       y: {
-        grid: { color: 'rgba(11, 44, 95, 0.06)' },
+        grid: { color: 'rgba(252, 86, 60, 0.06)' },
         ticks: { color: '#64748B', font: { size: 11 }, callback: (val) => `${val} kg` },
         beginAtZero: true,
       },
       x: {
-        grid: { display: true, color: 'rgba(11, 44, 95, 0.08)', borderDash: [4, 4] },
+        grid: { display: true, color: 'rgba(252, 86, 60, 0.08)', borderDash: [4, 4] },
         ticks: {
-          color: (ctx) => (cumulativeTrendData[ctx.index]?.isToday ? '#0284C7' : '#334155'),
+          color: (ctx) => (cumulativeTrendData[ctx.index]?.isToday ? '#FC563C' : '#334155'),
           font: (ctx) => ({ size: 11, weight: cumulativeTrendData[ctx.index]?.isToday ? 'bold' : '600' }),
         },
       },
     },
-  }), [cumulativeTrendData, activePondForChart]);
+  }), [cumulativeTrendData, activePondForChart, analyticsPondFilter]);
+
+  // FEEDING CONSUMPTION CHART DATA & TELEMETRY (MOVED FROM DASHBOARD)
+  const consumptionChartData = useMemo(() => {
+    // 1. Hourly Slots for Today Mode
+    if (consumptionRange === 'todaySlots') {
+      const slots = STANDARD_SLOTS;
+      const slotGrams = slots.map((time) => {
+        const matching = records.filter((r) => {
+          const rDate = formatYMD(r.record_date || r.created_at || '');
+          const matchesDate = rDate === todayYMD;
+          const matchesTime = normalizeSlot(r.feeding_time) === normalizeSlot(time);
+          const matchesPond = analyticsPondFilter === 'all'
+            ? assignedPonds.some((p) => String(p.id) === String(r.pond_id))
+            : String(r.pond_id) === String(analyticsPondFilter);
+          return matchesDate && matchesTime && matchesPond;
+        });
+        return matching.reduce((sum, r) => {
+          const grams = (r.amount_grams != null && Number(r.amount_grams) > 0)
+            ? Number(r.amount_grams)
+            : ((parseFloat(r.amount_kg) || 0) * 1000);
+          return sum + grams;
+        }, 0);
+      });
+
+      const totalGrams = slotGrams.reduce((a, b) => a + b, 0);
+      const totalKg = totalGrams / 1000;
+      const peakGrams = Math.max(0, ...slotGrams);
+      const peakIndex = slotGrams.indexOf(peakGrams);
+      const peakLabel = peakGrams > 0 ? slots[peakIndex] : 'None';
+      const peakKg = peakGrams / 1000;
+
+      const useGrams = consumptionUnit === 'g' || (consumptionUnit === 'auto' && totalKg < 1.0);
+      const displayData = useGrams
+        ? slotGrams.map((g) => Math.round(g * 10) / 10)
+        : slotGrams.map((g) => Number((g / 1000).toFixed(3)));
+
+      return {
+        labels: slots,
+        unit: useGrams ? 'g' : 'kg',
+        datasets: [
+          {
+            label: analyticsPondFilter === 'all'
+              ? 'All Assigned Basins'
+              : (assignedPonds.find((p) => String(p.id) === String(analyticsPondFilter))?.pond_name || 'Selected Basin'),
+            data: displayData,
+            borderColor: '#FC563C',
+            backgroundColor: consumptionType === 'bar' ? '#FC563C' : 'rgba(252, 86, 60, 0.08)',
+            pointBackgroundColor: '#FC563C',
+            pointBorderColor: '#FFFFFF',
+            pointBorderWidth: 2,
+            pointRadius: 5,
+            pointHoverRadius: 7,
+            borderWidth: 2.5,
+            tension: 0.35,
+            fill: consumptionType === 'line',
+          },
+        ],
+        totalKg,
+        totalGrams,
+        avgDailyKg: totalKg,
+        avgDailyGrams: totalGrams,
+        peakLabel,
+        peakKg,
+        peakGrams,
+        dataPointsCount: slotGrams.filter((v) => v > 0).length,
+      };
+    }
+
+    // 2. Multi-Day Range Mode (7 or 14 Days)
+    const daysCount = consumptionRange === '14days' ? 14 : 7;
+    const dateList = [];
+    const ref = new Date();
+
+    for (let i = daysCount - 1; i >= 0; i--) {
+      const d = new Date(ref);
+      d.setDate(ref.getDate() - i);
+      dateList.push(formatYMD(d));
+    }
+
+    const labels = dateList.map((dStr) => {
+      const dObj = new Date(dStr + 'T00:00:00');
+      return isNaN(dObj.getTime()) ? dStr : dObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    });
+
+    const dailyGrams = dateList.map((dStr) => {
+      const matching = records.filter((r) => {
+        const rDate = formatYMD(r.record_date || r.created_at || '');
+        const matchesDate = rDate === dStr;
+        const matchesPond = analyticsPondFilter === 'all'
+          ? assignedPonds.some((p) => String(p.id) === String(r.pond_id))
+          : String(r.pond_id) === String(analyticsPondFilter);
+        return matchesDate && matchesPond;
+      });
+      return matching.reduce((sum, r) => {
+        const grams = (r.amount_grams != null && Number(r.amount_grams) > 0)
+          ? Number(r.amount_grams)
+          : ((parseFloat(r.amount_kg) || 0) * 1000);
+        return sum + grams;
+      }, 0);
+    });
+
+    const totalGrams = dailyGrams.reduce((a, b) => a + b, 0);
+    const totalKg = totalGrams / 1000;
+    const nonZeroDays = dailyGrams.filter((v) => v > 0).length;
+    const avgDailyGrams = daysCount > 0 ? totalGrams / daysCount : 0;
+    const avgDailyKg = avgDailyGrams / 1000;
+    const peakGrams = Math.max(0, ...dailyGrams);
+    const peakIndex = dailyGrams.indexOf(peakGrams);
+    const peakLabel = peakGrams > 0 ? labels[peakIndex] : 'None';
+    const peakKg = peakGrams / 1000;
+
+    const useGrams = consumptionUnit === 'g' || (consumptionUnit === 'auto' && peakKg < 1.5);
+    const displayData = useGrams
+      ? dailyGrams.map((g) => Math.round(g * 10) / 10)
+      : dailyGrams.map((g) => Number((g / 1000).toFixed(3)));
+
+    return {
+      labels,
+      unit: useGrams ? 'g' : 'kg',
+      datasets: [
+        {
+          label: analyticsPondFilter === 'all'
+            ? 'All Assigned Basins'
+            : (assignedPonds.find((p) => String(p.id) === String(analyticsPondFilter))?.pond_name || 'Selected Basin'),
+          data: displayData,
+          borderColor: '#FC563C',
+          backgroundColor: consumptionType === 'bar' ? '#FC563C' : 'rgba(252, 86, 60, 0.08)',
+          pointBackgroundColor: '#FC563C',
+          pointBorderColor: '#FFFFFF',
+          pointBorderWidth: 2,
+          pointRadius: 5,
+          pointHoverRadius: 7,
+          borderWidth: 2.5,
+          tension: 0.35,
+          fill: consumptionType === 'line',
+        },
+      ],
+      totalKg,
+      totalGrams,
+      avgDailyKg,
+      avgDailyGrams,
+      peakLabel,
+      peakKg,
+      peakGrams,
+      dataPointsCount: nonZeroDays,
+    };
+  }, [consumptionRange, consumptionType, consumptionUnit, analyticsPondFilter, records, todayYMD, assignedPonds]);
+
+  const consumptionChartOptions = useMemo(() => {
+    const isGrams = consumptionChartData.unit === 'g';
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          labels: {
+            boxWidth: 10,
+            boxHeight: 10,
+            usePointStyle: true,
+            pointStyle: 'circle',
+            font: { family: "'Poppins', sans-serif", size: 12, weight: '600' },
+            color: '#FC563C',
+          },
+        },
+        tooltip: {
+          backgroundColor: '#172A39',
+          titleColor: '#FFFFFF',
+          bodyColor: '#FFFFFF',
+          borderColor: 'rgba(252, 86, 60, 0.5)',
+          borderWidth: 1,
+          padding: 10,
+          cornerRadius: 10,
+          titleFont: { family: "'Poppins', sans-serif", weight: 'bold', size: 12 },
+          bodyFont: { family: "'Poppins', sans-serif", size: 12 },
+          callbacks: {
+            label: (context) => {
+              const rawVal = Number(context.parsed.y || 0);
+              const grams = isGrams ? rawVal : rawVal * 1000;
+              const kg = isGrams ? rawVal / 1000 : rawVal;
+              return ` Feed: ${Math.round(grams).toLocaleString()} g (${kg.toFixed(3)} kg)`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: {
+            color: '#64748B',
+            font: { family: "'Poppins', sans-serif", size: 11, weight: '500' },
+          },
+        },
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: 'rgba(252, 86, 60, 0.05)',
+            drawBorder: false,
+          },
+          ticks: {
+            color: '#64748B',
+            font: { family: "'Poppins', sans-serif", size: 11 },
+            callback: (value) => isGrams ? `${value} g` : `${value} kg`,
+          },
+          title: {
+            display: true,
+            text: isGrams ? 'Feed Consumption (grams)' : 'Feed Consumption (kg)',
+            color: '#FC563C',
+            font: { family: "'Poppins', sans-serif", size: 11, weight: '600' },
+          },
+        },
+      },
+    };
+  }, [consumptionChartData.unit]);
 
   const loadHistory = useCallback(async (isManualRefresh = false) => {
     if (isManualRefresh) setRefreshing(true);
@@ -505,7 +750,7 @@ export default function FeedingHistoryPage() {
       text: `Are you sure you want to delete the ${record.feeding_time} record (${record.amount_kg}kg) on ${record.record_date} for ${record.pond_name || `Pond #${record.pond_id}`}?`,
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: '#EA580C',
+      confirmButtonColor: '#FC563C',
       cancelButtonColor: '#64748B',
       confirmButtonText: 'Yes, delete record',
       cancelButtonText: 'Cancel',
@@ -666,7 +911,7 @@ export default function FeedingHistoryPage() {
 
   // Dynamic Summary Metrics
   const selectedPond = assignedPonds.find((pond) => String(pond.id) === String(selectedPondFilter));
-  const currentScope = selectedPondFilter === 'all' ? 'All Assigned Basins' : selectedPond?.pond_name || 'Selected Pond';
+  const currentScope = selectedPondFilter === 'all' ? 'All Assigned Ponds' : selectedPond?.pond_name || 'Selected Pond';
 
   const totalFeedKg = filteredRecords.reduce((sum, record) => sum + (parseFloat(record.amount_kg) || 0), 0);
   const totalLogsCount = filteredRecords.length;
@@ -724,19 +969,19 @@ export default function FeedingHistoryPage() {
           <title>Feeding History Report - ShrimPredict</title>
           <style>
             body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; margin: 24px; color: #0F172A; background: #ffffff; }
-            .header-bar { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #0B2C5F; padding-bottom: 12px; margin-bottom: 16px; }
-            h2 { color: #0B2C5F; margin: 0 0 4px 0; font-size: 22px; font-weight: 800; }
+            .header-bar { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #FC563C; padding-bottom: 12px; margin-bottom: 16px; }
+            h2 { color: #FC563C; margin: 0 0 4px 0; font-size: 22px; font-weight: 800; }
             .subtext { color: #64748B; font-size: 13px; margin: 0; }
-            .meta-strip { display: flex; gap: 16px; background: #F8FAFD; padding: 12px 16px; border-radius: 10px; margin-bottom: 20px; border: 1px solid rgba(11, 44, 95, 0.12); font-size: 13px; }
+            .meta-strip { display: flex; gap: 16px; background: #E9E4E0; padding: 12px 16px; border-radius: 10px; margin-bottom: 20px; border: 1px solid rgba(252, 86, 60, 0.12); font-size: 13px; }
             .meta-strip div { flex: 1; }
-            .meta-strip strong { color: #0B2C5F; display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
-            .meta-strip span { font-size: 15px; font-weight: 700; color: #EA580C; }
+            .meta-strip strong { color: #FC563C; display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+            .meta-strip span { font-size: 15px; font-weight: 700; color: #FC563C; }
             table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
             th, td { border: 1px solid #CBD5E1; padding: 8px 12px; text-align: left; }
-            th { background-color: #0B2C5F; color: #FFFFFF; font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 0.04em; }
-            tr:nth-child(even) { background-color: #F8FAFC; }
-            .badge { background: #FFF7ED; color: #EA580C; border: 1px solid rgba(234, 88, 12, 0.25); padding: 2px 8px; border-radius: 9999px; font-weight: 700; font-size: 11px; display: inline-block; }
-            .badge-slot { background: rgba(11, 44, 95, 0.08); color: #0B2C5F; border: 1px solid rgba(11, 44, 95, 0.15); padding: 2px 8px; border-radius: 9999px; font-weight: 700; font-size: 11px; }
+            th { background-color: #FC563C; color: #FFFFFF; font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 0.04em; }
+            tr:nth-child(even) { background-color: #E9E4E0; }
+            .badge { background: #E9E4E0; color: #FC563C; border: 1px solid rgba(252, 86, 60, 0.25); padding: 2px 8px; border-radius: 9999px; font-weight: 700; font-size: 11px; display: inline-block; }
+            .badge-slot { background: rgba(252, 86, 60, 0.08); color: #FC563C; border: 1px solid rgba(252, 86, 60, 0.15); padding: 2px 8px; border-radius: 9999px; font-weight: 700; font-size: 11px; }
             .footer { margin-top: 32px; font-size: 11px; color: #94A3B8; text-align: center; border-top: 1px solid #E2E8F0; padding-top: 14px; }
           </style>
         </head>
@@ -744,9 +989,9 @@ export default function FeedingHistoryPage() {
           <div class="header-bar">
             <div>
               <h2>ShrimPredict • Caretaker Feeding Activity Log</h2>
-              <p class="subtext">O&amp;B Aqua Farm Production Telemetry • Generated on ${new Date().toLocaleString()}</p>
+              <p class="subtext">O&amp;B Aqua Farm Feeding Records • Generated on ${new Date().toLocaleString()}</p>
             </div>
-            <div style="text-align: right; color: #0B2C5F; font-weight: 800; font-size: 13px;">
+            <div style="text-align: right; color: #FC563C; font-weight: 800; font-size: 13px;">
               Tri-Color Field Protocol
             </div>
           </div>
@@ -760,7 +1005,7 @@ export default function FeedingHistoryPage() {
             <thead>
               <tr>
                 <th>Date</th>
-                <th>Pond Basin</th>
+                <th>Pond</th>
                 <th>Slot Time</th>
                 <th>Feed Mass</th>
                 <th>Product Formulation</th>
@@ -808,15 +1053,28 @@ export default function FeedingHistoryPage() {
 
   return (
     <div className="caretaker-history-hub">
-      {/* HERO CONTROL STRIP (TRI-COLOR CLEAN: NAVY & WARM ORANGE) */}
-      <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-        <div>
-          <h2 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#0B2C5F', fontSize: '1.75rem', letterSpacing: '-0.03em' }}>
-            Feeding History &amp; Operations
-          </h2>
-          <p className="text-muted extra-small mb-0 mt-0.5">
-            Monitor daily feed consumption, 5-slot feeding adherence, DOC growth milestones, and vitamin additives.
-          </p>
+      {/* 1. EXECUTIVE HERO OPERATIONS BANNER */}
+      <div className="disease-hero-banner d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+        <div className="d-flex align-items-center gap-3">
+          <div className="hero-icon-badge shadow-xs">
+            <FaUtensils />
+          </div>
+          <div>
+            <div className="d-flex align-items-center gap-2 flex-wrap">
+              <h3 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#FC563C', fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
+                {t('hero.feedingHistory', 'Daily Feeding Records & Tray Logs')}
+              </h3>
+              <span
+                className="badge rounded-pill extra-small px-3 py-1 fw-bold"
+                style={{ backgroundColor: 'rgba(252, 86, 60, 0.08)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.16)' }}
+              >
+                ● {t('hero.feedingHistoryBadge', '5-Slot Schedule History')}
+              </span>
+            </div>
+            <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
+              {t('hero.feedingHistorySub', 'Monitor daily feeding amounts, 5 feeding times, shrimp age (DOC), and vitamin additives.')}
+            </p>
+          </div>
         </div>
 
         {/* Action Controls Cluster */}
@@ -829,8 +1087,8 @@ export default function FeedingHistoryPage() {
             disabled={refreshing}
             title="Sync Feeding Records with Farm Database"
           >
-            <FaSync size={11} className={refreshing ? 'fa-spin' : ''} style={{ color: '#0B2C5F' }} />
-            <span>{refreshing ? 'Syncing...' : 'Sync'}</span>
+            <FaSync size={11} className={refreshing ? 'fa-spin' : ''} style={{ color: '#FC563C' }} />
+            <span>{refreshing ? (isFilipino ? 'Nagsi-sync...' : 'Syncing...') : t('Sync')}</span>
           </button>
 
           {/* Pond Cycle Calendar Shortcut */}
@@ -841,9 +1099,9 @@ export default function FeedingHistoryPage() {
               const activePond = assignedPonds.find((p) => String(p.id) === String(selectedPondFilter)) || assignedPonds[0] || null;
               setCalendarModalPond(activePond);
             }}
-            title="Inspect Culture Cycle Calendar & Transfer Milestones"
+            title="View Pond Calendar & Growth Schedule"
           >
-            <FaCalendarAlt size={11} style={{ color: '#EA580C' }} />
+            <FaCalendarAlt size={11} style={{ color: '#FC563C' }} />
             <span>Pond Cycle Calendar</span>
           </button>
 
@@ -863,7 +1121,7 @@ export default function FeedingHistoryPage() {
             {showExportMenu && (
               <div
                 className="position-absolute end-0 mt-1 bg-white shadow-lg rounded-4 border py-1.5"
-                style={{ zIndex: 1050, minWidth: 180, borderColor: 'rgba(11, 44, 95, 0.12)' }}
+                style={{ zIndex: 1050, minWidth: 180, borderColor: 'rgba(252, 86, 60, 0.12)' }}
               >
                 <button
                   type="button"
@@ -882,17 +1140,6 @@ export default function FeedingHistoryPage() {
               </div>
             )}
           </div>
-
-          {/* Backfill / Log Feeding Button */}
-          <button
-            type="button"
-            className="btn btn-sm btn-tri-orange px-4 py-2 shadow-sm hover-lift"
-            onClick={() => handleOpenBackfill()}
-            title="Backfill or record farm feeding session"
-          >
-            <FaPlus size={11} />
-            <span>Log Feeding</span>
-          </button>
         </div>
       </div>
 
@@ -900,8 +1147,8 @@ export default function FeedingHistoryPage() {
       {assignedPonds.length > 0 && (
         <div className="mb-4">
           <div className="d-flex align-items-center gap-2 flex-wrap tri-pond-pill-strip">
-            <span className="extra-small fw-bold text-uppercase tracking-wider me-1" style={{ color: '#0B2C5F', fontSize: '0.72rem' }}>
-              <FaWater className="me-1 text-primary" size={11} /> Filter Basin:
+            <span className="extra-small fw-bold text-uppercase tracking-wider me-1" style={{ color: '#FC563C', fontSize: '0.72rem' }}>
+              <FaWater className="me-1 text-primary" size={11} /> Select Pond:
             </span>
 
             {/* "All Ponds" Pill */}
@@ -909,12 +1156,12 @@ export default function FeedingHistoryPage() {
               type="button"
               className={`tri-pond-pill border-0 ${selectedPondFilter === 'all' ? 'btn-tri-navy text-white shadow-sm' : 'bg-white text-dark shadow-xs'}`}
               style={{
-                border: selectedPondFilter === 'all' ? 'none' : '1px solid rgba(11, 44, 95, 0.12)',
+                border: selectedPondFilter === 'all' ? 'none' : '1px solid rgba(252, 86, 60, 0.12)',
               }}
               onClick={() => setSelectedPondFilter('all')}
             >
               <FaLayerGroup size={11} />
-              <span>All Basins ({records.length})</span>
+              <span>All Ponds ({records.length})</span>
             </button>
 
             {/* Assigned Pond Pills */}
@@ -929,7 +1176,7 @@ export default function FeedingHistoryPage() {
                   type="button"
                   className={`tri-pond-pill border-0 ${isSelected ? 'btn-tri-orange text-white shadow-sm' : 'bg-white text-dark shadow-xs'}`}
                   style={{
-                    border: isSelected ? 'none' : '1px solid rgba(11, 44, 95, 0.12)',
+                    border: isSelected ? 'none' : '1px solid rgba(252, 86, 60, 0.12)',
                   }}
                   onClick={() => setSelectedPondFilter(String(pond.id))}
                 >
@@ -939,8 +1186,8 @@ export default function FeedingHistoryPage() {
                     <span
                       className="badge rounded-pill extra-small px-1.5 py-0.5 ms-1"
                       style={{
-                        backgroundColor: isSelected ? 'rgba(255, 255, 255, 0.25)' : 'rgba(11, 44, 95, 0.08)',
-                        color: isSelected ? '#FFFFFF' : '#0B2C5F',
+                        backgroundColor: isSelected ? 'rgba(255, 255, 255, 0.25)' : 'rgba(252, 86, 60, 0.08)',
+                        color: isSelected ? '#FFFFFF' : '#FC563C',
                         fontSize: '0.66rem',
                       }}
                     >
@@ -976,11 +1223,11 @@ export default function FeedingHistoryPage() {
                   <FaUtensils size={17} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#0B2C5F', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+              <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
                 {totalFeedKg.toFixed(2)} <small className="fs-6 text-muted fw-normal">kg</small>
               </h2>
               <div className="extra-small text-muted fw-semibold">
-                Total mass: <strong className="font-mono" style={{ color: '#0B2C5F' }}>{Math.round(totalFeedKg * 1000).toLocaleString()} g</strong>
+                Total mass: <strong className="font-mono" style={{ color: '#FC563C' }}>{Math.round(totalFeedKg * 1000).toLocaleString()} g</strong>
               </div>
             </div>
             <div>
@@ -989,13 +1236,13 @@ export default function FeedingHistoryPage() {
                   className="tri-progress-bar"
                   style={{
                     width: `${Math.min(100, Math.max(12, (totalFeedKg / Math.max(1, (assignedPonds?.length || 1) * 50)) * 100))}%`,
-                    background: 'linear-gradient(90deg, #0B2C5F 0%, #1E3A8A 100%)',
+                    background: 'linear-gradient(90deg, #172A39 0%, #FC563C 100%)',
                   }}
                 />
               </div>
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
                 <span className="text-muted extra-small text-truncate" style={{ maxWidth: 140 }}>{currentScope}</span>
-                <span className="badge badge-tri-navy rounded-pill extra-small px-2 py-0.5">Telemetry</span>
+                <span className="badge badge-tri-navy rounded-pill extra-small px-2 py-0.5">Feeding Stats</span>
               </div>
             </div>
           </div>
@@ -1003,7 +1250,7 @@ export default function FeedingHistoryPage() {
 
         {/* Card 2: Total Feeding Logs */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="tri-kpi-card" style={{ borderColor: 'rgba(234, 88, 12, 0.16)' }}>
+          <div className="tri-kpi-card" style={{ borderColor: 'rgba(252, 86, 60, 0.16)' }}>
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
                 <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Feeding Logs</span>
@@ -1011,20 +1258,20 @@ export default function FeedingHistoryPage() {
                   <FaCalendarAlt size={17} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#EA580C', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+              <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
                 {totalLogsCount} <small className="fs-6 text-muted fw-normal">entries</small>
               </h2>
               <div className="extra-small text-muted fw-semibold">
-                Daily summaries: <strong className="font-mono" style={{ color: '#EA580C' }}>{dailyGroupedRecords.length} days</strong>
+                Daily summaries: <strong className="font-mono" style={{ color: '#FC563C' }}>{dailyGroupedRecords.length} days</strong>
               </div>
             </div>
             <div>
-              <div className="tri-progress-track my-2.5" style={{ backgroundColor: 'rgba(234, 88, 12, 0.1)' }}>
+              <div className="tri-progress-track my-2.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.1)' }}>
                 <div
                   className="tri-progress-bar"
                   style={{
                     width: `${Math.min(100, Math.max(10, (totalLogsCount / Math.max(1, (assignedPonds?.length || 1) * 15)) * 100))}%`,
-                    background: 'linear-gradient(90deg, #EA580C 0%, #F97316 100%)',
+                    background: 'linear-gradient(90deg, #FC563C 0%, #6E7575 100%)',
                   }}
                 />
               </div>
@@ -1041,16 +1288,16 @@ export default function FeedingHistoryPage() {
           <div className="tri-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Active Basins</span>
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Active Ponds</span>
                 <div className="tri-kpi-icon tri-kpi-icon-blue">
                   <FaWater size={17} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#0B2C5F', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+              <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
                 {pondsWithRecords} <small className="fs-6 text-muted fw-normal">/ {assignedPonds.length || 1}</small>
               </h2>
               <div className="extra-small text-muted fw-semibold">
-                Assigned ponds: <strong style={{ color: '#0B2C5F' }}>{assignedPonds.length} ponds</strong>
+                Assigned ponds: <strong style={{ color: '#FC563C' }}>{assignedPonds.length} ponds</strong>
               </div>
             </div>
             <div>
@@ -1059,12 +1306,12 @@ export default function FeedingHistoryPage() {
                   className="tri-progress-bar"
                   style={{
                     width: `${Math.min(100, Math.max(15, (pondsWithRecords / Math.max(1, assignedPonds?.length || 1)) * 100))}%`,
-                    background: 'linear-gradient(90deg, #0B2C5F 0%, #38BDF8 100%)',
+                    background: 'linear-gradient(90deg, #172A39 0%, #FC563C 100%)',
                   }}
                 />
               </div>
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small">Basins with logs</span>
+                <span className="text-muted extra-small">Ponds with logs</span>
                 <span className="badge badge-tri-navy rounded-pill extra-small px-2 py-0.5">Active</span>
               </div>
             </div>
@@ -1073,7 +1320,7 @@ export default function FeedingHistoryPage() {
 
         {/* Card 4: Vitamins & Probiotics Logged */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="tri-kpi-card" style={{ borderColor: 'rgba(234, 88, 12, 0.16)' }}>
+          <div className="tri-kpi-card" style={{ borderColor: 'rgba(252, 86, 60, 0.16)' }}>
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
                 <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Supplements</span>
@@ -1081,7 +1328,7 @@ export default function FeedingHistoryPage() {
                   <FaLeaf size={17} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#EA580C', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+              <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
                 {vitaminLogsCount} <small className="fs-6 text-muted fw-normal">sessions</small>
               </h2>
               <div className="extra-small text-muted fw-semibold text-truncate">
@@ -1089,12 +1336,12 @@ export default function FeedingHistoryPage() {
               </div>
             </div>
             <div>
-              <div className="tri-progress-track my-2.5" style={{ backgroundColor: 'rgba(234, 88, 12, 0.1)' }}>
+              <div className="tri-progress-track my-2.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.1)' }}>
                 <div
                   className="tri-progress-bar"
                   style={{
                     width: `${Math.min(100, Math.max(10, (vitaminLogsCount / Math.max(1, totalLogsCount || 1)) * 100))}%`,
-                    background: 'linear-gradient(90deg, #EA580C 0%, #F97316 100%)',
+                    background: 'linear-gradient(90deg, #FC563C 0%, #6E7575 100%)',
                   }}
                 />
               </div>
@@ -1107,148 +1354,438 @@ export default function FeedingHistoryPage() {
         </div>
       </div>
 
-      {/* CUMULATIVE FEED INTAKE & GROWTH TREND CARD */}
+      {/* INTEGRATED FEEDING ANALYTICS & GROWTH HUB (TOGGLEABLE) */}
       <div className="tri-card p-4 mb-4">
-        <div className="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
-          <div>
-            <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
-              <h5 className="fw-extrabold text-dark mb-0 tracking-tight">Cumulative Feed Intake &amp; Growth Trend</h5>
-              <span className="tag-cyan-active">
-                {activePondForChart?.pond_name || 'Assigned Basin'} Cumulative (kg)
-              </span>
+        <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2.5">
+          {/* Left: Mode Toggle Buttons & Basin Indicator */}
+          <div className="d-flex align-items-center gap-2 flex-wrap">
+            <div className="d-inline-flex p-1 rounded-pill bg-light border shadow-xs">
+              <button
+                type="button"
+                className={`btn btn-sm rounded-pill px-3 py-1.5 extra-small fw-bold transition-all ${
+                  analyticsTab === 'cumulative' ? 'btn-tri-orange text-white shadow-xs' : 'btn-light text-muted'
+                }`}
+                onClick={() => setAnalyticsTab('cumulative')}
+              >
+                <FaChartLine className="me-1.5" size={12} />
+                Cumulative Feed & Growth
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm rounded-pill px-3 py-1.5 extra-small fw-bold transition-all ${
+                  analyticsTab === 'consumption' ? 'btn-tri-orange text-white shadow-xs' : 'btn-light text-muted'
+                }`}
+                onClick={() => setAnalyticsTab('consumption')}
+              >
+                <FaUtensils className="me-1.5" size={12} />
+                Daily Feeding Breakdown
+              </button>
             </div>
-            <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
-              Cumulative feed mass over time. Each new feed logged adds directly onto the previous total.
-            </p>
+
+            <span className="tag-cyan-active">
+              {analyticsPondFilter === 'all'
+                ? 'All Assigned Ponds'
+                : (assignedPonds.find((p) => String(p.id) === String(analyticsPondFilter))?.pond_name || 'Selected Pond')}
+            </span>
           </div>
 
-          {/* Timeframe Scope Selector */}
-          <div className="d-flex align-items-center gap-1 p-1 rounded-pill bg-light border">
-            <button
-              type="button"
-              className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${chartRange === '7_days' ? 'btn-tri-navy shadow-xs' : 'btn-light text-muted'}`}
-              onClick={() => setChartRange('7_days')}
-            >
-              7 Days
-            </button>
-            <button
-              type="button"
-              className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${chartRange === '14_days' ? 'btn-tri-navy shadow-xs' : 'btn-light text-muted'}`}
-              onClick={() => setChartRange('14_days')}
-            >
-              14 Days
-            </button>
-            <button
-              type="button"
-              className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${chartRange === '30_days' ? 'btn-tri-navy shadow-xs' : 'btn-light text-muted'}`}
-              onClick={() => setChartRange('30_days')}
-            >
-              30 Days
-            </button>
-            <button
-              type="button"
-              className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${chartRange === 'all_cycle' ? 'btn-tri-navy shadow-xs' : 'btn-light text-muted'}`}
-              onClick={() => setChartRange('all_cycle')}
-            >
-              Full Cycle
-            </button>
-          </div>
-        </div>
-
-        {/* High-Contrast Highlights (Cumulative KPIs) */}
-        <div className="row g-2.5 mb-3">
-          <div className="col-6 col-sm-3">
-            <div className="tri-mini-stat text-center">
-              <span className="extra-small text-muted text-uppercase fw-bold d-block">
-                Cumulative Total Feed
-              </span>
-              <strong className="text-dark fs-6 font-mono">
-                {caretakerChartMetrics.currentTotalKg} kg
-              </strong>
-            </div>
-          </div>
-          <div className="col-6 col-sm-3">
-            <div className="tri-mini-stat text-center">
-              <span className="extra-small text-muted text-uppercase fw-bold d-block">
-                Today's Feed Added
-              </span>
-              <strong className="fs-6 font-mono" style={{ color: '#EA580C' }}>
-                +{caretakerChartMetrics.todayFeedKg} kg
-              </strong>
-            </div>
-          </div>
-          <div className="col-6 col-sm-3">
-            <div className="tri-mini-stat text-center">
-              <span className="extra-small text-muted text-uppercase fw-bold d-block">
-                Selected Basin
-              </span>
-              <strong className="text-dark fs-6">
-                {activePondForChart?.pond_name || 'Assigned Basin'}
-              </strong>
-            </div>
-          </div>
-          <div className="col-6 col-sm-3">
-            <div className="tri-mini-stat text-center">
-              <span className="extra-small text-muted text-uppercase fw-bold d-block">
-                Recorded Sessions
-              </span>
-              <strong className="text-primary fs-6 font-mono">
-                {caretakerChartMetrics.totalLogs} logs
-              </strong>
-            </div>
-          </div>
-        </div>
-
-        {/* Chart Canvas */}
-        <div style={{ height: 240 }}>
-          <Line data={caretakerChartData} options={caretakerChartOptions} />
-        </div>
-
-        {/* Day-by-Day Progression Strip */}
-        <div className="d-flex gap-2 mt-3 pt-3 border-top overflow-auto pb-1" style={{ scrollbarWidth: 'thin' }}>
-          {cumulativeTrendData.map((d) => (
-            <div
-              key={d.key}
-              className={`p-2 rounded-3 text-center transition-all flex-shrink-0 ${d.isToday ? 'shadow-sm' : 'bg-light'}`}
-              style={{
-                backgroundColor: d.isToday ? '#0B2C5F' : '#F8FAFC',
-                color: d.isToday ? '#FFFFFF' : '#1E293B',
-                border: d.isToday ? '2px solid #0284C7' : '1px solid rgba(11, 44, 95, 0.1)',
-                minWidth: 92,
-                flex: cumulativeTrendData.length <= 7 ? 1 : '0 0 auto',
-              }}
-            >
-              <div className="d-flex align-items-center justify-content-center gap-1 mb-0.5">
-                <span className={`extra-small fw-extrabold ${d.isToday ? 'text-white' : 'text-secondary'}`} style={{ fontSize: '0.74rem' }}>
-                  {d.label}
-                </span>
-                {d.isToday && (
-                  <span className="badge rounded-pill px-1.5 py-0.5 extra-small fw-bold" style={{ backgroundColor: '#EA580C', color: '#FFFFFF', fontSize: '0.55rem' }}>
-                    TODAY
-                  </span>
-                )}
-              </div>
-              <div className="mb-1">
-                <span
-                  className="badge rounded-pill px-2 py-0.5 extra-small fw-bold"
-                  style={{
-                    backgroundColor: d.isToday ? 'rgba(234, 88, 12, 0.9)' : (d.incrementalKg > 0 ? '#E0F2FE' : '#F1F5F9'),
-                    color: d.isToday ? '#FFFFFF' : (d.incrementalKg > 0 ? '#0369A1' : '#94A3B8'),
-                    fontSize: '0.66rem',
+          {/* Right: Controls Strip (Pond Switcher + Timeframe / Unit / Type Selectors) */}
+          <div className="d-flex align-items-center gap-2 flex-wrap">
+            {/* Pond Switcher: Shown whenever caretaker has 2 or more assigned ponds */}
+            {assignedPonds.length >= 2 && (
+              <div
+                className="d-flex align-items-center px-2.5 py-1 rounded-pill bg-white shadow-xs"
+                style={{ border: '1.5px solid rgba(252, 86, 60, 0.25)', height: 34 }}
+              >
+                <FaWater size={11} className="me-1.5 text-primary" />
+                <span className="extra-small fw-bold text-muted me-1">Pond:</span>
+                <select
+                  className="form-select form-select-sm border-0 bg-transparent fw-bold p-0 cursor-pointer"
+                  style={{ width: 'auto', minWidth: 120, fontSize: '0.78rem', outline: 'none', color: '#FC563C' }}
+                  value={analyticsPondFilter}
+                  onChange={(e) => {
+                    setAnalyticsPondFilter(e.target.value);
+                    setSelectedPondFilter(e.target.value);
                   }}
                 >
-                  +{d.incrementalKg.toFixed(1)} kg
-                </span>
+                  <option value="all">All Assigned Ponds ({assignedPonds.length})</option>
+                  {assignedPonds.map((p) => (
+                    <option key={p.id} value={p.id}>{p.pond_name}</option>
+                  ))}
+                </select>
               </div>
-              <strong className="d-block font-mono" style={{ fontSize: '0.88rem', color: d.isToday ? '#FFFFFF' : '#0B2C5F' }}>
-                {d.cumulativeKg.toFixed(1)} <span style={{ fontSize: '0.62rem', fontWeight: 'normal' }}>kg</span>
-              </strong>
-              <span className={`extra-small d-block ${d.isToday ? 'text-light opacity-75' : 'text-muted'}`} style={{ fontSize: '0.62rem' }}>
-                {d.count} {d.count === 1 ? 'log' : 'logs'}
-              </span>
-            </div>
-          ))}
+            )}
+
+            {/* If Cumulative Tab: Timeframe Scope Selector */}
+            {analyticsTab === 'cumulative' && (
+              <div className="d-flex align-items-center gap-1 p-1 rounded-pill bg-light border">
+                <button
+                  type="button"
+                  className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${chartRange === '7_days' ? 'btn-tri-navy shadow-xs' : 'btn-light text-muted'}`}
+                  onClick={() => setChartRange('7_days')}
+                >
+                  7 Days
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${chartRange === '14_days' ? 'btn-tri-navy shadow-xs' : 'btn-light text-muted'}`}
+                  onClick={() => setChartRange('14_days')}
+                >
+                  14 Days
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${chartRange === '30_days' ? 'btn-tri-navy shadow-xs' : 'btn-light text-muted'}`}
+                  onClick={() => setChartRange('30_days')}
+                >
+                  30 Days
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${chartRange === 'all_cycle' ? 'btn-tri-navy shadow-xs' : 'btn-light text-muted'}`}
+                  onClick={() => setChartRange('all_cycle')}
+                >
+                  Full Cycle
+                </button>
+              </div>
+            )}
+
+            {/* If Consumption Tab: Range + Unit + Type Selectors */}
+            {analyticsTab === 'consumption' && (
+              <>
+                {/* Range Toggle Pills */}
+                <div
+                  className="d-inline-flex p-1 rounded-pill bg-white shadow-xs"
+                  style={{ border: '1px solid rgba(252, 86, 60, 0.15)', height: 34 }}
+                >
+                  <button
+                    type="button"
+                    className="btn btn-sm py-0 px-2.5 rounded-pill border-0 extra-small fw-semibold transition-all"
+                    style={{
+                      backgroundColor: consumptionRange === 'todaySlots' ? '#FC563C' : 'transparent',
+                      color: consumptionRange === 'todaySlots' ? '#FFFFFF' : '#64748B',
+                      fontSize: '0.74rem',
+                      lineHeight: '24px',
+                    }}
+                    onClick={() => setConsumptionRange('todaySlots')}
+                  >
+                    Hourly Slots
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm py-0 px-2.5 rounded-pill border-0 extra-small fw-semibold transition-all"
+                    style={{
+                      backgroundColor: consumptionRange === '7days' ? '#FC563C' : 'transparent',
+                      color: consumptionRange === '7days' ? '#FFFFFF' : '#64748B',
+                      fontSize: '0.74rem',
+                      lineHeight: '24px',
+                    }}
+                    onClick={() => setConsumptionRange('7days')}
+                  >
+                    Past 7 Days
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm py-0 px-2.5 rounded-pill border-0 extra-small fw-semibold transition-all"
+                    style={{
+                      backgroundColor: consumptionRange === '14days' ? '#FC563C' : 'transparent',
+                      color: consumptionRange === '14days' ? '#FFFFFF' : '#64748B',
+                      fontSize: '0.74rem',
+                      lineHeight: '24px',
+                    }}
+                    onClick={() => setConsumptionRange('14days')}
+                  >
+                    Past 14 Days
+                  </button>
+                </div>
+
+                {/* Unit Toggle (Auto / kg / g) */}
+                <div
+                  className="d-inline-flex p-1 rounded-pill bg-white shadow-xs"
+                  style={{ border: '1px solid rgba(252, 86, 60, 0.15)', height: 34 }}
+                >
+                  <button
+                    type="button"
+                    className="btn btn-sm py-0 px-2 rounded-pill border-0 extra-small fw-semibold transition-all"
+                    style={{
+                      backgroundColor: consumptionUnit === 'auto' ? '#FC563C' : 'transparent',
+                      color: consumptionUnit === 'auto' ? '#FFFFFF' : '#64748B',
+                      fontSize: '0.72rem',
+                      lineHeight: '24px',
+                    }}
+                    onClick={() => setConsumptionUnit('auto')}
+                    title="Automatic unit based on intake scale"
+                  >
+                    Auto ({consumptionChartData.unit})
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm py-0 px-2 rounded-pill border-0 extra-small fw-semibold transition-all"
+                    style={{
+                      backgroundColor: consumptionUnit === 'g' ? '#FC563C' : 'transparent',
+                      color: consumptionUnit === 'g' ? '#FFFFFF' : '#64748B',
+                      fontSize: '0.72rem',
+                      lineHeight: '24px',
+                    }}
+                    onClick={() => setConsumptionUnit('g')}
+                    title="Display in grams (g)"
+                  >
+                    g
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm py-0 px-2 rounded-pill border-0 extra-small fw-semibold transition-all"
+                    style={{
+                      backgroundColor: consumptionUnit === 'kg' ? '#FC563C' : 'transparent',
+                      color: consumptionUnit === 'kg' ? '#FFFFFF' : '#64748B',
+                      fontSize: '0.72rem',
+                      lineHeight: '24px',
+                    }}
+                    onClick={() => setConsumptionUnit('kg')}
+                    title="Display in kilograms (kg)"
+                  >
+                    kg
+                  </button>
+                </div>
+
+                {/* Chart Type Toggle (Line / Bar) */}
+                <div
+                  className="d-inline-flex p-1 rounded-pill bg-white shadow-xs"
+                  style={{ border: '1px solid rgba(252, 86, 60, 0.15)', height: 34 }}
+                >
+                  <button
+                    type="button"
+                    className="btn btn-sm py-0 px-2 rounded-pill border-0 transition-all"
+                    style={{
+                      backgroundColor: consumptionType === 'line' ? '#FC563C' : 'transparent',
+                      color: consumptionType === 'line' ? '#FFFFFF' : '#64748B',
+                      lineHeight: '24px',
+                    }}
+                    onClick={() => setConsumptionType('line')}
+                    title="Line Trend"
+                  >
+                    <FaChartLine size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm py-0 px-2 rounded-pill border-0 transition-all"
+                    style={{
+                      backgroundColor: consumptionType === 'bar' ? '#FC563C' : 'transparent',
+                      color: consumptionType === 'bar' ? '#FFFFFF' : '#64748B',
+                      lineHeight: '24px',
+                    }}
+                    onClick={() => setConsumptionType('bar')}
+                    title="Bar Chart"
+                  >
+                    <FaChartBar size={13} />
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
+
+        {/* Tab 1: Cumulative Feed Intake & Growth Trend */}
+        {analyticsTab === 'cumulative' ? (
+          <>
+            <p className="text-muted mb-3 small" style={{ fontSize: '0.82rem' }}>
+              Cumulative feed mass over time. Each new feed logged adds directly onto the previous total for continuous growth tracking.
+            </p>
+
+            {/* High-Contrast Highlights (Cumulative KPIs) */}
+            <div className="row g-2.5 mb-3">
+              <div className="col-6 col-sm-3">
+                <div className="tri-mini-stat text-center">
+                  <span className="extra-small text-muted text-uppercase fw-bold d-block">
+                    Cumulative Total Feed
+                  </span>
+                  <strong className="text-dark fs-6 font-mono">
+                    {caretakerChartMetrics.currentTotalKg} kg
+                  </strong>
+                </div>
+              </div>
+              <div className="col-6 col-sm-3">
+                <div className="tri-mini-stat text-center">
+                  <span className="extra-small text-muted text-uppercase fw-bold d-block">
+                    Today's Feed Added
+                  </span>
+                  <strong className="fs-6 font-mono" style={{ color: '#FC563C' }}>
+                    +{caretakerChartMetrics.todayFeedKg} kg
+                  </strong>
+                </div>
+              </div>
+              <div className="col-6 col-sm-3">
+                <div className="tri-mini-stat text-center">
+                  <span className="extra-small text-muted text-uppercase fw-bold d-block">
+                    Selected Pond
+                  </span>
+                  <strong className="text-dark fs-6 text-truncate d-block">
+                    {analyticsPondFilter === 'all'
+                      ? `All Ponds (${assignedPonds.length})`
+                      : (activePondForChart?.pond_name || 'Assigned Pond')}
+                  </strong>
+                </div>
+              </div>
+              <div className="col-6 col-sm-3">
+                <div className="tri-mini-stat text-center">
+                  <span className="extra-small text-muted text-uppercase fw-bold d-block">
+                    Recorded Sessions
+                  </span>
+                  <strong className="text-primary fs-6 font-mono">
+                    {caretakerChartMetrics.totalLogs} logs
+                  </strong>
+                </div>
+              </div>
+            </div>
+
+            {/* Chart Canvas */}
+            <div style={{ height: 250 }}>
+              <Line data={caretakerChartData} options={caretakerChartOptions} />
+            </div>
+
+            {/* Day-by-Day Progression Strip */}
+            <div className="d-flex gap-2 mt-3 pt-3 border-top overflow-auto pb-1" style={{ scrollbarWidth: 'thin' }}>
+              {cumulativeTrendData.map((d) => (
+                <div
+                  key={d.key}
+                  className={`p-2 rounded-3 text-center transition-all flex-shrink-0 caretaker-computation-box ${d.isToday ? 'active shadow-sm' : ''}`}
+                  style={{
+                    backgroundColor: d.isToday ? '#FC563C' : undefined,
+                    color: d.isToday ? '#FFFFFF' : undefined,
+                    border: d.isToday ? '2px solid #FC563C' : '1px solid rgba(252, 86, 60, 0.15)',
+                    minWidth: 92,
+                    flex: cumulativeTrendData.length <= 7 ? 1 : '0 0 auto',
+                  }}
+                >
+                  <div className="d-flex align-items-center justify-content-center gap-1 mb-0.5">
+                    <span className={`extra-small fw-extrabold ${d.isToday ? 'text-white' : ''}`} style={{ fontSize: '0.74rem' }}>
+                      {d.label}
+                    </span>
+                    {d.isToday && (
+                      <span className="badge rounded-pill px-1.5 py-0.5 extra-small fw-bold" style={{ backgroundColor: '#FC563C', color: '#FFFFFF', fontSize: '0.55rem' }}>
+                        TODAY
+                      </span>
+                    )}
+                  </div>
+                  <div className="mb-1">
+                    <span
+                      className="badge rounded-pill px-2 py-0.5 extra-small fw-bold"
+                      style={{
+                        backgroundColor: d.isToday ? 'rgba(252, 86, 60, 0.9)' : (d.incrementalKg > 0 ? '#E0F2FE' : '#F1F5F9'),
+                        color: d.isToday ? '#FFFFFF' : (d.incrementalKg > 0 ? '#FC563C' : '#94A3B8'),
+                        fontSize: '0.66rem',
+                      }}
+                    >
+                      +{d.incrementalKg.toFixed(1)} kg
+                    </span>
+                  </div>
+                  <strong className="d-block font-mono" style={{ fontSize: '0.88rem', color: d.isToday ? '#FFFFFF' : '#FC563C' }}>
+                    {d.cumulativeKg.toFixed(1)} <span style={{ fontSize: '0.62rem', fontWeight: 'normal' }}>kg</span>
+                  </strong>
+                  <span className={`extra-small d-block ${d.isToday ? 'text-light opacity-75' : 'text-muted'}`} style={{ fontSize: '0.62rem' }}>
+                    {d.count} {d.count === 1 ? 'log' : 'logs'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          /* Tab 2: Pond Feeding Consumption Analytics */
+          <>
+            <p className="text-muted mb-3 small" style={{ fontSize: '0.82rem' }}>
+              Daily feed given per feeding time and past feeding trends across your assigned ponds.
+            </p>
+
+            {/* 4 Summary Badges Row */}
+            <div className="row g-2.5 mb-3.5">
+              <div className="col-6 col-md-3">
+                <div className="p-2.5 rounded-3 bg-white" style={{ border: isDark ? '1px solid rgba(56, 189, 248, 0.2)' : '1.5px solid #CBD5E1' }}>
+                  <div className="text-muted extra-small fw-medium">Total Consumption</div>
+                  <div className="d-flex align-items-baseline gap-1 mt-0.5">
+                    <span className="fw-bold" style={{ color: '#FC563C', fontSize: '1.15rem' }}>
+                      {consumptionChartData.totalKg < 1 && consumptionChartData.totalGrams > 0
+                        ? `${Math.round(consumptionChartData.totalGrams).toLocaleString()} g`
+                        : `${consumptionChartData.totalKg.toFixed(2)} kg`}
+                    </span>
+                    <span className="extra-small ms-auto fw-semibold" style={{ color: '#FC563C' }}>
+                      {consumptionChartData.totalKg < 1 && consumptionChartData.totalGrams > 0
+                        ? `(${consumptionChartData.totalKg.toFixed(3)} kg)`
+                        : `(${Math.round(consumptionChartData.totalGrams).toLocaleString()} g)`}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="col-6 col-md-3">
+                <div className="p-2.5 rounded-3 bg-white" style={{ border: isDark ? '1px solid rgba(56, 189, 248, 0.2)' : '1.5px solid #CBD5E1' }}>
+                  <div className="text-muted extra-small fw-medium">
+                    {consumptionRange === 'todaySlots' ? 'Day Total' : 'Daily Average'}
+                  </div>
+                  <div className="d-flex align-items-baseline gap-1 mt-0.5">
+                    <span className="fw-bold" style={{ color: '#FC563C', fontSize: '1.15rem' }}>
+                      {consumptionChartData.avgDailyKg < 1 && consumptionChartData.avgDailyGrams > 0
+                        ? `${Math.round(consumptionChartData.avgDailyGrams).toLocaleString()} g/day`
+                        : `${consumptionChartData.avgDailyKg.toFixed(2)} kg/day`}
+                    </span>
+                    <span className="extra-small text-muted ms-auto">
+                      {consumptionChartData.avgDailyKg < 1 && consumptionChartData.avgDailyGrams > 0
+                        ? `(${consumptionChartData.avgDailyKg.toFixed(3)} kg)`
+                        : ''}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="col-6 col-md-3">
+                <div className="p-2.5 rounded-3 bg-white" style={{ border: isDark ? '1px solid rgba(56, 189, 248, 0.2)' : '1.5px solid #CBD5E1' }}>
+                  <div className="text-muted extra-small fw-medium">Peak Intake</div>
+                  <div className="d-flex align-items-baseline gap-1 mt-0.5">
+                    <span className="fw-bold" style={{ color: '#FC563C', fontSize: '1.15rem' }}>
+                      {consumptionChartData.peakKg < 1 && consumptionChartData.peakGrams > 0
+                        ? `${Math.round(consumptionChartData.peakGrams)} g`
+                        : `${consumptionChartData.peakKg.toFixed(2)} kg`}
+                    </span>
+                    <span className="extra-small text-muted ms-auto text-truncate" style={{ maxWidth: 85 }} title={consumptionChartData.peakLabel}>
+                      {consumptionChartData.peakLabel}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="col-6 col-md-3">
+                <div className="p-2.5 rounded-3 bg-white" style={{ border: isDark ? '1px solid rgba(56, 189, 248, 0.2)' : '1.5px solid #CBD5E1' }}>
+                  <div className="text-muted extra-small fw-medium">Active Ponds Filter</div>
+                  <div className="d-flex align-items-baseline gap-1 mt-0.5">
+                    <span className="fw-bold text-truncate" style={{ color: '#FC563C', fontSize: '0.95rem' }}>
+                      {analyticsPondFilter === 'all'
+                        ? `${assignedPonds.length} Ponds`
+                        : (assignedPonds.find((p) => String(p.id) === String(analyticsPondFilter))?.pond_name || 'Selected')}
+                    </span>
+                    <span className="badge rounded-pill bg-light text-muted ms-auto extra-small border">
+                      {consumptionRange === 'todaySlots' ? todayYMD : consumptionRange} • {consumptionChartData.unit}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Chart View Container */}
+            <div
+              className="p-3 rounded-3 caretaker-feeding-chart-box"
+              style={{
+                border: isDark ? '1px solid rgba(56, 189, 248, 0.2)' : '1.5px solid #CBD5E1',
+                position: 'relative',
+                height: 280,
+              }}
+            >
+              {consumptionType === 'line' ? (
+                <Line data={consumptionChartData} options={consumptionChartOptions} />
+              ) : (
+                <Bar data={consumptionChartData} options={consumptionChartOptions} />
+              )}
+            </div>
+          </>
+        )}
       </div>
 
       {/* MAIN CONTENT CONTAINER: TOOLBAR, CONTROLS & TABLE */}
@@ -1263,7 +1800,7 @@ export default function FeedingHistoryPage() {
               maxWidth: 280,
               minWidth: 180,
               height: 38,
-              border: '1px solid rgba(11, 44, 95, 0.15)',
+              border: '1px solid rgba(252, 86, 60, 0.15)',
             }}
           >
             <FaSearch className="text-muted extra-small me-2 flex-shrink-0" />
@@ -1290,12 +1827,12 @@ export default function FeedingHistoryPage() {
           <div className="d-flex align-items-center gap-2 flex-wrap">
             <div
               className="d-flex align-items-center gap-2 px-3 py-1 rounded-pill bg-white shadow-xs"
-              style={{ border: '1px solid rgba(11, 44, 95, 0.15)', height: 38 }}
+              style={{ border: '1px solid rgba(252, 86, 60, 0.15)', height: 38 }}
             >
-              <FaCalendarAlt size={12} style={{ color: '#EA580C' }} />
+              <FaCalendarAlt size={12} style={{ color: '#FC563C' }} />
               <select
                 className="form-select form-select-sm border-0 bg-transparent fw-bold p-0 extra-small shadow-none cursor-pointer"
-                style={{ width: 115, height: '100%', outline: 'none', color: '#0B2C5F' }}
+                style={{ width: 115, height: '100%', outline: 'none', color: '#FC563C' }}
                 value={dateFilter}
                 onChange={(e) => {
                   setDateFilter(e.target.value);
@@ -1315,12 +1852,12 @@ export default function FeedingHistoryPage() {
             {dateFilter === 'custom' && (
               <div
                 className="d-flex align-items-center gap-1.5 px-3 py-1 rounded-pill bg-white shadow-xs"
-                style={{ border: '1px solid #EA580C', height: 38 }}
+                style={{ border: '1px solid #FC563C', height: 38 }}
               >
                 <input
                   type="date"
                   className="form-control form-control-sm border-0 bg-transparent fw-bold p-0 extra-small shadow-none"
-                  style={{ width: 125, height: '100%', outline: 'none', color: '#0B2C5F' }}
+                  style={{ width: 125, height: '100%', outline: 'none', color: '#FC563C' }}
                   value={customDate}
                   onChange={(e) => setCustomDate(e.target.value)}
                 />
@@ -1343,7 +1880,7 @@ export default function FeedingHistoryPage() {
         </div>
 
         {/* TOOLBAR ROW 2: CULTURE STAGE FILTER PILLS & VIEW MODE SEGMENTED SWITCH */}
-        <div className="d-flex justify-content-between align-items-center flex-wrap gap-2.5 pt-3 pb-3 border-top" style={{ borderColor: 'rgba(11, 44, 95, 0.08)' }}>
+        <div className="d-flex justify-content-between align-items-center flex-wrap gap-2.5 pt-3 pb-3 border-top" style={{ borderColor: 'rgba(252, 86, 60, 0.08)' }}>
           {/* Stage Filter Pills */}
           <div className="d-flex align-items-center gap-2 flex-wrap">
             <span className="extra-small fw-bold text-uppercase tracking-wider me-1 text-muted" style={{ fontSize: '0.72rem' }}>
@@ -1421,7 +1958,7 @@ export default function FeedingHistoryPage() {
           <div className="py-5 text-center text-muted">
             <div
               className="rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
-              style={{ width: 56, height: 56, backgroundColor: 'rgba(11, 44, 95, 0.06)', color: '#0B2C5F' }}
+              style={{ width: 56, height: 56, backgroundColor: 'rgba(252, 86, 60, 0.06)', color: '#FC563C' }}
             >
               <FaUtensils size={24} />
             </div>
@@ -1439,30 +1976,29 @@ export default function FeedingHistoryPage() {
                   <FaUndo size={11} /> Clear Filters
                 </button>
               )}
-              <button
-                type="button"
-                className="btn btn-sm btn-tri-orange px-4 py-1.5 extra-small"
-                onClick={() => handleOpenBackfill()}
+              <Link
+                to="/caretaker/my-pond"
+                className="btn btn-sm btn-tri-orange px-4 py-1.5 extra-small text-decoration-none shadow-xs hover-lift"
               >
-                <FaPlus size={11} /> Log Feeding Session
-              </button>
+                Go to My Pond to Log Feeding
+              </Link>
             </div>
           </div>
         ) : (
           <div
             className="table-responsive rounded-4 position-relative"
             style={{
-              maxHeight: '520px',
+              maxHeight: '290px',
               overflowY: 'auto',
-              border: '1px solid rgba(11, 44, 95, 0.08)',
+              border: isDark ? '1px solid rgba(56, 189, 248, 0.2)' : '1.5px solid #CBD5E1',
             }}
           >
             <table className="table tri-table align-middle mb-0">
               {viewMode === 'daily' ? (
                 <>
-                  <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+                  <thead style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: isDark ? '#1E293B' : '#F8FAFC' }}>
                     <tr>
-                      <th className="ps-3 py-3">Pond Basin</th>
+                      <th className="ps-3 py-3">Pond</th>
                       <th className="py-3">Stage &amp; DOC</th>
                       <th className="py-3">Log Date</th>
                       <th className="py-3">Daily Feed Mass</th>
@@ -1487,7 +2023,7 @@ export default function FeedingHistoryPage() {
                             <div className="d-flex align-items-center gap-2">
                               <span
                                 className="rounded-circle d-inline-flex align-items-center justify-content-center"
-                                style={{ width: 30, height: 30, background: 'rgba(11, 44, 95, 0.07)', color: '#0B2C5F' }}
+                                style={{ width: 30, height: 30, background: 'rgba(252, 86, 60, 0.07)', color: '#FC563C' }}
                               >
                                 <FaWater size={12} />
                               </span>
@@ -1495,7 +2031,7 @@ export default function FeedingHistoryPage() {
                                 <span className="d-block text-dark fw-bold" style={{ fontSize: '0.92rem' }}>
                                   {item.pond_name}
                                 </span>
-                                <small className="text-muted extra-small">Production Basin</small>
+                                <small className="text-muted extra-small">Pond</small>
                               </div>
                             </div>
                           </td>
@@ -1504,14 +2040,14 @@ export default function FeedingHistoryPage() {
                             {item.isNursery ? (
                               <span
                                 className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1"
-                                style={{ background: '#FFF7ED', color: '#EA580C', border: '1px solid rgba(234, 88, 12, 0.25)' }}
+                                style={{ background: '#E9E4E0', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.25)' }}
                               >
                                 {item.doc ? `Day ${item.doc}` : 'DOC 1-19'} • Nursery
                               </span>
                             ) : item.isGrowout ? (
                               <span
                                 className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1"
-                                style={{ background: 'rgba(11, 44, 95, 0.07)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.18)' }}
+                                style={{ background: 'rgba(252, 86, 60, 0.07)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.18)' }}
                               >
                                 {item.doc ? `Day ${item.doc}` : 'DOC 20+'} • Grow-out
                               </span>
@@ -1530,7 +2066,7 @@ export default function FeedingHistoryPage() {
 
                           <td>
                             <div>
-                              <strong className="text-dark font-mono" style={{ fontSize: '0.95rem', color: '#0B2C5F' }}>
+                              <strong className="text-dark font-mono" style={{ fontSize: '0.95rem', color: '#FC563C' }}>
                                 {item.total_kg.toFixed(2)} kg
                               </strong>
                               <span className="extra-small text-muted font-mono d-block">
@@ -1552,7 +2088,7 @@ export default function FeedingHistoryPage() {
                                       className={`tri-slot-chip ${isLogged ? 'logged' : 'empty'}`}
                                       title={isLogged ? `${slot}: Logged (${item.slotsMap[slot]?.amount_kg}kg)` : `${slot}: Not yet logged`}
                                     >
-                                      {isLogged ? <FaCheck size={8} style={{ color: '#0B2C5F' }} /> : '○'}
+                                      {isLogged ? <FaCheck size={8} style={{ color: '#FC563C' }} /> : '○'}
                                       <span>{shortSlot}</span>
                                     </span>
                                   );
@@ -1602,7 +2138,7 @@ export default function FeedingHistoryPage() {
                                 }}
                                 title="Inspect in Pond Cycle Calendar"
                               >
-                                <FaCalendarAlt size={10} style={{ color: '#EA580C' }} />
+                                <FaCalendarAlt size={10} style={{ color: '#FC563C' }} />
                                 <span>Calendar</span>
                               </button>
 
@@ -1614,7 +2150,7 @@ export default function FeedingHistoryPage() {
                                 onClick={() => setSelectedRecordDetails(item.records[0])}
                                 title="View Feeding Session Details"
                               >
-                                <FaEye size={11} style={{ color: '#0B2C5F' }} />
+                                <FaEye size={11} style={{ color: '#FC563C' }} />
                               </button>
 
                               {/* Add Missing Slot Button */}
@@ -1641,9 +2177,9 @@ export default function FeedingHistoryPage() {
                 </>
               ) : (
                 <>
-                  <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+                  <thead style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: isDark ? '#1E293B' : '#F8FAFC' }}>
                     <tr>
-                      <th className="ps-3 py-3">Pond Basin</th>
+                      <th className="ps-3 py-3">Pond</th>
                       <th className="py-3">Stage &amp; DOC</th>
                       <th className="py-3">Feeding Slot</th>
                       <th className="py-3">Feed Mass &amp; Formulation</th>
@@ -1663,7 +2199,7 @@ export default function FeedingHistoryPage() {
                             <div className="d-flex align-items-center gap-2">
                               <span
                                 className="rounded-circle d-inline-flex align-items-center justify-content-center"
-                                style={{ width: 30, height: 30, background: 'rgba(11, 44, 95, 0.07)', color: '#0B2C5F' }}
+                                style={{ width: 30, height: 30, background: 'rgba(252, 86, 60, 0.07)', color: '#FC563C' }}
                               >
                                 <FaWater size={12} />
                               </span>
@@ -1680,14 +2216,14 @@ export default function FeedingHistoryPage() {
                             {isNursery ? (
                               <span
                                 className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1"
-                                style={{ background: '#FFF7ED', color: '#EA580C', border: '1px solid rgba(234, 88, 12, 0.25)' }}
+                                style={{ background: isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9', color: isDark ? '#CBD5E1' : '#1E293B', border: isDark ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid #CBD5E1' }}
                               >
                                 {record.doc ? `Day ${record.doc}` : 'DOC 1-19'} • Nursery
                               </span>
                             ) : isGrowout ? (
                               <span
                                 className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1"
-                                style={{ background: 'rgba(11, 44, 95, 0.07)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.18)' }}
+                                style={{ background: 'rgba(252, 86, 60, 0.07)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.18)' }}
                               >
                                 {record.doc ? `Day ${record.doc}` : 'DOC 20+'} • Grow-out
                               </span>
@@ -1700,7 +2236,7 @@ export default function FeedingHistoryPage() {
 
                           <td>
                             <span className="badge badge-tri-navy rounded-pill font-mono px-2.5 py-1 fw-semibold d-inline-flex align-items-center gap-1">
-                              <FaClock size={10} style={{ color: '#EA580C' }} />
+                              <FaClock size={10} style={{ color: '#FC563C' }} />
                               {record.feeding_time || '-'}
                             </span>
                           </td>
@@ -1757,7 +2293,7 @@ export default function FeedingHistoryPage() {
                                 onClick={() => setSelectedRecordDetails(record)}
                                 title="View Feeding Details"
                               >
-                                <FaEye size={11} style={{ color: '#0B2C5F' }} />
+                                <FaEye size={11} style={{ color: '#FC563C' }} />
                               </button>
                               <button
                                 type="button"
@@ -1791,7 +2327,7 @@ export default function FeedingHistoryPage() {
                                 }}
                                 title="View Pond Cycle Calendar"
                               >
-                                <FaCalendarAlt size={10} style={{ color: '#EA580C' }} />
+                                <FaCalendarAlt size={10} style={{ color: '#FC563C' }} />
                               </button>
                             </div>
                           </td>
@@ -1826,7 +2362,7 @@ export default function FeedingHistoryPage() {
               className="modal-content border-0 shadow-2xl rounded-4 overflow-hidden position-relative"
               style={{
                 background: '#ffffff',
-                boxShadow: '0 25px 50px -12px rgba(11, 44, 95, 0.38)',
+                boxShadow: '0 25px 50px -12px rgba(252, 86, 60, 0.38)',
                 animation: 'modalSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
               }}
             >
@@ -1834,7 +2370,7 @@ export default function FeedingHistoryPage() {
               <div
                 className="modal-header text-white border-0 position-relative overflow-hidden d-flex align-items-center"
                 style={{
-                  background: 'linear-gradient(135deg, #071733 0%, #0B2C5F 65%, #0E3D7D 100%)',
+                  background: 'linear-gradient(135deg, #172A39 0%, #203A4F 100%)',
                   padding: '1.1rem 1.25rem',
                 }}
               >
@@ -1848,14 +2384,14 @@ export default function FeedingHistoryPage() {
                       border: '1px solid rgba(255, 255, 255, 0.25)',
                     }}
                   >
-                    <FaUtensils size={17} style={{ color: '#EA580C' }} />
+                    <FaUtensils size={17} style={{ color: '#FC563C' }} />
                   </div>
                   <div>
                     <h5 className="modal-title fw-bold text-white mb-0 fs-6 tracking-tight">
                       Feeding Log Details
                     </h5>
                     <small className="text-white-50 extra-small font-mono fw-medium d-block">
-                      Verified Field Aquaculture Telemetry
+                      Verified Farm Feeding Record
                     </small>
                   </div>
                 </div>
@@ -1882,11 +2418,11 @@ export default function FeedingHistoryPage() {
               </div>
 
               {/* MODAL BODY */}
-              <div className="modal-body" style={{ background: '#F8FAFC', padding: '1.25rem' }}>
+              <div className="modal-body" style={{ background: isDark ? '#0F172A' : '#F8FAFC', padding: '1.25rem' }}>
                 {/* HERO POND & LOG BADGE CARD */}
                 <div
                   className="rounded-4 mb-3 p-3 bg-white shadow-xs"
-                  style={{ border: '1px solid rgba(11, 44, 95, 0.1)' }}
+                  style={{ border: isDark ? '1px solid rgba(56, 189, 248, 0.2)' : '1.5px solid #CBD5E1' }}
                 >
                   <div className="d-flex justify-content-between align-items-center mb-2">
                     <div className="d-flex align-items-center gap-2.5">
@@ -1895,17 +2431,17 @@ export default function FeedingHistoryPage() {
                         style={{
                           width: '36px',
                           height: '36px',
-                          background: 'rgba(11, 44, 95, 0.08)',
-                          color: '#0B2C5F',
+                          background: 'rgba(252, 86, 60, 0.08)',
+                          color: '#FC563C',
                         }}
                       >
                         <FaWater size={16} />
                       </div>
                       <div>
-                        <h5 className="fw-extrabold mb-0 fs-6" style={{ color: '#0B2C5F' }}>
+                        <h5 className="fw-extrabold mb-0 fs-6" style={{ color: '#FC563C' }}>
                           {selectedRecordDetails.pond_name || `Pond #${selectedRecordDetails.pond_id}`}
                         </h5>
-                        <small className="text-muted extra-small">Assigned Shrimp Production Basin</small>
+                        <small className="text-muted extra-small">Assigned Shrimp Pond</small>
                       </div>
                     </div>
 
@@ -1916,14 +2452,14 @@ export default function FeedingHistoryPage() {
                   </div>
 
                   {/* DATE & TIME ROW */}
-                  <div className="d-flex align-items-center justify-content-between pt-2 border-top extra-small" style={{ borderColor: 'rgba(11, 44, 95, 0.07)' }}>
+                  <div className="d-flex align-items-center justify-content-between pt-2 border-top extra-small" style={{ borderColor: 'rgba(252, 86, 60, 0.07)' }}>
                     <div className="d-flex align-items-center gap-1.5 fw-semibold text-secondary">
-                      <FaCalendarAlt size={12} style={{ color: '#EA580C' }} />
+                      <FaCalendarAlt size={12} style={{ color: '#FC563C' }} />
                       <span className="text-muted">Date:</span>
                       <strong className="text-dark ms-0.5">{selectedRecordDetails.record_date || '-'}</strong>
                     </div>
                     <div className="d-flex align-items-center gap-1.5 fw-semibold text-secondary">
-                      <FaClock size={12} style={{ color: '#0B2C5F' }} />
+                      <FaClock size={12} style={{ color: '#FC563C' }} />
                       <span className="text-muted">Time Slot:</span>
                       <strong className="text-dark ms-0.5">{selectedRecordDetails.feeding_time || '-'}</strong>
                     </div>
@@ -1936,7 +2472,7 @@ export default function FeedingHistoryPage() {
                   <div className="col-6">
                     <div
                       className="rounded-4 p-3 h-100 bg-white shadow-xs"
-                      style={{ border: '1px solid rgba(11, 44, 95, 0.1)' }}
+                      style={{ border: '1px solid rgba(252, 86, 60, 0.1)' }}
                     >
                       <div className="d-flex align-items-center justify-content-between mb-1.5">
                         <span className="text-uppercase fw-bold extra-small tracking-wider text-muted" style={{ fontSize: '0.68rem' }}>
@@ -1944,12 +2480,12 @@ export default function FeedingHistoryPage() {
                         </span>
                         <div
                           className="rounded-circle p-1 d-flex align-items-center justify-content-center"
-                          style={{ width: 22, height: 22, background: 'rgba(11, 44, 95, 0.08)', color: '#0B2C5F' }}
+                          style={{ width: 22, height: 22, background: 'rgba(252, 86, 60, 0.08)', color: '#FC563C' }}
                         >
                           <FaWeightHanging size={10} />
                         </div>
                       </div>
-                      <h4 className="fw-extrabold mb-1" style={{ color: '#0B2C5F' }}>
+                      <h4 className="fw-extrabold mb-1" style={{ color: '#FC563C' }}>
                         {Number(selectedRecordDetails.amount_kg || 0).toFixed(2)}{' '}
                         <small className="fs-6 text-muted fw-semibold">kg</small>
                       </h4>
@@ -1963,15 +2499,15 @@ export default function FeedingHistoryPage() {
                   <div className="col-6">
                     <div
                       className="rounded-4 p-3 h-100 bg-white shadow-xs"
-                      style={{ border: '1px solid rgba(234, 88, 12, 0.15)' }}
+                      style={{ border: '1px solid rgba(252, 86, 60, 0.15)' }}
                     >
                       <div className="d-flex align-items-center justify-content-between mb-1.5">
-                        <span className="text-uppercase fw-bold extra-small tracking-wider" style={{ color: '#EA580C', fontSize: '0.68rem' }}>
+                        <span className="text-uppercase fw-bold extra-small tracking-wider" style={{ color: '#FC563C', fontSize: '0.68rem' }}>
                           Feed Product
                         </span>
                         <div
                           className="rounded-circle p-1 d-flex align-items-center justify-content-center"
-                          style={{ width: 22, height: 22, background: '#FFF7ED', color: '#EA580C' }}
+                          style={{ width: 22, height: 22, background: '#E9E4E0', color: '#FC563C' }}
                         >
                           <FaSeedling size={11} />
                         </div>
@@ -1992,7 +2528,7 @@ export default function FeedingHistoryPage() {
                   <div className="col-6">
                     <div
                       className="rounded-4 p-3 h-100 bg-white shadow-xs"
-                      style={{ border: '1px solid rgba(11, 44, 95, 0.1)' }}
+                      style={{ border: '1px solid rgba(252, 86, 60, 0.1)' }}
                     >
                       <div className="d-flex align-items-center justify-content-between mb-1.5">
                         <span className="text-uppercase fw-bold extra-small tracking-wider text-muted" style={{ fontSize: '0.68rem' }}>
@@ -2000,7 +2536,7 @@ export default function FeedingHistoryPage() {
                         </span>
                         <div
                           className="rounded-circle p-1 d-flex align-items-center justify-content-center"
-                          style={{ width: 22, height: 22, background: '#FFF7ED', color: '#EA580C' }}
+                          style={{ width: 22, height: 22, background: '#E9E4E0', color: '#FC563C' }}
                         >
                           <FaLeaf size={10} />
                         </div>
@@ -2027,7 +2563,7 @@ export default function FeedingHistoryPage() {
                   <div className="col-6">
                     <div
                       className="rounded-4 p-3 h-100 bg-white shadow-xs"
-                      style={{ border: '1px solid rgba(11, 44, 95, 0.1)' }}
+                      style={{ border: '1px solid rgba(252, 86, 60, 0.1)' }}
                     >
                       <div className="d-flex align-items-center justify-content-between mb-1.5">
                         <span className="text-uppercase fw-bold extra-small text-muted tracking-wider" style={{ fontSize: '0.68rem' }}>
@@ -2061,7 +2597,7 @@ export default function FeedingHistoryPage() {
                   return (
                     <div
                       className="rounded-4 p-3 mb-2.5 bg-white shadow-xs"
-                      style={{ border: '1px solid rgba(11, 44, 95, 0.12)' }}
+                      style={{ border: '1px solid rgba(252, 86, 60, 0.12)' }}
                     >
                       <div className="d-flex align-items-center justify-content-between mb-2">
                         <span className="text-uppercase fw-bold extra-small tracking-wider text-muted" style={{ fontSize: '0.68rem' }}>
@@ -2069,7 +2605,7 @@ export default function FeedingHistoryPage() {
                         </span>
                         <span
                           className="badge rounded-pill extra-small px-2 py-0.5"
-                          style={{ backgroundColor: '#F8FAFD', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.16)' }}
+                          style={{ backgroundColor: '#E9E4E0', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.16)' }}
                         >
                           {isNursery ? 'Trays: None (Nursery)' : '4 Check Trays (20g/tray)'}
                         </span>
@@ -2085,7 +2621,7 @@ export default function FeedingHistoryPage() {
                         </div>
                         <div className="col-4">
                           <small className="text-muted d-block extra-small">Broadcast Feed</small>
-                          <strong className="fs-6 font-mono" style={{ color: '#0B2C5F' }}>{bcastKg.toFixed(2)} kg</strong>
+                          <strong className="fs-6 font-mono" style={{ color: '#FC563C' }}>{bcastKg.toFixed(2)} kg</strong>
                         </div>
                         <div className="col-12 mt-1 pt-1 border-top">
                           <small className="text-muted extra-small me-1">Formula Display:</small>
@@ -2100,12 +2636,12 @@ export default function FeedingHistoryPage() {
                 <div
                   className="rounded-4 p-3 bg-white shadow-xs"
                   style={{
-                    border: '1px solid rgba(11, 44, 95, 0.1)',
-                    borderLeft: '4px solid #0B2C5F',
+                    border: '1px solid rgba(252, 86, 60, 0.1)',
+                    borderLeft: '4px solid #FC563C',
                   }}
                 >
                   <div className="d-flex align-items-center gap-1.5 mb-1">
-                    <FaCommentDots size={12} style={{ color: '#0B2C5F' }} />
+                    <FaCommentDots size={12} style={{ color: '#FC563C' }} />
                     <span className="text-uppercase fw-bold extra-small text-muted tracking-wider" style={{ fontSize: '0.7rem' }}>
                       Notes &amp; Field Observations
                     </span>
@@ -2121,7 +2657,7 @@ export default function FeedingHistoryPage() {
               {/* MODAL FOOTER */}
               <div
                 className="modal-footer p-2.5 px-3 bg-light border-top d-flex justify-content-between align-items-center"
-                style={{ borderColor: 'rgba(11, 44, 95, 0.08)' }}
+                style={{ borderColor: 'rgba(252, 86, 60, 0.08)' }}
               >
                 <button
                   type="button"
@@ -2192,20 +2728,20 @@ export default function FeedingHistoryPage() {
                 {/* MODAL HEADER */}
                 <div
                   className="p-3.5 px-4 text-white d-flex justify-content-between align-items-center"
-                  style={{ background: 'linear-gradient(135deg, #071733 0%, #0B2C5F 65%, #0E3D7D 100%)' }}
+                  style={{ background: 'linear-gradient(135deg, #172A39 0%, #203A4F 100%)' }}
                 >
                   <div className="d-flex align-items-center gap-2.5">
                     <div
                       className="rounded-circle d-flex align-items-center justify-content-center"
                       style={{ width: 32, height: 32, background: 'rgba(255, 255, 255, 0.18)' }}
                     >
-                      {editingModalRecord ? <FaEdit style={{ color: '#EA580C' }} size={14} /> : <FaPlus style={{ color: '#EA580C' }} size={13} />}
+                      {editingModalRecord ? <FaEdit style={{ color: '#FC563C' }} size={14} /> : <FaPlus style={{ color: '#FC563C' }} size={13} />}
                     </div>
                     <div>
                       <h6 className="fw-bold mb-0 text-white" style={{ fontSize: '1rem' }}>
                         {editingModalRecord ? `Edit Feeding Record #${editingModalRecord.id}` : 'Log Farm Feeding Session'}
                       </h6>
-                      <small className="text-white-50 extra-small">Caretaker Daily Farm Telemetry</small>
+                      <small className="text-white-50 extra-small">Daily Farm Feeding Log</small>
                     </div>
                   </div>
                   <button
@@ -2221,17 +2757,17 @@ export default function FeedingHistoryPage() {
                 {/* MODAL BODY */}
                 <div className="modal-body p-4 bg-white">
                   <div className="row g-3">
-                    {/* Pond Basin */}
+                    {/* Pond */}
                     <div className="col-md-6">
                       <label className="form-label extra-small fw-bold text-dark mb-1">
-                        Pond Basin <span className="text-danger">*</span>
+                        Pond <span className="text-danger">*</span>
                       </label>
                       <select
                         className="form-select form-select-sm fw-semibold rounded-3"
                         value={backfillForm.pond_id}
                         onChange={(e) => setBackfillForm({ ...backfillForm, pond_id: e.target.value })}
                         required
-                        style={{ border: '1px solid rgba(11, 44, 95, 0.18)' }}
+                        style={{ border: '1px solid rgba(252, 86, 60, 0.18)' }}
                       >
                         <option value="">Select Pond...</option>
                         {assignedPonds.map((p) => (
@@ -2251,7 +2787,7 @@ export default function FeedingHistoryPage() {
                         value={backfillForm.record_date}
                         onChange={(e) => setBackfillForm({ ...backfillForm, record_date: e.target.value })}
                         required
-                        style={{ border: '1px solid rgba(11, 44, 95, 0.18)' }}
+                        style={{ border: '1px solid rgba(252, 86, 60, 0.18)' }}
                       >
                       </input>
                     </div>
@@ -2265,7 +2801,7 @@ export default function FeedingHistoryPage() {
                         className="form-select form-select-sm font-mono fw-bold rounded-3"
                         value={backfillForm.feeding_time}
                         onChange={(e) => setBackfillForm({ ...backfillForm, feeding_time: e.target.value })}
-                        style={{ border: '1px solid rgba(11, 44, 95, 0.18)' }}
+                        style={{ border: '1px solid rgba(252, 86, 60, 0.18)' }}
                       >
                         {STANDARD_SLOTS.map((t) => (
                           <option key={t} value={t}>{t}</option>
@@ -2278,7 +2814,7 @@ export default function FeedingHistoryPage() {
                       <label className="form-label extra-small fw-bold text-dark mb-1">
                         Feed Amount (kg) <span className="text-danger">*</span>
                         {backfillForm.amount_kg !== '' && !isNaN(parseFloat(backfillForm.amount_kg)) && (
-                          <span className="ms-1 fw-bold" style={{ color: '#EA580C' }}>
+                          <span className="ms-1 fw-bold" style={{ color: '#FC563C' }}>
                             ≈ {Math.round(parseFloat(backfillForm.amount_kg) * 1000).toLocaleString()} grams
                           </span>
                         )}
@@ -2296,7 +2832,7 @@ export default function FeedingHistoryPage() {
                           setBackfillForm({ ...backfillForm, amount_kg: kgVal, amount_grams: gVal });
                         }}
                         required
-                        style={{ border: '1px solid rgba(11, 44, 95, 0.18)' }}
+                        style={{ border: '1px solid rgba(252, 86, 60, 0.18)' }}
                       />
                       <small className="extra-small text-muted mt-1 d-block">
                         Enter in kilograms (e.g. 4.0 kg). Use 0 for "No feed logged".
@@ -2310,7 +2846,7 @@ export default function FeedingHistoryPage() {
                         className="form-select form-select-sm fw-semibold rounded-3"
                         value={backfillForm.product_code}
                         onChange={(e) => setBackfillForm({ ...backfillForm, product_code: e.target.value })}
-                        style={{ border: '1px solid rgba(11, 44, 95, 0.18)' }}
+                        style={{ border: '1px solid rgba(252, 86, 60, 0.18)' }}
                       >
                         <option value="Starter">Starter • Tateh Feed</option>
                         <option value="Grower">Grower • Tateh Feed</option>
@@ -2324,7 +2860,7 @@ export default function FeedingHistoryPage() {
                         className="form-select form-select-sm fw-semibold rounded-3"
                         value={backfillForm.vitamin_name}
                         onChange={(e) => setBackfillForm({ ...backfillForm, vitamin_name: e.target.value })}
-                        style={{ border: '1px solid rgba(11, 44, 95, 0.18)' }}
+                        style={{ border: '1px solid rgba(252, 86, 60, 0.18)' }}
                       >
                         <option value="Sanolife PRO-2, Sano Top-S">Sanolife PRO-2, Sano Top-S (Both Consumed • Standard)</option>
                         <option value="Sanolife PRO-2">Sanolife PRO-2</option>
@@ -2342,7 +2878,7 @@ export default function FeedingHistoryPage() {
                         placeholder="e.g. Backfilled from farm logsheet or feeding observation notes"
                         value={backfillForm.notes}
                         onChange={(e) => setBackfillForm({ ...backfillForm, notes: e.target.value })}
-                        style={{ border: '1px solid rgba(11, 44, 95, 0.18)' }}
+                        style={{ border: '1px solid rgba(252, 86, 60, 0.18)' }}
                       />
                     </div>
                   </div>
@@ -2351,7 +2887,7 @@ export default function FeedingHistoryPage() {
                 {/* MODAL FOOTER */}
                 <div
                   className="modal-footer p-3 bg-light border-top d-flex justify-content-end gap-2"
-                  style={{ borderColor: 'rgba(11, 44, 95, 0.08)' }}
+                  style={{ borderColor: 'rgba(252, 86, 60, 0.08)' }}
                 >
                   <button
                     type="button"

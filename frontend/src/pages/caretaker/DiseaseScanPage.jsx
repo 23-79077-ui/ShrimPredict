@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { FaBug, FaCamera, FaCheck, FaExclamationTriangle, FaFilePdf, FaHistory, FaImage, FaInfoCircle, FaQrcode, FaRobot, FaSearch, FaShieldAlt, FaSpinner, FaTimesCircle, FaUpload, FaWater } from 'react-icons/fa';
+import { FaBug, FaCamera, FaCheck, FaExclamationTriangle, FaFilePdf, FaFilter, FaHistory, FaImage, FaInfoCircle, FaQrcode, FaRobot, FaSearch, FaShieldAlt, FaSpinner, FaTimesCircle, FaUpload, FaWater } from 'react-icons/fa';
 import Swal from 'sweetalert2';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
+import { getEffectiveTheme } from '../../utils/theme';
 import api, { safeArray } from '../../services/api';
 
 function isPrimaryDiagnosisLabel(value) {
@@ -17,6 +19,16 @@ function isPrimaryDiagnosisLabel(value) {
 
 export default function DiseaseScanPage() {
   const { user } = useAuth();
+  const { t, isFilipino } = useLanguage();
+
+  const [currentTheme, setCurrentTheme] = useState(() => getEffectiveTheme());
+  useEffect(() => {
+    const handleThemeChange = () => setCurrentTheme(getEffectiveTheme());
+    window.addEventListener('themeChanged', handleThemeChange);
+    return () => window.removeEventListener('themeChanged', handleThemeChange);
+  }, []);
+  const isDark = currentTheme === 'dark';
+
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
   const [image, setImage] = useState(null);
@@ -412,7 +424,7 @@ export default function DiseaseScanPage() {
         <head>
           <title>ShrimPredict Disease Detection History</title>
           <style>
-            body { font-family: Arial, sans-serif; padding: 24px; color: #10294A; }
+            body { font-family: Arial, sans-serif; padding: 24px; color: #172A39; }
             h1 { font-size: 22px; margin: 0 0 16px; }
             table { width: 100%; border-collapse: collapse; font-size: 12px; }
             th, td { border: 1px solid #d8e0ea; padding: 8px; text-align: left; }
@@ -534,35 +546,36 @@ export default function DiseaseScanPage() {
 
   return (
     <div className="caretaker-diseasescan-hub">
-      {/* PAGE HEADER HERO BAR */}
-      <div className="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
-        <div>
-          <div className="d-flex align-items-center gap-2 mb-1">
-            <span
-              className="badge rounded-pill extra-small fw-bold px-2.5 py-1"
-              style={{ backgroundColor: '#FFF7ED', color: '#EA580C', border: '1px solid #FFEDD5' }}
-            >
-              <FaRobot className="me-1" /> Computer Vision
-            </span>
-            <span
-              className="badge rounded-pill extra-small fw-bold px-2.5 py-1"
-              style={{ backgroundColor: 'rgba(11, 44, 95, 0.07)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.16)' }}
-            >
-              WSSV &amp; Health Pipeline
-            </span>
+      {/* 1. EXECUTIVE HERO OPERATIONS BANNER */}
+      <div className="disease-hero-banner d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+        <div className="d-flex align-items-center gap-3">
+          <div className="hero-icon-badge shadow-xs">
+            <FaRobot />
           </div>
-          <h3 className="fw-extrabold text-dark mb-1 tracking-tight">Disease Scan &amp; Diagnostics</h3>
-          <p className="text-muted small mb-0">
-            Real-time optical inspection for White Spot Syndrome Virus (WSSV), cooked shrimp detection, and health diagnosis.
-          </p>
+          <div>
+            <div className="d-flex align-items-center gap-2 flex-wrap">
+              <h3 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#FC563C', fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
+                {t('hero.diseaseScan', 'Shrimp Disease Scan & Health Check')}
+              </h3>
+              <span
+                className="badge rounded-pill extra-small px-3 py-1 fw-bold"
+                style={{ backgroundColor: 'rgba(252, 86, 60, 0.08)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.16)' }}
+              >
+                ● {t('hero.diseaseScanBadge', 'AI Photo Health Scanner')}
+              </span>
+            </div>
+            <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
+              {t('hero.diseaseScanSub', 'Check shrimp photos for White Spot Disease (WSSV), discoloration, and general shrimp health.')}
+            </p>
+          </div>
         </div>
 
-        <div className="d-flex align-items-center gap-2">
+        <div className="d-flex align-items-center gap-2 flex-wrap">
           <div
-            className="d-flex align-items-center gap-2 px-3 py-1.5 rounded-pill extra-small fw-bold"
-            style={{ backgroundColor: '#FFFFFF', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.16)', boxShadow: '0 2px 6px rgba(11,44,95,0.04)' }}
+            className="d-flex align-items-center gap-2 px-3 py-1.5 rounded-pill extra-small fw-bold shadow-xs"
+            style={{ backgroundColor: 'rgba(252, 86, 60, 0.06)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.2)' }}
           >
-            <span className="rounded-circle bg-success" style={{ width: 8, height: 8 }} />
+            <span className="rounded-circle bg-success shadow-xs" style={{ width: 8, height: 8 }} />
             <span>Diagnostic Pipeline Active (EfficientNet / CNN)</span>
           </div>
         </div>
@@ -577,7 +590,7 @@ export default function DiseaseScanPage() {
               <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
                 <div>
                   <h6 className="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-                    <FaCamera style={{ color: '#0B2C5F' }} /> Live Scanner &amp; Image Ingestion
+                    <FaCamera style={{ color: '#FC563C' }} /> Live Scanner &amp; Image Ingestion
                   </h6>
                   <small className="text-muted">Target pond for diagnostic logging</small>
                 </div>
@@ -585,10 +598,10 @@ export default function DiseaseScanPage() {
 
               {/* Pond Selection Pills */}
               <div
-                className="p-2.5 rounded-3 mb-3 d-flex align-items-center gap-2 flex-wrap"
-                style={{ backgroundColor: '#F8FAFD', border: '1px solid rgba(11, 44, 95, 0.1)' }}
+                className="p-2.5 rounded-3 mb-3 d-flex align-items-center gap-2 flex-wrap caretaker-scan-strip"
+                style={{ border: '1px solid rgba(252, 86, 60, 0.15)' }}
               >
-                <span className="extra-small fw-bold text-uppercase d-flex align-items-center gap-1 ps-1" style={{ color: '#0B2C5F' }}>
+                <span className="extra-small fw-bold text-uppercase d-flex align-items-center gap-1 ps-1" style={{ color: '#FC563C' }}>
                   <FaWater /> Pond:
                 </span>
                 {assignedPonds.map((pond) => {
@@ -615,8 +628,8 @@ export default function DiseaseScanPage() {
                 style={{
                   minHeight: 330,
                   maxHeight: 400,
-                  backgroundColor: '#071733',
-                  border: '1px solid rgba(11, 44, 95, 0.15)',
+                  backgroundColor: '#172A39',
+                  border: '1px solid rgba(252, 86, 60, 0.15)',
                   boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.3)',
                 }}
                 onDrop={handleDrop}
@@ -635,7 +648,7 @@ export default function DiseaseScanPage() {
                       style={{ background: 'linear-gradient(180deg, rgba(7, 23, 51, 0.85) 0%, transparent 100%)' }}
                     >
                       <span className="extra-small fw-bold d-flex align-items-center gap-1.5">
-                        <FaImage style={{ color: '#EA580C' }} /> {imageSource || 'Selected Image'}
+                        <FaImage style={{ color: '#FC563C' }} /> {imageSource || 'Selected Image'}
                       </span>
                       <button
                         type="button"
@@ -657,14 +670,14 @@ export default function DiseaseScanPage() {
                         style={{
                           backgroundColor: (previewCount?.is_crayfish || previewCount?.is_cooked)
                             ? '#FEF2F2'
-                            : (previewCount?.detected ? '#F0FDF4' : '#FFF7ED'),
+                            : (previewCount?.detected ? '#F0FDF4' : '#E9E4E0'),
                           color: (previewCount?.is_crayfish || previewCount?.is_cooked)
                             ? '#DC2626'
-                            : (previewCount?.detected ? '#16A34A' : '#EA580C'),
+                            : (previewCount?.detected ? '#16A34A' : '#FC563C'),
                           border: `1px solid ${
                             (previewCount?.is_crayfish || previewCount?.is_cooked)
                               ? '#FCA5A5'
-                              : (previewCount?.detected ? '#BBF7D0' : '#FFEDD5')
+                              : (previewCount?.detected ? '#BBF7D0' : '#6E7575')
                           }`,
                         }}
                       >
@@ -749,32 +762,32 @@ export default function DiseaseScanPage() {
 
             {/* Literature Benchmark Accordion */}
             <div
-              className="mt-4 rounded-3 overflow-hidden"
-              style={{ backgroundColor: '#F8FAFD', border: '1px solid rgba(11, 44, 95, 0.1)' }}
+              className="mt-4 rounded-3 overflow-hidden caretaker-scan-strip"
+              style={{ border: '1px solid rgba(252, 86, 60, 0.15)' }}
             >
               <details>
-                <summary className="fw-bold p-3 extra-small" style={{ cursor: 'pointer', listStyle: 'none', color: '#0B2C5F' }}>
+                <summary className="fw-bold p-3 extra-small" style={{ cursor: 'pointer', listStyle: 'none', color: '#FC563C' }}>
                   <FaInfoCircle className="me-2 text-primary" />
                   View Model Accuracy Literature &amp; Research Baselines
                 </summary>
                 <div className="p-3 pt-0 border-top" style={{ fontSize: '0.82rem' }}>
                   <p className="mb-2 text-muted extra-small">Current detection baselines established by scientific literature:</p>
-                  <ul className="mb-0 text-dark extra-small ps-3">
+                  <ul className="mb-0 extra-small ps-3">
                     <li className="mb-1.5">
                       <strong>Advanced CNN (LeNet) Precision:</strong> Up to 96.1% Precision for <i>Penaeus vannamei</i> disease classification.
-                      <a href="https://doi.org/10.1016/j.aquaeng.2022.102296" target="_blank" rel="noopener noreferrer" className="ms-1 fw-bold" style={{ color: '#0B2C5F' }}>
+                      <a href="https://doi.org/10.1016/j.aquaeng.2022.102296" target="_blank" rel="noopener noreferrer" className="ms-1 fw-bold" style={{ color: '#FC563C' }}>
                         (Read Study)
                       </a>
                     </li>
                     <li className="mb-1.5">
                       <strong>Deep Learning (YOLOv8):</strong> 92.0% mean Average Precision (mAP) for healthy vs. diseased classification.
-                      <a href="https://scholar.google.com/scholar?q=Video-Based+Disease+Detection+in+Vannamei+Shrimp+Using+YOLOv8" target="_blank" rel="noopener noreferrer" className="ms-1 fw-bold" style={{ color: '#0B2C5F' }}>
+                      <a href="https://scholar.google.com/scholar?q=Video-Based+Disease+Detection+in+Vannamei+Shrimp+Using+YOLOv8" target="_blank" rel="noopener noreferrer" className="ms-1 fw-bold" style={{ color: '#FC563C' }}>
                         (Search Scholar)
                       </a>
                     </li>
                     <li className="mb-0">
                       <strong>WSSV Specific Detection (ANN/DL):</strong> 90.0% Accuracy Rate.
-                      <a href="https://scholar.google.com/scholar?q=Shrimp+disease+detection+using+deep+learning+techniques" target="_blank" rel="noopener noreferrer" className="ms-1 fw-bold" style={{ color: '#0B2C5F' }}>
+                      <a href="https://scholar.google.com/scholar?q=Shrimp+disease+detection+using+deep+learning+techniques" target="_blank" rel="noopener noreferrer" className="ms-1 fw-bold" style={{ color: '#FC563C' }}>
                         (Search Scholar)
                       </a>
                     </li>
@@ -792,16 +805,16 @@ export default function DiseaseScanPage() {
         <div className="col-12 col-lg-5">
           <div className="tri-card p-4 h-100 d-flex flex-column">
             <div className="d-flex align-items-center justify-content-between mb-3">
-              <h6 className="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-                <FaShieldAlt style={{ color: '#0B2C5F' }} /> Pipeline Assessment Result
+              <h6 className="fw-bold mb-0 d-flex align-items-center gap-2">
+                <FaShieldAlt style={{ color: '#FC563C' }} /> Pipeline Assessment Result
               </h6>
               {result && (
                 <span
                   className="badge rounded-pill extra-small fw-bold px-2.5 py-1"
                   style={{
-                    backgroundColor: healthStatus === 'Healthy' ? '#F0FDF4' : '#FFF7ED',
-                    color: healthStatus === 'Healthy' ? '#16A34A' : '#EA580C',
-                    border: `1px solid ${healthStatus === 'Healthy' ? '#BBF7D0' : '#FFEDD5'}`,
+                    backgroundColor: healthStatus === 'Healthy' ? '#F0FDF4' : 'rgba(252, 86, 60, 0.12)',
+                    color: healthStatus === 'Healthy' ? '#16A34A' : '#FC563C',
+                    border: `1px solid ${healthStatus === 'Healthy' ? '#BBF7D0' : 'rgba(252, 86, 60, 0.25)'}`,
                   }}
                 >
                   {healthStatus}
@@ -811,12 +824,12 @@ export default function DiseaseScanPage() {
 
             {shouldShowAdditionalPrompt ? (
               <div
-                className="p-3.5 rounded-3 mb-0"
-                style={{ backgroundColor: '#FFF7ED', border: '1px solid #FFEDD5' }}
+                className="p-3.5 rounded-3 mb-0 caretaker-computation-box"
+                style={{ border: '1px solid rgba(252, 86, 60, 0.25)' }}
               >
-                <div className="d-flex align-items-center gap-2 mb-2" style={{ color: '#EA580C' }}>
+                <div className="d-flex align-items-center gap-2 mb-2" style={{ color: '#FC563C' }}>
                   <FaExclamationTriangle size={18} />
-                  <strong className="text-dark">Additional Disease Detection</strong>
+                  <strong>Additional Disease Detection</strong>
                 </div>
                 <p className="small text-muted mb-3">
                   No WSSV detected and the shrimp is not classified as healthy. Would you like to enable secondary disease detection features?
@@ -834,26 +847,26 @@ export default function DiseaseScanPage() {
               <>
                   {!result && (
                     <div
-                      className="d-flex flex-column align-items-center justify-content-center text-center p-4 rounded-3 flex-grow-1"
-                      style={{ backgroundColor: '#F8FAFD', border: '1px dashed rgba(11, 44, 95, 0.16)', minHeight: 280 }}
+                      className="d-flex flex-column align-items-center justify-content-center text-center p-4 rounded-3 flex-grow-1 caretaker-telemetry-cluster"
+                      style={{ border: '1px dashed rgba(252, 86, 60, 0.2)', minHeight: 280 }}
                     >
                       {scanning ? (
                         <>
-                          <FaSpinner className="disease-spin fs-1 mb-3" style={{ color: '#0B2C5F' }} />
-                          <h6 className="fw-bold mb-1" style={{ color: '#0B2C5F' }}>Running Diagnostic Pipeline</h6>
-                          <p className="extra-small text-muted mb-0">Executing Stages 1–4 Computer Vision Diagnostics…</p>
+                          <FaSpinner className="disease-spin fs-1 mb-3" style={{ color: '#FC563C' }} />
+                          <h6 className="fw-bold mb-1" style={{ color: '#FC563C' }}>Checking Shrimp Photo</h6>
+                          <p className="extra-small text-muted mb-0">Analyzing shrimp image for signs of disease…</p>
                         </>
                       ) : (
                         <>
                           <div
                             className="rounded-circle d-flex align-items-center justify-content-center mb-3"
-                            style={{ width: 56, height: 56, backgroundColor: 'rgba(11, 44, 95, 0.06)', color: '#0B2C5F' }}
+                            style={{ width: 56, height: 56, backgroundColor: 'rgba(252, 86, 60, 0.06)', color: '#FC563C' }}
                           >
                             <FaSearch size={22} />
                           </div>
-                          <h6 className="fw-bold text-dark mb-1">Awaiting Shrimp Target</h6>
+                          <h6 className="fw-bold text-dark mb-1">Upload or Take Shrimp Photo</h6>
                           <p className="extra-small text-muted mb-0" style={{ maxWidth: 260 }}>
-                            Capture or upload an image to run the automated WSSV and health assessment pipeline.
+                            Capture or upload a photo of your shrimp sample to check for White Spot and disease symptoms.
                           </p>
                         </>
                       )}
@@ -878,8 +891,8 @@ export default function DiseaseScanPage() {
                           className="badge rounded-pill extra-small fw-bold px-2.5 py-1.5 d-inline-flex align-items-center gap-1.5"
                           style={
                             imageQuality === 'Good Quality'
-                              ? { backgroundColor: 'rgba(11, 44, 95, 0.07)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.16)' }
-                              : { backgroundColor: '#FFF7ED', color: '#EA580C', border: '1px solid #FFEDD5' }
+                              ? { backgroundColor: 'rgba(252, 86, 60, 0.07)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.16)' }
+                              : { backgroundColor: '#E9E4E0', color: '#FC563C', border: '1px solid #6E7575' }
                           }
                         >
                           Quality: {imageQuality}
@@ -891,7 +904,7 @@ export default function DiseaseScanPage() {
                               ? { backgroundColor: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0' }
                               : healthStatus === 'Diseased'
                               ? { backgroundColor: '#FEF2F2', color: '#B91C1C', border: '1px solid #FECACA' }
-                              : { backgroundColor: '#FFF7ED', color: '#EA580C', border: '1px solid #FFEDD5' }
+                              : { backgroundColor: '#E9E4E0', color: '#FC563C', border: '1px solid #6E7575' }
                           }
                         >
                           Status: {healthStatus}
@@ -918,7 +931,7 @@ export default function DiseaseScanPage() {
                       {shrimpDetected && imageQuality === 'Poor Image Quality' && (
                         <div
                           className="p-3 rounded-3 d-flex align-items-start gap-2.5"
-                          style={{ backgroundColor: '#FFF7ED', border: '1px solid #FFEDD5', color: '#C2410C' }}
+                          style={{ backgroundColor: '#E9E4E0', border: '1px solid #6E7575', color: '#C2410C' }}
                         >
                           <FaExclamationTriangle className="fs-5 flex-shrink-0 mt-0.5" />
                           <div>
@@ -934,7 +947,7 @@ export default function DiseaseScanPage() {
                       {shrimpDetected && imageQuality === 'Good Quality' && healthStatus === 'Uncertain' && (
                         <div
                           className="p-3 rounded-3 d-flex align-items-start gap-2.5"
-                          style={{ backgroundColor: 'rgba(11, 44, 95, 0.05)', border: '1px solid rgba(11, 44, 95, 0.16)', color: '#0B2C5F' }}
+                          style={{ backgroundColor: 'rgba(252, 86, 60, 0.05)', border: '1px solid rgba(252, 86, 60, 0.16)', color: '#FC563C' }}
                         >
                           <FaInfoCircle className="fs-5 flex-shrink-0 mt-0.5" />
                           <div>
@@ -951,15 +964,15 @@ export default function DiseaseScanPage() {
                         <div
                           className="p-3.5 rounded-3"
                           style={{
-                            backgroundColor: healthStatus === 'Healthy' ? '#F0FDF4' : '#FFF7ED',
-                            border: healthStatus === 'Healthy' ? '1px solid #BBF7D0' : '1px solid #FFEDD5',
+                            backgroundColor: healthStatus === 'Healthy' ? '#F0FDF4' : '#E9E4E0',
+                            border: healthStatus === 'Healthy' ? '1px solid #BBF7D0' : '1px solid #6E7575',
                           }}
                         >
                           <div className="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
                             <div>
                               <span
                                 className="extra-small fw-bold text-uppercase tracking-wider d-block mb-0.5"
-                                style={{ color: healthStatus === 'Healthy' ? '#15803D' : '#EA580C' }}
+                                style={{ color: healthStatus === 'Healthy' ? '#15803D' : '#FC563C' }}
                               >
                                 Primary Diagnosis
                               </span>
@@ -971,10 +984,10 @@ export default function DiseaseScanPage() {
                               </h4>
                             </div>
                             <span
-                              className="badge rounded-pill extra-small fw-bold px-2.5 py-1 d-inline-flex align-items-center gap-1.5"
-                              style={{ backgroundColor: '#FFFFFF', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.16)' }}
+                              className="badge rounded-pill extra-small fw-bold px-2.5 py-1 d-inline-flex align-items-center gap-1.5 caretaker-inner-badge"
+                              style={{ color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.2)' }}
                             >
-                              <FaRobot style={{ color: '#0B2C5F' }} /> {modelUsed}
+                              <FaRobot style={{ color: '#FC563C' }} /> {modelUsed}
                             </span>
                           </div>
 
@@ -988,7 +1001,7 @@ export default function DiseaseScanPage() {
                           )}
 
                           <div className="d-flex justify-content-between extra-small fw-bold mb-1.5">
-                            <span style={{ color: '#0B2C5F' }}>Confidence Score</span>
+                            <span style={{ color: '#FC563C' }}>Confidence Score</span>
                             <span className="fw-extrabold" style={{ color: healthStatus === 'Healthy' ? '#15803D' : '#DC2626' }}>
                               {displayConfidence.toFixed(2)}%
                             </span>
@@ -1005,14 +1018,14 @@ export default function DiseaseScanPage() {
                       {/* Class Probability Breakdown — hidden from UI, preserved for future use */}
                       {renderedProbabilities.length > 0 && (
                         <div
-                          className="p-3 rounded-3 d-none"
-                          style={{ backgroundColor: '#FFFFFF', border: '1px solid rgba(11, 44, 95, 0.1)' }}
+                          className="p-3 rounded-3 d-none caretaker-computation-box"
+                          style={{ border: '1px solid rgba(252, 86, 60, 0.1)' }}
                         >
                           <div className="d-flex align-items-center justify-content-between mb-2.5">
-                            <h6 className="fw-bold extra-small text-uppercase tracking-wider mb-0" style={{ color: '#0B2C5F' }}>
+                            <h6 className="fw-bold extra-small text-uppercase tracking-wider mb-0" style={{ color: '#FC563C' }}>
                               Class Probability Breakdown
                             </h6>
-                            <span className="badge rounded-pill extra-small" style={{ backgroundColor: 'rgba(11, 44, 95, 0.06)', color: '#0B2C5F' }}>
+                            <span className="badge rounded-pill extra-small" style={{ backgroundColor: 'rgba(252, 86, 60, 0.06)', color: '#FC563C' }}>
                               Softmax Output
                             </span>
                           </div>
@@ -1023,8 +1036,8 @@ export default function DiseaseScanPage() {
                               return (
                                 <div key={diseaseName}>
                                   <div className="d-flex justify-content-between extra-small mb-1">
-                                    <span className="fw-semibold text-dark">{diseaseName}</span>
-                                    <span className="fw-bold" style={{ color: '#0B2C5F' }}>{Number(probScore).toFixed(2)}%</span>
+                                    <span className="fw-semibold">{diseaseName}</span>
+                                    <span className="fw-bold" style={{ color: '#FC563C' }}>{Number(probScore).toFixed(2)}%</span>
                                   </div>
                                   <div className="tri-progress-track" style={{ height: 6 }}>
                                     <div
@@ -1042,11 +1055,11 @@ export default function DiseaseScanPage() {
                       {/* Recommendation Box */}
                       {recommendations.length > 0 && (
                         <div
-                          className="p-3 rounded-3"
-                          style={{ backgroundColor: '#F8FAFD', border: '1px solid rgba(11, 44, 95, 0.08)' }}
+                          className="p-3 rounded-3 caretaker-computation-box"
+                          style={{ border: '1px solid rgba(252, 86, 60, 0.15)' }}
                         >
-                          <h6 className="fw-bold extra-small text-uppercase tracking-wider mb-2" style={{ color: '#0B2C5F' }}>
-                            Action Protocol &amp; Recommendations
+                          <h6 className="fw-bold extra-small text-uppercase tracking-wider mb-2" style={{ color: '#FC563C' }}>
+                            Recommended Actions &amp; Farm Steps
                           </h6>
                           <ul className="ps-3 mb-0 extra-small text-secondary d-flex flex-column gap-1">
                             {recommendations.map((item) => (
@@ -1068,7 +1081,7 @@ export default function DiseaseScanPage() {
         <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-3">
           <div>
             <h5 className="fw-extrabold text-dark mb-1 d-flex align-items-center gap-2">
-              <FaHistory style={{ color: '#0B2C5F' }} /> Detection &amp; Pipeline History
+              <FaHistory style={{ color: '#FC563C' }} /> Detection &amp; Pipeline History
             </h5>
             <small className="text-muted">History of disease scan assessments for assigned ponds</small>
           </div>
@@ -1076,12 +1089,11 @@ export default function DiseaseScanPage() {
           <div className="d-flex align-items-center gap-2 flex-wrap ms-auto">
             {/* Search Bar */}
             <div
-              className="d-flex align-items-center px-3 rounded-pill"
+              className="d-flex align-items-center px-3 rounded-pill bg-white shadow-xs"
               style={{
                 width: 210,
                 height: 38,
-                backgroundColor: '#F8FAFD',
-                border: '1px solid rgba(11, 44, 95, 0.16)',
+                border: isDark ? '1px solid rgba(56, 189, 248, 0.2)' : '1.5px solid #CBD5E1',
               }}
             >
               <FaSearch className="text-muted extra-small me-2" />
@@ -1096,26 +1108,36 @@ export default function DiseaseScanPage() {
             </div>
 
             {/* Status Filter */}
-            <select
-              className="form-select form-select-sm rounded-pill fw-semibold extra-small px-3 shadow-none cursor-pointer"
+            <div
+              className="d-flex align-items-center px-3 rounded-pill bg-white shadow-xs"
               style={{
                 height: 38,
-                width: 'auto',
-                minWidth: 135,
-                backgroundColor: '#F8FAFD',
-                border: '1px solid rgba(11, 44, 95, 0.16)',
-                color: '#0B2C5F',
+                border: isDark ? '1px solid rgba(56, 189, 248, 0.2)' : '1.5px solid #CBD5E1',
+                backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
               }}
-              value={historyStatusFilter}
-              onChange={(e) => setHistoryStatusFilter(e.target.value)}
-              aria-label="Filter scan history by status"
             >
-              <option value="all">All Statuses</option>
-              <option value="Healthy">Healthy</option>
-              <option value="Diseased">Diseased</option>
-              <option value="Uncertain">Uncertain</option>
-              <option value="Poor Image Quality">Poor Quality</option>
-            </select>
+              <FaFilter size={11} style={{ color: '#FC563C' }} className="me-2 flex-shrink-0" />
+              <select
+                className="form-select form-select-sm border-0 bg-transparent fw-semibold extra-small p-0 shadow-none cursor-pointer"
+                style={{
+                  height: 36,
+                  width: 'auto',
+                  minWidth: 140,
+                  color: isDark ? '#F1F5F9' : '#1E293B',
+                  outline: 'none',
+                  fontSize: '0.8rem',
+                }}
+                value={historyStatusFilter}
+                onChange={(e) => setHistoryStatusFilter(e.target.value)}
+                aria-label="Filter scan history by status"
+              >
+                <option value="all">Filter: All Statuses</option>
+                <option value="Healthy">Status: Healthy</option>
+                <option value="Diseased">Status: Diseased</option>
+                <option value="Uncertain">Status: Uncertain</option>
+                <option value="Poor Image Quality">Status: Poor Quality</option>
+              </select>
+            </div>
 
             {/* Export PDF Button */}
             <button
@@ -1123,14 +1145,14 @@ export default function DiseaseScanPage() {
               style={{ height: 38 }}
               onClick={exportPdf}
             >
-              <FaFilePdf style={{ color: '#EA580C' }} /> Export PDF
+              <FaFilePdf style={{ color: '#FC563C' }} /> Export PDF
             </button>
           </div>
         </div>
 
-        <div className="table-responsive rounded-3" style={{ border: '1px solid rgba(11, 44, 95, 0.08)' }}>
+        <div className="table-responsive rounded-3" style={{ maxHeight: '290px', overflowY: 'auto', border: isDark ? '1px solid rgba(56, 189, 248, 0.2)' : '1.5px solid #CBD5E1' }}>
           <table className="table tri-table align-middle mb-0">
-            <thead>
+            <thead className="sticky-top shadow-xs" style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: isDark ? '#1E293B' : '#F8FAFC' }}>
               <tr>
                 <th className="ps-3 py-3">Date &amp; Time</th>
                 <th className="py-3">Pond</th>
@@ -1158,18 +1180,18 @@ export default function DiseaseScanPage() {
                 return (
                   <tr key={item.id}>
                     <td className="ps-3 font-mono extra-small text-muted">{item.created_at}</td>
-                    <td className="fw-bold" style={{ color: '#0B2C5F' }}>{item.pond_name || 'Assigned Pond'}</td>
+                    <td className="fw-bold" style={{ color: '#FC563C' }}>{item.pond_name || 'Assigned Pond'}</td>
                     <td>
-                      <span className="fw-bold" style={{ color: isHealthy ? '#047857' : isDiseased ? '#EA580C' : '#0B2C5F' }}>
+                      <span className="fw-bold" style={{ color: isHealthy ? '#047857' : isDiseased ? '#FC563C' : '#FC563C' }}>
                         {item.disease_name}
                       </span>
                     </td>
-                    <td className="fw-extrabold" style={{ color: '#0B2C5F' }}>
+                    <td className="fw-extrabold" style={{ color: '#FC563C' }}>
                       {Number(item.confidence_score || 0).toFixed(2)}%
                     </td>
                     <td>
                       <span className="extra-small text-muted d-inline-flex align-items-center gap-1">
-                        <FaRobot style={{ color: '#0B2C5F' }} /> {item.model_used || 'Desktop Model'}
+                        <FaRobot style={{ color: '#FC563C' }} /> {item.model_used || 'Desktop Model'}
                       </span>
                     </td>
                     <td>
@@ -1179,7 +1201,7 @@ export default function DiseaseScanPage() {
                           item.risk_level === 'High'
                             ? { backgroundColor: '#FEF2F2', color: '#B91C1C', border: '1px solid #FECACA' }
                             : item.risk_level === 'Medium'
-                            ? { backgroundColor: '#FFF7ED', color: '#EA580C', border: '1px solid #FFEDD5' }
+                            ? { backgroundColor: '#E9E4E0', color: '#FC563C', border: '1px solid #6E7575' }
                             : { backgroundColor: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0' }
                         }
                       >
@@ -1194,7 +1216,7 @@ export default function DiseaseScanPage() {
                             ? { backgroundColor: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0' }
                             : status === 'Diseased' || status === 'No Shrimp Detected'
                             ? { backgroundColor: '#FEF2F2', color: '#B91C1C', border: '1px solid #FECACA' }
-                            : { backgroundColor: '#FFF7ED', color: '#EA580C', border: '1px solid #FFEDD5' }
+                            : { backgroundColor: '#E9E4E0', color: '#FC563C', border: '1px solid #6E7575' }
                         }
                       >
                         {status}

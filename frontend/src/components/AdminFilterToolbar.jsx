@@ -1,5 +1,6 @@
 import React from 'react';
 import { FaSearch, FaFilter, FaFileCsv, FaSync, FaTimes, FaCalendarAlt } from 'react-icons/fa';
+import { useLanguage } from '../context/LanguageContext';
 
 /**
  * Enterprise Admin Filter Toolbar matching standard executive UI format.
@@ -28,9 +29,12 @@ export default function AdminFilterToolbar({
   onResetFilters = null,
   extraActions = null,
   children = null,
+  className = "admin-filter-card admin-search-section-box mb-4",
 }) {
+  const { t } = useLanguage();
+
   return (
-    <div className="card border-0 shadow-sm rounded-4 bg-white p-4 mb-4 admin-filter-card">
+    <div className={className}>
       {/* Top Row: Search Input + Action Buttons */}
       <div className="d-flex flex-column flex-xl-row align-items-xl-center justify-content-between gap-3">
         {/* Search Bar */}
@@ -39,7 +43,7 @@ export default function AdminFilterToolbar({
           <input
             type="text"
             className="form-control ps-5 pe-4 admin-search-input"
-            placeholder={searchPlaceholder}
+            placeholder={t(searchPlaceholder, searchPlaceholder)}
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
           />
@@ -65,7 +69,7 @@ export default function AdminFilterToolbar({
               className={`btn btn-admin-filter ${showFilters ? 'active' : ''}`}
               onClick={onToggleFilters}
             >
-              <FaFilter size={13} /> Filters
+              <FaFilter size={13} /> {t('Filters', 'Filters')}
             </button>
           )}
 
@@ -75,7 +79,7 @@ export default function AdminFilterToolbar({
               className="btn btn-admin-export"
               onClick={onExportCSV}
             >
-              <FaFileCsv size={15} /> {exportLabel}
+              <FaFileCsv size={15} /> {t(exportLabel, exportLabel)}
             </button>
           )}
 
@@ -86,7 +90,7 @@ export default function AdminFilterToolbar({
               onClick={onRefresh}
               disabled={loading}
             >
-              <FaSync size={13} className={loading ? 'fa-spin' : ''} /> {refreshLabel}
+              <FaSync size={13} className={loading ? 'fa-spin' : ''} /> {t(refreshLabel, refreshLabel)}
             </button>
           )}
         </div>
@@ -111,7 +115,7 @@ export default function AdminFilterToolbar({
                     onClick={() => onTabChange(tab.id)}
                   >
                     {tab.icon && <span className="me-1">{tab.icon}</span>}
-                    {tab.label} {tab.count !== undefined && `(${tab.count})`}
+                    {t(tab.label, tab.label)} {tab.count !== undefined && `(${tab.count})`}
                   </button>
                 );
               })}
@@ -121,7 +125,7 @@ export default function AdminFilterToolbar({
           {/* Right Meta Info */}
           {metaRight && (
             <div className="extra-small text-muted admin-tab-meta ms-auto">
-              {metaRight}
+              {typeof metaRight === 'string' ? t(metaRight, metaRight) : metaRight}
             </div>
           )}
         </div>
@@ -139,7 +143,7 @@ export default function AdminFilterToolbar({
                   <label className="form-label extra-small fw-bold text-muted mb-1.5 d-flex align-items-center justify-content-between">
                     <span>
                       {field.icon && <span className="me-1">{field.icon}</span>}
-                      {field.label}
+                      {t(field.label, field.label)}
                     </span>
                     {field.headerAction}
                   </label>
@@ -162,7 +166,7 @@ export default function AdminFilterToolbar({
                       {field.options &&
                         field.options.map((opt, oIdx) => (
                           <option key={oIdx} value={opt.value}>
-                            {opt.label}
+                            {t(opt.label, opt.label)}
                           </option>
                         ))}
                     </select>
@@ -177,7 +181,7 @@ export default function AdminFilterToolbar({
                     className="btn btn-admin-reset w-100"
                     onClick={onResetFilters}
                   >
-                    Reset Filters
+                    {t('Reset Filters', 'Reset Filters')}
                   </button>
                 </div>
               )}

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useLanguage } from '../../context/LanguageContext';
 import {
   FaUser,
   FaLock,
@@ -29,13 +30,14 @@ import {
   FaKey,
   FaEye,
   FaEyeSlash,
-  FaSignOutAlt
+  FaSignOutAlt,
+  FaCog
 } from 'react-icons/fa';
 import { useSearchParams } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { applyAppTheme } from '../../main';
+import { applyAppTheme, getThemePreference, setManualTheme, resetThemeToAuto } from '../../utils/theme';
 
 export default function CaretakerSettingsPage() {
   const { user: authUser, updateUser, logout } = useAuth();
@@ -50,6 +52,7 @@ export default function CaretakerSettingsPage() {
       setActiveTab(tabParam);
     }
   }, [searchParams]);
+  const { language, setLanguage, confirmAndSetLanguage, t, isFilipino } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -97,8 +100,8 @@ export default function CaretakerSettingsPage() {
 
   // Display & System Preferences State
   const [displayPreferences, setDisplayPreferences] = useState({
-    theme: localStorage.getItem('shrim_theme') === 'dark' ? 'Dark' : 'Light',
-    language: 'English',
+    theme: getThemePreference() === 'auto' ? 'Auto' : (getThemePreference() === 'dark' ? 'Dark' : 'Light'),
+    language: language === 'fil' ? 'Tagalog' : 'English',
     date_format: 'YYYY-MM-DD',
     time_format: '12 Hours (AM/PM)'
   });
@@ -142,7 +145,13 @@ export default function CaretakerSettingsPage() {
             if (s.caretaker_auto_refresh) setPondPreferences((prev) => ({ ...prev, auto_refresh_logs: s.caretaker_auto_refresh }));
             if (s.caretaker_disease_alerts) setNotificationSettings((prev) => ({ ...prev, disease_alerts: s.caretaker_disease_alerts }));
             if (s.caretaker_feeding_reminders) setNotificationSettings((prev) => ({ ...prev, feeding_reminders: s.caretaker_feeding_reminders }));
-            if (s.caretaker_language) setDisplayPreferences((prev) => ({ ...prev, language: s.caretaker_language }));
+            if (s.caretaker_theme) {
+              const currentPref = getThemePreference();
+              const loadedTheme = currentPref === 'auto'
+                ? 'Auto'
+                : (s.caretaker_theme === 'Auto' ? 'Auto' : (s.caretaker_theme === 'Dark' ? 'Dark' : 'Light'));
+              setDisplayPreferences((prev) => ({ ...prev, theme: loadedTheme }));
+            }
           }
         } catch (err) {
           console.warn('Settings load warning:', err);
@@ -318,6 +327,40 @@ export default function CaretakerSettingsPage() {
 
   return (
     <div className="caretaker-settings-hub pb-5 pt-2">
+      {/* 1. EXECUTIVE HERO OPERATIONS BANNER */}
+      <div className="disease-hero-banner d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+        <div className="d-flex align-items-center gap-3">
+          <div className="hero-icon-badge shadow-xs">
+            <FaCog />
+          </div>
+          <div>
+            <div className="d-flex align-items-center gap-2 flex-wrap">
+              <h3 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#FC563C', fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
+                {t('hero.caretakerSettings', 'Caretaker Account & System Settings')}
+              </h3>
+              <span
+                className="badge rounded-pill extra-small px-3 py-1 fw-bold"
+                style={{ backgroundColor: 'rgba(252, 86, 60, 0.08)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.16)' }}
+              >
+                ● {t('hero.caretakerSettingsBadge', 'Operator Profile Verified')}
+              </span>
+            </div>
+            <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
+              {t('hero.caretakerSettingsSub', 'Manage operator profile credentials, notification alerts, biometric security preferences, and display modes.')}
+            </p>
+          </div>
+        </div>
+
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <span
+            className="badge rounded-pill extra-small px-3 py-2 fw-bold shadow-xs"
+            style={{ backgroundColor: 'rgba(252, 86, 60, 0.06)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.2)' }}
+          >
+            ● Field Station Profile Active
+          </span>
+        </div>
+      </div>
+
       <div className="row g-4 align-items-start">
         {/* LEFT SETTINGS MENU SIDEBAR */}
         <div className="col-12 col-lg-4 col-xl-3 caretaker-settings-sidebar">
@@ -336,7 +379,7 @@ export default function CaretakerSettingsPage() {
                   type="text"
                   className="form-control form-control-sm ps-5 pe-4 py-2.5 rounded-3 border-slate-200 shadow-xs"
                   placeholder="Search Settings..."
-                  style={{ fontSize: '0.84rem', backgroundColor: '#F8FAFC' }}
+                  style={{ fontSize: '0.84rem', backgroundColor: '#E9E4E0' }}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -371,7 +414,7 @@ export default function CaretakerSettingsPage() {
                       style={{
                         cursor: 'pointer',
                         backgroundColor: isActive ? '#EFF6FF' : 'transparent',
-                        borderLeft: isActive ? '3.5px solid #0B2C5F' : '3.5px solid transparent',
+                        borderLeft: isActive ? '3.5px solid #FC563C' : '3.5px solid transparent',
                         transform: isActive ? 'translateX(2px)' : 'none',
                       }}
                     >
@@ -380,15 +423,15 @@ export default function CaretakerSettingsPage() {
                         style={{
                           width: 38,
                           height: 38,
-                          backgroundColor: isActive ? '#0B2C5F' : '#F1F5F9',
+                          backgroundColor: isActive ? '#FC563C' : '#F1F5F9',
                           color: isActive ? '#FFFFFF' : '#64748B',
-                          boxShadow: isActive ? '0 3px 8px rgba(11, 44, 95, 0.25)' : 'none',
+                          boxShadow: isActive ? '0 3px 8px rgba(252, 86, 60, 0.25)' : 'none',
                         }}
                       >
                         <Icon size={16} />
                       </div>
                       <div className="text-truncate flex-grow-1">
-                        <div className="fw-bold lh-1" style={{ color: isActive ? '#0B2C5F' : '#1E293B', fontSize: '0.88rem' }}>
+                        <div className="fw-bold lh-1" style={{ color: isActive ? '#FC563C' : '#1E293B', fontSize: '0.88rem' }}>
                           {t.label}
                         </div>
                       </div>
@@ -447,7 +490,7 @@ export default function CaretakerSettingsPage() {
                               style={{
                                 width: 96,
                                 height: 96,
-                                background: 'linear-gradient(135deg, #0B2C5F 0%, #1E40AF 100%)'
+                                background: 'linear-gradient(135deg, #FC563C 0%, #1E40AF 100%)'
                               }}
                             >
                               {initials}
@@ -978,41 +1021,66 @@ export default function CaretakerSettingsPage() {
                             <div className="d-flex gap-2">
                               <button
                                 type="button"
-                                className={`btn flex-grow-1 rounded-3 p-3 border d-flex align-items-center justify-content-center gap-2 fw-semibold ${
+                                className={`btn flex-grow-1 rounded-3 p-3 border d-flex align-items-center justify-content-center gap-1.5 fw-semibold ${
+                                  displayPreferences.theme === 'Auto'
+                                    ? 'btn-primary shadow-xs'
+                                    : 'btn-outline-secondary'
+                                }`}
+                                onClick={() => {
+                                  setDisplayPreferences({ ...displayPreferences, theme: 'Auto' });
+                                  resetThemeToAuto();
+                                }}
+                                title="Automatically adjust between Light (6 AM–6 PM) and Dark (6 PM–6 AM)"
+                              >
+                                <FaClock /> Auto
+                              </button>
+                              <button
+                                type="button"
+                                className={`btn flex-grow-1 rounded-3 p-3 border d-flex align-items-center justify-content-center gap-1.5 fw-semibold ${
                                   displayPreferences.theme === 'Light'
                                     ? 'btn-primary shadow-xs'
                                     : 'btn-outline-secondary'
                                 }`}
                                 onClick={() => {
                                   setDisplayPreferences({ ...displayPreferences, theme: 'Light' });
-                                  applyAppTheme('light');
+                                  setManualTheme('light');
                                 }}
                               >
-                                <FaSun /> Light Theme
+                                <FaSun /> Light
                               </button>
                               <button
                                 type="button"
-                                className={`btn flex-grow-1 rounded-3 p-3 border d-flex align-items-center justify-content-center gap-2 fw-semibold ${
+                                className={`btn flex-grow-1 rounded-3 p-3 border d-flex align-items-center justify-content-center gap-1.5 fw-semibold ${
                                   displayPreferences.theme === 'Dark'
                                     ? 'btn-dark shadow-xs'
                                     : 'btn-outline-secondary'
                                 }`}
                                 onClick={() => {
                                   setDisplayPreferences({ ...displayPreferences, theme: 'Dark' });
-                                  applyAppTheme('dark');
+                                  setManualTheme('dark');
                                 }}
                               >
-                                <FaMoon /> Dark Theme
+                                <FaMoon /> Dark
                               </button>
                             </div>
                           </div>
 
                           <div className="col-12 col-md-6">
-                            <label className="form-label small fw-semibold text-dark mb-2">System Language</label>
+                            <label className="form-label small fw-semibold text-dark mb-2">
+                              {t('settings.langTitle', 'System Language')}
+                            </label>
                             <select
                               className="form-select p-3"
-                              value={displayPreferences.language}
-                              onChange={(e) => setDisplayPreferences({ ...displayPreferences, language: e.target.value })}
+                              value={language === 'fil' ? 'Tagalog' : 'English'}
+                              onChange={async (e) => {
+                                const val = e.target.value;
+                                const nextLang = val === 'Tagalog' ? 'fil' : 'en';
+                                if (nextLang === language) return;
+                                const confirmed = await confirmAndSetLanguage(nextLang);
+                                if (confirmed) {
+                                  setDisplayPreferences((prev) => ({ ...prev, language: val }));
+                                }
+                              }}
                             >
                               <option value="English">English (Default)</option>
                               <option value="Tagalog">Tagalog / Filipino</option>
@@ -1054,7 +1122,9 @@ export default function CaretakerSettingsPage() {
                             <FaInfoCircle />
                           </div>
                           <div>
-                            <h5 className="fw-extrabold text-dark mb-0.5">ShrimPredict Caretaker Console</h5>
+                            <h5 className="fw-extrabold text-dark mb-0.5">
+                              Shrimp<span style={{ color: '#FC563C' }}>Predict</span> Caretaker Console
+                            </h5>
                             <span className="text-muted extra-small">Version 1.0.0 (Stable Production Build)</span>
                           </div>
                         </div>
@@ -1097,7 +1167,7 @@ export default function CaretakerSettingsPage() {
                                 Project Research Context
                               </span>
                               <p className="text-secondary extra-small mb-0" style={{ lineHeight: 1.6 }}>
-                                ShrimPredict: Shrimp Feed Monitoring and Disease Detection System Utilizing Image Processing. Developed for O & B Aqua Farm in collaboration with Batangas State University.
+                                Shrimp<span style={{ color: '#FC563C' }}>Predict</span>: Shrimp Feed Monitoring and Disease Detection System Utilizing Image Processing. Developed for O & B Aqua Farm in collaboration with Batangas State University.
                               </p>
                             </div>
                           </div>

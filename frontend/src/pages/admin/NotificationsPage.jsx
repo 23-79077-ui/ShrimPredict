@@ -20,8 +20,10 @@ import {
   FaTrashRestore,
   FaExternalLinkAlt,
 } from 'react-icons/fa';
+import { useLanguage } from '../../context/LanguageContext';
 
 export default function NotificationsPage() {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [counts, setCounts] = useState({ unread: 0, active: 0, archived: 0, deleted: 0 });
@@ -307,33 +309,23 @@ export default function NotificationsPage() {
       {/* HERO BANNER */}
       <div className="disease-hero-banner d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
         <div className="d-flex align-items-center gap-3">
-          <div
-            className="rounded-circle d-flex align-items-center justify-content-center shadow-xs flex-shrink-0"
-            style={{
-              width: 50,
-              height: 50,
-              background: 'linear-gradient(135deg, #0B2C5F 0%, #1E3A8A 100%)',
-              color: '#FFFFFF',
-              fontSize: '1.3rem',
-              border: '2px solid rgba(234, 88, 12, 0.3)'
-            }}
-          >
+          <div className="hero-icon-badge shadow-xs">
             <FaBell />
           </div>
           <div>
             <div className="d-flex align-items-center gap-2 flex-wrap">
-              <h3 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#0B2C5F', fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
-                Operational Notifications &amp; System Dispatch
+              <h3 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#FC563C', fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
+                {t('Operational Notifications & System Dispatch')}
               </h3>
               <span
                 className="badge rounded-pill extra-small px-3 py-1 fw-bold"
-                style={{ backgroundColor: 'rgba(11, 44, 95, 0.08)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.16)' }}
+                style={{ backgroundColor: 'rgba(252, 86, 60, 0.08)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.16)' }}
               >
-                ● Live Incident Stream
+                ● {t('Live Incident Stream')}
               </span>
             </div>
             <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
-              Real-time feed alerts, water telemetry variances, and caretaker biometric reports.
+              {t('Real-time feed alerts, water telemetry variances, and caretaker biometric reports.')}
             </p>
           </div>
         </div>
@@ -344,14 +336,14 @@ export default function NotificationsPage() {
           style={{ fontSize: '0.82rem', height: 40 }}
           onClick={loadNotifications}
         >
-          <FaSync size={11} className={loading ? 'fa-spin me-1.5' : 'me-1.5'} /> Refresh Dispatch
+          <FaSync size={11} className={loading ? 'fa-spin me-1.5' : 'me-1.5'} /> {t('Refresh Dispatch')}
         </button>
       </div>
 
       <AdminFilterToolbar
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
-        searchPlaceholder="Search notification title, message, pond, caretaker..."
+        searchPlaceholder={t('Search notification title, message, pond, caretaker...')}
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters(!showFilters)}
         onRefresh={loadNotifications}
@@ -363,25 +355,25 @@ export default function NotificationsPage() {
             onClick={handleMarkAllRead}
             disabled={counts.unread === 0}
           >
-            <FaCheckDouble size={13} /> Mark All as Read
+            <FaCheckDouble size={13} /> {t('Mark All as Read')}
           </button>
         }
         tabs={[
-          { id: 'active', label: 'Active', count: counts.active },
-          { id: 'unread', label: 'Unread', count: counts.unread },
-          { id: 'archived', label: 'Archived', count: counts.archived },
-          { id: 'deleted', label: 'Deleted History', count: counts.deleted || 0 }
+          { id: 'active', label: t('Active'), count: counts.active },
+          { id: 'unread', label: t('Unread'), count: counts.unread },
+          { id: 'archived', label: t('Archived'), count: counts.archived },
+          { id: 'deleted', label: t('Deleted History'), count: counts.deleted || 0 }
         ]}
         activeTab={currentTab}
         onTabChange={setCurrentTab}
         metaRight={
           <>
-            System Dispatch: <strong>Real-time Caretaker Reports & Alerts</strong>
+            {t('System Dispatch:')} <strong>{t('Real-time Caretaker Reports & Alerts')}</strong>
           </>
         }
         filterFields={[
           {
-            label: 'Evaluation Date',
+            label: t('Evaluation Date'),
             icon: <FaCalendarAlt className="me-1 text-primary" />,
             type: 'date',
             value: customDate,
@@ -392,7 +384,7 @@ export default function NotificationsPage() {
             colClass: 'col-12 col-md-4'
           },
           {
-            label: 'Date Range Quick Selector',
+            label: t('Date Range Quick Selector'),
             type: 'select',
             value: dateFilterType,
             onChange: (val) => {
@@ -401,11 +393,11 @@ export default function NotificationsPage() {
             },
             colClass: 'col-12 col-md-4',
             options: [
-              { value: 'all', label: 'All Dates' },
-              { value: 'today', label: 'Today' },
-              { value: 'yesterday', label: 'Yesterday' },
-              { value: 'last7', label: 'Last 7 Days' },
-              { value: 'custom', label: 'Custom Date…' }
+              { value: 'all', label: t('All Dates') },
+              { value: 'today', label: t('Today') },
+              { value: 'yesterday', label: t('Yesterday') },
+              { value: 'last7', label: t('Last 7 Days') },
+              { value: 'custom', label: t('Custom Date…') }
             ]
           }
         ]}
@@ -423,7 +415,7 @@ export default function NotificationsPage() {
           {loading ? (
             <div className="text-center py-5 text-muted">
               <div className="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
-              Loading notifications…
+              {t('Loading notifications…')}
             </div>
           ) : (() => {
             const displayNotifs = notifications.filter((n) => {
@@ -441,8 +433,8 @@ export default function NotificationsPage() {
               return (
                 <div className="text-center py-5">
                   <FaBell className="text-muted opacity-50 display-4 mb-2" />
-                  <h6 className="fw-semibold text-muted">No notifications found</h6>
-                  <p className="small text-muted mb-0">No entries match your search query or selected filter.</p>
+                  <h6 className="fw-semibold text-muted">{t('No notifications found')}</h6>
+                  <p className="small text-muted mb-0">{t('No entries match your search query or selected filter.')}</p>
                 </div>
               );
             }
@@ -472,7 +464,7 @@ export default function NotificationsPage() {
                     {/* Content Body */}
                     <div>
                       <div className="d-flex align-items-center gap-2 flex-wrap mb-1">
-                        <h6 className="fw-bold mb-0 text-dark">{notif.title}</h6>
+                        <h6 className="fw-bold mb-0 text-dark">{t(notif.title)}</h6>
 
                         {notif.caretaker_name && (
                           <span className="badge bg-primary bg-opacity-10 text-primary fw-normal">
@@ -487,15 +479,15 @@ export default function NotificationsPage() {
                         )}
 
                         {!notif.is_read && currentTab !== 'deleted' && (
-                          <span className="badge bg-danger rounded-pill small ms-1">New</span>
+                          <span className="badge bg-danger rounded-pill small ms-1">{t('New')}</span>
                         )}
 
                         {currentTab === 'deleted' && (
-                          <span className="badge bg-danger bg-opacity-10 text-danger fw-normal ms-1">Deleted</span>
+                          <span className="badge bg-danger bg-opacity-10 text-danger fw-normal ms-1">{t('Deleted')}</span>
                         )}
                       </div>
 
-                      <p className="text-dark mb-1.5 small">{notif.message}</p>
+                      <p className="text-dark mb-1.5 small">{t(notif.message)}</p>
 
                       <div className="d-flex align-items-center gap-3">
                         <span className="text-muted extra-small" style={{ fontSize: '0.8rem' }}>
@@ -512,7 +504,7 @@ export default function NotificationsPage() {
                               handleNotificationClick(notif);
                             }}
                           >
-                            <FaExternalLinkAlt size={10} /> View Report Details
+                            <FaExternalLinkAlt size={10} /> {t('View Report Details')}
                           </button>
                         )}
                       </div>
@@ -526,14 +518,14 @@ export default function NotificationsPage() {
                       <button
                         className="btn btn-outline-success btn-sm d-flex align-items-center gap-1"
                         onClick={() => handleRestore(notif)}
-                        title="Restore Notification"
+                        title={t('Restore Notification')}
                       >
-                        <FaTrashRestore /> Restore
+                        <FaTrashRestore /> {t('Restore')}
                       </button>
                       <button
                         className="btn btn-outline-danger btn-sm p-1 px-2"
                         onClick={() => handlePermanentDelete(notif)}
-                        title="Permanently Delete"
+                        title={t('Permanently Delete')}
                       >
                         <FaTrashAlt />
                       </button>
@@ -543,7 +535,7 @@ export default function NotificationsPage() {
                     <div className="position-relative">
                       <button
                         className="btn btn-link text-muted p-1 rounded-circle border-0 shadow-none hover-bg-light"
-                        title="Actions"
+                        title={t('Actions')}
                         onClick={(e) => {
                           e.stopPropagation();
                           setOpenDropdownId(openDropdownId === notif.id ? null : notif.id);
@@ -562,7 +554,7 @@ export default function NotificationsPage() {
                             className="dropdown-item d-flex align-items-center gap-2 small py-2 text-primary fw-semibold"
                             onClick={() => handleNotificationClick(notif)}
                           >
-                            <FaExternalLinkAlt /> Go to Reports
+                            <FaExternalLinkAlt /> {t('Go to Reports')}
                           </button>
 
                           <button
@@ -570,7 +562,7 @@ export default function NotificationsPage() {
                             onClick={() => handleMarkReadToggle(notif)}
                           >
                             <FaCheckDouble className="text-secondary" />
-                            {notif.is_read ? 'Mark as Unread' : 'Mark as Read'}
+                            {notif.is_read ? t('Mark as Unread') : t('Mark as Read')}
                           </button>
 
                           {currentTab !== 'archived' ? (
@@ -578,14 +570,14 @@ export default function NotificationsPage() {
                               className="dropdown-item d-flex align-items-center gap-2 small py-2 text-warning"
                               onClick={() => handleArchive(notif)}
                             >
-                              <FaArchive /> Archive
+                              <FaArchive /> {t('Archive')}
                             </button>
                           ) : (
                             <button
                               className="dropdown-item d-flex align-items-center gap-2 small py-2 text-success"
                               onClick={() => handleRestore(notif)}
                             >
-                              <FaUndo /> Restore Active
+                              <FaUndo /> {t('Restore Active')}
                             </button>
                           )}
 
@@ -595,7 +587,7 @@ export default function NotificationsPage() {
                             className="dropdown-item d-flex align-items-center gap-2 small py-2 text-danger"
                             onClick={() => handleDelete(notif)}
                           >
-                            <FaTrashAlt /> Delete
+                            <FaTrashAlt /> {t('Delete')}
                           </button>
                         </div>
                       )}

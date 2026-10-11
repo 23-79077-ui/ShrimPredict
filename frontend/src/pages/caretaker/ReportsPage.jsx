@@ -31,6 +31,8 @@ import {
 } from 'react-icons/fa';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
+import { getEffectiveTheme } from '../../utils/theme';
 
 const resolveMediaUrl = (url) => {
   if (!url) return '';
@@ -92,9 +94,9 @@ const quickSuggestionsByProblemType = {
     'Electrical Box Sealing Repair',
   ],
   'Others': [
-    'Foul Odor Emanating from Basin',
+    'Bad Smell Coming from Pond',
     'Predator Birds Hovering Around Dike',
-    'Routine Security & Basin Inspection',
+    'Routine Pond & Dike Inspection',
   ],
 };
 
@@ -102,7 +104,7 @@ const PROBLEM_TYPES = [
   { value: 'Equipment', label: 'Equipment & Machinery' },
   { value: 'Water Quality', label: 'Water Quality & Chemistry' },
   { value: 'Disease / Sick Shrimp', label: 'Shrimp Health & Disease' },
-  { value: 'Structural', label: 'Structural & Pond Basin' },
+  { value: 'Structural', label: 'Pond Dike & Structure' },
   { value: 'Feed Issue', label: 'Feed & Nutrition Supply' },
   { value: 'Maintenance', label: 'General Maintenance' },
   { value: 'Others', label: 'Others / Unclassified' },
@@ -116,9 +118,18 @@ const SEVERITY_LEVELS = [
 ];
 
 export default function ReportsPage() {
+  const { t } = useLanguage();
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const targetId = searchParams.get('id') || searchParams.get('report_id');
+
+  const [currentTheme, setCurrentTheme] = useState(() => getEffectiveTheme());
+  useEffect(() => {
+    const handleThemeChange = () => setCurrentTheme(getEffectiveTheme());
+    window.addEventListener('themeChanged', handleThemeChange);
+    return () => window.removeEventListener('themeChanged', handleThemeChange);
+  }, []);
+  const isDark = currentTheme === 'dark';
 
   const [activeTab, setActiveTab] = useState(targetId ? 'history' : 'submit');
   const [ponds, setPonds] = useState([]);
@@ -291,7 +302,7 @@ export default function ReportsPage() {
   const handleSubmit = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     if (!form.pondId) {
-      Swal.fire({ icon: 'warning', title: 'Select Basin', text: 'Please select an affected shrimp pond basin.' });
+      Swal.fire({ icon: 'warning', title: 'Select Pond', text: 'Please select an affected shrimp pond.' });
       return;
     }
     if (!form.description || !form.description.trim()) {
@@ -342,7 +353,7 @@ export default function ReportsPage() {
             </div>
           `,
           confirmButtonText: 'OK',
-          confirmButtonColor: '#0B2C5F',
+          confirmButtonColor: '#FC563C',
         });
 
         setForm((prev) => ({
@@ -438,23 +449,28 @@ export default function ReportsPage() {
 
   return (
     <div className="caretaker-reports-hub">
-      {/* HERO CONTROL STRIP (TRI-COLOR NAVY & SHRIMPY ORANGE) */}
-      <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-        <div>
-          <div className="d-flex align-items-center gap-2 mb-1">
-            <span className="badge badge-tri-navy rounded-pill px-2.5 py-0.5 extra-small">
-              Caretaker Operations
-            </span>
-            <span className="badge badge-tri-orange rounded-pill px-2.5 py-0.5 extra-small">
-              Incident &amp; Maintenance Dispatch
-            </span>
+      {/* 1. EXECUTIVE HERO OPERATIONS BANNER */}
+      <div className="disease-hero-banner d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+        <div className="d-flex align-items-center gap-3">
+          <div className="hero-icon-badge shadow-xs">
+            <FaTools />
           </div>
-          <h2 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#0B2C5F', fontSize: '1.75rem', letterSpacing: '-0.03em' }}>
-            Pond Issue &amp; Incident Reports
-          </h2>
-          <p className="text-muted extra-small mb-0 mt-0.5">
-            Log field abnormalities, machinery downtime, and biological anomalies with photo/video evidence for rapid admin dispatch.
-          </p>
+          <div>
+            <div className="d-flex align-items-center gap-2 flex-wrap">
+              <h3 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#FC563C', fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
+                {t('hero.caretakerReports', 'Pond Issue & Incident Reports')}
+              </h3>
+              <span
+                className="badge rounded-pill extra-small px-3 py-1 fw-bold"
+                style={{ backgroundColor: 'rgba(252, 86, 60, 0.08)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.16)' }}
+              >
+                ● {t('hero.caretakerReportsBadge', 'Incident & Maintenance Dispatch')}
+              </span>
+            </div>
+            <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
+              {t('hero.caretakerReportsSub', 'Log field abnormalities, machinery downtime, and biological anomalies with photo/video evidence for rapid admin dispatch.')}
+            </p>
+          </div>
         </div>
 
         {/* Action Controls Cluster & View Toggle Switch */}
@@ -466,8 +482,8 @@ export default function ReportsPage() {
             disabled={loadingReports}
             title="Sync Incident Reports"
           >
-            <FaSync size={11} className={loadingReports ? 'fa-spin' : ''} style={{ color: '#0B2C5F' }} />
-            <span>Sync</span>
+            <FaSync size={11} className={loadingReports ? 'fa-spin' : ''} style={{ color: '#FC563C' }} />
+            <span>{t('Sync')}</span>
           </button>
 
           {/* Segmented Mode Switcher */}
@@ -492,7 +508,7 @@ export default function ReportsPage() {
                   className="badge rounded-pill extra-small px-1.5 py-0.5 ms-1"
                   style={{
                     backgroundColor: activeTab === 'history' ? '#FFFFFF' : '#E2E8F0',
-                    color: activeTab === 'history' ? '#0B2C5F' : '#475569',
+                    color: activeTab === 'history' ? '#FC563C' : '#475569',
                     fontSize: '0.67rem',
                   }}
                 >
@@ -511,12 +527,12 @@ export default function ReportsPage() {
           <div className="tri-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Assigned Basins</span>
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Assigned Ponds</span>
                 <div className="tri-kpi-icon tri-kpi-icon-blue">
                   <FaWater size={17} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#0B2C5F', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+              <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
                 {ponds.length} <small className="fs-6 text-muted fw-normal">ponds</small>
               </h2>
               <div className="extra-small text-muted fw-semibold">
@@ -525,7 +541,7 @@ export default function ReportsPage() {
             </div>
             <div>
               <div className="tri-progress-track my-2.5">
-                <div className="tri-progress-bar" style={{ width: '100%', background: '#0B2C5F' }} />
+                <div className="tri-progress-bar" style={{ width: '100%', background: '#FC563C' }} />
               </div>
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
                 <span className="text-muted extra-small">Operational coverage</span>
@@ -537,7 +553,7 @@ export default function ReportsPage() {
 
         {/* Card 2: Pending Review */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="tri-kpi-card" style={{ borderColor: 'rgba(234, 88, 12, 0.16)' }}>
+          <div className="tri-kpi-card" style={{ borderColor: 'rgba(252, 86, 60, 0.16)' }}>
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
                 <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Pending Action</span>
@@ -545,7 +561,7 @@ export default function ReportsPage() {
                   <FaClock size={17} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#EA580C', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+              <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
                 {pendingReports} <small className="fs-6 text-muted fw-normal">open</small>
               </h2>
               <div className="extra-small text-muted fw-semibold">
@@ -553,12 +569,12 @@ export default function ReportsPage() {
               </div>
             </div>
             <div>
-              <div className="tri-progress-track my-2.5" style={{ backgroundColor: 'rgba(234, 88, 12, 0.1)' }}>
+              <div className="tri-progress-track my-2.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.1)' }}>
                 <div
                   className="tri-progress-bar"
                   style={{
                     width: `${Math.min(100, Math.max(10, (pendingReports / Math.max(1, myReports.length || 1)) * 100))}%`,
-                    background: 'linear-gradient(90deg, #EA580C 0%, #F97316 100%)',
+                    background: 'linear-gradient(90deg, #FC563C 0%, #6E7575 100%)',
                   }}
                 />
               </div>
@@ -580,7 +596,7 @@ export default function ReportsPage() {
                   <FaTools size={17} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#0B2C5F', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+              <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
                 {inProgressReports} <small className="fs-6 text-muted fw-normal">active</small>
               </h2>
               <div className="extra-small text-muted fw-semibold">
@@ -593,7 +609,7 @@ export default function ReportsPage() {
                   className="tri-progress-bar"
                   style={{
                     width: `${Math.min(100, Math.max(10, (inProgressReports / Math.max(1, myReports.length || 1)) * 100))}%`,
-                    background: 'linear-gradient(90deg, #0B2C5F 0%, #38BDF8 100%)',
+                    background: 'linear-gradient(90deg, #172A39 0%, #FC563C 100%)',
                   }}
                 />
               </div>
@@ -607,7 +623,7 @@ export default function ReportsPage() {
 
         {/* Card 4: Resolved Incidents */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="tri-kpi-card" style={{ borderColor: 'rgba(234, 88, 12, 0.16)' }}>
+          <div className="tri-kpi-card" style={{ borderColor: 'rgba(252, 86, 60, 0.16)' }}>
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
                 <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Resolved</span>
@@ -615,7 +631,7 @@ export default function ReportsPage() {
                   <FaCheckCircle size={17} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#EA580C', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+              <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
                 {doneReports} <small className="fs-6 text-muted fw-normal">resolved</small>
               </h2>
               <div className="extra-small text-muted fw-semibold">
@@ -623,12 +639,12 @@ export default function ReportsPage() {
               </div>
             </div>
             <div>
-              <div className="tri-progress-track my-2.5" style={{ backgroundColor: 'rgba(234, 88, 12, 0.1)' }}>
+              <div className="tri-progress-track my-2.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.1)' }}>
                 <div
                   className="tri-progress-bar"
                   style={{
                     width: `${Math.min(100, Math.max(10, (doneReports / Math.max(1, myReports.length || 1)) * 100))}%`,
-                    background: 'linear-gradient(90deg, #EA580C 0%, #10B981 100%)',
+                    background: 'linear-gradient(90deg, #FC563C 0%, #10B981 100%)',
                   }}
                 />
               </div>
@@ -644,13 +660,13 @@ export default function ReportsPage() {
       {/* TAB 1: SUBMIT NEW INCIDENT REPORT */}
       {activeTab === 'submit' && (
         <div className="tri-card p-3.5 p-md-4 mb-4">
-          <div className="d-flex align-items-center justify-content-between mb-3 pb-3 border-bottom flex-wrap gap-2" style={{ borderColor: 'rgba(11, 44, 95, 0.08)' }}>
+          <div className="d-flex align-items-center justify-content-between mb-3 pb-3 border-bottom flex-wrap gap-2" style={{ borderColor: 'rgba(252, 86, 60, 0.08)' }}>
             <div>
-              <h5 className="fw-extrabold mb-0" style={{ color: '#0B2C5F', letterSpacing: '-0.02em' }}>
+              <h5 className="fw-extrabold mb-0" style={{ color: '#FC563C', letterSpacing: '-0.02em' }}>
                 Submit Field Incident &amp; Abnormality Report
               </h5>
               <small className="text-muted">
-                Document basin anomalies, machine faults, or shrimp issues with visual evidence for farm management.
+                Report pond issues, broken equipment, or shrimp health problems with photos to the farm manager.
               </small>
             </div>
             <div className="badge badge-tri-navy px-3 py-1.5 rounded-pill extra-small fw-bold d-flex align-items-center gap-1.5">
@@ -663,7 +679,7 @@ export default function ReportsPage() {
             <div className="row g-3 mb-3">
               <div className="col-md-6">
                 <label className="form-label extra-small fw-bold text-dark mb-1">
-                  Affected Pond Basin <span className="text-danger">*</span>
+                  Affected Pond <span className="text-danger">*</span>
                 </label>
                 {loadingPonds ? (
                   <div className="p-2 rounded-3 bg-light text-muted small">Loading ponds...</div>
@@ -671,14 +687,14 @@ export default function ReportsPage() {
                   <div className="alert alert-warning py-2 mb-0 extra-small">No assigned ponds found for your caretaker account.</div>
                 ) : (
                   <div className="input-group">
-                    <span className="input-group-text bg-white" style={{ borderColor: 'rgba(11, 44, 95, 0.18)' }}>
-                      <FaWater size={13} style={{ color: '#0B2C5F' }} />
+                    <span className="input-group-text bg-white" style={{ borderColor: 'rgba(252, 86, 60, 0.18)' }}>
+                      <FaWater size={13} style={{ color: '#FC563C' }} />
                     </span>
                     <select
                       className="form-select form-select-sm fw-bold"
                       value={form.pondId}
                       onChange={(e) => setForm({ ...form, pondId: e.target.value })}
-                      style={{ borderColor: 'rgba(11, 44, 95, 0.18)' }}
+                      style={{ borderColor: 'rgba(252, 86, 60, 0.18)' }}
                     >
                       {ponds.map((p) => (
                         <option key={p.id} value={String(p.id)}>{p.pond_name || `Pond #${p.id}`}</option>
@@ -693,15 +709,15 @@ export default function ReportsPage() {
                   Incident Log Timestamp
                 </label>
                 <div className="input-group">
-                  <span className="input-group-text bg-white" style={{ borderColor: 'rgba(11, 44, 95, 0.18)' }}>
-                    <FaClock size={13} style={{ color: '#EA580C' }} />
+                  <span className="input-group-text bg-white" style={{ borderColor: 'rgba(252, 86, 60, 0.18)' }}>
+                    <FaClock size={13} style={{ color: '#FC563C' }} />
                   </span>
                   <input
                     type="text"
                     className="form-control form-control-sm bg-light fw-semibold text-muted font-mono"
                     value={new Date().toLocaleString()}
                     disabled
-                    style={{ borderColor: 'rgba(11, 44, 95, 0.18)' }}
+                    style={{ borderColor: 'rgba(252, 86, 60, 0.18)' }}
                   />
                 </div>
               </div>
@@ -720,7 +736,7 @@ export default function ReportsPage() {
                     const newType = e.target.value;
                     setForm({ ...form, problemType: newType, specificIssue: '' });
                   }}
-                  style={{ borderColor: 'rgba(11, 44, 95, 0.18)' }}
+                  style={{ borderColor: 'rgba(252, 86, 60, 0.18)' }}
                 >
                   {PROBLEM_TYPES.map((pt) => (
                     <option key={pt.value} value={pt.value}>{pt.label}</option>
@@ -761,7 +777,7 @@ export default function ReportsPage() {
                 placeholder="e.g. Aerator motor failure or select from quick suggestions below"
                 value={form.specificIssue}
                 onChange={(e) => setForm({ ...form, specificIssue: e.target.value })}
-                style={{ borderColor: 'rgba(11, 44, 95, 0.18)' }}
+                style={{ borderColor: 'rgba(252, 86, 60, 0.18)' }}
               />
 
               {/* Dynamic Quick Suggestions */}
@@ -794,10 +810,10 @@ export default function ReportsPage() {
               <textarea
                 className="form-control"
                 rows="3"
-                placeholder="Describe exactly what happened: exact location in the basin, sounds, smell, color change, time of observation, and immediate actions taken."
+                placeholder="Describe what happened: pond location, smell, water color, time observed, and what you did."
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
-                style={{ borderColor: 'rgba(11, 44, 95, 0.18)', fontSize: '0.86rem' }}
+                style={{ borderColor: 'rgba(252, 86, 60, 0.18)', fontSize: '0.86rem' }}
               />
             </div>
 
@@ -812,7 +828,7 @@ export default function ReportsPage() {
                 placeholder="e.g. Needs immediate pump impeller replacement or water exchange"
                 value={form.suggestedAction}
                 onChange={(e) => setForm({ ...form, suggestedAction: e.target.value })}
-                style={{ borderColor: 'rgba(11, 44, 95, 0.18)' }}
+                style={{ borderColor: 'rgba(252, 86, 60, 0.18)' }}
               />
             </div>
 
@@ -823,7 +839,7 @@ export default function ReportsPage() {
                 <div className="tri-media-uploadzone h-100 d-flex flex-column justify-content-between">
                   <div>
                     <label className="extra-small fw-bold text-dark mb-1.5 d-flex align-items-center gap-1.5">
-                      <FaCamera style={{ color: '#0B2C5F' }} /> Attach Photo Evidence <span className="badge badge-tri-navy rounded-pill extra-small">JPEG / PNG</span>
+                      <FaCamera style={{ color: '#FC563C' }} /> Attach Photo Evidence <span className="badge badge-tri-navy rounded-pill extra-small">JPEG / PNG</span>
                     </label>
                     <input
                       type="file"
@@ -866,7 +882,7 @@ export default function ReportsPage() {
                   <div>
                     <label className="extra-small fw-bold text-dark mb-1.5 d-flex align-items-center justify-content-between">
                       <span className="d-flex align-items-center gap-1.5">
-                        <FaVideo style={{ color: '#EA580C' }} /> Attach Video Evidence <span className="badge badge-tri-orange rounded-pill extra-small">MP4 / MOV</span>
+                        <FaVideo style={{ color: '#FC563C' }} /> Attach Video Evidence <span className="badge badge-tri-orange rounded-pill extra-small">MP4 / MOV</span>
                       </span>
                       <span className="text-muted extra-small">(optional)</span>
                     </label>
@@ -909,12 +925,12 @@ export default function ReportsPage() {
             {/* SUBMIT ACTION STRIP */}
             <div
               className="d-flex align-items-center justify-content-between p-3 rounded-4 flex-wrap gap-2 caretaker-submit-strip"
-              style={{ background: '#F8FAFD', border: '1px solid rgba(11, 44, 95, 0.08)' }}
+              style={{ background: isDark ? '#172A39' : '#FFFFFF', border: isDark ? '1px solid rgba(56, 189, 248, 0.2)' : '1.5px solid #CBD5E1' }}
             >
               <div className="d-flex align-items-center gap-2">
                 <div
                   className="rounded-circle d-flex align-items-center justify-content-center"
-                  style={{ width: 32, height: 32, background: 'rgba(11, 44, 95, 0.08)', color: '#0B2C5F' }}
+                  style={{ width: 32, height: 32, background: 'rgba(252, 86, 60, 0.08)', color: '#FC563C' }}
                 >
                   <FaUserCheck size={14} />
                 </div>
@@ -971,9 +987,9 @@ export default function ReportsPage() {
       {activeTab === 'history' && (
         <div className="tri-card p-3.5 p-md-4 mb-4">
           {/* TOOLBAR CONTROLS */}
-          <div className="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom flex-wrap gap-2.5" style={{ borderColor: 'rgba(11, 44, 95, 0.08)' }}>
+          <div className="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom flex-wrap gap-2.5" style={{ borderColor: 'rgba(252, 86, 60, 0.08)' }}>
             <div>
-              <h5 className="fw-extrabold mb-0" style={{ color: '#0B2C5F', letterSpacing: '-0.02em' }}>
+              <h5 className="fw-extrabold mb-0" style={{ color: '#FC563C', letterSpacing: '-0.02em' }}>
                 Incident Logs &amp; Corrective Resolution History
               </h5>
               <small className="text-muted">
@@ -984,7 +1000,7 @@ export default function ReportsPage() {
             {/* Search Input */}
             <div
               className="d-flex align-items-center bg-white rounded-pill px-3 shadow-xs"
-              style={{ width: '100%', maxWidth: 280, minWidth: 170, height: 38, border: '1px solid rgba(11, 44, 95, 0.15)' }}
+              style={{ width: '100%', maxWidth: 280, minWidth: 170, height: 38, border: '1px solid rgba(252, 86, 60, 0.15)' }}
             >
               <FaSearch className="text-muted extra-small me-2" />
               <input
@@ -1057,15 +1073,15 @@ export default function ReportsPage() {
               {/* Basin Filter */}
               <div
                 className="d-flex align-items-center gap-1.5 px-3 py-1 rounded-pill bg-white shadow-xs"
-                style={{ border: '1px solid rgba(11, 44, 95, 0.14)', height: 34 }}
+                style={{ border: '1px solid rgba(252, 86, 60, 0.14)', height: 34 }}
               >
-                <FaWater size={11} style={{ color: '#0B2C5F' }} />
+                <FaWater size={11} style={{ color: '#FC563C' }} />
                 <select
                   className="form-select form-select-sm border-0 bg-transparent fw-bold p-0 pe-3 extra-small shadow-none cursor-pointer"
                   style={{
                     width: 'auto',
                     outline: 'none',
-                    color: '#0B2C5F',
+                    color: '#FC563C',
                     backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%230B2C5F' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
                     backgroundRepeat: 'no-repeat',
                     backgroundPosition: 'right center',
@@ -1075,7 +1091,7 @@ export default function ReportsPage() {
                   value={historyPondFilter}
                   onChange={(e) => setHistoryPondFilter(e.target.value)}
                 >
-                  <option value="all">All Basins</option>
+                  <option value="all">All Ponds</option>
                   {ponds.map((p) => (
                     <option key={p.id} value={p.id}>{p.pond_name}</option>
                   ))}
@@ -1085,15 +1101,15 @@ export default function ReportsPage() {
               {/* Severity Filter */}
               <div
                 className="d-flex align-items-center gap-1.5 px-3 py-1 rounded-pill bg-white shadow-xs"
-                style={{ border: '1px solid rgba(11, 44, 95, 0.14)', height: 34 }}
+                style={{ border: '1px solid rgba(252, 86, 60, 0.14)', height: 34 }}
               >
-                <FaExclamationTriangle size={11} style={{ color: '#EA580C' }} />
+                <FaExclamationTriangle size={11} style={{ color: '#FC563C' }} />
                 <select
                   className="form-select form-select-sm border-0 bg-transparent fw-bold p-0 pe-3 extra-small shadow-none cursor-pointer"
                   style={{
                     width: 'auto',
                     outline: 'none',
-                    color: '#0B2C5F',
+                    color: '#FC563C',
                     backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%230B2C5F' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
                     backgroundRepeat: 'no-repeat',
                     backgroundPosition: 'right center',
@@ -1135,7 +1151,7 @@ export default function ReportsPage() {
             <div className="py-5 text-center text-muted">
               <div
                 className="rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
-                style={{ width: 56, height: 56, backgroundColor: 'rgba(11, 44, 95, 0.06)', color: '#0B2C5F' }}
+                style={{ width: 56, height: 56, backgroundColor: 'rgba(252, 86, 60, 0.06)', color: '#FC563C' }}
               >
                 <FaHistory size={24} />
               </div>
@@ -1172,7 +1188,7 @@ export default function ReportsPage() {
                     key={report.id}
                     id={`caretaker-report-${report.id}`}
                     className={`tri-incident-card p-4 rounded-4 mb-3 ${isTargetHighlighted ? 'highlighted' : ''}`}
-                    style={{ backgroundColor: '#FFFFFF', border: '1px solid rgba(11, 44, 95, 0.1)', boxShadow: '0 1px 4px rgba(11, 44, 95, 0.04)' }}
+                    style={{ backgroundColor: '#FFFFFF', border: '1px solid rgba(252, 86, 60, 0.1)', boxShadow: '0 1px 4px rgba(252, 86, 60, 0.04)' }}
                   >
                     {/* CARD HEADER */}
                     <div className="d-flex justify-content-between align-items-start gap-2 mb-3 flex-wrap">
@@ -1189,7 +1205,7 @@ export default function ReportsPage() {
                                   : sev === 'High'
                                   ? 'rgba(225, 29, 72, 0.12)'
                                   : sev === 'Medium'
-                                  ? '#FFF7ED'
+                                  ? '#E9E4E0'
                                   : 'rgba(16, 185, 129, 0.12)',
                               color:
                                 sev === 'Critical'
@@ -1197,7 +1213,7 @@ export default function ReportsPage() {
                                   : sev === 'High'
                                   ? '#E11D48'
                                   : sev === 'Medium'
-                                  ? '#EA580C'
+                                  ? '#FC563C'
                                   : '#059669',
                               border: `1px solid ${
                                 sev === 'Critical'
@@ -1205,7 +1221,7 @@ export default function ReportsPage() {
                                   : sev === 'High'
                                   ? 'rgba(225, 29, 72, 0.3)'
                                   : sev === 'Medium'
-                                  ? 'rgba(234, 88, 12, 0.28)'
+                                  ? 'rgba(252, 86, 60, 0.28)'
                                   : 'rgba(16, 185, 129, 0.3)'
                               }`,
                             }}
@@ -1221,7 +1237,7 @@ export default function ReportsPage() {
                           {/* Pond Basin Badge */}
                           <span
                             className="badge bg-white rounded-pill px-2.5 py-1 extra-small fw-bold"
-                            style={{ border: '1px solid rgba(11, 44, 95, 0.15)', color: '#0B2C5F' }}
+                            style={{ border: '1px solid rgba(252, 86, 60, 0.15)', color: '#FC563C' }}
                           >
                             <FaWater size={10} className="me-1 text-primary" />
                             {report.pond_name || `Pond #${report.pond_id}`}
@@ -1233,7 +1249,7 @@ export default function ReportsPage() {
                         </div>
 
                         {/* Specific Issue Title */}
-                        <h6 className="fw-extrabold mb-0 text-dark mt-1" style={{ fontSize: '1.1rem', color: '#0B2C5F' }}>
+                        <h6 className="fw-extrabold mb-0 text-dark mt-1" style={{ fontSize: '1.1rem', color: '#FC563C' }}>
                           {report.specific_issue}
                         </h6>
                       </div>
@@ -1245,11 +1261,11 @@ export default function ReportsPage() {
                           backgroundColor: isDone
                             ? '#ECFDF5'
                             : isInProgress
-                            ? 'rgba(11, 44, 95, 0.08)'
-                            : '#FFF7ED',
-                          color: isDone ? '#047857' : isInProgress ? '#0B2C5F' : '#EA580C',
+                            ? 'rgba(252, 86, 60, 0.08)'
+                            : '#E9E4E0',
+                          color: isDone ? '#047857' : isInProgress ? '#FC563C' : '#FC563C',
                           border: `1px solid ${
-                            isDone ? '#A7F3D0' : isInProgress ? 'rgba(11, 44, 95, 0.2)' : 'rgba(234, 88, 12, 0.28)'
+                            isDone ? '#A7F3D0' : isInProgress ? 'rgba(252, 86, 60, 0.2)' : 'rgba(252, 86, 60, 0.28)'
                           }`,
                         }}
                       >
@@ -1270,7 +1286,7 @@ export default function ReportsPage() {
                     </div>
 
                     {/* Description Text Box */}
-                    <div className="p-3.5 rounded-3 mb-3" style={{ backgroundColor: '#F8FAFD', border: '1px solid rgba(11, 44, 95, 0.08)' }}>
+                    <div className="p-3.5 rounded-3 mb-3" style={{ backgroundColor: isDark ? '#172A39' : '#F8FAFC', border: isDark ? '1px solid rgba(56, 189, 248, 0.2)' : '1.5px solid #CBD5E1' }}>
                       <p className="text-dark mb-0 fw-medium" style={{ lineHeight: 1.6, fontSize: '0.9rem' }}>
                         {report.description}
                       </p>
@@ -1288,8 +1304,8 @@ export default function ReportsPage() {
                           >
                             <img src={resPhoto} alt="Attached incident evidence" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             <div
-                              className="position-absolute bottom-0 start-0 w-100 p-1 text-center extra-small text-white fw-bold d-flex align-items-center justify-content-center gap-1"
-                              style={{ background: 'rgba(11, 44, 95, 0.72)', fontSize: '0.68rem' }}
+                              className="position-absolute bottom-0 start-0 w-100 p-1 text-center extra-small text-white fw-bold d-inline-flex align-items-center justify-content-center gap-1"
+                              style={{ background: 'rgba(252, 86, 60, 0.72)', fontSize: '0.68rem' }}
                             >
                               <FaEye size={10} /> Zoom Photo
                             </div>
@@ -1309,12 +1325,13 @@ export default function ReportsPage() {
                       <div
                         className="rounded-3 p-3 mb-3 extra-small"
                         style={{
-                          background: '#F8FAFD',
-                          borderLeft: '3px solid #EA580C',
-                          color: '#1E293B',
+                          background: isDark ? '#172A39' : '#FFF5F2',
+                          border: isDark ? '1px solid rgba(252, 86, 60, 0.3)' : '1px solid #FECDD3',
+                          borderLeft: '4px solid #FC563C',
+                          color: isDark ? '#F1F5F9' : '#1E293B',
                         }}
                       >
-                        <strong style={{ color: '#EA580C' }}>Caretaker Suggested Action:</strong> {report.suggested_action}
+                        <strong style={{ color: '#FC563C' }}>Caretaker Suggested Action:</strong> {report.suggested_action}
                       </div>
                     )}
 
@@ -1325,10 +1342,10 @@ export default function ReportsPage() {
                         style={{
                           background: isDone ? '#ECFDF5' : '#F1F5F9',
                           border: `1px solid ${isDone ? '#A7F3D0' : '#CBD5E1'}`,
-                          borderLeft: `4px solid ${isDone ? '#10B981' : '#0B2C5F'}`,
+                          borderLeft: `4px solid ${isDone ? '#10B981' : '#FC563C'}`,
                         }}
                       >
-                        <div className="d-flex align-items-center gap-1.5 mb-1 fw-bold" style={{ color: isDone ? '#047857' : '#0B2C5F' }}>
+                        <div className="d-flex align-items-center gap-1.5 mb-1 fw-bold" style={{ color: isDone ? '#047857' : '#FC563C' }}>
                           <FaCheckCircle /> <span>Management Resolution Note:</span>
                         </div>
                         <p className="mb-0 text-dark fw-medium" style={{ fontSize: '0.84rem' }}>
@@ -1343,7 +1360,7 @@ export default function ReportsPage() {
                     )}
 
                     {/* Card Footer: Timestamp & Caretaker */}
-                    <div className="d-flex align-items-center justify-content-between pt-3 mt-3 border-top extra-small text-muted" style={{ borderColor: 'rgba(11, 44, 95, 0.08)' }}>
+                    <div className="d-flex align-items-center justify-content-between pt-3 mt-3 border-top extra-small text-muted" style={{ borderColor: 'rgba(252, 86, 60, 0.08)' }}>
                       <div className="d-flex align-items-center gap-2">
                         <span>Pond: <strong className="text-dark">{report.pond_name || `Pond #${report.pond_id}`}</strong></span>
                         <span>•</span>

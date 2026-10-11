@@ -15,6 +15,9 @@ import {
   FaCog,
   FaSlidersH
 } from 'react-icons/fa';
+import { getEffectiveTheme, getThemePreference, setManualTheme, resetThemeToAuto } from '../utils/theme';
+import { useLanguage } from '../context/LanguageContext';
+import LanguageToggle from '../components/LanguageToggle';
 import CaretakerAssistantChatHead from '../components/CaretakerAssistantChatHead';
 
 // Minimalist vector icons for the Floating Top Dock Tabs
@@ -69,21 +72,24 @@ const dockIcons = {
 
 // Navigation Links for the Floating Top Dock
 const dockLinks = [
-  { to: '/caretaker/dashboard', label: 'Dashboard', icon: dockIcons.dashboard },
-  { to: '/caretaker/my-pond', label: 'My Pond', icon: dockIcons.myPond },
-  { to: '/caretaker/disease-scan', label: 'Disease Scan', icon: dockIcons.diseaseScan },
-  { to: '/caretaker/feeding-history', label: 'Feeding History', icon: dockIcons.feedingHistory },
-  { to: '/caretaker/reports', label: 'Issue Reports', icon: dockIcons.reports },
-  { to: '/caretaker/notifications', label: 'Notifications', icon: dockIcons.notifications },
-  { to: '/caretaker/settings', label: 'Settings', icon: dockIcons.settings },
+  { to: '/caretaker/dashboard', key: 'nav.dashboard', label: 'Dashboard', icon: dockIcons.dashboard },
+  { to: '/caretaker/my-pond', key: 'nav.myPond', label: 'My Pond', icon: dockIcons.myPond },
+  { to: '/caretaker/disease-scan', key: 'nav.diseaseScan', label: 'Disease Scan', icon: dockIcons.diseaseScan },
+  { to: '/caretaker/feeding-history', key: 'nav.feedingHistory', label: 'Feeding History', icon: dockIcons.feedingHistory },
+  { to: '/caretaker/reports', key: 'nav.issueReports', label: 'Issue Reports', icon: dockIcons.reports },
+  { to: '/caretaker/notifications', key: 'nav.notifications', label: 'Notifications', icon: dockIcons.notifications },
+  { to: '/caretaker/settings', key: 'nav.settings', label: 'Settings', icon: dockIcons.settings },
 ];
 
 export default function CaretakerLayout() {
   const { logout, user } = useAuth();
+  const { t, isFilipino } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [theme, setTheme] = useState(() => localStorage.getItem('shrim_theme') || 'light');
+  const [theme, setTheme] = useState(() => getEffectiveTheme());
+  const [themePreference, setThemePreference] = useState(() => getThemePreference());
+  const isAuto = themePreference === 'auto';
   const [unreadCount, setUnreadCount] = useState(0);
   const [recentNotifs, setRecentNotifs] = useState([]);
   const [showNotifMenu, setShowNotifMenu] = useState(false);
@@ -98,19 +104,22 @@ export default function CaretakerLayout() {
 
   const handleToggleTheme = () => {
     const nextTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(nextTheme);
-    localStorage.setItem('shrim_theme', nextTheme);
-    document.documentElement.setAttribute('data-theme', nextTheme);
-    document.documentElement.setAttribute('data-bs-theme', nextTheme);
-    if (nextTheme === 'dark') {
-      document.body.classList.add('dark-theme');
-      document.body.classList.remove('light-theme');
-    } else {
-      document.body.classList.add('light-theme');
-      document.body.classList.remove('dark-theme');
-    }
-    window.dispatchEvent(new CustomEvent('shrim-theme-changed', { detail: { theme: nextTheme } }));
+    setManualTheme(nextTheme);
   };
+
+  const handleResetToAuto = (e) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+    resetThemeToAuto();
+  };
+
+  useEffect(() => {
+    const handleThemeEvent = (e) => {
+      if (e.detail?.theme) setTheme(e.detail.theme);
+      if (e.detail?.preference !== undefined) setThemePreference(e.detail.preference);
+    };
+    window.addEventListener('shrim-theme-changed', handleThemeEvent);
+    return () => window.removeEventListener('shrim-theme-changed', handleThemeEvent);
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -238,12 +247,12 @@ export default function CaretakerLayout() {
                   objectFit: 'contain',
                   backgroundColor: '#FFFFFF',
                   padding: '1.5px',
-                  border: '1.5px solid rgba(234, 88, 12, 0.5)'
+                  border: '1.5px solid rgba(252, 86, 60, 0.5)'
                 }}
               />
               <div>
                 <span className="fw-extrabold text-white tracking-tight d-block" style={{ fontSize: '1.18rem', letterSpacing: '-0.02em', lineHeight: 1.15 }}>
-                  Shrimp<span style={{ color: '#FF7B38' }}>Predict</span>
+                  Shrimp<span style={{ color: '#FC563C' }}>Predict</span>
                 </span>
                 <span className="d-block text-white-50" style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.04em', lineHeight: 1, marginTop: 2 }}>
                   O & B AQUAFARM
@@ -267,12 +276,15 @@ export default function CaretakerLayout() {
             {/* Live Operational Pulse Indicator */}
             <span className="dock-live-indicator d-none d-md-inline-flex align-items-center gap-1.5">
               <span className="pulse-dot"></span>
-              <span>Field Station Online</span>
+              <span>{isFilipino ? 'Online ang Istasyon sa Palaisdaan' : 'Field Station Online'}</span>
             </span>
           </div>
 
-          {/* 2. Utility Controls Cluster (Clock, Theme, Notifications, User) */}
+          {/* 2. Utility Controls Cluster (Clock, Language, Theme, Notifications, User) */}
           <div className="d-flex align-items-center gap-2 flex-shrink-0">
+            {/* Language Switcher Pill */}
+            <LanguageToggle isDark={true} />
+
             {/* Real-time Clock & Date Pill */}
             <div
               className="d-none d-sm-flex align-items-center gap-2 px-3 py-1.5 rounded-pill border text-white extra-small"
@@ -283,26 +295,79 @@ export default function CaretakerLayout() {
                 borderColor: 'rgba(255, 255, 255, 0.2)'
               }}
             >
-              <FaClock size={11} style={{ color: '#38BDF8' }} />
+              <FaClock size={11} style={{ color: '#FC563C' }} />
               <span className="fw-bold font-mono text-white">{clockDigits}</span>
               <span className="opacity-40 text-white">•</span>
               <span className="fw-semibold text-white-50">{formattedDate}</span>
             </div>
 
-            {/* Theme Toggle Pill */}
+            {/* Theme Toggle Pill & Auto Reset */}
+            {!isAuto && (
+              <button
+                type="button"
+                onClick={handleResetToAuto}
+                className="btn btn-sm rounded-pill d-inline-flex align-items-center gap-1.5 shadow-xs px-2.5 py-1"
+                style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                  border: '1px solid rgba(255, 255, 255, 0.25)',
+                  color: '#FFFFFF',
+                  fontSize: '0.74rem',
+                  fontWeight: 600,
+                  transition: 'all 0.2s ease',
+                  height: 38,
+                  cursor: 'pointer',
+                }}
+                title={t('common.autoSchedule', 'Reset to Auto Schedule: 6 AM–6 PM Light, 6 PM–6 AM Dark')}
+                aria-label="Reset to Auto Theme Schedule"
+              >
+                <FaClock size={11} style={{ color: '#FC563C' }} />
+                <span>{t('common.auto', 'Auto')}</span>
+              </button>
+            )}
+
             <button
               type="button"
-              className="btn border rounded-pill d-flex align-items-center justify-content-center p-0"
+              className="btn border rounded-pill position-relative d-flex align-items-center justify-content-center p-0"
               style={{
                 width: 38,
                 height: 38,
                 backgroundColor: 'rgba(255, 255, 255, 0.12)',
-                borderColor: 'rgba(255, 255, 255, 0.2)'
+                borderColor: 'rgba(255, 255, 255, 0.2)',
+                transition: 'all 0.2s ease',
+                cursor: 'pointer',
               }}
               onClick={handleToggleTheme}
-              title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`}
+              title={
+                isAuto
+                  ? `Theme: Auto (${theme === 'dark' ? 'Dark mode 6 PM–6 AM' : 'Light mode 6 AM–6 PM'}) • Click to set ${theme === 'dark' ? 'Light' : 'Dark'} mode`
+                  : `Theme: ${theme === 'dark' ? 'Dark' : 'Light'} (Manual) • Click to switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`
+              }
+              aria-label={
+                isAuto
+                  ? `Theme is Auto. Click to switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode.`
+                  : `Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`
+              }
             >
               {theme === 'dark' ? <FaSun size={13} style={{ color: '#FBBF24' }} /> : <FaMoon size={12} className="text-white" />}
+              {isAuto && (
+                <span
+                  className="position-absolute d-flex align-items-center justify-content-center rounded-circle"
+                  style={{
+                    bottom: -2,
+                    right: -2,
+                    width: 14,
+                    height: 14,
+                    backgroundColor: '#FC563C',
+                    color: '#FFFFFF',
+                    fontSize: 8,
+                    fontWeight: 700,
+                    boxShadow: '0 0 4px rgba(0,0,0,0.3)',
+                  }}
+                  title="Auto Day/Night Mode (6am–6pm Light, 6pm–6am Dark)"
+                >
+                  <FaClock size={8} />
+                </span>
+              )}
             </button>
 
             {/* Notifications Dropdown Pill */}
@@ -323,7 +388,7 @@ export default function CaretakerLayout() {
                 {unreadCount > 0 && (
                   <span
                     className="position-absolute top-0 start-100 translate-middle badge rounded-pill border border-light p-1"
-                    style={{ fontSize: '0.6rem', backgroundColor: '#EA580C', color: '#FFFFFF' }}
+                    style={{ fontSize: '0.6rem', backgroundColor: '#FC563C', color: '#FFFFFF' }}
                   >
                     {unreadCount}
                   </span>
@@ -343,14 +408,14 @@ export default function CaretakerLayout() {
                 >
                   <div
                     className="p-3 px-3.5 d-flex align-items-center justify-content-between text-white"
-                    style={{ background: 'linear-gradient(135deg, #071733 0%, #0B2C5F 100%)' }}
+                    style={{ background: 'linear-gradient(135deg, #172A39 0%, #203A4F 100%)' }}
                   >
                     <div className="d-flex align-items-center gap-2">
                       <FaBell size={13} />
                       <span className="fw-bold small">Caretaker Updates</span>
                     </div>
                     <div className="d-flex align-items-center gap-2">
-                      <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: '#FFF7ED', color: '#EA580C' }}>
+                      <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: '#E9E4E0', color: '#FC563C' }}>
                         {unreadCount} Active
                       </span>
                       {unreadCount > 0 && (
@@ -396,7 +461,7 @@ export default function CaretakerLayout() {
                           <p className="text-muted mb-1 extra-small" style={{ fontSize: '0.75rem', lineHeight: 1.4 }}>
                             {n.message}
                           </p>
-                          <span className="fw-bold extra-small" style={{ color: '#EA580C', fontSize: '0.72rem' }}>
+                          <span className="fw-bold extra-small" style={{ color: '#FC563C', fontSize: '0.72rem' }}>
                             View Details →
                           </span>
                         </div>
@@ -408,7 +473,7 @@ export default function CaretakerLayout() {
                     <button
                       type="button"
                       className="btn btn-link btn-sm text-decoration-none fw-semibold p-0 extra-small"
-                      style={{ color: '#0B2C5F' }}
+                      style={{ color: '#FC563C' }}
                       onClick={() => {
                         setShowNotifMenu(false);
                         navigate('/caretaker/notifications');
@@ -439,7 +504,7 @@ export default function CaretakerLayout() {
                     width: 28,
                     height: 28,
                     fontSize: '0.72rem',
-                    background: 'linear-gradient(135deg, #0284C7 0%, #EA580C 100%)'
+                    background: 'linear-gradient(135deg, #FC563C 0%, #6E7575 100%)'
                   }}
                 >
                   {(user?.full_name || 'Caretaker').slice(0, 2).toUpperCase()}
@@ -476,7 +541,7 @@ export default function CaretakerLayout() {
                       navigate('/caretaker/settings');
                     }}
                   >
-                    <FaCog size={12} style={{ color: '#0B2C5F' }} /> Settings &amp; Preferences
+                    <FaCog size={13} className="text-primary flex-shrink-0" style={{ color: '#0284C7' }} /> {t('common.settings', 'Settings & Preferences')}
                   </button>
                   <button
                     type="button"
@@ -510,20 +575,20 @@ export default function CaretakerLayout() {
         <div className="top-dock-divider d-none d-lg-block" />
 
         {/* Tier 2: Floating Dock Navigation Tabs (Spacious, Dedicated Row) */}
-        <nav className="top-dock-nav-row d-none d-lg-flex align-items-center gap-2 flex-nowrap overflow-x-auto w-100 py-0.5">
+        <nav className="top-dock-nav-row d-none d-lg-flex align-items-center justify-content-between flex-nowrap overflow-x-auto w-100 py-0.5">
           {dockLinks.map((link) => (
             <NavLink
               key={link.to}
               to={link.to}
               className={({ isActive }) => `dock-nav-pill ${isActive ? 'active' : ''}`}
             >
-              <span className="opacity-80">{link.icon}</span>
-              <span>{link.label}</span>
+              <span className="opacity-80 flex-shrink-0">{link.icon}</span>
+              <span className="text-nowrap">{t(link.key, link.label)}</span>
               {link.to === '/caretaker/notifications' && unreadCount > 0 && (
                 <span
-                  className="badge rounded-pill"
+                  className="badge rounded-pill flex-shrink-0"
                   style={{
-                    backgroundColor: '#EA580C',
+                    backgroundColor: '#FC563C',
                     color: '#FFFFFF',
                     fontSize: '0.65rem',
                     padding: '0.15rem 0.45rem',
@@ -549,7 +614,7 @@ export default function CaretakerLayout() {
                   onClick={() => setShowMobileNav(false)}
                 >
                   <span>{link.icon}</span>
-                  <span>{link.label}</span>
+                  <span>{t(link.key, link.label)}</span>
                 </NavLink>
               ))}
             </div>
@@ -564,29 +629,7 @@ export default function CaretakerLayout() {
         <Outlet />
       </main>
 
-      {/* MOBILE BOTTOM APP NAVIGATION DOCK (Thumb-Friendly Navigation for Screens < 992px) */}
-      <nav className="caretaker-mobile-bottom-dock" aria-label="Caretaker Mobile Navigation">
-        <NavLink to="/caretaker/dashboard" className={({ isActive }) => `mobile-dock-item ${isActive ? 'active' : ''}`}>
-          <span className="mobile-dock-icon">{dockIcons.dashboard}</span>
-          <span>Home</span>
-        </NavLink>
-        <NavLink to="/caretaker/my-pond" className={({ isActive }) => `mobile-dock-item ${isActive ? 'active' : ''}`}>
-          <span className="mobile-dock-icon">{dockIcons.myPond}</span>
-          <span>My Pond</span>
-        </NavLink>
-        <NavLink to="/caretaker/disease-scan" className={({ isActive }) => `mobile-dock-item ${isActive ? 'active' : ''}`}>
-          <span className="mobile-dock-icon">{dockIcons.diseaseScan}</span>
-          <span>Scan</span>
-        </NavLink>
-        <NavLink to="/caretaker/feeding-history" className={({ isActive }) => `mobile-dock-item ${isActive ? 'active' : ''}`}>
-          <span className="mobile-dock-icon">{dockIcons.feedingHistory}</span>
-          <span>Feeding</span>
-        </NavLink>
-        <NavLink to="/caretaker/reports" className={({ isActive }) => `mobile-dock-item ${isActive ? 'active' : ''}`}>
-          <span className="mobile-dock-icon">{dockIcons.reports}</span>
-          <span>Reports</span>
-        </NavLink>
-      </nav>
+
 
       {/* Floating Caretaker AI Assistant */}
       <CaretakerAssistantChatHead />

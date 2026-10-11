@@ -1475,7 +1475,7 @@ export default function WaterQualityOcrModal({
         icon: 'info',
         title: 'Camera Feed Unavailable',
         text: 'Direct webcam or phone camera stream is blocked or unavailable. You can upload or snap a photo directly using the Upload Photo button.',
-        confirmButtonColor: '#0B2C5F',
+        confirmButtonColor: '#FC563C',
       });
       setIsCameraActive(false);
     }
@@ -1871,7 +1871,7 @@ export default function WaterQualityOcrModal({
             icon: 'info',
             title: 'Logsheet OCR Mode',
             text: 'Vision API is currently high demand. You can verify and complete the 4 telemetry fields below.',
-            confirmButtonColor: '#0B2C5F',
+            confirmButtonColor: '#FC563C',
           });
         }
       } finally {
@@ -2010,7 +2010,7 @@ export default function WaterQualityOcrModal({
         icon: 'warning',
         title: 'Scan Notice',
         text: 'Could not auto-read LCD due to glare or angle. Please type the verified readings directly in the form below.',
-        confirmButtonColor: '#0B2C5F',
+        confirmButtonColor: '#FC563C',
       });
     } finally {
       setIsScanning(false);
@@ -2059,8 +2059,8 @@ export default function WaterQualityOcrModal({
       Swal.fire({
         icon: 'warning',
         title: 'Select Pond',
-        text: 'Please select an assigned pond basin.',
-        confirmButtonColor: '#0B2C5F',
+        text: 'Please select an assigned pond.',
+        confirmButtonColor: '#FC563C',
       });
       return;
     }
@@ -2075,7 +2075,7 @@ export default function WaterQualityOcrModal({
         icon: 'warning',
         title: 'Incomplete Parameters',
         text: 'All 4 core water quality parameters (Dissolved Oxygen, Water Temp, pH Level, and Salinity) are mandatory before unlocking the pond.',
-        confirmButtonColor: '#0B2C5F',
+        confirmButtonColor: '#FC563C',
       });
       return;
     }
@@ -2118,7 +2118,7 @@ export default function WaterQualityOcrModal({
             : isPast
             ? `Historical farm logsheet for <b>${pName}</b> on <b>${recordDate}</b> is now recorded.`
             : `<b>${pName}</b> is now unlocked for today's feeding operations and monitoring.`,
-          confirmButtonColor: '#0B2C5F',
+          confirmButtonColor: '#FC563C',
         });
 
         // Fire application-wide synchronization event
@@ -2135,7 +2135,7 @@ export default function WaterQualityOcrModal({
           icon: 'error',
           title: 'Submission Failed',
           text: res.data?.message || 'Unable to record water quality data.',
-          confirmButtonColor: '#0B2C5F',
+          confirmButtonColor: '#FC563C',
         });
       }
     } catch (err) {
@@ -2144,7 +2144,7 @@ export default function WaterQualityOcrModal({
         icon: 'error',
         title: 'Error',
         text: err.response?.data?.message || err.message || 'Network error while recording water quality.',
-        confirmButtonColor: '#0B2C5F',
+        confirmButtonColor: '#FC563C',
       });
     } finally {
       setIsSubmitting(false);
@@ -2170,7 +2170,7 @@ export default function WaterQualityOcrModal({
           <div
             className="p-3 px-4 text-white position-relative"
             style={{
-              background: 'linear-gradient(135deg, #071733 0%, #0B2C5F 55%, #0E3D7D 100%)',
+              background: 'linear-gradient(135deg, #172A39 0%, #203A4F 100%)',
               borderBottom: '1px solid rgba(255,255,255,0.08)',
             }}
           >
@@ -2181,7 +2181,7 @@ export default function WaterQualityOcrModal({
                   style={{
                     width: 42,
                     height: 42,
-                    background: 'linear-gradient(135deg, #FF7A00 0%, #EA580C 100%)',
+                    background: 'linear-gradient(135deg, #FC563C 0%, #FC563C 100%)',
                     color: '#FFFFFF',
                     fontSize: '1.15rem',
                   }}
@@ -2191,14 +2191,14 @@ export default function WaterQualityOcrModal({
                 <div>
                   <div className="d-flex align-items-center gap-2 flex-wrap">
                     <h5 className="fw-extrabold mb-0 tracking-tight text-white">
-                      Water Quality Telemetry Scanner
+                      Water Quality Scanner
                     </h5>
                     <span className="badge bg-info bg-opacity-25 text-white border border-info border-opacity-50 rounded-pill extra-small">
-                      Dual-Mode OCR
+                      Photo / Meter Scanner
                     </span>
                   </div>
                   <p className="mb-0 text-white text-opacity-70 small">
-                    Physical Paper Logsheet Vision Model &amp; Digital Meter LCD Reader
+                    Paper Logsheet &amp; Digital Meter LCD Scanner
                   </p>
                 </div>
               </div>
@@ -2217,7 +2217,7 @@ export default function WaterQualityOcrModal({
                     setMeterMode('sheet');
                   }}
                 >
-                  <FaFileAlt size={11} /> Paper Sheet (Vision OCR)
+                  <FaFileAlt size={11} /> Paper Logsheet
                 </button>
                 <button
                   type="button"
@@ -2246,7 +2246,7 @@ export default function WaterQualityOcrModal({
             </div>
           </div>
 
-          <div className="modal-body p-3 p-lg-4" style={{ backgroundColor: '#F8FAFC' }}>
+          <div className="modal-body p-3 p-lg-4" style={{ backgroundColor: '#E9E4E0' }}>
             <div className="row g-3 g-lg-4">
               {/* LEFT COLUMN: CAMERA / UPLOAD VIEWFINDER (COL-LG-5) */}
               <div className="col-12 col-lg-5 d-flex flex-column">
@@ -2301,7 +2301,7 @@ export default function WaterQualityOcrModal({
                             style={{
                               width: primaryMode === 'sheet' ? '88%' : '74%',
                               height: primaryMode === 'sheet' ? '80%' : '65%',
-                              border: primaryMode === 'sheet' ? '2px dashed #10B981' : '2px dashed #38BDF8',
+                              border: primaryMode === 'sheet' ? '2px dashed #10B981' : '2px dashed #FC563C',
                               boxShadow: primaryMode === 'sheet' ? '0 0 20px rgba(16, 185, 129, 0.3)' : '0 0 20px rgba(56, 189, 248, 0.3)',
                             }}
                           >
@@ -2500,10 +2500,10 @@ export default function WaterQualityOcrModal({
                       <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 pb-2 border-bottom">
                         <div>
                           <h6 className="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-                            <FaCheckCircle className="text-success" /> Verified Telemetry Fields
+                            <FaCheckCircle className="text-success" /> Water Quality Readings (DO, Temp, pH, Salinity)
                           </h6>
                           <span className="text-muted extra-small">
-                            Auto-populated from camera scan. Verify and adjust values as needed.
+                            Auto-filled from camera scan. Check and edit numbers if needed.
                           </span>
                         </div>
 
@@ -2511,11 +2511,11 @@ export default function WaterQualityOcrModal({
                         <div>
                           {isTelemetryComplete ? (
                             <span className="badge bg-success bg-opacity-15 text-success border border-success border-opacity-25 px-2.5 py-1.5 rounded-pill extra-small fw-bold d-flex align-items-center gap-1">
-                              <FaCheckCircle size={11} /> 4 of 4 Parameters Ready
+                              <FaCheckCircle size={11} /> All 4 Readings Ready
                             </span>
                           ) : (
                             <span className="badge bg-warning bg-opacity-15 text-dark border border-warning border-opacity-25 px-2.5 py-1.5 rounded-pill extra-small fw-bold">
-                              4 Mandatory Parameters
+                              4 Required Readings
                             </span>
                           )}
                         </div>
@@ -2527,7 +2527,7 @@ export default function WaterQualityOcrModal({
                           {/* Col 1: Target Pond Basin */}
                           <div className="col-12 col-sm-6">
                             <label className="extra-small text-uppercase fw-extrabold text-muted d-block mb-1">
-                              Target Pond Basin
+                              Select Pond
                             </label>
                             <div className="input-group input-group-sm">
                               <span className="input-group-text bg-white text-primary border-end-0">
@@ -2901,7 +2901,7 @@ export default function WaterQualityOcrModal({
                           style={{
                             background: isTelemetryComplete
                               ? 'linear-gradient(135deg, #059669 0%, #10B981 100%)'
-                              : 'linear-gradient(135deg, #0B2C5F 0%, #0284C7 100%)',
+                              : 'linear-gradient(135deg, #FC563C 0%, #FC563C 100%)',
                             border: 'none',
                           }}
                           disabled={isSubmitting || isScanning || !isTelemetryComplete}

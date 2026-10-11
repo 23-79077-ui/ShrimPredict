@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useLanguage } from '../../context/LanguageContext';
 import {
   FaUser,
   FaLock,
@@ -44,7 +45,7 @@ import { useSearchParams } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { applyAppTheme } from '../../main';
+import { applyAppTheme, getThemePreference, setManualTheme, resetThemeToAuto } from '../../utils/theme';
 
 export default function SettingsPage() {
   const { user: authUser, logout } = useAuth();
@@ -57,6 +58,7 @@ export default function SettingsPage() {
       setActiveTab(tabParam);
     }
   }, [searchParams]);
+  const { language, setLanguage, confirmAndSetLanguage, t, isFilipino } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -222,8 +224,8 @@ export default function SettingsPage() {
 
   // System Preferences State
   const [systemPreferences, setSystemPreferences] = useState({
-    theme: localStorage.getItem('shrim_theme') === 'dark' ? 'Dark' : 'Light',
-    language: 'English',
+    theme: getThemePreference() === 'auto' ? 'Auto' : (getThemePreference() === 'dark' ? 'Dark' : 'Light'),
+    language: language === 'fil' ? 'Tagalog / Filipino' : 'English',
     date_format: 'MM/DD/YYYY',
     time_format: '12 Hours'
   });
@@ -306,15 +308,20 @@ export default function SettingsPage() {
           }
 
           if (s.theme || s.language || s.date_format || s.time_format) {
-            const currentTheme = s.theme || systemPreferences.theme;
+            const currentPref = getThemePreference();
+            const activeThemeSetting = currentPref === 'auto'
+              ? 'Auto'
+              : (currentPref === 'dark' ? 'Dark' : 'Light');
+
             setSystemPreferences((prev) => ({
               ...prev,
-              theme: currentTheme,
+              theme: activeThemeSetting,
               language: s.language ?? prev.language,
               date_format: s.date_format ?? prev.date_format,
               time_format: s.time_format ?? prev.time_format
             }));
-            applyTheme(currentTheme);
+            // NOTE: Do not apply or reset theme automatically here.
+            // Visiting the settings page must never change the user's active theme.
           }
 
           if (s.last_backup || s.automatic_backup || s.backup_frequency) {
@@ -336,13 +343,12 @@ export default function SettingsPage() {
 
   // Helper to apply theme
   const applyTheme = (themeName) => {
-    const isDark = themeName === 'Dark';
-    if (isDark) {
-      document.documentElement.setAttribute('data-theme', 'dark');
-      localStorage.setItem('shrim_theme', 'dark');
+    if (themeName === 'Auto') {
+      resetThemeToAuto();
+    } else if (themeName === 'Dark') {
+      setManualTheme('dark');
     } else {
-      document.documentElement.setAttribute('data-theme', 'light');
-      localStorage.setItem('shrim_theme', 'light');
+      setManualTheme('light');
     }
   };
 
@@ -548,7 +554,7 @@ export default function SettingsPage() {
       icon: 'question',
       showCancelButton: true,
       confirmButtonText: 'Download Backup Now',
-      confirmButtonColor: '#0B2C5F'
+      confirmButtonColor: '#FC563C'
     }).then((result) => {
       if (result.isConfirmed) {
         window.open('/api/backup.php?action=download', '_blank');
@@ -585,7 +591,7 @@ export default function SettingsPage() {
         text: `Restoring "${file.name}" will overwrite current database records. Are you sure you want to proceed?`,
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonColor: '#FF7A00',
+        confirmButtonColor: '#FC563C',
         cancelButtonColor: '#627591',
         confirmButtonText: 'Yes, Restore Backup'
       }).then(async (res) => {
@@ -606,7 +612,7 @@ export default function SettingsPage() {
                 icon: 'success',
                 title: 'Database Restored!',
                 text: 'System records have been restored cleanly from the backup file.',
-                confirmButtonColor: '#0B2C5F'
+                confirmButtonColor: '#FC563C'
               });
               fetchInitialData();
             } else {
@@ -714,49 +720,28 @@ export default function SettingsPage() {
     }
   }, [searchQuery]);
 
-  if (loading) {
-    return (
-      <div className="d-flex flex-column align-items-center justify-content-center py-5" style={{ minHeight: '65vh' }}>
-        <div className="spinner-grow text-primary" role="status" style={{ width: '3.5rem', height: '3.5rem' }}>
-          <span className="visually-hidden">Loading Settings...</span>
-        </div>
-        <p className="mt-3 text-muted fw-semibold fs-6">Loading System Preferences & Administrator Account...</p>
-      </div>
-    );
-  }
-
   return (
     <div className="container-fluid px-0 px-md-3 pb-5">
       {/* 1. EXECUTIVE HERO BANNER */}
       <div className="disease-hero-banner d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
         <div className="d-flex align-items-center gap-3">
-          <div
-            className="rounded-circle d-flex align-items-center justify-content-center shadow-xs flex-shrink-0"
-            style={{
-              width: 50,
-              height: 50,
-              background: 'linear-gradient(135deg, #0B2C5F 0%, #1E3A8A 100%)',
-              color: '#FFFFFF',
-              fontSize: '1.3rem',
-              border: '2px solid rgba(234, 88, 12, 0.3)'
-            }}
-          >
+          <div className="hero-icon-badge shadow-xs">
             <FaCog />
           </div>
           <div>
             <div className="d-flex align-items-center gap-2 flex-wrap">
-              <h3 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#0B2C5F', fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
-                System Configuration &amp; Administration
+              <h3 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#FC563C', fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
+                {t('hero.settings', 'System Configuration & Administration')}
               </h3>
               <span
                 className="badge rounded-pill extra-small px-3 py-1 fw-bold"
-                style={{ backgroundColor: 'rgba(11, 44, 95, 0.08)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.16)' }}
+                style={{ backgroundColor: 'rgba(252, 86, 60, 0.08)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.16)' }}
               >
-                ● Enterprise Security Verified
+                {t('hero.settingsBadge', '● Enterprise Security Verified')}
               </span>
             </div>
             <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
-              Manage platform preferences, administrator credentials, system biometrics defaults, automated backups, and personnel archives.
+              {t('hero.settingsSub', 'Manage platform preferences, administrator credentials, system biometrics defaults, automated backups, and personnel archives.')}
             </p>
           </div>
         </div>
@@ -770,35 +755,44 @@ export default function SettingsPage() {
             onClick={fetchInitialData}
             disabled={loading}
           >
-            <FaSync size={11} className={loading ? 'fa-spin me-1.5' : 'me-1.5'} /> Refresh Preferences
+            <FaSync size={11} className={loading ? 'fa-spin me-1.5' : 'me-1.5'} /> {t('hero.refreshPreferences', 'Refresh Preferences')}
           </button>
         </div>
       </div>
 
-      {/* 2. 4 TOP SYSTEM SUMMARY KPI CARDS */}
+      {loading ? (
+        <div className="d-flex flex-column align-items-center justify-content-center py-5" style={{ minHeight: '55vh' }}>
+          <div className="spinner-grow text-primary" role="status" style={{ width: '3.5rem', height: '3.5rem' }}>
+            <span className="visually-hidden">Loading Settings...</span>
+          </div>
+          <p className="mt-3 text-muted fw-semibold fs-6">Loading System Preferences &amp; Administrator Account...</p>
+        </div>
+      ) : (
+        <>
+          {/* 2. 4 TOP SYSTEM SUMMARY KPI CARDS */}
       <div className="row g-3 g-xl-4 mb-4">
         {/* Card 1: Admin Profile */}
         <div className="col-12 col-sm-6 col-xl-3">
           <div className="tri-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Account Authority</span>
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">{t('Account Authority')}</span>
                 <div className="tri-kpi-icon tri-kpi-icon-blue">
                   <FaUserShield size={16} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#0B2C5F', fontSize: '1.8rem', letterSpacing: '-0.03em' }}>
-                {profile.position || 'Super Admin'}
+              <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '1.8rem', letterSpacing: '-0.03em' }}>
+                {t(profile.position || 'Super Admin')}
               </h2>
             </div>
             <div>
               <div className="tri-progress-track my-2.5">
-                <div className="tri-progress-bar" style={{ width: '100%', background: 'linear-gradient(90deg, #0B2C5F 0%, #1E3A8A 100%)' }} />
+                <div className="tri-progress-bar" style={{ width: '100%', background: 'linear-gradient(90deg, #172A39 0%, #FC563C 100%)' }} />
               </div>
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
                 <span className="text-muted extra-small">ID #{profile.id || 1} • {profile.full_name}</span>
                 <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: '#F0FDF4', color: '#16A34A', border: '1px solid #BBF7D0' }}>
-                  Root Access
+                  {t('Root Access')}
                 </span>
               </div>
             </div>
@@ -810,29 +804,29 @@ export default function SettingsPage() {
           <div className="tri-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Security Protection</span>
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">{t('Security Protection')}</span>
                 <div className="tri-kpi-icon tri-kpi-icon-orange">
                   <FaLock size={16} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#EA580C', fontSize: '1.8rem', letterSpacing: '-0.03em' }}>
-                {profile.two_factor_enabled ? '2FA Active' : 'Standard 2FA'}
+              <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '1.8rem', letterSpacing: '-0.03em' }}>
+                {t(profile.two_factor_enabled ? '2FA Active' : 'Standard 2FA')}
               </h2>
             </div>
             <div>
-              <div className="tri-progress-track my-2.5" style={{ backgroundColor: 'rgba(234, 88, 12, 0.1)' }}>
+              <div className="tri-progress-track my-2.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.1)' }}>
                 <div
                   className="tri-progress-bar"
                   style={{
                     width: profile.two_factor_enabled ? '100%' : '60%',
-                    background: 'linear-gradient(90deg, #EA580C 0%, #F97316 100%)'
+                    background: 'linear-gradient(90deg, #FC563C 0%, #6E7575 100%)'
                   }}
                 />
               </div>
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small">SHA-256 Protected</span>
-                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(234, 88, 12, 0.08)', color: '#EA580C', border: '1px solid rgba(234, 88, 12, 0.2)' }}>
-                  Active
+                <span className="text-muted extra-small">{t('SHA-256 Protected')}</span>
+                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.08)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.2)' }}>
+                  {t('Active')}
                 </span>
               </div>
             </div>
@@ -844,23 +838,23 @@ export default function SettingsPage() {
           <div className="tri-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Basin Capacity</span>
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">{t('Basin Capacity')}</span>
                 <div className="tri-kpi-icon tri-kpi-icon-blue">
                   <FaWater size={16} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#0B2C5F', fontSize: '1.8rem', letterSpacing: '-0.03em' }}>
-                {pondSettings.max_ponds || 30} <small className="fs-6 text-muted fw-normal">Max Basins</small>
+              <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '1.8rem', letterSpacing: '-0.03em' }}>
+                {pondSettings.max_ponds || 30} <small className="fs-6 text-muted fw-normal">{t('Max Basins')}</small>
               </h2>
             </div>
             <div>
               <div className="tri-progress-track my-2.5">
-                <div className="tri-progress-bar" style={{ width: '80%', background: 'linear-gradient(90deg, #0B2C5F 0%, #1E3A8A 100%)' }} />
+                <div className="tri-progress-bar" style={{ width: '80%', background: 'linear-gradient(90deg, #172A39 0%, #FC563C 100%)' }} />
               </div>
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small">Auto Assign: {pondSettings.auto_assign_pond_number}</span>
-                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(11, 44, 95, 0.06)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.15)' }}>
-                  Active
+                <span className="text-muted extra-small">{t('Auto Assign:')} {pondSettings.auto_assign_pond_number}</span>
+                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.06)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.15)' }}>
+                  {t('Active')}
                 </span>
               </div>
             </div>
@@ -872,13 +866,13 @@ export default function SettingsPage() {
           <div className="tri-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Database Archive</span>
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">{t('Database Archive')}</span>
                 <div className="tri-kpi-icon tri-kpi-icon-blue">
                   <FaDatabase size={16} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#0B2C5F', fontSize: '1.8rem', letterSpacing: '-0.03em' }}>
-                {backupSettings.backup_frequency || 'Weekly'}
+              <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '1.8rem', letterSpacing: '-0.03em' }}>
+                {t(backupSettings.backup_frequency || 'Weekly')}
               </h2>
             </div>
             <div>
@@ -886,9 +880,9 @@ export default function SettingsPage() {
                 <div className="tri-progress-bar" style={{ width: '100%', background: 'linear-gradient(90deg, #16A34A 0%, #22C55E 100%)' }} />
               </div>
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small">Auto-Backup: {backupSettings.automatic_backup}</span>
+                <span className="text-muted extra-small">{t('Auto-Backup:')} {backupSettings.automatic_backup}</span>
                 <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: '#F0FDF4', color: '#16A34A', border: '1px solid #BBF7D0' }}>
-                  Healthy
+                  {t('Healthy')}
                 </span>
               </div>
             </div>
@@ -904,9 +898,9 @@ export default function SettingsPage() {
             {/* Settings Menu Header + Integrated Search Bar */}
             <div className="px-1 pb-3 mb-2 border-bottom">
               <div className="d-flex align-items-center justify-content-between mb-2">
-                <span className="text-uppercase fw-bold text-muted extra-small tracking-wider">SETTINGS MENU</span>
-                <span className="badge rounded-pill extra-small px-2.5 py-1 fw-bold" style={{ backgroundColor: 'rgba(11, 44, 95, 0.08)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.15)' }}>
-                  {filteredTabs.length} Tabs
+                <span className="text-uppercase fw-bold text-muted extra-small tracking-wider">{t('SETTINGS MENU')}</span>
+                <span className="badge rounded-pill extra-small px-2.5 py-1 fw-bold" style={{ backgroundColor: 'rgba(252, 86, 60, 0.08)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.15)' }}>
+                  {filteredTabs.length} {t('Tabs')}
                 </span>
               </div>
 
@@ -916,7 +910,7 @@ export default function SettingsPage() {
                 <input
                   type="text"
                   className="form-control form-control-sm ps-5 pe-4 py-2 rounded-3 border-slate-200 shadow-xs"
-                  placeholder="Search Settings..."
+                  placeholder={t('Search Settings...')}
                   style={{ fontSize: '0.86rem' }}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -938,13 +932,13 @@ export default function SettingsPage() {
               {filteredTabs.length === 0 ? (
                 <div className="p-3 text-center text-muted small">No settings matching "{searchQuery}"</div>
               ) : (
-                filteredTabs.map((t) => {
-                  const Icon = t.icon;
-                  const isActive = activeTab === t.id;
+                filteredTabs.map((tabItem) => {
+                  const Icon = tabItem.icon;
+                  const isActive = activeTab === tabItem.id;
                   return (
                     <button
-                      key={t.id}
-                      onClick={() => setActiveTab(t.id)}
+                      key={tabItem.id}
+                      onClick={() => setActiveTab(tabItem.id)}
                       className={`settings-nav-pill ${isActive ? 'active' : ''}`}
                       style={{ cursor: 'pointer' }}
                     >
@@ -952,12 +946,12 @@ export default function SettingsPage() {
                         <Icon size={16} />
                       </div>
                       <div className="text-truncate flex-grow-1">
-                        <div className="fw-semibold fs-6 lh-1">{t.label}</div>
+                        <div className="fw-semibold fs-6 lh-1">{t(tabItem.label)}</div>
                       </div>
                       {isActive && (
                         <span
                           className="rounded-circle"
-                          style={{ width: 6, height: 6, backgroundColor: '#EA580C', flexShrink: 0 }}
+                          style={{ width: 6, height: 6, backgroundColor: '#FC563C', flexShrink: 0 }}
                         />
                       )}
                     </button>
@@ -972,19 +966,19 @@ export default function SettingsPage() {
         <div className="col-12 col-lg-8 col-xl-9">
           {/* PROFILE SECTION */}
           {activeTab === 'profile' && (
-            <div className="settings-card bg-white shadow-sm border border-slate-200 rounded-4 overflow-hidden">
-              <div className="settings-card-header p-4 border-bottom bg-slate-50 d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div className="settings-card shadow-sm rounded-4 overflow-hidden">
+              <div className="settings-card-header p-4 d-flex align-items-center justify-content-between flex-wrap gap-3">
                 <div className="d-flex align-items-center gap-3">
                   <div className="settings-icon-badge p-3 rounded-4 bg-primary bg-opacity-10 text-primary">
                     <FaUser size={20} />
                   </div>
                   <div>
-                    <h4 className="fw-bold mb-0 text-dark">Admin Profile</h4>
-                    <small className="text-muted">Administrator account details and profile information.</small>
+                    <h4 className="fw-extrabold mb-0 text-dark">{t('Admin Profile')}</h4>
+                    <small className="text-muted fw-medium">{t('Administrator account details and profile information.')}</small>
                   </div>
                 </div>
-                <span className="badge bg-success bg-opacity-10 text-success rounded-pill px-3.5 py-1.5 extra-small fw-bold">
-                  Active Administrator
+                <span className="badge bg-success text-white rounded-pill px-3.5 py-1.5 extra-small fw-bold shadow-xs">
+                  ● {t('Active Administrator')}
                 </span>
               </div>
 
@@ -1010,7 +1004,7 @@ export default function SettingsPage() {
                       style={{
                         width: 96,
                         height: 96,
-                        background: 'linear-gradient(135deg, #0b2c5f 0%, #1e40af 100%)',
+                        background: 'linear-gradient(135deg, #FC563C 0%, #1e40af 100%)',
                         display: profile.avatar_path ? 'none' : 'flex'
                       }}
                     >
@@ -1020,7 +1014,7 @@ export default function SettingsPage() {
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       className="btn btn-warning btn-sm rounded-circle position-absolute bottom-0 end-0 p-2 border border-2 border-white shadow text-dark fw-bold"
-                      title="Upload Photo"
+                      title={t('Upload Photo')}
                     >
                       <FaCamera size={13} />
                     </button>
@@ -1034,14 +1028,21 @@ export default function SettingsPage() {
                   </div>
                   <div className="text-center text-sm-start flex-grow-1">
                     <div className="d-flex flex-wrap align-items-center justify-content-center justify-content-sm-start gap-2 mb-1.5">
-                      <h5 className="fw-bold mb-0 fs-5">{profile.full_name}</h5>
-                      <span className="badge bg-info bg-opacity-10 text-info px-3 py-1.5 rounded-pill fw-semibold">
+                      <h5 className="fw-extrabold mb-0 fs-5 text-dark">{profile.full_name}</h5>
+                      <span
+                        className="badge px-3 py-1.5 rounded-pill fw-bold extra-small"
+                        style={{
+                          backgroundColor: 'rgba(252, 86, 60, 0.1)',
+                          color: '#FC563C',
+                          border: '1.5px solid rgba(252, 86, 60, 0.3)'
+                        }}
+                      >
                         {profile.position}
                       </span>
                     </div>
-                    <p className="text-muted mb-2 small fw-medium">{profile.email}</p>
-                    <small className="text-muted d-block extra-small">
-                      Allowed formats: JPG, PNG or GIF. Click the camera icon on the avatar to change photo.
+                    <p className="text-secondary mb-2 small fw-semibold">{profile.email}</p>
+                    <small className="text-muted d-block extra-small fw-medium">
+                      {t('Allowed formats: JPG, PNG or GIF. Click the camera icon on the avatar to change photo.')}
                     </small>
                   </div>
                 </div>
@@ -1054,10 +1055,10 @@ export default function SettingsPage() {
                       style={{ marginTop: 28, marginBottom: 28, paddingTop: 20 }}
                     >
                       <h6 className="fw-bold mb-0 d-flex align-items-center gap-2 fs-6">
-                        <FaCheckCircle className="text-success" size={16} /> Account Profile Details Overview
+                        <FaCheckCircle className="text-success" size={16} /> {t('Account Profile Details Overview')}
                       </h6>
                       <span className="badge bg-light text-muted border px-3 py-1.5 extra-small fw-semibold">
-                        Read-only account summary
+                        {t('Read-only account summary')}
                       </span>
                     </div>
 
@@ -1067,7 +1068,7 @@ export default function SettingsPage() {
                         <div className="settings-info-card transition-all hover-shadow-xs">
                           <div className="text-warning extra-small fw-bold text-uppercase mb-2.5 d-flex align-items-center gap-2">
                             <FaUser className="text-warning flex-shrink-0" size={13} />
-                            <span className="tracking-wider ms-1">System Administrator (Full Name)</span>
+                            <span className="tracking-wider ms-1">{t('System Administrator (Full Name)')}</span>
                           </div>
                           <div className="fw-extrabold fs-6 pt-1">{profile.full_name}</div>
                         </div>
@@ -1078,7 +1079,7 @@ export default function SettingsPage() {
                         <div className="settings-info-card transition-all hover-shadow-xs">
                           <div className="text-warning extra-small fw-bold text-uppercase mb-2.5 d-flex align-items-center gap-2">
                             <FaEnvelope className="text-warning flex-shrink-0" size={13} />
-                            <span className="tracking-wider ms-1">Email Address</span>
+                            <span className="tracking-wider ms-1">{t('Email Address')}</span>
                           </div>
                           <div className="fw-extrabold fs-6 pt-1">{profile.email}</div>
                         </div>
@@ -1089,7 +1090,7 @@ export default function SettingsPage() {
                         <div className="settings-info-card transition-all hover-shadow-xs">
                           <div className="text-warning extra-small fw-bold text-uppercase mb-2.5 d-flex align-items-center gap-2">
                             <FaPhone className="text-warning flex-shrink-0" size={13} />
-                            <span className="tracking-wider ms-1">Contact Phone Number</span>
+                            <span className="tracking-wider ms-1">{t('Contact Phone Number')}</span>
                           </div>
                           <div className="fw-extrabold fs-6 pt-1">{profile.phone || '09123456789'}</div>
                         </div>
@@ -1100,7 +1101,7 @@ export default function SettingsPage() {
                         <div className="settings-info-card transition-all hover-shadow-xs">
                           <div className="text-warning extra-small fw-bold text-uppercase mb-2.5 d-flex align-items-center gap-2">
                             <FaUserShield className="text-warning flex-shrink-0" size={13} />
-                            <span className="tracking-wider ms-1">Position / System Role</span>
+                            <span className="tracking-wider ms-1">{t('Position / System Role')}</span>
                           </div>
                           <div className="fw-extrabold fs-6 pt-1">{profile.position}</div>
                         </div>
@@ -1111,7 +1112,7 @@ export default function SettingsPage() {
                         <div className="settings-info-card transition-all hover-shadow-xs">
                           <div className="text-warning extra-small fw-bold text-uppercase mb-2.5 d-flex align-items-center gap-2">
                             <FaClock className="text-warning flex-shrink-0" size={13} />
-                            <span className="tracking-wider ms-1">Last Login Timestamp</span>
+                            <span className="tracking-wider ms-1">{t('Last Login Timestamp')}</span>
                           </div>
                           <div className="fw-extrabold fs-6 pt-1">{profile.last_login}</div>
                         </div>
@@ -1122,14 +1123,14 @@ export default function SettingsPage() {
                     <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-4.5 pt-4 border-top">
                       <div className="text-muted extra-small d-flex align-items-center gap-2">
                         <FaShieldAlt className="text-success" size={14} />
-                        <span>Administrator Account Info Verified & Secured</span>
+                        <span>{t('Administrator Account Info Verified & Secured')}</span>
                       </div>
                       <button
                         type="button"
                         className="btn btn-gold-glow px-4.5 py-2.5 rounded-3 d-flex align-items-center gap-2 shadow-sm fw-bold ms-auto"
                         onClick={handleStartEditProfile}
                       >
-                        <FaEdit size={15} /> Edit Profile
+                        <FaEdit size={15} /> {t('Edit Profile')}
                       </button>
                     </div>
                   </div>
@@ -1141,14 +1142,14 @@ export default function SettingsPage() {
                       style={{ marginTop: 28, marginBottom: 32, padding: '14px 20px' }}
                     >
                       <h6 className="fw-bold text-primary mb-0 d-flex align-items-center gap-2 fs-6">
-                        <FaEdit size={16} /> Edit Administrator Profile Details
+                        <FaEdit size={16} /> {t('Edit Administrator Profile Details')}
                       </h6>
-                      <small className="text-muted extra-small ms-2">Modify account fields below and click Save Changes.</small>
+                      <small className="text-muted extra-small ms-2">{t('Modify account fields below and click Save Changes.')}</small>
                     </div>
 
                     <div className="row g-4">
                       <div className="col-12 col-md-6">
-                        <label className="form-label fw-bold text-dark small mb-2">Full Name</label>
+                        <label className="form-label fw-bold text-dark small mb-2">{t('Full Name')}</label>
                         <input
                           type="text"
                           className="form-control p-3 rounded-3 border-secondary border-opacity-25 shadow-xs"
@@ -1159,7 +1160,7 @@ export default function SettingsPage() {
                       </div>
 
                       <div className="col-12 col-md-6">
-                        <label className="form-label fw-bold text-dark small mb-2">Email Address</label>
+                        <label className="form-label fw-bold text-dark small mb-2">{t('Email Address')}</label>
                         <input
                           type="email"
                           className="form-control p-3 rounded-3 border-secondary border-opacity-25 shadow-xs"
@@ -1170,7 +1171,7 @@ export default function SettingsPage() {
                       </div>
 
                       <div className="col-12 col-md-6">
-                        <label className="form-label fw-bold text-dark small mb-2">Contact Phone Number</label>
+                        <label className="form-label fw-bold text-dark small mb-2">{t('Contact Phone Number')}</label>
                         <input
                           type="text"
                           className="form-control p-3 rounded-3 border-secondary border-opacity-25 shadow-xs"
@@ -1180,7 +1181,7 @@ export default function SettingsPage() {
                       </div>
 
                       <div className="col-12 col-md-6">
-                        <label className="form-label fw-bold text-dark small mb-2">Position / Role</label>
+                        <label className="form-label fw-bold text-dark small mb-2">{t('Position / Role')}</label>
                         <input
                           type="text"
                           className="form-control p-3 rounded-3 border-secondary border-opacity-25 shadow-xs"
@@ -1190,7 +1191,7 @@ export default function SettingsPage() {
                       </div>
 
                       <div className="col-12">
-                        <label className="form-label fw-bold text-dark small mb-2">Last Login Timestamp (Read-Only)</label>
+                        <label className="form-label fw-bold text-dark small mb-2">{t('Last Login Timestamp (Read-Only)')}</label>
                         <input
                           type="text"
                           className="form-control p-3 rounded-3 bg-light text-muted border-secondary border-opacity-25"
@@ -1207,7 +1208,7 @@ export default function SettingsPage() {
                         className="btn btn-outline-secondary px-4 py-2.5 rounded-3 d-flex align-items-center gap-2 fw-semibold"
                         onClick={handleCancelEditProfile}
                       >
-                        <FaTimes size={14} /> Cancel
+                        <FaTimes size={14} /> {t('Cancel')}
                       </button>
 
                       <button
@@ -1215,7 +1216,7 @@ export default function SettingsPage() {
                         className="btn btn-settings-primary px-4.5 py-2.5 rounded-3 d-flex align-items-center gap-2 fw-semibold shadow-sm"
                         disabled={saving}
                       >
-                        <FaSave size={14} /> {saving ? 'Saving Changes...' : 'Save Changes'}
+                        <FaSave size={14} /> {saving ? t('Saving Changes...') : t('Save Changes')}
                       </button>
                     </div>
                   </form>
@@ -1232,42 +1233,42 @@ export default function SettingsPage() {
                   <FaLock size={20} />
                 </div>
                 <div>
-                  <h4 className="fw-bold mb-0 text-dark">Account Security</h4>
-                  <small className="text-muted">Change password and manage account security credentials.</small>
+                  <h4 className="fw-bold mb-0 text-dark">{t('Account Security')}</h4>
+                  <small className="text-muted">{t('Change password and manage account security credentials.')}</small>
                 </div>
               </div>
               <div className="card-body p-4">
                 <form onSubmit={handleUpdatePassword}>
-                  <h6 className="fw-bold text-dark mb-3">Change Administrator Password</h6>
+                  <h6 className="fw-bold text-dark mb-3">{t('Change Administrator Password')}</h6>
                   <div className="row g-3">
                     <div className="col-12">
-                      <label className="form-label fw-semibold text-dark">Current Password</label>
+                      <label className="form-label fw-semibold text-dark">{t('Current Password')}</label>
                       <input
                         type="password"
                         className="form-control py-2.5 rounded-3"
-                        placeholder="Enter current password"
+                        placeholder={t('Enter current password')}
                         value={security.current_password}
                         onChange={(e) => setSecurity({ ...security, current_password: e.target.value })}
                       />
                     </div>
 
                     <div className="col-12 col-md-6">
-                      <label className="form-label fw-semibold text-dark">New Password</label>
+                      <label className="form-label fw-semibold text-dark">{t('New Password')}</label>
                       <input
                         type="password"
                         className="form-control py-2.5 rounded-3"
-                        placeholder="Min 6 characters"
+                        placeholder={t('Min 6 characters')}
                         value={security.new_password}
                         onChange={(e) => setSecurity({ ...security, new_password: e.target.value })}
                       />
                     </div>
 
                     <div className="col-12 col-md-6">
-                      <label className="form-label fw-semibold text-dark">Confirm Password</label>
+                      <label className="form-label fw-semibold text-dark">{t('Confirm Password')}</label>
                       <input
                         type="password"
                         className="form-control py-2.5 rounded-3"
-                        placeholder="Re-enter new password"
+                        placeholder={t('Re-enter new password')}
                         value={security.confirm_password}
                         onChange={(e) => setSecurity({ ...security, confirm_password: e.target.value })}
                       />
@@ -1280,7 +1281,7 @@ export default function SettingsPage() {
                       className="btn btn-settings-primary px-4 py-2.5 rounded-3 d-flex align-items-center gap-2 ms-auto"
                       disabled={saving}
                     >
-                      <FaShieldAlt size={14} /> {saving ? 'Updating...' : 'Update Password'}
+                      <FaShieldAlt size={14} /> {saving ? t('Updating...') : t('Update Password')}
                     </button>
                   </div>
                 </form>
@@ -1291,9 +1292,9 @@ export default function SettingsPage() {
                 <div className="setting-row-card d-flex align-items-center justify-content-between p-4 mb-4 settings-switch">
                   <div>
                     <h6 className="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
-                      <FaShieldAlt className="text-primary" /> Two-Factor Authentication (2FA)
+                      <FaShieldAlt className="text-primary" /> {t('Two-Factor Authentication (2FA)')}
                     </h6>
-                    <small className="text-muted">Add an additional security layer during administrator login.</small>
+                    <small className="text-muted">{t('Add an additional security layer during administrator login.')}</small>
                   </div>
                   <div className="form-check form-switch fs-4 mb-0">
                     <input
@@ -1310,16 +1311,16 @@ export default function SettingsPage() {
                 <div className="d-flex align-items-center justify-content-between p-4 rounded-4 border border-danger border-opacity-25 bg-danger bg-opacity-10">
                   <div>
                     <h6 className="fw-bold text-danger mb-1 d-flex align-items-center gap-2">
-                      <FaSignOutAlt /> Logout All Devices
+                      <FaSignOutAlt /> {t('Logout All Devices')}
                     </h6>
-                    <small className="text-danger opacity-75">Sign out from all active web sessions across mobile and desktop browsers.</small>
+                    <small className="text-danger opacity-75">{t('Sign out from all active web sessions across mobile and desktop browsers.')}</small>
                   </div>
                   <button
                     type="button"
                     className="btn btn-danger btn-sm px-4 py-2.5 rounded-3 shadow-sm fw-semibold"
                     onClick={handleLogoutAllDevices}
                   >
-                    Logout All Devices
+                    {t('Logout All Devices')}
                   </button>
                 </div>
               </div>
@@ -1334,8 +1335,8 @@ export default function SettingsPage() {
                   <FaWater size={20} />
                 </div>
                 <div>
-                  <h4 className="fw-bold mb-0 text-dark">Pond Settings</h4>
-                  <small className="text-muted">Default pond configuration (e.g. maximum ponds, auto-numbering).</small>
+                  <h4 className="fw-bold mb-0 text-dark">{t('Pond Settings')}</h4>
+                  <small className="text-muted">{t('Default pond configuration (e.g. maximum ponds, auto-numbering).')}</small>
                 </div>
               </div>
               <div className="card-body p-4">
@@ -1347,7 +1348,7 @@ export default function SettingsPage() {
                 >
                   <div className="row g-4">
                     <div className="col-12 col-md-6">
-                      <label className="form-label fw-semibold text-dark">Maximum Number of Ponds</label>
+                      <label className="form-label fw-semibold text-dark">{t('Maximum Number of Ponds')}</label>
                       <input
                         type="number"
                         min="1"
@@ -1356,29 +1357,29 @@ export default function SettingsPage() {
                         value={pondSettings.max_ponds}
                         onChange={(e) => setPondSettings({ ...pondSettings, max_ponds: e.target.value })}
                       />
-                      <small className="text-muted">Default system pond limit (e.g. 30 ponds).</small>
+                      <small className="text-muted">{t('Default system pond limit (e.g. 30 ponds).')}</small>
                     </div>
 
                     <div className="col-12 col-md-6">
-                      <label className="form-label fw-semibold text-dark">Default Pond Status</label>
+                      <label className="form-label fw-semibold text-dark">{t('Default Pond Status')}</label>
                       <select
                         className="form-select py-2.5 rounded-3"
                         value={pondSettings.default_pond_status}
                         onChange={(e) => setPondSettings({ ...pondSettings, default_pond_status: e.target.value })}
                       >
-                        <option value="Unmonitored">Unmonitored (Recommended)</option>
-                        <option value="Healthy">Healthy</option>
-                        <option value="Warning">Warning</option>
-                        <option value="Critical">Critical</option>
+                        <option value="Unmonitored">{t('Unmonitored (Recommended)')}</option>
+                        <option value="Healthy">{t('Healthy')}</option>
+                        <option value="Warning">{t('Warning')}</option>
+                        <option value="Critical">{t('Critical')}</option>
                       </select>
-                      <small className="text-muted">Initial status assigned when creating a new pond.</small>
+                      <small className="text-muted">{t('Initial status assigned when creating a new pond.')}</small>
                     </div>
 
                     <div className="col-12">
                       <div className="setting-row-card d-flex align-items-center justify-content-between p-4 settings-switch">
                         <div>
-                          <strong className="d-block text-dark mb-1">Auto Assign Pond Number</strong>
-                          <small className="text-muted">Automatically generate sequential IDs for new pond additions (ON / OFF).</small>
+                          <strong className="d-block text-dark mb-1">{t('Auto Assign Pond Number')}</strong>
+                          <small className="text-muted">{t('Automatically generate sequential IDs for new pond additions (ON / OFF).')}</small>
                         </div>
                         <div className="form-check form-switch fs-4 mb-0">
                           <input
@@ -1400,7 +1401,7 @@ export default function SettingsPage() {
 
                   <div className="mt-4 pt-3 border-top text-end">
                     <button type="submit" className="btn btn-settings-primary px-4 py-2.5 rounded-3" disabled={saving}>
-                      <FaSave size={14} className="me-2" /> {saving ? 'Saving...' : 'Save'}
+                      <FaSave size={14} className="me-2" /> {saving ? t('Saving...') : t('Save')}
                     </button>
                   </div>
                 </form>
@@ -1416,8 +1417,8 @@ export default function SettingsPage() {
                   <FaFish size={20} />
                 </div>
                 <div>
-                  <h4 className="fw-bold mb-0 text-dark">Harvest Settings</h4>
-                  <small className="text-muted">Itakda ang target harvest age at readiness threshold na ginagamit ng system.</small>
+                  <h4 className="fw-bold mb-0 text-dark">{t('Harvest Settings')}</h4>
+                  <small className="text-muted">{t('Itakda ang target harvest age at readiness threshold na ginagamit ng system.')}</small>
                 </div>
               </div>
               <div className="card-body p-4">
@@ -1431,16 +1432,16 @@ export default function SettingsPage() {
                   <div className="harvest-rule-box p-4 mb-4 d-flex gap-3 align-items-start">
                     <FaExclamationTriangle className="text-warning flex-shrink-0 mt-1" size={22} />
                     <div>
-                      <strong className="d-block text-dark mb-1 fs-6">Harvest Readiness Rule Guidance</strong>
+                      <strong className="d-block text-dark mb-1 fs-6">{t('Harvest Readiness Rule Guidance')}</strong>
                       <p className="mb-0 text-dark small">
-                        <strong>Note:</strong> Reaching <strong>95%</strong> triggers <span className="badge bg-warning text-dark px-2.5 py-1 rounded-pill">Upcoming Harvest</span>. Reaching <strong>100%</strong> triggers <span className="badge bg-success px-2.5 py-1 rounded-pill">Ready to Harvest</span>.
+                        <strong>Note:</strong> Reaching <strong>95%</strong> triggers <span className="badge bg-warning text-dark px-2.5 py-1 rounded-pill">{t('Upcoming Harvest')}</span>. Reaching <strong>100%</strong> triggers <span className="badge bg-success px-2.5 py-1 rounded-pill">{t('Ready to Harvest')}</span>.
                       </p>
                     </div>
                   </div>
 
                   <div className="row g-4">
                     <div className="col-12 col-md-6">
-                      <label className="form-label fw-semibold text-dark">Target Harvest Age (Days)</label>
+                      <label className="form-label fw-semibold text-dark">{t('Target Harvest Age (Days)')}</label>
                       <div className="input-group">
                         <input
                           type="number"
@@ -1450,13 +1451,13 @@ export default function SettingsPage() {
                           value={harvestSettings.target_harvest_age}
                           onChange={(e) => setHarvestSettings({ ...harvestSettings, target_harvest_age: e.target.value })}
                         />
-                        <span className="input-group-text bg-light text-muted">Days</span>
+                        <span className="input-group-text bg-light text-muted">{t('Days')}</span>
                       </div>
-                      <small className="text-muted">Standard culture cycle period (e.g. 120 Days).</small>
+                      <small className="text-muted">{t('Standard culture cycle period (e.g. 120 Days).')}</small>
                     </div>
 
                     <div className="col-12 col-md-6">
-                      <label className="form-label fw-semibold text-dark">Harvest Ready Percentage (%)</label>
+                      <label className="form-label fw-semibold text-dark">{t('Harvest Ready Percentage (%)')}</label>
                       <div className="input-group">
                         <input
                           type="number"
@@ -1468,27 +1469,27 @@ export default function SettingsPage() {
                         />
                         <span className="input-group-text bg-light text-muted">%</span>
                       </div>
-                      <small className="text-muted">Readiness threshold percentage (e.g. 95%).</small>
+                      <small className="text-muted">{t('Readiness threshold percentage (e.g. 95%).')}</small>
                     </div>
 
                     <div className="col-12">
-                      <label className="form-label fw-semibold text-dark">Prediction Refresh Frequency</label>
+                      <label className="form-label fw-semibold text-dark">{t('Prediction Refresh Frequency')}</label>
                       <select
                         className="form-select py-2.5 rounded-3"
                         value={harvestSettings.prediction_refresh}
                         onChange={(e) => setHarvestSettings({ ...harvestSettings, prediction_refresh: e.target.value })}
                       >
-                        <option value="Daily">Daily</option>
-                        <option value="Weekly">Weekly</option>
-                        <option value="Manual">Manual</option>
+                        <option value="Daily">{t('Daily')}</option>
+                        <option value="Weekly">{t('Weekly')}</option>
+                        <option value="Manual">{t('Manual')}</option>
                       </select>
-                      <small className="text-muted">How often harvest biomass & readiness predictions update.</small>
+                      <small className="text-muted">{t('How often harvest biomass & readiness predictions update.')}</small>
                     </div>
                   </div>
 
                   <div className="mt-4 pt-3 border-top text-end">
                     <button type="submit" className="btn btn-settings-primary px-4 py-2.5 rounded-3" disabled={saving}>
-                      <FaSave size={14} className="me-2" /> {saving ? 'Saving...' : 'Save'}
+                      <FaSave size={14} className="me-2" /> {saving ? t('Saving...') : t('Save')}
                     </button>
                   </div>
                 </form>
@@ -1504,8 +1505,8 @@ export default function SettingsPage() {
                   <FaBell size={20} />
                 </div>
                 <div>
-                  <h4 className="fw-bold mb-0 text-dark">Notification Settings</h4>
-                  <small className="text-muted">Select notification alerts delivered to administrators.</small>
+                  <h4 className="fw-bold mb-0 text-dark">{t('Notification Settings')}</h4>
+                  <small className="text-muted">{t('Select notification alerts delivered to administrators.')}</small>
                 </div>
               </div>
               <div className="card-body p-4">
@@ -1519,8 +1520,8 @@ export default function SettingsPage() {
                     {/* Disease Alerts */}
                     <div className="setting-row-card d-flex align-items-center justify-content-between p-4">
                       <div>
-                        <strong className="d-block text-dark mb-1">Receive Disease Alerts</strong>
-                        <small className="text-muted">Get immediate alerts when caretaker scans detect disease risk.</small>
+                        <strong className="d-block text-dark mb-1">{t('Receive Disease Alerts')}</strong>
+                        <small className="text-muted">{t('Get immediate alerts when caretaker scans detect disease risk.')}</small>
                       </div>
                       <div className="form-check form-switch fs-4 mb-0">
                         <input
@@ -1541,8 +1542,8 @@ export default function SettingsPage() {
                     {/* Harvest Alerts */}
                     <div className="setting-row-card d-flex align-items-center justify-content-between p-4">
                       <div>
-                        <strong className="d-block text-dark mb-1">Receive Harvest Alerts</strong>
-                        <small className="text-muted">Receive notifications when ponds hit 95% or 100% harvest readiness.</small>
+                        <strong className="d-block text-dark mb-1">{t('Receive Harvest Alerts')}</strong>
+                        <small className="text-muted">{t('Receive notifications when ponds hit 95% or 100% harvest readiness.')}</small>
                       </div>
                       <div className="form-check form-switch fs-4 mb-0">
                         <input
@@ -1563,8 +1564,8 @@ export default function SettingsPage() {
                     {/* Feeding Alerts */}
                     <div className="setting-row-card d-flex align-items-center justify-content-between p-4">
                       <div>
-                        <strong className="d-block text-dark mb-1">Receive Feeding Alerts</strong>
-                        <small className="text-muted">Notify admin when feeding schedules or daily feed logs are submitted.</small>
+                        <strong className="d-block text-dark mb-1">{t('Receive Feeding Alerts')}</strong>
+                        <small className="text-muted">{t('Notify admin when feeding schedules or daily feed logs are submitted.')}</small>
                       </div>
                       <div className="form-check form-switch fs-4 mb-0">
                         <input
@@ -1585,8 +1586,8 @@ export default function SettingsPage() {
                     {/* Caretaker Activity Alerts */}
                     <div className="setting-row-card d-flex align-items-center justify-content-between p-4">
                       <div>
-                        <strong className="d-block text-dark mb-1">Receive Caretaker Activity Alerts</strong>
-                        <small className="text-muted">Alert when caretakers log water quality, water maintenance, or login activity.</small>
+                        <strong className="d-block text-dark mb-1">{t('Receive Caretaker Activity Alerts')}</strong>
+                        <small className="text-muted">{t('Alert when caretakers log water quality, water maintenance, or login activity.')}</small>
                       </div>
                       <div className="form-check form-switch fs-4 mb-0">
                         <input
@@ -1607,8 +1608,8 @@ export default function SettingsPage() {
                     {/* Email Notifications */}
                     <div className="setting-row-card d-flex align-items-center justify-content-between p-4">
                       <div>
-                        <strong className="d-block text-dark mb-1">Receive Email Notifications</strong>
-                        <small className="text-muted">Send urgent system summaries directly to administrator email address.</small>
+                        <strong className="d-block text-dark mb-1">{t('Receive Email Notifications')}</strong>
+                        <small className="text-muted">{t('Send urgent system summaries directly to administrator email address.')}</small>
                       </div>
                       <div className="form-check form-switch fs-4 mb-0">
                         <input
@@ -1629,7 +1630,7 @@ export default function SettingsPage() {
 
                   <div className="mt-4 pt-3 border-top text-end">
                     <button type="submit" className="btn btn-settings-primary px-4 py-2.5 rounded-3" disabled={saving}>
-                      <FaSave size={14} className="me-2" /> {saving ? 'Saving...' : 'Save'}
+                      <FaSave size={14} className="me-2" /> {saving ? t('Saving...') : t('Save')}
                     </button>
                   </div>
                 </form>
@@ -1645,8 +1646,8 @@ export default function SettingsPage() {
                   <FaSlidersH size={20} />
                 </div>
                 <div>
-                  <h4 className="fw-bold mb-0 text-dark">System Preferences</h4>
-                  <small className="text-muted">Theme, language, at date/time format.</small>
+                  <h4 className="fw-bold mb-0 text-dark">{t('System Preferences')}</h4>
+                  <small className="text-muted">{t('Theme, language, at date/time format.')}</small>
                 </div>
               </div>
               <div className="card-body p-4">
@@ -1659,7 +1660,7 @@ export default function SettingsPage() {
                   <div className="row g-4">
                     {/* Theme Mode Toggle Selector */}
                     <div className="col-12">
-                      <label className="form-label fw-semibold text-dark">Display Theme Mode</label>
+                      <label className="form-label fw-semibold text-dark">{t('Display Theme Mode')}</label>
                       <div className="setting-row-card d-flex align-items-center justify-content-between p-4">
                         <div className="d-flex align-items-center gap-3">
                           <div
@@ -1674,12 +1675,14 @@ export default function SettingsPage() {
                           </div>
                           <div>
                             <strong className="d-block text-dark mb-0 fs-6">
-                              {systemPreferences.theme} Mode
+                              {t(systemPreferences.theme)} {t('Mode')}
                             </strong>
                             <small className="text-muted">
-                              {systemPreferences.theme === 'Dark'
-                                ? 'Dark theme is active. Reduces eye strain and optimizes low-light visibility.'
-                                : 'Clean standard Light theme is active.'}
+                              {systemPreferences.theme === 'Auto'
+                                ? t('Auto schedule active: Light mode from 6:00 AM to 6:00 PM, Dark mode from 6:00 PM to 6:00 AM.')
+                                : systemPreferences.theme === 'Dark'
+                                ? t('Dark theme is active. Reduces eye strain and optimizes low-light visibility.')
+                                : t('Clean standard Light theme is active.')}
                             </small>
                           </div>
                         </div>
@@ -1687,21 +1690,31 @@ export default function SettingsPage() {
                         <div className="btn-group" role="group">
                           <button
                             type="button"
-                            className={`btn btn-sm px-3.5 py-2 fw-semibold ${
+                            className={`btn btn-sm px-3 py-2 fw-semibold ${
+                              systemPreferences.theme === 'Auto' ? 'btn-primary shadow-sm' : 'btn-outline-secondary'
+                            }`}
+                            onClick={() => handleThemeChange('Auto')}
+                            title="Automatically adjust between Light (6 AM–6 PM) and Dark (6 PM–6 AM)"
+                          >
+                            <FaClock className="me-1.5" /> {t('Auto')}
+                          </button>
+                          <button
+                            type="button"
+                            className={`btn btn-sm px-3 py-2 fw-semibold ${
                               systemPreferences.theme === 'Light' ? 'btn-primary shadow-sm' : 'btn-outline-secondary'
                             }`}
                             onClick={() => handleThemeChange('Light')}
                           >
-                            <FaSun className="me-1.5" /> Light
+                            <FaSun className="me-1.5" /> {t('Light')}
                           </button>
                           <button
                             type="button"
-                            className={`btn btn-sm px-3.5 py-2 fw-semibold ${
+                            className={`btn btn-sm px-3 py-2 fw-semibold ${
                               systemPreferences.theme === 'Dark' ? 'btn-primary shadow-sm' : 'btn-outline-secondary'
                             }`}
                             onClick={() => handleThemeChange('Dark')}
                           >
-                            <FaMoon className="me-1.5" /> Dark
+                            <FaMoon className="me-1.5" /> {t('Dark')}
                           </button>
                         </div>
                       </div>
@@ -1710,12 +1723,20 @@ export default function SettingsPage() {
                     {/* Language */}
                     <div className="col-12 col-md-4">
                       <label className="form-label fw-semibold text-dark d-flex align-items-center gap-1.5">
-                        <FaGlobe className="text-primary" /> Language
+                        <FaGlobe className="text-primary" /> {t('Language')}
                       </label>
                       <select
                         className="form-select py-2.5 rounded-3"
-                        value={systemPreferences.language}
-                        onChange={(e) => setSystemPreferences({ ...systemPreferences, language: e.target.value })}
+                        value={language === 'fil' ? 'Tagalog / Filipino' : 'English'}
+                        onChange={async (e) => {
+                          const val = e.target.value;
+                          const nextLang = val === 'Tagalog / Filipino' ? 'fil' : 'en';
+                          if (nextLang === language) return;
+                          const confirmed = await confirmAndSetLanguage(nextLang);
+                          if (confirmed) {
+                            setSystemPreferences((prev) => ({ ...prev, language: val }));
+                          }
+                        }}
                       >
                         <option value="English">English</option>
                         <option value="Tagalog / Filipino">Tagalog / Filipino</option>
@@ -1725,7 +1746,7 @@ export default function SettingsPage() {
                     {/* Date Format */}
                     <div className="col-12 col-md-4">
                       <label className="form-label fw-semibold text-dark d-flex align-items-center gap-1.5">
-                        <FaCalendarAlt className="text-primary" /> Date Format
+                        <FaCalendarAlt className="text-primary" /> {t('Date Format')}
                       </label>
                       <select
                         className="form-select py-2.5 rounded-3"
@@ -1741,22 +1762,22 @@ export default function SettingsPage() {
                     {/* Time Format */}
                     <div className="col-12 col-md-4">
                       <label className="form-label fw-semibold text-dark d-flex align-items-center gap-1.5">
-                        <FaClock className="text-primary" /> Time Format
+                        <FaClock className="text-primary" /> {t('Time Format')}
                       </label>
                       <select
                         className="form-select py-2.5 rounded-3"
                         value={systemPreferences.time_format}
                         onChange={(e) => setSystemPreferences({ ...systemPreferences, time_format: e.target.value })}
                       >
-                        <option value="12 Hours">12 Hours (AM/PM)</option>
-                        <option value="24 Hours">24 Hours (Military)</option>
+                        <option value="12 Hours">{t('12 Hours (AM/PM)')}</option>
+                        <option value="24 Hours">{t('24 Hours (Military)')}</option>
                       </select>
                     </div>
                   </div>
 
                   <div className="mt-4 pt-3 border-top text-end">
                     <button type="submit" className="btn btn-settings-primary px-4 py-2.5 rounded-3" disabled={saving}>
-                      <FaSave size={14} className="me-2" /> {saving ? 'Saving...' : 'Save'}
+                      <FaSave size={14} className="me-2" /> {saving ? t('Saving...') : t('Save')}
                     </button>
                   </div>
                 </form>
@@ -1772,8 +1793,8 @@ export default function SettingsPage() {
                   <FaDatabase size={20} />
                 </div>
                 <div>
-                  <h4 className="fw-bold mb-0 text-dark">Backup & Restore</h4>
-                  <small className="text-muted">Create or restore system data backups.</small>
+                  <h4 className="fw-bold mb-0 text-dark">{t('Backup & Restore')}</h4>
+                  <small className="text-muted">{t('Create or restore system data backups.')}</small>
                 </div>
               </div>
               <div className="card-body p-4">
@@ -1788,11 +1809,11 @@ export default function SettingsPage() {
                     <div className="col-12">
                       <div className="p-4 rounded-4 bg-light border d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3">
                         <div>
-                          <strong className="d-block text-dark mb-1">Last Backup Timestamp</strong>
+                          <strong className="d-block text-dark mb-1">{t('Last Backup Timestamp')}</strong>
                           <span className="fs-5 fw-bold text-primary">{backupSettings.last_backup}</span>
                         </div>
                         <span className="badge bg-success bg-opacity-10 text-success px-3 py-2 rounded-pill fw-semibold fs-6">
-                          <FaCheckCircle className="me-1.5" /> Backup Verified
+                          <FaCheckCircle className="me-1.5" /> {t('Backup Verified')}
                         </span>
                       </div>
                     </div>
@@ -1801,8 +1822,8 @@ export default function SettingsPage() {
                     <div className="col-12 col-md-6">
                       <div className="setting-row-card d-flex align-items-center justify-content-between p-4 h-100 settings-switch">
                         <div>
-                          <strong className="d-block text-dark mb-1">Automatic Backup</strong>
-                          <small className="text-muted">Enable scheduled database snapshots.</small>
+                          <strong className="d-block text-dark mb-1">{t('Automatic Backup')}</strong>
+                          <small className="text-muted">{t('Enable scheduled database snapshots.')}</small>
                         </div>
                         <div className="form-check form-switch fs-4 mb-0">
                           <input
@@ -1823,23 +1844,23 @@ export default function SettingsPage() {
 
                     {/* Backup Frequency */}
                     <div className="col-12 col-md-6">
-                      <label className="form-label fw-semibold text-dark">Backup Frequency</label>
+                      <label className="form-label fw-semibold text-dark">{t('Backup Frequency')}</label>
                       <select
                         className="form-select py-2.5 rounded-3"
                         value={backupSettings.backup_frequency}
                         onChange={(e) => setBackupSettings({ ...backupSettings, backup_frequency: e.target.value })}
                       >
-                        <option value="Daily">Daily</option>
-                        <option value="Weekly">Weekly</option>
-                        <option value="Monthly">Monthly</option>
+                        <option value="Daily">{t('Daily')}</option>
+                        <option value="Weekly">{t('Weekly')}</option>
+                        <option value="Monthly">{t('Monthly')}</option>
                       </select>
-                      <small className="text-muted">How often automatic backups occur.</small>
+                      <small className="text-muted">{t('How often automatic backups occur.')}</small>
                     </div>
                   </div>
 
                   <div className="mt-4 pt-3 border-top text-end">
                     <button type="submit" className="btn btn-settings-primary px-4 py-2.5 rounded-3" disabled={saving}>
-                      <FaSave size={14} className="me-2" /> {saving ? 'Saving...' : 'Save Configuration'}
+                      <FaSave size={14} className="me-2" /> {saving ? t('Saving...') : t('Save Configuration')}
                     </button>
                   </div>
                 </form>
@@ -1847,33 +1868,33 @@ export default function SettingsPage() {
                 <hr className="my-4" />
 
                 {/* Backup & Restore Action Buttons */}
-                <h6 className="fw-bold text-dark mb-3">Database Actions</h6>
+                <h6 className="fw-bold text-dark mb-3">{t('Database Actions')}</h6>
                 <div className="row g-3">
                   <div className="col-12 col-md-6">
                     <div className="p-4 rounded-4 border bg-primary bg-opacity-10 d-flex flex-column gap-2">
-                      <strong className="text-dark fs-6">Export Database Snapshot</strong>
-                      <p className="small text-muted mb-2">Download complete SQL data dump of shrim_predict_db directly to your disk.</p>
+                      <strong className="text-dark fs-6">{t('Export Database Snapshot')}</strong>
+                      <p className="small text-muted mb-2">{t('Download complete SQL data dump of shrim_predict_db directly to your disk.')}</p>
                       <button
                         type="button"
                         className="btn btn-settings-primary rounded-3 py-2.5 d-flex align-items-center justify-content-center gap-2"
                         onClick={handleBackupNow}
                       >
-                        <FaDownload size={14} /> Backup Now
+                        <FaDownload size={14} /> {t('Backup Now')}
                       </button>
                     </div>
                   </div>
 
                   <div className="col-12 col-md-6">
                     <div className="p-4 rounded-4 border bg-warning bg-opacity-10 d-flex flex-column gap-2">
-                      <strong className="text-dark fs-6">Restore Database Backup</strong>
-                      <p className="small text-muted mb-2">Upload a previously generated .sql file to restore tables and system records.</p>
+                      <strong className="text-dark fs-6">{t('Restore Database Backup')}</strong>
+                      <p className="small text-muted mb-2">{t('Upload a previously generated .sql file to restore tables and system records.')}</p>
                       <button
                         type="button"
                         className="btn btn-warning text-dark rounded-3 py-2.5 d-flex align-items-center justify-content-center gap-2 shadow-sm fw-bold"
                         onClick={handleRestoreBackup}
                         disabled={saving}
                       >
-                        <FaUpload size={14} /> Restore Backup
+                        <FaUpload size={14} /> {t('Restore Backup')}
                       </button>
                     </div>
                   </div>
@@ -1891,12 +1912,12 @@ export default function SettingsPage() {
                     <FaUserCheck size={20} />
                   </div>
                   <div>
-                    <h4 className="fw-bold mb-0 text-dark">Archived Caretakers Directory</h4>
-                    <small className="text-muted">Preserved record archives of resigned, inactive, or former farm caretakers.</small>
+                    <h4 className="fw-bold mb-0 text-dark">{t('Archived Caretakers Directory')}</h4>
+                    <small className="text-muted">{t('Preserved record archives of resigned, inactive, or former farm caretakers.')}</small>
                   </div>
                 </div>
                 <span className="badge bg-warning bg-opacity-10 text-warning rounded-pill px-3.5 py-1.5 extra-small fw-bold">
-                  {archivedCaretakers.length} Archived Accounts
+                  {archivedCaretakers.length} {t('Archived Accounts')}
                 </span>
               </div>
 
@@ -1908,13 +1929,13 @@ export default function SettingsPage() {
                     <input
                       type="text"
                       className="form-control ps-5 rounded-3 py-2 border-slate-200"
-                      placeholder="Search by name, employee ID, or reason..."
+                      placeholder={t('Search by name, employee ID, or reason...')}
                       value={archivedSearch}
                       onChange={(e) => setArchivedSearch(e.target.value)}
                     />
                   </div>
                   <button type="button" className="btn btn-outline-secondary btn-sm rounded-3 px-3 py-2 d-flex align-items-center gap-1.5" onClick={fetchArchivedCaretakers}>
-                    <FaHistory /> Refresh Repository
+                    <FaHistory /> {t('Refresh Repository')}
                   </button>
                 </div>
 
@@ -1923,24 +1944,25 @@ export default function SettingsPage() {
                   {loadingArchived ? (
                     <div className="text-center py-5 text-muted">
                       <div className="spinner-border text-warning" role="status"></div>
-                      <p className="mt-2 mb-0">Loading Archived Caretakers Directory...</p>
+                      <p className="mt-2 mb-0">{t('Loading Archived Caretakers Directory...')}</p>
                     </div>
                   ) : archivedCaretakers.length === 0 ? (
                     <div className="text-center py-5 text-muted">
                       <FaUserCheck size={36} className="text-warning mb-2 opacity-50" />
-                      <h6 className="fw-bold mb-1">No Archived Caretakers Found</h6>
-                      <p className="small mb-0">Resigned or archived caretaker records will appear here.</p>
+                      <h6 className="fw-bold mb-1">{t('No Archived Caretakers Found')}</h6>
+                      <p className="small mb-0">{t('Resigned or archived caretaker records will appear here.')}</p>
                     </div>
                   ) : (
-                    <table className="table align-middle mb-0">
-                      <thead className="table-light">
+                    <div className="table-responsive admin-scrollable-table-4rows" style={{ maxHeight: 215, overflowY: 'auto' }}>
+                      <table className="table align-middle mb-0">
+                        <thead className="table-light sticky-top">
                         <tr>
-                          <th style={{ padding: '12px 16px' }}>Name</th>
-                          <th style={{ padding: '12px 16px' }}>Employee ID</th>
-                          <th style={{ padding: '12px 16px' }}>Date Hired</th>
-                          <th style={{ padding: '12px 16px' }}>Date Archived</th>
-                          <th style={{ padding: '12px 16px' }}>Reason</th>
-                          <th style={{ padding: '12px 16px' }} className="text-end">Action</th>
+                          <th style={{ padding: '12px 16px' }}>{t('Name')}</th>
+                          <th style={{ padding: '12px 16px' }}>{t('Employee ID')}</th>
+                          <th style={{ padding: '12px 16px' }}>{t('Date Hired')}</th>
+                          <th style={{ padding: '12px 16px' }}>{t('Date Archived')}</th>
+                          <th style={{ padding: '12px 16px' }}>{t('Reason')}</th>
+                          <th style={{ padding: '12px 16px' }} className="text-end">{t('Action')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1993,19 +2015,19 @@ export default function SettingsPage() {
                                     className="btn btn-sm btn-outline-primary rounded-3 px-2.5 py-1 extra-small fw-semibold d-flex align-items-center gap-1"
                                     onClick={() => openArchivedDetails(caretaker.id)}
                                   >
-                                    <FaEye size={12} /> View Details
+                                    <FaEye size={12} /> {t('View Details')}
                                   </button>
                                   <button
                                     type="button"
                                     className="btn btn-sm btn-outline-success rounded-3 px-2.5 py-1 extra-small fw-semibold d-flex align-items-center gap-1"
                                     onClick={() => handleRestoreCaretaker(caretaker)}
                                   >
-                                    <FaUserCheck size={12} /> Restore
+                                    <FaUserCheck size={12} /> {t('Restore')}
                                   </button>
                                   <button
                                     type="button"
                                     className="btn btn-sm btn-outline-danger rounded-3 p-1.5 extra-small"
-                                    title="Delete Permanently"
+                                    title={t('Delete Permanently')}
                                     onClick={() => handleDeletePermanently(caretaker)}
                                   >
                                     <FaTrashAlt size={12} />
@@ -2016,7 +2038,8 @@ export default function SettingsPage() {
                           ))}
                       </tbody>
                     </table>
-                  )}
+                  </div>
+                )}
                 </div>
               </div>
             </div>
@@ -2030,8 +2053,8 @@ export default function SettingsPage() {
                   <FaInfoCircle size={20} />
                 </div>
                 <div>
-                  <h4 className="fw-bold mb-0 text-dark">About System</h4>
-                  <small className="text-muted">Information regarding system build and development team.</small>
+                  <h4 className="fw-bold mb-0 text-dark">{t('About System')}</h4>
+                  <small className="text-muted">{t('Information regarding system build and development team.')}</small>
                 </div>
               </div>
               <div className="card-body p-4">
@@ -2042,28 +2065,30 @@ export default function SettingsPage() {
                   >
                     <FaFish size={36} />
                   </div>
-                  <h3 className="fw-bold text-primary mb-1">ShrimpPredict</h3>
+                  <h3 className="fw-bold mb-1" style={{ color: '#172A39' }}>
+                    Shrimp<span style={{ color: '#FC563C' }}>Predict</span>
+                  </h3>
                   <span className="badge bg-primary px-3.5 py-1.5 rounded-pill fs-6 fw-normal mb-2">
-                    Version 1.0
+                    {t('Version 1.0')}
                   </span>
                   <p className="text-muted max-w-md mx-auto small">
-                    Smart Shrimp Disease Risk Prediction & Pond Monitoring System.
+                    {t('Smart Shrimp Disease Risk Prediction & Pond Monitoring System.')}
                   </p>
                 </div>
 
                 <div className="row g-3">
                   <div className="col-12 col-md-6">
                     <div className="setting-row-card p-3.5">
-                      <small className="text-muted text-uppercase extra-small fw-bold d-block mb-1">Developed By</small>
+                      <small className="text-muted text-uppercase extra-small fw-bold d-block mb-1">{t('Developed By')}</small>
                       <strong className="fs-6 text-dark d-flex align-items-center gap-2">
-                        <FaUser className="text-primary" /> Team ShrimpPredict
+                        <FaUser className="text-primary" /> Team Shrimp<span style={{ color: '#FC563C' }}>Predict</span>
                       </strong>
                     </div>
                   </div>
 
                   <div className="col-12 col-md-6">
                     <div className="setting-row-card p-3.5">
-                      <small className="text-muted text-uppercase extra-small fw-bold d-block mb-1">Educational Institution</small>
+                      <small className="text-muted text-uppercase extra-small fw-bold d-block mb-1">{t('Educational Institution')}</small>
                       <strong className="fs-6 text-dark d-flex align-items-center gap-2">
                         <FaDesktop className="text-primary" /> Batangas State University
                       </strong>
@@ -2072,7 +2097,7 @@ export default function SettingsPage() {
 
                   <div className="col-12 col-md-6">
                     <div className="setting-row-card p-3.5">
-                      <small className="text-muted text-uppercase extra-small fw-bold d-block mb-1">Academic Year</small>
+                      <small className="text-muted text-uppercase extra-small fw-bold d-block mb-1">{t('Academic Year')}</small>
                       <strong className="fs-6 text-dark d-flex align-items-center gap-2">
                         <FaCalendarAlt className="text-primary" /> 2026
                       </strong>
@@ -2081,9 +2106,9 @@ export default function SettingsPage() {
 
                   <div className="col-12 col-md-6">
                     <div className="setting-row-card p-3.5">
-                      <small className="text-muted text-uppercase extra-small fw-bold d-block mb-1">System Operational Status</small>
+                      <small className="text-muted text-uppercase extra-small fw-bold d-block mb-1">{t('System Operational Status')}</small>
                       <strong className="fs-6 text-success d-flex align-items-center gap-2">
-                        <FaCheckCircle /> Active & Operational
+                        <FaCheckCircle /> {t('Active & Operational')}
                       </strong>
                     </div>
                   </div>
@@ -2093,6 +2118,8 @@ export default function SettingsPage() {
           )}
         </div>
       </div>
+      </>
+      )}
 
       {/* FULL ARCHIVED CARETAKER DETAILS MODAL */}
       {(selectedArchivedDetails || loadingDetails) && (
@@ -2114,16 +2141,16 @@ export default function SettingsPage() {
                   </div>
                   <div>
                     <h5 className="modal-title fw-bold text-white mb-1 d-flex align-items-center gap-2">
-                      {selectedArchivedDetails?.personal_info?.full_name || 'Loading Caretaker Profile...'}
+                      {selectedArchivedDetails?.personal_info?.full_name || t('Loading Caretaker Profile...')}
                       <span className="badge bg-warning text-dark px-2.5 py-1 rounded-pill extra-small font-mono fw-bold">
                         {selectedArchivedDetails?.personal_info?.employee_id || 'CT-001'}
                       </span>
                     </h5>
                     <div className="d-flex align-items-center gap-2 extra-small text-slate-300">
                       <span className="badge bg-danger bg-opacity-75 text-white rounded-pill px-2 py-0.5">
-                        {selectedArchivedDetails?.personal_info?.employment_status || 'Archived / Resigned'}
+                        {selectedArchivedDetails?.personal_info?.employment_status || t('Archived / Resigned')}
                       </span>
-                      <span>• Date Archived: {selectedArchivedDetails?.personal_info?.date_archived}</span>
+                      <span>• {t('Date Archived')}: {selectedArchivedDetails?.personal_info?.date_archived}</span>
                     </div>
                   </div>
                 </div>
@@ -2139,54 +2166,54 @@ export default function SettingsPage() {
                 {loadingDetails ? (
                   <div className="text-center py-5">
                     <div className="spinner-border text-primary" role="status"></div>
-                    <p className="mt-2 text-muted">Retrieving archived profile logs & performance history...</p>
+                    <p className="mt-2 text-muted">{t('Retrieving archived profile logs & performance history...')}</p>
                   </div>
                 ) : selectedArchivedDetails ? (
                   <div className="d-flex flex-column gap-4">
                     {/* 1. Personal Information Card */}
                     <div className="card border-0 shadow-sm rounded-4 bg-white p-4">
                       <h6 className="fw-bold text-primary mb-3 pb-2 border-bottom d-flex align-items-center gap-2">
-                        <FaUser /> Personal Information
+                        <FaUser /> {t('Personal Information')}
                       </h6>
                       <div className="row g-3">
                         <div className="col-12 col-sm-6 col-md-4">
-                          <small className="text-muted extra-small fw-bold text-uppercase d-block mb-1">Full Name</small>
+                          <small className="text-muted extra-small fw-bold text-uppercase d-block mb-1">{t('Full Name')}</small>
                           <strong className="text-dark fs-6">{selectedArchivedDetails.personal_info.full_name}</strong>
                         </div>
                         <div className="col-12 col-sm-6 col-md-4">
-                          <small className="text-muted extra-small fw-bold text-uppercase d-block mb-1">Contact Number</small>
+                          <small className="text-muted extra-small fw-bold text-uppercase d-block mb-1">{t('Contact Number')}</small>
                           <span className="text-dark fw-semibold">{selectedArchivedDetails.personal_info.contact_number}</span>
                         </div>
                         <div className="col-12 col-sm-6 col-md-4">
-                          <small className="text-muted extra-small fw-bold text-uppercase d-block mb-1">Email Address</small>
+                          <small className="text-muted extra-small fw-bold text-uppercase d-block mb-1">{t('Email Address')}</small>
                           <span className="text-dark fw-semibold">{selectedArchivedDetails.personal_info.email}</span>
                         </div>
                         <div className="col-12 col-sm-6 col-md-4">
-                          <small className="text-muted extra-small fw-bold text-uppercase d-block mb-1">Home Address</small>
+                          <small className="text-muted extra-small fw-bold text-uppercase d-block mb-1">{t('Home Address')}</small>
                           <span className="text-dark">{selectedArchivedDetails.personal_info.address}</span>
                         </div>
                         <div className="col-12 col-sm-6 col-md-4">
-                          <small className="text-muted extra-small fw-bold text-uppercase d-block mb-1">Employee ID</small>
+                          <small className="text-muted extra-small fw-bold text-uppercase d-block mb-1">{t('Employee ID')}</small>
                           <span className="badge bg-secondary bg-opacity-10 text-secondary border font-mono fw-bold">
                             {selectedArchivedDetails.personal_info.employee_id}
                           </span>
                         </div>
                         <div className="col-12 col-sm-6 col-md-4">
-                          <small className="text-muted extra-small fw-bold text-uppercase d-block mb-1">Date Hired</small>
+                          <small className="text-muted extra-small fw-bold text-uppercase d-block mb-1">{t('Date Hired')}</small>
                           <span className="text-dark fw-semibold">{selectedArchivedDetails.personal_info.date_hired}</span>
                         </div>
                         <div className="col-12 col-sm-6 col-md-4">
-                          <small className="text-muted extra-small fw-bold text-uppercase d-block mb-1">Date Archived</small>
+                          <small className="text-muted extra-small fw-bold text-uppercase d-block mb-1">{t('Date Archived')}</small>
                           <span className="text-dark fw-semibold">{selectedArchivedDetails.personal_info.date_archived}</span>
                         </div>
                         <div className="col-12 col-sm-6 col-md-4">
-                          <small className="text-muted extra-small fw-bold text-uppercase d-block mb-1">Employment Status</small>
+                          <small className="text-muted extra-small fw-bold text-uppercase d-block mb-1">{t('Employment Status')}</small>
                           <span className="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 px-2.5 py-1 rounded-pill fw-semibold">
                             {selectedArchivedDetails.personal_info.employment_status}
                           </span>
                         </div>
                         <div className="col-12 col-sm-6 col-md-4">
-                          <small className="text-muted extra-small fw-bold text-uppercase d-block mb-1">Reason for Archiving</small>
+                          <small className="text-muted extra-small fw-bold text-uppercase d-block mb-1">{t('Reason for Archiving')}</small>
                           <span className="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-2.5 py-1 rounded-pill fw-bold">
                             {selectedArchivedDetails.personal_info.archive_reason}
                           </span>
@@ -2197,7 +2224,7 @@ export default function SettingsPage() {
                     {/* 2. Assigned Ponds Card */}
                     <div className="card border-0 shadow-sm rounded-4 bg-white p-4">
                       <h6 className="fw-bold text-primary mb-3 pb-2 border-bottom d-flex align-items-center gap-2">
-                        <FaWater /> Historically Assigned Ponds
+                        <FaWater /> {t('Historically Assigned Ponds')}
                       </h6>
                       <div className="d-flex flex-wrap gap-2">
                         {selectedArchivedDetails.assigned_ponds.map((p) => (
@@ -2211,54 +2238,54 @@ export default function SettingsPage() {
                     {/* 3. Performance History Grid */}
                     <div className="card border-0 shadow-sm rounded-4 bg-white p-4">
                       <h6 className="fw-bold text-primary mb-3 pb-2 border-bottom d-flex align-items-center gap-2">
-                        <FaStar /> Performance History & Analytics
+                        <FaStar /> {t('Performance History & Analytics')}
                       </h6>
                       <div className="row g-3">
                         <div className="col-12 col-sm-6 col-md-3">
                           <div className="p-3 rounded-4 bg-light border">
-                            <small className="text-muted extra-small fw-semibold d-block mb-1">Total Working Days</small>
-                            <h4 className="fw-extrabold text-dark mb-0">{selectedArchivedDetails.performance.total_working_days} Days</h4>
+                            <small className="text-muted extra-small fw-semibold d-block mb-1">{t('Total Working Days')}</small>
+                            <h4 className="fw-extrabold text-dark mb-0">{selectedArchivedDetails.performance.total_working_days} {t('Days')}</h4>
                           </div>
                         </div>
                         <div className="col-12 col-sm-6 col-md-3">
                           <div className="p-3 rounded-4 bg-light border">
-                            <small className="text-muted extra-small fw-semibold d-block mb-1">Total Feeding Records</small>
-                            <h4 className="fw-extrabold text-primary mb-0">{selectedArchivedDetails.performance.total_feeding_records} Logs</h4>
+                            <small className="text-muted extra-small fw-semibold d-block mb-1">{t('Total Feeding Records')}</small>
+                            <h4 className="fw-extrabold text-primary mb-0">{selectedArchivedDetails.performance.total_feeding_records} {t('Logs')}</h4>
                           </div>
                         </div>
                         <div className="col-12 col-sm-6 col-md-3">
                           <div className="p-3 rounded-4 bg-light border">
-                            <small className="text-muted extra-small fw-semibold d-block mb-1">Total Disease Scans</small>
-                            <h4 className="fw-extrabold text-info mb-0">{selectedArchivedDetails.performance.total_disease_scans} Scans</h4>
+                            <small className="text-muted extra-small fw-semibold d-block mb-1">{t('Total Disease Scans')}</small>
+                            <h4 className="fw-extrabold text-info mb-0">{selectedArchivedDetails.performance.total_disease_scans} {t('Scans')}</h4>
                           </div>
                         </div>
                         <div className="col-12 col-sm-6 col-md-3">
                           <div className="p-3 rounded-4 bg-light border">
-                            <small className="text-muted extra-small fw-semibold d-block mb-1">Avg. Feeding Accuracy</small>
+                            <small className="text-muted extra-small fw-semibold d-block mb-1">{t('Avg. Feeding Accuracy')}</small>
                             <h4 className="fw-extrabold text-success mb-0">{selectedArchivedDetails.performance.avg_feeding_accuracy}</h4>
                           </div>
                         </div>
                         <div className="col-12 col-sm-6 col-md-3">
                           <div className="p-3 rounded-4 bg-light border">
-                            <small className="text-muted extra-small fw-semibold d-block mb-1">Successful Reports</small>
-                            <h4 className="fw-extrabold text-success mb-0">{selectedArchivedDetails.performance.successful_reports_submitted} Submitted</h4>
+                            <small className="text-muted extra-small fw-semibold d-block mb-1">{t('Successful Reports')}</small>
+                            <h4 className="fw-extrabold text-success mb-0">{selectedArchivedDetails.performance.successful_reports_submitted} {t('Submitted')}</h4>
                           </div>
                         </div>
                         <div className="col-12 col-sm-6 col-md-3">
                           <div className="p-3 rounded-4 bg-light border">
-                            <small className="text-muted extra-small fw-semibold d-block mb-1">Missed Reports</small>
+                            <small className="text-muted extra-small fw-semibold d-block mb-1">{t('Missed Reports')}</small>
                             <h4 className="fw-extrabold text-dark mb-0">{selectedArchivedDetails.performance.missed_reports}</h4>
                           </div>
                         </div>
                         <div className="col-12 col-sm-6 col-md-3">
                           <div className="p-3 rounded-4 bg-light border">
-                            <small className="text-muted extra-small fw-semibold d-block mb-1">Late Reports</small>
+                            <small className="text-muted extra-small fw-semibold d-block mb-1">{t('Late Reports')}</small>
                             <h4 className="fw-extrabold text-warning mb-0">{selectedArchivedDetails.performance.late_reports}</h4>
                           </div>
                         </div>
                         <div className="col-12 col-sm-6 col-md-3">
                           <div className="p-3 rounded-4 bg-light border">
-                            <small className="text-muted extra-small fw-semibold d-block mb-1">Detection Accuracy</small>
+                            <small className="text-muted extra-small fw-semibold d-block mb-1">{t('Detection Accuracy')}</small>
                             <h4 className="fw-extrabold text-primary mb-0">{selectedArchivedDetails.performance.ai_detection_accuracy}</h4>
                           </div>
                         </div>
@@ -2268,27 +2295,27 @@ export default function SettingsPage() {
                     {/* 4. Preserved Activity History Logs */}
                     <div className="card border-0 shadow-sm rounded-4 bg-white p-4">
                       <h6 className="fw-bold text-primary mb-3 pb-2 border-bottom d-flex align-items-center gap-2">
-                        <FaClipboardList /> Preserved Activity History & Full Caretaker Logs
+                        <FaClipboardList /> {t('Preserved Activity History & Full Caretaker Logs')}
                       </h6>
                       <div className="row g-2 mb-3">
                         <div className="col-auto">
                           <span className="badge bg-light text-dark border px-3 py-2 rounded-pill small">
-                            <FaUtensils className="me-1 text-primary" /> Feeding Logs: <strong>{selectedArchivedDetails.activity_history.feeding_logs_count}</strong>
+                            <FaUtensils className="me-1 text-primary" /> {t('Feeding Logs')}: <strong>{selectedArchivedDetails.activity_history.feeding_logs_count}</strong>
                           </span>
                         </div>
                         <div className="col-auto">
                           <span className="badge bg-light text-dark border px-3 py-2 rounded-pill small">
-                            <FaBug className="me-1 text-danger" /> Disease Scans: <strong>{selectedArchivedDetails.activity_history.disease_scans_count}</strong>
+                            <FaBug className="me-1 text-danger" /> {t('Disease Scans')}: <strong>{selectedArchivedDetails.activity_history.disease_scans_count}</strong>
                           </span>
                         </div>
                         <div className="col-auto">
                           <span className="badge bg-light text-dark border px-3 py-2 rounded-pill small">
-                            <FaWater className="me-1 text-info" /> Water Quality Records: <strong>{selectedArchivedDetails.activity_history.water_quality_records_count}</strong>
+                            <FaWater className="me-1 text-info" /> {t('Water Quality Records')}: <strong>{selectedArchivedDetails.activity_history.water_quality_records_count}</strong>
                           </span>
                         </div>
                         <div className="col-auto">
                           <span className="badge bg-light text-dark border px-3 py-2 rounded-pill small">
-                            <FaBell className="me-1 text-warning" /> Reports Submitted: <strong>{selectedArchivedDetails.activity_history.reports_submitted_count}</strong>
+                            <FaBell className="me-1 text-warning" /> {t('Reports Submitted')}: <strong>{selectedArchivedDetails.activity_history.reports_submitted_count}</strong>
                           </span>
                         </div>
                       </div>
@@ -2297,19 +2324,19 @@ export default function SettingsPage() {
                       {selectedArchivedDetails.activity_history.recent_feeding_logs?.length > 0 && (
                         <div className="mt-3 mb-4">
                           <small className="fw-bold text-primary text-uppercase extra-small mb-2 d-flex align-items-center gap-1">
-                            <FaUtensils /> Preserved Feeding Logs History
+                            <FaUtensils /> {t('Preserved Feeding Logs History')}
                           </small>
                           <div className="table-responsive rounded-3 border" style={{ maxHeight: 240, overflowY: 'auto' }}>
                             <table className="table table-sm align-middle text-start small mb-0">
                               <thead className="table-light sticky-top">
                                 <tr>
-                                  <th className="ps-3">Time / Session</th>
-                                  <th>Pond</th>
-                                  <th>Feed Type</th>
-                                  <th>Amount (kg)</th>
-                                  <th>Vitamins</th>
-                                  <th>Date</th>
-                                  <th className="pe-3">Notes</th>
+                                  <th className="ps-3">{t('Time / Session')}</th>
+                                  <th>{t('Pond')}</th>
+                                  <th>{t('Feed Type')}</th>
+                                  <th>{t('Amount (kg)')}</th>
+                                  <th>{t('Vitamins')}</th>
+                                  <th>{t('Date')}</th>
+                                  <th className="pe-3">{t('Notes')}</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -2325,7 +2352,7 @@ export default function SettingsPage() {
                                       {f.vitamin_name && f.vitamin_name !== 'None' ? (
                                         <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">+ {f.vitamin_name}</span>
                                       ) : (
-                                        <span className="text-muted extra-small">None</span>
+                                        <span className="text-muted extra-small">{t('None')}</span>
                                       )}
                                     </td>
                                     <td className="text-muted extra-small">{f.record_date}</td>
@@ -2342,18 +2369,18 @@ export default function SettingsPage() {
                       {selectedArchivedDetails.activity_history.recent_disease_scans?.length > 0 && (
                         <div className="mb-4">
                           <small className="fw-bold text-danger text-uppercase extra-small mb-2 d-flex align-items-center gap-1">
-                            <FaBug /> Preserved Disease Risk Scans
+                            <FaBug /> {t('Preserved Disease Risk Scans')}
                           </small>
                           <div className="table-responsive rounded-3 border" style={{ maxHeight: 240, overflowY: 'auto' }}>
                             <table className="table table-sm align-middle text-start small mb-0">
                               <thead className="table-light sticky-top">
                                 <tr>
-                                  <th className="ps-3">Pond</th>
-                                  <th>Disease Detected</th>
-                                  <th>Confidence</th>
-                                  <th>Risk Level</th>
-                                  <th>Date & Time</th>
-                                  <th className="pe-3">Recommendation</th>
+                                  <th className="ps-3">{t('Pond')}</th>
+                                  <th>{t('Disease Detected')}</th>
+                                  <th>{t('Confidence')}</th>
+                                  <th>{t('Risk Level')}</th>
+                                  <th>{t('Date & Time')}</th>
+                                  <th className="pe-3">{t('Recommendation')}</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -2383,18 +2410,18 @@ export default function SettingsPage() {
                       {selectedArchivedDetails.activity_history.water_quality_records?.length > 0 && (
                         <div className="mb-4">
                           <small className="fw-bold text-info text-uppercase extra-small mb-2 d-flex align-items-center gap-1">
-                            <FaWater /> Preserved Water Quality & Pond Conditions
+                            <FaWater /> {t('Preserved Water Quality & Pond Conditions')}
                           </small>
                           <div className="table-responsive rounded-3 border">
                             <table className="table table-sm align-middle text-start small mb-0">
                               <thead className="table-light">
                                 <tr>
-                                  <th className="ps-3">Pond</th>
-                                  <th>Temperature</th>
-                                  <th>pH Level</th>
-                                  <th>Salinity</th>
-                                  <th>Dissolved Oxygen</th>
-                                  <th className="pe-3">Status</th>
+                                  <th className="ps-3">{t('Pond')}</th>
+                                  <th>{t('Temperature')}</th>
+                                  <th>{t('pH Level')}</th>
+                                  <th>{t('Salinity')}</th>
+                                  <th>{t('Dissolved Oxygen')}</th>
+                                  <th className="pe-3">{t('Status')}</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -2421,15 +2448,15 @@ export default function SettingsPage() {
                       {/* D. PRESERVED SUBMITTED REPORTS */}
                       {selectedArchivedDetails.activity_history.recent_reports?.length > 0 && (
                         <div className="mt-2">
-                          <small className="fw-bold text-dark text-uppercase extra-small mb-2 d-block">Submitted Problem Reports History</small>
+                          <small className="fw-bold text-dark text-uppercase extra-small mb-2 d-block">{t('Submitted Problem Reports History')}</small>
                           <div className="table-responsive border rounded-3">
                             <table className="table table-sm align-middle mb-0">
                               <thead className="table-light">
                                 <tr>
-                                  <th>Report Title</th>
-                                  <th>Pond</th>
-                                  <th>Type</th>
-                                  <th>Status</th>
+                                  <th>{t('Report Title')}</th>
+                                  <th>{t('Pond')}</th>
+                                  <th>{t('Type')}</th>
+                                  <th>{t('Status')}</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -2455,21 +2482,21 @@ export default function SettingsPage() {
                     {/* 5. Login History Card */}
                     <div className="card border-0 shadow-sm rounded-4 bg-white p-4">
                       <h6 className="fw-bold text-primary mb-3 pb-2 border-bottom d-flex align-items-center gap-2">
-                        <FaClock /> Login & Activity History
+                        <FaClock /> {t('Login & Activity History')}
                       </h6>
                       <div className="row g-3">
                         <div className="col-12 col-md-4">
-                          <small className="text-muted extra-small fw-semibold d-block mb-1">Last Login</small>
+                          <small className="text-muted extra-small fw-semibold d-block mb-1">{t('Last Login')}</small>
                           <strong className="text-dark">{selectedArchivedDetails.login_history.last_login}</strong>
                         </div>
                         <div className="col-12 col-md-4">
-                          <small className="text-muted extra-small fw-semibold d-block mb-1">Last Active Session</small>
+                          <small className="text-muted extra-small fw-semibold d-block mb-1">{t('Last Active Session')}</small>
                           <strong className="text-dark">{selectedArchivedDetails.login_history.last_active}</strong>
                         </div>
                         <div className="col-12 col-md-4">
-                          <small className="text-muted extra-small fw-semibold d-block mb-1">Total System Logins</small>
+                          <small className="text-muted extra-small fw-semibold d-block mb-1">{t('Total System Logins')}</small>
                           <span className="badge bg-primary bg-opacity-10 text-primary px-3 py-1.5 rounded-pill fw-bold">
-                            {selectedArchivedDetails.login_history.total_logins} Logins
+                            {selectedArchivedDetails.login_history.total_logins} {t('Logins')}
                           </span>
                         </div>
                       </div>
@@ -2488,14 +2515,14 @@ export default function SettingsPage() {
                         className="btn btn-success px-3.5 py-2 rounded-3 d-flex align-items-center gap-2 fw-semibold"
                         onClick={() => handleRestoreCaretaker(selectedArchivedDetails)}
                       >
-                        <FaUserCheck /> Restore Caretaker Account
+                        <FaUserCheck /> {t('Restore Caretaker Account')}
                       </button>
                       <button
                         type="button"
                         className="btn btn-outline-danger px-3 py-2 rounded-3 d-flex align-items-center gap-2 fw-semibold"
                         onClick={() => handleDeletePermanently(selectedArchivedDetails)}
                       >
-                        <FaTrashAlt /> Delete Permanently
+                        <FaTrashAlt /> {t('Delete Permanently')}
                       </button>
                     </>
                   )}
@@ -2505,7 +2532,7 @@ export default function SettingsPage() {
                   className="btn btn-secondary px-4 py-2 rounded-3"
                   onClick={() => setSelectedArchivedDetails(null)}
                 >
-                  Close
+                  {t('Close')}
                 </button>
               </div>
             </div>

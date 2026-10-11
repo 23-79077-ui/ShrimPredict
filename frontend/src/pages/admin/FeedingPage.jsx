@@ -45,6 +45,7 @@ import {
   FaPlus,
 } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 import api, { safeArray } from '../../services/api';
 import PondCycleCalendar from '../../components/PondCycleCalendar';
 
@@ -81,6 +82,7 @@ function normalizeTime(value) {
 }
 
 export default function FeedingPage() {
+  const { t } = useLanguage();
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const targetPond = searchParams.get('pond');
@@ -468,12 +470,12 @@ export default function FeedingPage() {
           {
             label: 'Cumulative Feed Consumed by Pond (kg)',
             data: feedingTrendData.map((d) => d.totalKg),
-            borderColor: '#0B2C5F',
+            borderColor: '#FC563C',
             backgroundColor: (context) => {
               const ctx = context.chart?.ctx;
-              if (!ctx) return 'rgba(11, 44, 95, 0.85)';
+              if (!ctx) return 'rgba(252, 86, 60, 0.85)';
               const gradient = ctx.createLinearGradient(0, 0, 0, 240);
-              gradient.addColorStop(0, 'rgba(11, 44, 95, 0.85)');
+              gradient.addColorStop(0, 'rgba(252, 86, 60, 0.85)');
               gradient.addColorStop(1, 'rgba(30, 58, 138, 0.45)');
               return gradient;
             },
@@ -485,7 +487,7 @@ export default function FeedingPage() {
     }
 
     if (chartPond === 'all') {
-      const palette = ['#0284C7', '#EA580C', '#10B981', '#8B5CF6', '#F59E0B', '#EC4899', '#06B6D4', '#0B2C5F'];
+      const palette = ['#FC563C', '#FC563C', '#10B981', '#8B5CF6', '#F59E0B', '#EC4899', '#06B6D4', '#FC563C'];
       const datasets = ponds.map((p, pIdx) => {
         const pId = String(p.id);
         const pName = p.pond_name || p.name || `Pond #${p.id}`;
@@ -526,7 +528,7 @@ export default function FeedingPage() {
         {
           label: `${currentPondDisplayName} Cumulative Feed (kg)`,
           data: feedingTrendData.map((d) => d.cumulativeKg),
-          borderColor: '#0284C7',
+          borderColor: '#FC563C',
           backgroundColor: (context) => {
             const ctx = context.chart?.ctx;
             if (!ctx) return 'rgba(2, 132, 199, 0.22)';
@@ -537,7 +539,7 @@ export default function FeedingPage() {
           },
           fill: true,
           tension: 0.35,
-          pointBackgroundColor: feedingTrendData.map((d) => (d.isToday ? '#EA580C' : '#0284C7')),
+          pointBackgroundColor: feedingTrendData.map((d) => (d.isToday ? '#FC563C' : '#FC563C')),
           pointBorderColor: '#ffffff',
           pointBorderWidth: 2,
           pointRadius: feedingTrendData.map((d) => (d.isToday ? 7 : 5)),
@@ -568,7 +570,7 @@ export default function FeedingPage() {
           const y = element.y - 12;
 
           // Draw pill background
-          ctx.fillStyle = num > 0 ? '#0B2C5F' : 'rgba(100, 116, 139, 0.75)';
+          ctx.fillStyle = num > 0 ? '#FC563C' : 'rgba(100, 116, 139, 0.75)';
           const pillWidth = textWidth + 10;
           const pillHeight = 16;
           const pillX = x - pillWidth / 2;
@@ -610,10 +612,10 @@ export default function FeedingPage() {
       legend: {
         display: chartPond === 'all' && feedingChartRange !== 'by_pond',
         position: 'top',
-        labels: { boxWidth: 12, font: { size: 11, weight: 'bold' }, color: '#0B2C5F' },
+        labels: { boxWidth: 12, font: { size: 11, weight: 'bold' }, color: '#FC563C' },
       },
       tooltip: {
-        backgroundColor: '#0B2C5F',
+        backgroundColor: '#FC563C',
         titleColor: '#FFFFFF',
         bodyColor: '#FFFFFF',
         padding: 12,
@@ -658,7 +660,7 @@ export default function FeedingPage() {
     },
     scales: {
       y: {
-        grid: { color: 'rgba(11, 44, 95, 0.06)' },
+        grid: { color: 'rgba(252, 86, 60, 0.06)' },
         ticks: {
           color: '#64748B',
           font: { size: 11 },
@@ -669,14 +671,14 @@ export default function FeedingPage() {
       x: {
         grid: {
           display: true,
-          color: 'rgba(11, 44, 95, 0.08)',
+          color: 'rgba(252, 86, 60, 0.08)',
           borderDash: [4, 4],
           drawTicks: true,
         },
         ticks: {
           color: (ctx) => {
             const idx = ctx.index;
-            return feedingTrendData[idx]?.isToday ? '#0284C7' : '#334155';
+            return feedingTrendData[idx]?.isToday ? '#FC563C' : '#334155';
           },
           font: (ctx) => {
             const idx = ctx.index;
@@ -707,7 +709,7 @@ export default function FeedingPage() {
         {
           label: 'Consumption by Type (kg)',
           data: values,
-          backgroundColor: ['#0284C7', '#16A34A', '#FF7A00', '#0B2C5F', '#8B5CF6'],
+          backgroundColor: ['#FC563C', '#16A34A', '#FC563C', '#FC563C', '#8B5CF6'],
           borderRadius: 8,
           barPercentage: 0.6,
         },
@@ -722,7 +724,7 @@ export default function FeedingPage() {
     plugins: {
       legend: { display: false },
       tooltip: {
-        backgroundColor: '#0B2C5F',
+        backgroundColor: '#FC563C',
         titleColor: '#FFFFFF',
         bodyColor: '#FFFFFF',
         padding: 10,
@@ -734,7 +736,7 @@ export default function FeedingPage() {
     },
     scales: {
       y: {
-        grid: { color: 'rgba(11, 44, 95, 0.05)' },
+        grid: { color: 'rgba(252, 86, 60, 0.05)' },
         ticks: { color: '#64748B', font: { size: 11 } },
         beginAtZero: true,
       },
@@ -806,26 +808,26 @@ export default function FeedingPage() {
         : (latestRecord.recorded_by_name && latestRecord.recorded_by_name !== 'Caretaker' ? latestRecord.recorded_by_name : 'Unassigned');
       const compliance = Math.round((actualGivenKg / Math.max(1, item.target_feed_kg)) * 100);
 
-      let status = 'Optimal';
+      let status = 'Normal';
       let statusTone = 'success';
       let statusBg = '#ECFDF5';
       let statusText = '#16A34A';
       let statusBorder = '#BBF7D0';
 
       if (compliance > 110) {
-        status = 'Overfeeding Notice';
+        status = 'Overfed';
         statusTone = 'warning';
-        statusBg = '#FFF7ED';
-        statusText = '#EA580C';
-        statusBorder = '#FFEDD5';
+        statusBg = '#FFFBEB';
+        statusText = '#D97706';
+        statusBorder = '#FDE68A';
       } else if (logCount === 0) {
-        status = 'Pending Feed Logs';
+        status = 'Pending';
         statusTone = 'secondary';
-        statusBg = '#F8FAFC';
+        statusBg = '#F1F5F9';
         statusText = '#64748B';
         statusBorder = '#E2E8F0';
       } else if (compliance < 85) {
-        status = 'Underfeeding Alert';
+        status = 'Underfed';
         statusTone = 'danger';
         statusBg = '#FFF1F2';
         statusText = '#E11D48';
@@ -1065,7 +1067,7 @@ export default function FeedingPage() {
     const pid = Number(adminLogForm.pond_id);
 
     if (!pid) {
-      Swal.fire({ icon: 'warning', title: 'Pond Required', text: 'Please select a pond basin.' });
+      Swal.fire({ icon: 'warning', title: 'Pond Required', text: 'Please select a pond.' });
       return;
     }
 
@@ -1183,7 +1185,7 @@ export default function FeedingPage() {
 
     let statusBadge = `<span style="background: #ECFDF5; color: #16A34A; border: 1px solid #BBF7D0; font-weight: 700; font-size: 0.75rem; border-radius: 9999px; padding: 0.3rem 0.8rem;">Optimal Compliance (${compliance}%)</span>`;
     if (compliance > 110) {
-      statusBadge = `<span style="background: #FFF7ED; color: #EA580C; border: 1px solid #FFEDD5; font-weight: 700; font-size: 0.75rem; border-radius: 9999px; padding: 0.3rem 0.8rem;">Overfeeding Notice (${compliance}%)</span>`;
+      statusBadge = `<span style="background: #E9E4E0; color: #FC563C; border: 1px solid #6E7575; font-weight: 700; font-size: 0.75rem; border-radius: 9999px; padding: 0.3rem 0.8rem;">Overfeeding Notice (${compliance}%)</span>`;
     } else if (pondLogs.length === 0) {
       statusBadge = `<span style="background: #F1F5F9; color: #64748B; border: 1px solid #CBD5E1; font-weight: 700; font-size: 0.75rem; border-radius: 9999px; padding: 0.3rem 0.8rem;">No Logs Recorded (${dateLabel})</span>`;
     } else if (compliance < 85) {
@@ -1194,7 +1196,7 @@ export default function FeedingPage() {
       <div style="text-align: left; font-family: 'Poppins', sans-serif;">
         <!-- TOP KPI STATS SUMMARY CARDS -->
         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 18px;">
-          <div style="padding: 12px; border-radius: 14px; background: #F8FAFC; border: 1px solid #E2E8F0; text-align: center;">
+          <div style="padding: 12px; border-radius: 14px; background: #E9E4E0; border: 1px solid #E2E8F0; text-align: center;">
             <span style="color: #64748B; font-size: 0.72rem; display: block; font-weight: 700; text-transform: uppercase;">Daily Target</span>
             <strong style="color: #0F172A; font-size: 1.15rem;">${targetKg.toFixed(1)} kg</strong>
           </div>
@@ -1203,8 +1205,8 @@ export default function FeedingPage() {
             <strong style="color: #16A34A; font-size: 1.15rem;">${totalGiven.toFixed(1)} kg</strong>
           </div>
           <div style="padding: 12px; border-radius: 14px; background: #F0F9FF; border: 1px solid #BAE6FD; text-align: center;">
-            <span style="color: #0284C7; font-size: 0.72rem; display: block; font-weight: 700; text-transform: uppercase;">Log Sessions</span>
-            <strong style="color: #0284C7; font-size: 1.15rem;">${pondLogs.length} Records</strong>
+            <span style="color: #FC563C; font-size: 0.72rem; display: block; font-weight: 700; text-transform: uppercase;">Log Sessions</span>
+            <strong style="color: #FC563C; font-size: 1.15rem;">${pondLogs.length} Records</strong>
           </div>
         </div>
 
@@ -1216,7 +1218,7 @@ export default function FeedingPage() {
         <!-- FEEDING LOGS DETAILED TABLE -->
         <div style="max-height: 320px; overflow-y: auto; border: 1px solid #E2E8F0; border-radius: 14px;">
           <table style="width: 100%; border-collapse: collapse; font-size: 0.8rem; text-align: left;">
-            <thead style="background: #F8FAFC; position: sticky; top: 0; z-index: 2; border-bottom: 1px solid #E2E8F0;">
+            <thead style="background: #E9E4E0; position: sticky; top: 0; z-index: 2; border-bottom: 1px solid #E2E8F0;">
               <tr>
                 <th style="padding: 10px 14px; color: #475569; font-weight: 700;">Time Slot</th>
                 <th style="padding: 10px 12px; color: #475569; font-weight: 700;">Feed Formulation</th>
@@ -1234,7 +1236,7 @@ export default function FeedingPage() {
             (l) => `
                 <tr style="border-bottom: 1px solid #F1F5F9;">
                   <td style="padding: 10px 14px;">
-                    <span style="background: #F0F9FF; color: #0284C7; border: 1px solid #BAE6FD; font-weight: 700; padding: 3px 8px; border-radius: 9999px; font-size: 0.75rem;">${String(l.feeding_time || '6:00 AM').replace(/^0(\d:)/, '$1')}</span>
+                    <span style="background: #F0F9FF; color: #FC563C; border: 1px solid #BAE6FD; font-weight: 700; padding: 3px 8px; border-radius: 9999px; font-size: 0.75rem;">${String(l.feeding_time || '6:00 AM').replace(/^0(\d:)/, '$1')}</span>
                     <div style="font-size: 0.7rem; color: #94A3B8; margin-top: 3px;">${l.record_date || 'Today'}</div>
                   </td>
                   <td style="padding: 10px 12px; font-weight: 600; color: #1E293B;">${l.feed_type || 'Tateh - Starter'}</td>
@@ -1258,11 +1260,11 @@ export default function FeedingPage() {
     `;
 
     Swal.fire({
-      title: `<div style="display: flex; align-items: center; gap: 8px; font-family: 'Poppins', sans-serif;"><span style="color: #0B2C5F; font-weight: 800; font-size: 1.25rem;">Pond Feeding Logs: ${pondName}</span></div>`,
+      title: `<div style="display: flex; align-items: center; gap: 8px; font-family: 'Poppins', sans-serif;"><span style="color: #FC563C; font-weight: 800; font-size: 1.25rem;">Pond Feeding Logs: ${pondName}</span></div>`,
       html: logHtml,
       width: 820,
       showCloseButton: true,
-      confirmButtonColor: '#0B2C5F',
+      confirmButtonColor: '#FC563C',
       confirmButtonText: 'Done / Close Log View'
     });
   };
@@ -1270,35 +1272,25 @@ export default function FeedingPage() {
   return (
     <div className="feeding-consumption-container" style={{ fontFamily: "'Poppins', sans-serif" }}>
       {/* 1. HERO INTELLIGENCE & CONTROL BANNER */}
-      <div className="disease-hero-banner d-flex justify-content-between align-items-center flex-wrap gap-3">
+      <div className="disease-hero-banner d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
         <div className="d-flex align-items-center gap-3">
-          <div
-            className="rounded-circle d-flex align-items-center justify-content-center shadow-xs flex-shrink-0"
-            style={{
-              width: 50,
-              height: 50,
-              background: 'linear-gradient(135deg, #0B2C5F 0%, #1E3A8A 100%)',
-              color: '#FFFFFF',
-              fontSize: '1.3rem',
-              border: '2px solid rgba(234, 88, 12, 0.3)'
-            }}
-          >
+          <div className="hero-icon-badge shadow-xs">
             <FaUtensils />
           </div>
           <div>
             <div className="d-flex align-items-center gap-2 flex-wrap">
-              <h3 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#0B2C5F', fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
-                Feeding Operations &amp; Biomass Nutrition
+              <h3 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#FC563C', fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
+                {t('Feeding Logs & Farm Feed Records')}
               </h3>
               <span
                 className="badge rounded-pill extra-small px-3 py-1 fw-bold"
-                style={{ backgroundColor: 'rgba(11, 44, 95, 0.08)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.16)' }}
+                style={{ backgroundColor: 'rgba(252, 86, 60, 0.08)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.16)' }}
               >
-                ● Mobile Feed Log Verified
+                {t('Mobile Feed Log Verified')}
               </span>
             </div>
             <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
-              Real-time feed ration verification, automated dispenser telemetry, and FCR compliance auditing.
+              {t('Daily feeding logs, feed amounts per pond, and feeding efficiency (FCR).')}
             </p>
           </div>
         </div>
@@ -1311,7 +1303,7 @@ export default function FeedingPage() {
             style={{ height: 40, fontSize: '0.82rem' }}
             onClick={handleOpenLogModal}
           >
-            <FaPlus size={12} className="me-1.5" /> Log Feeding
+            <FaPlus size={12} className="me-1.5" /> {t('Log Feeding', 'Log Feeding')}
           </button>
 
           <button
@@ -1320,7 +1312,7 @@ export default function FeedingPage() {
             style={{ fontSize: '0.82rem', height: 40 }}
             onClick={loadData}
           >
-            <FaSync size={11} className={loading ? 'fa-spin me-1.5' : 'me-1.5'} /> Refresh
+            <FaSync size={11} className={loading ? 'fa-spin me-1.5' : 'me-1.5'} /> {t('Refresh')}
           </button>
 
           <button
@@ -1329,7 +1321,7 @@ export default function FeedingPage() {
             style={{ height: 40, fontSize: '0.82rem' }}
             onClick={handleExportCSV}
           >
-            <FaFileDownload size={13} className="me-1.5" /> Export CSV Report
+            <FaFileDownload size={13} className="me-1.5" /> {t('Export CSV Report', 'Export CSV')}
           </button>
         </div>
       </div>
@@ -1341,12 +1333,12 @@ export default function FeedingPage() {
           <div className="tri-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Total Feed Dispensed</span>
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">{t('Total Feed Dispensed')}</span>
                 <div className="tri-kpi-icon tri-kpi-icon-blue">
                   <FaUtensils size={17} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#0B2C5F', fontSize: '2.2rem', letterSpacing: '-0.03em' }}>
+              <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.2rem', letterSpacing: '-0.03em' }}>
                 {metrics.totalKg} <small className="fs-6 text-muted fw-normal">kg</small>
               </h2>
             </div>
@@ -1354,13 +1346,13 @@ export default function FeedingPage() {
               <div className="tri-progress-track my-2.5">
                 <div
                   className="tri-progress-bar"
-                  style={{ width: '100%', background: 'linear-gradient(90deg, #0B2C5F 0%, #1E3A8A 100%)' }}
+                  style={{ width: '100%', background: 'linear-gradient(90deg, #172A39 0%, #FC563C 100%)' }}
                 />
               </div>
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small">Cumulative Mass</span>
-                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(11, 44, 95, 0.06)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.15)' }}>
-                  Active Cycle
+                <span className="text-muted extra-small">{t('Cumulative Mass')}</span>
+                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.06)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.15)' }}>
+                  {t('Active Cycle')}
                 </span>
               </div>
             </div>
@@ -1372,26 +1364,26 @@ export default function FeedingPage() {
           <div className="tri-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Weekly Volume (7-Day)</span>
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">{t('Weekly Volume (7-Day)')}</span>
                 <div className="tri-kpi-icon tri-kpi-icon-orange">
                   <FaCalendarWeek size={17} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#EA580C', fontSize: '2.2rem', letterSpacing: '-0.03em' }}>
+              <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.2rem', letterSpacing: '-0.03em' }}>
                 {metrics.weeklyKg} <small className="fs-6 text-muted fw-normal">kg</small>
               </h2>
             </div>
             <div>
-              <div className="tri-progress-track my-2.5" style={{ backgroundColor: 'rgba(234, 88, 12, 0.1)' }}>
+              <div className="tri-progress-track my-2.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.1)' }}>
                 <div
                   className="tri-progress-bar"
-                  style={{ width: '85%', background: 'linear-gradient(90deg, #EA580C 0%, #F97316 100%)' }}
+                  style={{ width: '85%', background: 'linear-gradient(90deg, #FC563C 0%, #6E7575 100%)' }}
                 />
               </div>
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small">FCR Est. 1.22</span>
-                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: '#FFF7ED', color: '#EA580C', border: '1px solid rgba(234, 88, 12, 0.25)' }}>
-                  Rolling 7 Days
+                <span className="text-muted extra-small">{t('FCR Est.')} 1.22</span>
+                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: '#E9E4E0', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.25)' }}>
+                  {t('Rolling 7 Days')}
                 </span>
               </div>
             </div>
@@ -1403,12 +1395,12 @@ export default function FeedingPage() {
           <div className="tri-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Estimated Nutrition Cost</span>
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">{t('Estimated Nutrition Cost')}</span>
                 <div className="tri-kpi-icon tri-kpi-icon-blue">
                   <FaCoins size={17} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#0B2C5F', fontSize: '2.2rem', letterSpacing: '-0.03em' }}>
+              <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.2rem', letterSpacing: '-0.03em' }}>
                 {metrics.estimatedCost}
               </h2>
             </div>
@@ -1416,13 +1408,13 @@ export default function FeedingPage() {
               <div className="tri-progress-track my-2.5">
                 <div
                   className="tri-progress-bar"
-                  style={{ width: '70%', background: 'linear-gradient(90deg, #0B2C5F 0%, #1E3A8A 100%)' }}
+                  style={{ width: '70%', background: 'linear-gradient(90deg, #172A39 0%, #FC563C 100%)' }}
                 />
               </div>
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small">₱35.00/kg avg</span>
-                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(11, 44, 95, 0.06)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.15)' }}>
-                  Nutrition Budget
+                <span className="text-muted extra-small">₱35.00/kg {t('avg')}</span>
+                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.06)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.15)' }}>
+                  {t('Nutrition Budget')}
                 </span>
               </div>
             </div>
@@ -1434,26 +1426,26 @@ export default function FeedingPage() {
           <div className="tri-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Average Daily Feed</span>
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">{t('Average Daily Feed')}</span>
                 <div className="tri-kpi-icon tri-kpi-icon-orange">
                   <FaChartLine size={17} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#EA580C', fontSize: '2.2rem', letterSpacing: '-0.03em' }}>
+              <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.2rem', letterSpacing: '-0.03em' }}>
                 {metrics.avgDailyKg}
               </h2>
             </div>
             <div>
-              <div className="tri-progress-track my-2.5" style={{ backgroundColor: 'rgba(234, 88, 12, 0.1)' }}>
+              <div className="tri-progress-track my-2.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.1)' }}>
                 <div
                   className="tri-progress-bar"
-                  style={{ width: '96%', background: 'linear-gradient(90deg, #EA580C 0%, #F97316 100%)' }}
+                  style={{ width: '96%', background: 'linear-gradient(90deg, #FC563C 0%, #6E7575 100%)' }}
                 />
               </div>
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small">Daily Consumption</span>
-                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: '#FFF7ED', color: '#EA580C', border: '1px solid rgba(234, 88, 12, 0.25)' }}>
-                  Active Cycle
+                <span className="text-muted extra-small">{t('Daily Consumption')}</span>
+                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: '#E9E4E0', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.25)' }}>
+                  {t('Active Cycle')}
                 </span>
               </div>
             </div>
@@ -1461,7 +1453,70 @@ export default function FeedingPage() {
         </div>
       </div>
 
-      {/* 3. CHARTS ROW: DAILY FEEDING TREND (8 cols) + FEED TYPE BREAKDOWN (4 cols) */}
+      {/* 3. SMART OPERATIONAL INTELLIGENCE & FEEDING ALERTS */}
+      <div className="row g-3 g-md-4 mb-4">
+        <div className="col-12 col-md-4">
+          <div
+            className="tri-card p-4 h-100"
+            style={{ borderLeft: '4px solid #FC563C', background: '#FFFDFB' }}
+          >
+            <div className="d-flex align-items-center gap-2 mb-2">
+              <div
+                className="rounded-circle p-2 d-flex align-items-center justify-content-center"
+                style={{ background: 'rgba(255, 122, 0, 0.15)', color: '#FC563C' }}
+              >
+                <FaExclamationTriangle size={15} />
+              </div>
+              <h6 className="fw-bold text-dark mb-0">{t('Pond A2 Overfeeding Notice')}</h6>
+            </div>
+            <p className="text-secondary small mb-0" style={{ lineHeight: 1.6, fontSize: '0.82rem' }}>
+              {t('Feed delivered exceeded ration target by 14%. Monitor nocturnal dissolved oxygen levels and ensure paddlewheel aerator timers are active.')}
+            </p>
+          </div>
+        </div>
+
+        <div className="col-12 col-md-4">
+          <div
+            className="tri-card p-4 h-100"
+            style={{ borderLeft: '4px solid #16A34A', background: '#FAFFFD' }}
+          >
+            <div className="d-flex align-items-center gap-2 mb-2">
+              <div
+                className="rounded-circle p-2 d-flex align-items-center justify-content-center"
+                style={{ background: 'rgba(22, 163, 74, 0.15)', color: '#16A34A' }}
+              >
+                <FaCheckCircle size={15} />
+              </div>
+              <h6 className="fw-bold text-dark mb-0">{t('Pond A1 Schedule Completed')}</h6>
+            </div>
+            <p className="text-secondary small mb-0" style={{ lineHeight: 1.6, fontSize: '0.82rem' }}>
+              {t('Morning and afternoon feeding cycles for Pond A1 recorded 100% target compliance with zero residue on check trays.')}
+            </p>
+          </div>
+        </div>
+
+        <div className="col-12 col-md-4">
+          <div
+            className="tri-card p-4 h-100"
+            style={{ borderLeft: '4px solid #FC563C', background: '#FAFCFF' }}
+          >
+            <div className="d-flex align-items-center gap-2 mb-2">
+              <div
+                className="rounded-circle p-2 d-flex align-items-center justify-content-center"
+                style={{ background: 'rgba(2, 132, 199, 0.15)', color: '#FC563C' }}
+              >
+                <FaInfoCircle size={15} />
+              </div>
+              <h6 className="fw-bold text-dark mb-0">{t('Feed Inventory Buffer Alert')}</h6>
+            </div>
+            <p className="text-secondary small mb-0" style={{ lineHeight: 1.6, fontSize: '0.82rem' }}>
+              {t('High-protein Starter #2 warehouse reserve is sufficient for 6 operational days. Automatic reorder request generated for supplier batch.')}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* 4. CHARTS ROW: DAILY FEEDING TREND (8 cols) + FEED TYPE BREAKDOWN (4 cols) */}
       <div className="row g-4 mb-4">
         {/* Left: Daily Feed Consumption Trend Chart */}
         <div className="col-12 col-xl-8">
@@ -1469,15 +1524,15 @@ export default function FeedingPage() {
             <div className="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
               <div>
                 <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
-                  <h5 className="fw-extrabold text-dark mb-0 tracking-tight">Cumulative Feed Intake &amp; Growth Trend</h5>
+                  <h5 className="fw-extrabold text-dark mb-0 tracking-tight">{t('Cumulative Feed Intake & Growth Trend')}</h5>
                   <span className="tag-cyan-active">
-                    {feedingChartRange === 'by_pond' ? 'Pond Comparison' : (chartPond === 'all' ? 'All Ponds Fleet' : `${activeChartPondObj?.pond_name || chartPond} Cumulative (kg)`)}
+                    {feedingChartRange === 'by_pond' ? t('Pond Comparison') : (chartPond === 'all' ? t('All Ponds Fleet') : `${activeChartPondObj?.pond_name || chartPond} ${t('Cumulative Mass')}`)}
                   </span>
                 </div>
                 <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
                   {feedingChartRange === 'by_pond'
-                    ? 'Total cumulative feed mass dispensed across individual active ponds.'
-                    : `Per-pond running total feed mass over timeline. Each new feed logged adds directly onto the previous total.`}
+                    ? t('Total cumulative feed mass dispensed across individual active ponds.')
+                    : t('Per-pond running total feed mass over timeline. Each new feed logged adds directly onto the previous total.')}
                 </p>
               </div>
 
@@ -1486,13 +1541,13 @@ export default function FeedingPage() {
                 {/* Dedicated Pond Selector */}
                 {feedingChartRange !== 'by_pond' && (
                   <div className="d-flex align-items-center gap-1.5">
-                    <span className="extra-small fw-bold text-muted text-uppercase" style={{ fontSize: '0.72rem' }}>Pond:</span>
+                    <span className="extra-small fw-bold text-muted text-uppercase" style={{ fontSize: '0.72rem' }}>{t('Pond:')}</span>
                     <select
                       className="form-select form-select-sm fw-bold border rounded-pill px-3 shadow-xs"
                       style={{
                         fontSize: '0.78rem',
-                        color: '#0B2C5F',
-                        borderColor: '#0284C7',
+                        color: '#FC563C',
+                        borderColor: '#FC563C',
                         backgroundColor: '#F0F9FF',
                         cursor: 'pointer',
                         minWidth: 130,
@@ -1508,7 +1563,7 @@ export default function FeedingPage() {
                           </option>
                         );
                       })}
-                      <option value="all">Fleet Multi-Line (All Ponds)</option>
+                      <option value="all">{t('Fleet Multi-Line (All Ponds)')}</option>
                     </select>
                   </div>
                 )}
@@ -1520,35 +1575,35 @@ export default function FeedingPage() {
                     className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${feedingChartRange === '7_days' ? 'btn-tri-navy shadow-xs' : 'btn-light text-muted'}`}
                     onClick={() => setFeedingChartRange('7_days')}
                   >
-                    7 Days
+                    {t('7 Days')}
                   </button>
                   <button
                     type="button"
                     className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${feedingChartRange === '14_days' ? 'btn-tri-navy shadow-xs' : 'btn-light text-muted'}`}
                     onClick={() => setFeedingChartRange('14_days')}
                   >
-                    14 Days
+                    {t('14 Days')}
                   </button>
                   <button
                     type="button"
                     className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${feedingChartRange === '30_days' ? 'btn-tri-navy shadow-xs' : 'btn-light text-muted'}`}
                     onClick={() => setFeedingChartRange('30_days')}
                   >
-                    30 Days
+                    {t('30 Days')}
                   </button>
                   <button
                     type="button"
                     className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${feedingChartRange === 'all_cycle' ? 'btn-tri-navy shadow-xs' : 'btn-light text-muted'}`}
                     onClick={() => setFeedingChartRange('all_cycle')}
                   >
-                    Full Cycle
+                    {t('Full Cycle')}
                   </button>
                   <button
                     type="button"
                     className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${feedingChartRange === 'by_pond' ? 'btn-tri-navy shadow-xs' : 'btn-light text-muted'}`}
                     onClick={() => setFeedingChartRange('by_pond')}
                   >
-                    By Pond
+                    {t('By Pond')}
                   </button>
                 </div>
               </div>
@@ -1559,7 +1614,7 @@ export default function FeedingPage() {
               <div className="col-6 col-sm-3">
                 <div className="tri-mini-stat text-center">
                   <span className="extra-small text-muted text-uppercase fw-bold d-block">
-                    Cumulative Total Feed
+                    {t('Cumulative Total Feed')}
                   </span>
                   <strong className="text-dark fs-6 font-mono">
                     {chartMetrics.currentTotalKg} kg
@@ -1569,9 +1624,9 @@ export default function FeedingPage() {
               <div className="col-6 col-sm-3">
                 <div className="tri-mini-stat text-center">
                   <span className="extra-small text-muted text-uppercase fw-bold d-block">
-                    Today's Feed Added
+                    {t("Today's Feed Added")}
                   </span>
-                  <strong className="fs-6 font-mono" style={{ color: '#EA580C' }}>
+                  <strong className="fs-6 font-mono" style={{ color: '#FC563C' }}>
                     +{chartMetrics.todayFeedKg} kg
                   </strong>
                 </div>
@@ -1579,22 +1634,22 @@ export default function FeedingPage() {
               <div className="col-6 col-sm-3">
                 <div className="tri-mini-stat text-center">
                   <span className="extra-small text-muted text-uppercase fw-bold d-block">
-                    {feedingChartRange === 'by_pond' ? 'Active Ponds' : 'Culture Milestone'}
+                    {feedingChartRange === 'by_pond' ? t('Active Ponds') : t('Culture Milestone')}
                   </span>
                   <strong className="text-dark fs-6">
                     {feedingChartRange === 'by_pond'
-                      ? `${feedingTrendData.length} Ponds`
-                      : (activeChartPondDoc ? `Day ${activeChartPondDoc} DOC` : 'Active Cycle')}
+                      ? `${feedingTrendData.length} ${t('Ponds')}`
+                      : (activeChartPondDoc ? `${t('Day')} ${activeChartPondDoc} ${t('DOC')}` : t('Active Cycle'))}
                   </strong>
                 </div>
               </div>
               <div className="col-6 col-sm-3">
                 <div className="tri-mini-stat text-center">
                   <span className="extra-small text-muted text-uppercase fw-bold d-block">
-                    Assigned Caretaker
+                    {t('Assigned Caretaker')}
                   </span>
-                  <strong className="text-truncate d-block fs-6" style={{ color: '#0B2C5F', fontSize: '0.86rem' }}>
-                    {activeChartPondObj?.assigned_caretaker_name || 'Assigned Staff'}
+                  <strong className="text-truncate d-block fs-6" style={{ color: '#FC563C', fontSize: '0.86rem' }}>
+                    {activeChartPondObj?.assigned_caretaker_name || t('Assigned Staff')}
                   </strong>
                 </div>
               </div>
@@ -1616,9 +1671,9 @@ export default function FeedingPage() {
                   key={d.key}
                   className={`p-2 rounded-3 text-center transition-all flex-shrink-0 ${d.isToday ? 'shadow-sm' : 'bg-light'}`}
                   style={{
-                    backgroundColor: d.isToday ? '#0B2C5F' : '#F8FAFC',
+                    backgroundColor: d.isToday ? '#FC563C' : '#E9E4E0',
                     color: d.isToday ? '#FFFFFF' : '#1E293B',
-                    border: d.isToday ? '2px solid #0284C7' : '1px solid rgba(11, 44, 95, 0.1)',
+                    border: d.isToday ? '2px solid #FC563C' : '1px solid rgba(252, 86, 60, 0.1)',
                     minWidth: 92,
                     flex: feedingTrendData.length <= 7 ? 1 : '0 0 auto',
                   }}
@@ -1628,8 +1683,8 @@ export default function FeedingPage() {
                       {d.label}
                     </span>
                     {d.isToday && (
-                      <span className="badge rounded-pill px-1.5 py-0.5 extra-small fw-bold" style={{ backgroundColor: '#EA580C', color: '#FFFFFF', fontSize: '0.55rem' }}>
-                        TODAY
+                      <span className="badge rounded-pill px-1.5 py-0.5 extra-small fw-bold" style={{ backgroundColor: '#FC563C', color: '#FFFFFF', fontSize: '0.55rem' }}>
+                        {t('TODAY')}
                       </span>
                     )}
                   </div>
@@ -1637,19 +1692,19 @@ export default function FeedingPage() {
                     <span
                       className="badge rounded-pill px-2 py-0.5 extra-small fw-bold"
                       style={{
-                        backgroundColor: d.isToday ? 'rgba(234, 88, 12, 0.9)' : (d.incrementalKg > 0 ? '#E0F2FE' : '#F1F5F9'),
-                        color: d.isToday ? '#FFFFFF' : (d.incrementalKg > 0 ? '#0369A1' : '#94A3B8'),
+                        backgroundColor: d.isToday ? 'rgba(252, 86, 60, 0.9)' : (d.incrementalKg > 0 ? '#E0F2FE' : '#F1F5F9'),
+                        color: d.isToday ? '#FFFFFF' : (d.incrementalKg > 0 ? '#FC563C' : '#94A3B8'),
                         fontSize: '0.66rem',
                       }}
                     >
                       +{d.incrementalKg.toFixed(1)} kg
                     </span>
                   </div>
-                  <strong className="d-block font-mono" style={{ fontSize: '0.88rem', color: d.isToday ? '#FFFFFF' : '#0B2C5F' }}>
+                  <strong className="d-block font-mono" style={{ fontSize: '0.88rem', color: d.isToday ? '#FFFFFF' : '#FC563C' }}>
                     {d.cumulativeKg.toFixed(1)} <span style={{ fontSize: '0.62rem', fontWeight: 'normal' }}>kg</span>
                   </strong>
                   <span className={`extra-small d-block ${d.isToday ? 'text-light opacity-75' : 'text-muted'}`} style={{ fontSize: '0.62rem' }}>
-                    {d.count} {d.count === 1 ? 'log' : 'logs'}
+                    {d.count} {d.count === 1 ? t('log') : t('logs')}
                   </span>
                 </div>
               ))}
@@ -1663,12 +1718,12 @@ export default function FeedingPage() {
             <div>
               <div className="d-flex justify-content-between align-items-start mb-2">
                 <div>
-                  <h5 className="fw-extrabold text-dark mb-0 tracking-tight">Formulation Breakdown</h5>
+                  <h5 className="fw-extrabold text-dark mb-0 tracking-tight">{t('Formulation Breakdown')}</h5>
                   <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
-                    Distribution by feed classification (kg).
+                    {t('Distribution by feed classification (kg).')}
                   </p>
                 </div>
-                <div className="rounded-circle p-2" style={{ backgroundColor: '#F0F9FF', color: '#0284C7' }}>
+                <div className="rounded-circle p-2" style={{ backgroundColor: '#F0F9FF', color: '#FC563C' }}>
                   <FaBoxes size={15} />
                 </div>
               </div>
@@ -1682,7 +1737,7 @@ export default function FeedingPage() {
             {/* Formulation Legend Pills */}
             <div className="d-flex align-items-center justify-content-around flex-wrap gap-2 pt-2 border-top extra-small fw-semibold">
               <span className="d-flex align-items-center gap-1.5">
-                <span className="rounded-circle" style={{ width: 8, height: 8, background: '#0284C7' }}></span>
+                <span className="rounded-circle" style={{ width: 8, height: 8, background: '#FC563C' }}></span>
                 Starter Pro
               </span>
               <span className="d-flex align-items-center gap-1.5">
@@ -1690,7 +1745,7 @@ export default function FeedingPage() {
                 Grower Plus
               </span>
               <span className="d-flex align-items-center gap-1.5">
-                <span className="rounded-circle" style={{ width: 8, height: 8, background: '#FF7A00' }}></span>
+                <span className="rounded-circle" style={{ width: 8, height: 8, background: '#FC563C' }}></span>
                 Finisher Max
               </span>
             </div>
@@ -1704,21 +1759,21 @@ export default function FeedingPage() {
         <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3 pb-3 border-bottom">
           <div>
             <h5 className="fw-extrabold text-dark mb-0 tracking-tight d-flex align-items-center gap-2">
-              <FaHistory style={{ color: '#0284C7' }} />
+              <FaHistory style={{ color: '#FC563C' }} />
               {dateFilter === 'today'
-                ? "Today's Feeding Intelligence"
+                ? t("Today's Feeding Intelligence")
                 : dateFilter === 'yesterday'
-                  ? "Yesterday's Feeding Intelligence"
+                  ? t("Yesterday's Feeding Intelligence")
                   : dateFilter === 'week'
-                    ? "This Week's Feeding Intelligence"
+                    ? t("This Week's Feeding Intelligence")
                     : dateFilter === 'month'
-                      ? "This Month's Feeding Intelligence"
+                      ? t("This Month's Feeding Intelligence")
                       : dateFilter === 'custom' && customDate
-                        ? `Feeding Intelligence (${customDate})`
-                        : 'All Historical Feeding Records'}
+                        ? `${t('Feeding Intelligence')} (${customDate})`
+                        : t('All Historical Feeding Records')}
             </h5>
             <p className="text-muted small mb-0" style={{ fontSize: '0.82rem' }}>
-              Showing {filteredRecords.length} records totaling {metrics.filteredTotalKg} kg feed mass.
+              {t('Showing')} {filteredRecords.length} {t('records totaling')} {metrics.filteredTotalKg} kg {t('feed mass.')}
             </p>
           </div>
 
@@ -1729,14 +1784,14 @@ export default function FeedingPage() {
               className={`btn btn-sm rounded-pill px-3.5 py-1.5 extra-small fw-bold ${activeTab === 'fleet' ? 'btn-tri-navy shadow-xs' : 'btn-tri-outline'}`}
               onClick={() => setActiveTab('fleet')}
             >
-              <FaLayerGroup size={12} /> Pond Fleet Matrix
+              <FaLayerGroup size={12} /> {t('Pond Fleet Matrix')}
             </button>
             <button
               type="button"
               className={`btn btn-sm rounded-pill px-3.5 py-1.5 extra-small fw-bold ${activeTab === 'stream' ? 'btn-tri-navy shadow-xs' : 'btn-tri-outline'}`}
               onClick={() => setActiveTab('stream')}
             >
-              <FaTable size={12} /> Granular Log Stream ({filteredRecords.length})
+              <FaTable size={12} /> {t('Granular Log Stream')} ({filteredRecords.length})
             </button>
           </div>
         </div>
@@ -1745,60 +1800,60 @@ export default function FeedingPage() {
         <div className="p-3 rounded-4 bg-light border mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
           <div className="d-flex align-items-center gap-2 flex-wrap">
             <span className="extra-small fw-bold text-uppercase text-muted d-flex align-items-center gap-1">
-              <FaFilter size={11} style={{ color: '#0284C7' }} /> Pond Phase Filter ({effectiveFilterDate}):
+              <FaFilter size={11} style={{ color: '#FC563C' }} /> {t('Pond Phase Filter')} ({effectiveFilterDate}):
             </span>
             <button
               type="button"
               className={`btn btn-sm rounded-pill px-3.5 py-1.5 extra-small fw-bold transition-all ${stageFilter === 'all' ? 'btn-tri-navy shadow-xs' : 'btn-tri-outline'}`}
               onClick={() => setStageFilter('all')}
             >
-              All Ponds ({ponds.length})
+              {t('All Ponds')} ({ponds.length})
             </button>
             <button
               type="button"
               className={`btn btn-sm rounded-pill px-3.5 py-1.5 extra-small fw-bold transition-all ${stageFilter === 'nursery' ? 'btn-tri-navy shadow-xs' : 'btn-tri-outline'}`}
               onClick={() => setStageFilter('nursery')}
             >
-              Nursery Basins (Days 1–25 • Starter Feed) ({nurseryPondsCount})
+              {t('Nursery Ponds (Days 1–25 • Starter Feed)')} ({nurseryPondsCount})
             </button>
             <button
               type="button"
               className={`btn btn-sm rounded-pill px-3.5 py-1.5 extra-small fw-bold transition-all ${stageFilter === 'growout' ? 'btn-tri-orange shadow-xs' : 'btn-tri-outline'}`}
               onClick={() => setStageFilter('growout')}
             >
-              Grow-out Basins (Day 20+ • Grower Feed) ({growoutPondsCount})
+              {t('Grow-out Ponds (Day 20+ • Grower Feed)')} ({growoutPondsCount})
             </button>
           </div>
 
           <div className="extra-small text-muted">
-            SOP Transition: <strong>Days 1–19 Nursery</strong> &rarr; <strong>Day 20+ Grow-out</strong>
+            {t('SOP Transition:')} <strong>{t('Days 1–19 Nursery (Starter)')}</strong> &rarr; <strong>{t('Day 20+ Grow-out (Grower)')}</strong>
           </div>
         </div>
 
         <AdminFilterToolbar
           searchQuery={searchTerm}
           onSearchChange={setSearchTerm}
-          searchPlaceholder="Search pond, feed, staff..."
+          searchPlaceholder={t('Search pond, feed, staff...')}
           showFilters={true}
           onExportCSV={handleExportCSV}
           onRefresh={loadData}
           tabs={[
-            { id: 'all', label: 'All Records', count: filteredRecords.length },
-            { id: 'today', label: 'Today' },
-            { id: 'yesterday', label: 'Yesterday' },
-            { id: 'week', label: 'Last 7 Days' },
-            { id: 'month', label: 'This Month' }
+            { id: 'all', label: t('All Records'), count: filteredRecords.length },
+            { id: 'today', label: t('Today') },
+            { id: 'yesterday', label: t('Yesterday') },
+            { id: 'week', label: t('Last 7 Days') },
+            { id: 'month', label: t('This Month') }
           ]}
           activeTab={dateFilter}
           onTabChange={(t) => { setDateFilter(t); setCustomDate(''); }}
           metaRight={
             <>
-              SOP Transition: <strong>Days 1–19 Nursery (Starter)</strong> &rarr; <strong>Day 20+ Grow-out (Grower)</strong>
+              {t('SOP Transition:')} <strong>{t('Days 1–19 Nursery (Starter)')}</strong> &rarr; <strong>{t('Day 20+ Grow-out (Grower)')}</strong>
             </>
           }
           filterFields={[
             {
-              label: 'Evaluation Date',
+              label: t('Evaluation Date'),
               icon: <FaCalendarAlt className="me-1 text-primary" />,
               type: 'date',
               value: customDate,
@@ -1806,13 +1861,13 @@ export default function FeedingPage() {
               colClass: 'col-12 col-md-3'
             },
             {
-              label: 'Pond Select',
+              label: t('Pond Select'),
               type: 'select',
               value: selectedPond,
               onChange: setSelectedPond,
               colClass: 'col-12 col-md-3',
               options: [
-                { value: 'all', label: 'All Ponds' },
+                { value: 'all', label: t('All Ponds') },
                 ...ponds.map((p) => {
                   const name = p.pond_name || p.name || `Pond #${p.id}`;
                   return { value: name, label: name };
@@ -1820,17 +1875,17 @@ export default function FeedingPage() {
               ]
             },
             {
-              label: 'Sort Order',
+              label: t('Sort Order'),
               type: 'select',
               value: sortBy,
               onChange: setSortBy,
               colClass: 'col-12 col-md-3',
               options: [
-                { value: 'date-desc', label: 'Newest First ⬇' },
-                { value: 'date-asc', label: 'Oldest First ⬆' },
-                { value: 'amount-desc', label: 'Amount: High ⬇' },
-                { value: 'amount-asc', label: 'Amount: Low ⬆' },
-                { value: 'pond-asc', label: 'Pond: A-Z' }
+                { value: 'date-desc', label: t('Newest First ⬇') },
+                { value: 'date-asc', label: t('Oldest First ⬆') },
+                { value: 'amount-desc', label: t('Amount: High ⬇') },
+                { value: 'amount-asc', label: t('Amount: Low ⬆') },
+                { value: 'pond-asc', label: t('Pond: A-Z') }
               ]
             }
           ]}
@@ -1845,87 +1900,86 @@ export default function FeedingPage() {
 
         {/* VIEW 1: PER-POND FLEET MATRIX TABLE */}
         {activeTab === 'fleet' && (
-          <div className="table-responsive" style={{ maxHeight: '520px', overflowY: 'auto' }}>
-            <table className="table tri-table table-hover align-middle mb-0" style={{ fontSize: '0.85rem' }}>
-              <thead style={{ position: 'sticky', top: 0, zIndex: 5, background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                <tr className="text-muted extra-small text-uppercase fw-bold">
-                  <th className="border-0 ps-3 py-3">Pond Basin</th>
-                  <th className="border-0 py-3">Culture Stage & DOC</th>
-                  <th className="border-0 py-3">Feed Formulation</th>
-                  <th className="border-0 py-3">Daily Target</th>
-                  <th className="border-0 py-3" style={{ minWidth: 180 }}>Actual Given / Progress</th>
-                  <th className="border-0 py-3">Compliance Status</th>
-                  <th className="border-0 py-3">Assigned Caretaker</th>
-                  <th className="border-0 pe-3 py-3 text-end">Action</th>
+          <div className="table-responsive admin-scrollable-table-4rows" style={{ maxHeight: '215px', overflowY: 'auto', overflowX: 'hidden' }}>
+            <table className="table tri-table table-hover align-middle mb-0" style={{ fontSize: '0.80rem', tableLayout: 'fixed', width: '100%' }}>
+              <thead className="admin-sticky-thead" style={{ position: 'sticky', top: 0, zIndex: 5 }}>
+                <tr className="extra-small text-uppercase fw-extrabold" style={{ letterSpacing: '0.03em' }}>
+                  <th className="ps-3 py-2.5" style={{ width: '9%' }}>{t('Pond')}</th>
+                  <th className="py-2.5" style={{ width: '13%' }}>{t('Stage & DOC')}</th>
+                  <th className="py-2.5" style={{ width: '14%' }}>{t('Feed Type')}</th>
+                  <th className="py-2.5" style={{ width: '9%' }}>{t('Target')}</th>
+                  <th className="py-2.5" style={{ width: '16%' }}>{t('Given / Progress')}</th>
+                  <th className="py-2.5" style={{ width: '13%' }}>{t('Compliance')}</th>
+                  <th className="py-2.5" style={{ width: '14%' }}>{t('Caretaker')}</th>
+                  <th className="pe-3 py-2.5 text-end" style={{ width: '12%' }}>{t('Actions')}</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
                     <td colSpan="8" className="text-center py-5 text-muted">
-                      <FaSync className="fa-spin me-2 text-primary" /> Loading live pond feeding records...
+                      <FaSync className="fa-spin me-2 text-primary" /> {t('Loading live pond feeding records...')}
                     </td>
                   </tr>
                 ) : perPondRecords.length === 0 ? (
                   <tr>
                     <td colSpan="8" className="text-center py-5 text-muted">
-                      No active pond feeding records found for the selected stage and date filter.
+                      {t('No active pond feeding records found for the selected stage and date filter.')}
                     </td>
                   </tr>
                 ) : (
                   perPondRecords.map((p) => (
                     <tr key={p.pond_id} className="border-bottom">
-                      <td className="ps-3 py-3">
-                        <div className="d-flex align-items-center gap-2">
-                          <span
-                            className="badge rounded-pill fw-bold px-3 py-1.5 d-flex align-items-center gap-1.5"
-                            style={{ background: 'rgba(11, 44, 95, 0.08)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.16)', fontSize: '0.82rem' }}
-                          >
-                            <FaWater size={11} /> {p.pond_name}
-                          </span>
-                        </div>
+                      <td className="ps-3 py-2">
+                        <span
+                          className="badge rounded-pill fw-bold px-2 py-1 d-inline-flex align-items-center gap-1 text-truncate"
+                          style={{ background: 'rgba(252, 86, 60, 0.08)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.16)', fontSize: '0.78rem', maxWidth: '100%' }}
+                          title={p.pond_name}
+                        >
+                          <FaWater size={10} /> {p.pond_name}
+                        </span>
                       </td>
-                      <td className="py-3">
+                      <td className="py-2">
                         {p.isNursery ? (
                           <span
-                            className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1"
-                            style={{ background: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0', fontSize: '0.78rem' }}
+                            className="badge rounded-pill px-2 py-1 fw-bold d-inline-flex align-items-center gap-1 text-truncate"
+                            style={{ background: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0', fontSize: '0.74rem', maxWidth: '100%' }}
                           >
-                            {p.doc ? `Day ${p.doc}` : 'DOC 1-19'} • Nursery
+                            {p.doc ? `${t('Day')} ${p.doc}` : 'DOC 1-19'} • {t('Nursery')}
                           </span>
                         ) : p.isGrowout ? (
                           <span
-                            className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1"
-                            style={{ background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', fontSize: '0.78rem' }}
+                            className="badge rounded-pill px-2 py-1 fw-bold d-inline-flex align-items-center gap-1 text-truncate"
+                            style={{ background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', fontSize: '0.74rem', maxWidth: '100%' }}
                           >
-                            {p.doc ? `Day ${p.doc}` : 'DOC 20+'} • Grow-out
+                            {p.doc ? `${t('Day')} ${p.doc}` : 'DOC 20+'} • {t('Grow-out')}
                           </span>
                         ) : (
-                          <span className="badge bg-light text-muted border extra-small">Pre-Stocking</span>
+                          <span className="badge bg-light text-muted border extra-small">{t('Pre-Stocking')}</span>
                         )}
                       </td>
-                      <td className="py-3">
-                        <div className="fw-bold text-dark">{p.feed_type}</div>
-                        <span className="extra-small text-muted">Target: {p.expectedFeed}</span>
+                      <td className="py-2">
+                        <div className="fw-bold text-dark text-truncate" style={{ fontSize: '0.78rem' }} title={t(p.feed_type)}>{t(p.feed_type)}</div>
+                        <span className="extra-small text-muted text-truncate d-block" style={{ fontSize: '0.70rem' }}>{t('Target:')} {p.expectedFeed}</span>
                       </td>
-                      <td className="py-3">
-                        <span className="fw-semibold text-secondary">{p.target_feed_kg.toFixed(1)} kg</span>
+                      <td className="py-2">
+                        <span className="fw-semibold text-secondary" style={{ fontSize: '0.78rem' }}>{p.target_feed_kg.toFixed(1)} kg</span>
                       </td>
-                      <td className="py-3">
-                        <div className="d-flex align-items-center justify-content-between mb-1">
-                          <strong className="text-dark" style={{ fontSize: '0.9rem' }}>
+                      <td className="py-2">
+                        <div className="d-flex align-items-center justify-content-between mb-1" style={{ fontSize: '0.76rem' }}>
+                          <strong className="text-dark">
                             {p.actual_given_kg.toFixed(1)} kg
                           </strong>
-                          <span className="extra-small text-muted">of {p.target_feed_kg.toFixed(1)} kg</span>
+                          <span className="extra-small text-muted">{t('of')} {p.target_feed_kg.toFixed(1)} kg</span>
                         </div>
-                        <div className="feeding-progress-track" style={{ height: 6 }}>
+                        <div className="feeding-progress-track" style={{ height: 5 }}>
                           <div
                             className="feeding-progress-bar"
                             style={{
                               width: `${Math.min(100, p.compliance)}%`,
                               background:
                                 p.compliance > 110
-                                  ? '#FF7A00'
+                                  ? '#FC563C'
                                   : p.compliance >= 85
                                     ? '#16A34A'
                                     : p.compliance > 0
@@ -1935,54 +1989,55 @@ export default function FeedingPage() {
                           ></div>
                         </div>
                       </td>
-                      <td className="py-3">
+                      <td className="py-2">
                         <span
-                          className="badge rounded-pill px-3 py-1.5 fw-bold extra-small"
+                          className="badge rounded-pill px-2 py-1 fw-bold extra-small text-truncate d-inline-block"
                           style={{
+                            maxWidth: '100%',
+                            fontSize: '0.72rem',
                             background: p.statusBg,
                             color: p.statusText,
                             border: `1px solid ${p.statusBorder}`
                           }}
                         >
-                          {p.status} ({p.compliance}%)
+                          {t(p.status)} ({p.compliance}%)
                         </span>
                       </td>
-                      <td className="py-3">
-                        <div className="d-flex align-items-center gap-2">
+                      <td className="py-2">
+                        <div className="d-flex align-items-center gap-1.5" title={p.assigned_caretaker}>
                           <div
-                            className="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white extra-small"
-                            style={{ width: 28, height: 28, background: '#0B2C5F' }}
+                            className="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white flex-shrink-0"
+                            style={{ width: 22, height: 22, fontSize: '0.68rem', background: '#FC563C' }}
                           >
                             {(p.assigned_caretaker || 'C').charAt(0).toUpperCase()}
                           </div>
-                          <div>
-                            <div className="fw-bold text-dark">{p.assigned_caretaker}</div>
-                            <span className="extra-small text-muted">Staff In-Charge</span>
+                          <div className="text-truncate flex-grow-1">
+                            <span className="fw-bold text-dark text-truncate d-block" style={{ fontSize: '0.78rem' }}>{p.assigned_caretaker}</span>
                           </div>
                         </div>
                       </td>
-                      <td className="pe-3 py-3 text-end">
-                        <div className="d-inline-flex align-items-center gap-1.5">
+                      <td className="pe-3 py-2 text-end">
+                        <div className="d-inline-flex align-items-center gap-1 justify-content-end">
                           <button
                             type="button"
-                            className="btn btn-sm rounded-pill px-2.5 py-1 fw-semibold d-inline-flex align-items-center gap-1 shadow-xs"
+                            className="btn btn-sm rounded-pill px-2 py-0.5 fw-semibold d-inline-flex align-items-center gap-1 shadow-xs"
                             style={{
-                              fontSize: '0.76rem',
+                              fontSize: '0.72rem',
                               background: '#F0F9FF',
-                              color: '#0284C7',
+                              color: '#FC563C',
                               border: '1px solid #BAE6FD'
                             }}
                             onClick={() => handleViewPondLogs(p.pond_name, p.pond_id)}
                             title="Inspect Detailed Feeding Sessions"
                           >
-                            <FaEye size={12} /> Logs
+                            <FaEye size={10} /> {t('Logs')}
                           </button>
                           <button
                             type="button"
-                            className="btn btn-sm rounded-pill px-2.5 py-1 fw-semibold d-inline-flex align-items-center gap-1 shadow-xs"
+                            className="btn btn-sm rounded-pill px-1.5 py-0.5 fw-semibold d-inline-flex align-items-center shadow-xs"
                             style={{
-                              fontSize: '0.76rem',
-                              background: '#F8FAFC',
+                              fontSize: '0.72rem',
+                              background: '#E9E4E0',
                               color: '#475569',
                               border: '1px solid #CBD5E1'
                             }}
@@ -1996,7 +2051,7 @@ export default function FeedingPage() {
                             }}
                             title="Inspect Culture Cycle Calendar"
                           >
-                            <FaCalendarAlt size={11} /> Calendar
+                            <FaCalendarAlt size={10} />
                           </button>
                         </div>
                       </td>
@@ -2010,30 +2065,30 @@ export default function FeedingPage() {
 
         {/* VIEW 2: GRANULAR FEEDING LOGS STREAM TABLE */}
         {activeTab === 'stream' && (
-          <div className="table-responsive" style={{ maxHeight: '520px', overflowY: 'auto' }}>
-            <table className="table tri-table table-hover align-middle mb-0" style={{ fontSize: '0.85rem' }}>
-              <thead style={{ position: 'sticky', top: 0, zIndex: 5, background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                <tr className="text-muted extra-small text-uppercase fw-bold">
-                  <th className="border-0 ps-3 py-3">Time & Date</th>
-                  <th className="border-0 py-3">Basin / Pond</th>
-                  <th className="border-0 py-3">Feed Formulation</th>
-                  <th className="border-0 py-3">Dispensed Mass</th>
-                  <th className="border-0 py-3">Vitamins / Additive</th>
-                  <th className="border-0 py-3">Operator</th>
-                  <th className="border-0 pe-3 py-3">Remarks & Notes</th>
+          <div className="table-responsive admin-scrollable-table-4rows" style={{ maxHeight: '215px', overflowY: 'auto', overflowX: 'hidden' }}>
+            <table className="table tri-table table-hover align-middle mb-0" style={{ fontSize: '0.80rem', tableLayout: 'fixed', width: '100%' }}>
+              <thead className="admin-sticky-thead" style={{ position: 'sticky', top: 0, zIndex: 5 }}>
+                <tr className="extra-small text-uppercase fw-bold">
+                  <th className="ps-2 py-2.5" style={{ width: '13%' }}>{t('Time & Date')}</th>
+                  <th className="py-2.5" style={{ width: '12%' }}>{t('Pond')}</th>
+                  <th className="py-2.5" style={{ width: '15%' }}>{t('Feed Formulation')}</th>
+                  <th className="py-2.5" style={{ width: '11%' }}>{t('Dispensed Mass')}</th>
+                  <th className="py-2.5" style={{ width: '15%' }}>{t('Vitamins / Additive')}</th>
+                  <th className="py-2.5" style={{ width: '13%' }}>{t('Operator')}</th>
+                  <th className="pe-2 py-2.5" style={{ width: '21%' }}>{t('Remarks & Notes')}</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
                     <td colSpan="7" className="text-center py-5 text-muted">
-                      <FaSync className="fa-spin me-2 text-primary" /> Loading feeding log stream...
+                      <FaSync className="fa-spin me-2 text-primary" /> {t('Loading feeding log stream...')}
                     </td>
                   </tr>
                 ) : filteredRecords.length === 0 ? (
                   <tr>
                     <td colSpan="7" className="text-center py-5 text-muted">
-                      No granular feeding logs found matching your filters.
+                      {t('No granular feeding logs found matching your filters.')}
                     </td>
                   </tr>
                 ) : (
@@ -2042,12 +2097,12 @@ export default function FeedingPage() {
                       <td className="ps-3 py-3">
                         <span
                           className="badge rounded-pill fw-bold px-2.5 py-1"
-                          style={{ background: '#F0F9FF', color: '#0284C7', border: '1px solid #BAE6FD', fontSize: '0.78rem' }}
+                          style={{ background: '#F0F9FF', color: '#FC563C', border: '1px solid #BAE6FD', fontSize: '0.78rem' }}
                         >
                           <FaClock size={10} className="me-1" />
                           {String(r.feeding_time || '08:00 AM').replace(/^0(\d:)/, '$1')}
                         </span>
-                        <div className="extra-small text-muted mt-1">{r.record_date || 'Today'}</div>
+                        <div className="extra-small text-muted mt-1">{r.record_date || t('Today')}</div>
                       </td>
                       <td className="py-3">
                         <strong className="text-dark d-block">{r.pond_name || `Pond #${r.pond_id}`}</strong>
@@ -2056,19 +2111,19 @@ export default function FeedingPage() {
                             className="badge rounded-pill px-2 py-0.5 fw-bold extra-small mt-1"
                             style={{ background: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0', fontSize: '0.68rem' }}
                           >
-                            {r.doc ? `Day ${r.doc}` : 'DOC 1-19'} • Nursery
+                            {r.doc ? `${t('Day')} ${r.doc}` : 'DOC 1-19'} • {t('Nursery')}
                           </span>
                         ) : r.isGrowout ? (
                           <span
                             className="badge rounded-pill px-2 py-0.5 fw-bold extra-small mt-1"
                             style={{ background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', fontSize: '0.68rem' }}
                           >
-                            {r.doc ? `Day ${r.doc}` : 'DOC 20+'} • Grow-out
+                            {r.doc ? `${t('Day')} ${r.doc}` : 'DOC 20+'} • {t('Grow-out')}
                           </span>
                         ) : null}
                       </td>
                       <td className="py-3">
-                        <span className="fw-semibold text-dark">{r.feed_type || 'Starter Feed'}</span>
+                        <span className="fw-semibold text-dark">{t(r.feed_type || 'Starter Feed')}</span>
                       </td>
                       <td className="py-3">
                         <span className="fw-extrabold text-success fs-6">{r.amount_kg} kg</span>
@@ -2079,7 +2134,7 @@ export default function FeedingPage() {
                             className="badge rounded-pill px-2.5 py-1 fw-semibold extra-small"
                             style={{ background: '#F1F5F9', color: '#475569', border: '1px solid #CBD5E1', fontSize: '0.72rem' }}
                           >
-                            5th Feed (No Vit)
+                            {t('5th Feed (No Vit)')}
                           </span>
                         ) : r.vitamin_name && r.vitamin_name !== 'None' ? (
                           <span
@@ -2089,20 +2144,20 @@ export default function FeedingPage() {
                             <FaCapsules size={10} className="me-1" /> + {r.vitamin_name}
                           </span>
                         ) : (
-                          <span className="text-muted extra-small">None</span>
+                          <span className="text-muted extra-small">{t('None')}</span>
                         )}
                       </td>
                       <td className="py-3">
                         <span
                           className="badge rounded-pill fw-bold px-2.5 py-1"
-                          style={{ background: 'rgba(11, 44, 95, 0.08)', color: '#0B2C5F', fontSize: '0.75rem' }}
+                          style={{ background: 'rgba(252, 86, 60, 0.08)', color: '#FC563C', fontSize: '0.75rem' }}
                         >
-                          <FaUserCheck size={10} className="me-1" /> {r.recorded_by_name || r.recorded_by || 'Caretaker'}
+                          <FaUserCheck size={10} className="me-1" /> {r.recorded_by_name || r.recorded_by || t('Caretaker')}
                         </span>
                       </td>
                       <td className="pe-3 py-3">
                         <span className="text-secondary extra-small d-block" style={{ maxWidth: 220, wordWrap: 'break-word' }}>
-                          {r.notes || 'Normal feeding session logged.'}
+                          {t(r.notes || 'Normal feeding session logged.')}
                         </span>
                       </td>
                     </tr>
@@ -2114,68 +2169,7 @@ export default function FeedingPage() {
         )}
       </div>
 
-      {/* 5. SMART OPERATIONAL INTELLIGENCE & FEEDING ALERTS */}
-      <div className="row g-3.5 mb-4">
-        <div className="col-12 col-md-4">
-          <div
-            className="tri-card p-4 h-100"
-            style={{ borderLeft: '4px solid #FF7A00', background: '#FFFDFB' }}
-          >
-            <div className="d-flex align-items-center gap-2 mb-2">
-              <div
-                className="rounded-circle p-2 d-flex align-items-center justify-content-center"
-                style={{ background: 'rgba(255, 122, 0, 0.15)', color: '#FF7A00' }}
-              >
-                <FaExclamationTriangle size={15} />
-              </div>
-              <h6 className="fw-bold text-dark mb-0">Pond A2 Overfeeding Notice</h6>
-            </div>
-            <p className="text-secondary small mb-0" style={{ lineHeight: 1.6, fontSize: '0.82rem' }}>
-              Feed delivered exceeded ration target by 14%. Monitor nocturnal dissolved oxygen levels and ensure paddlewheel aerator timers are active.
-            </p>
-          </div>
-        </div>
 
-        <div className="col-12 col-md-4">
-          <div
-            className="tri-card p-4 h-100"
-            style={{ borderLeft: '4px solid #16A34A', background: '#FAFFFD' }}
-          >
-            <div className="d-flex align-items-center gap-2 mb-2">
-              <div
-                className="rounded-circle p-2 d-flex align-items-center justify-content-center"
-                style={{ background: 'rgba(22, 163, 74, 0.15)', color: '#16A34A' }}
-              >
-                <FaCheckCircle size={15} />
-              </div>
-              <h6 className="fw-bold text-dark mb-0">Pond A1 Schedule Completed</h6>
-            </div>
-            <p className="text-secondary small mb-0" style={{ lineHeight: 1.6, fontSize: '0.82rem' }}>
-              Morning and afternoon feeding cycles for Pond A1 recorded 100% target compliance with zero residue on check trays.
-            </p>
-          </div>
-        </div>
-
-        <div className="col-12 col-md-4">
-          <div
-            className="tri-card p-4 h-100"
-            style={{ borderLeft: '4px solid #0284C7', background: '#FAFCFF' }}
-          >
-            <div className="d-flex align-items-center gap-2 mb-2">
-              <div
-                className="rounded-circle p-2 d-flex align-items-center justify-content-center"
-                style={{ background: 'rgba(2, 132, 199, 0.15)', color: '#0284C7' }}
-              >
-                <FaInfoCircle size={15} />
-              </div>
-              <h6 className="fw-bold text-dark mb-0">Feed Inventory Buffer Alert</h6>
-            </div>
-            <p className="text-secondary small mb-0" style={{ lineHeight: 1.6, fontSize: '0.82rem' }}>
-              High-protein Starter #2 warehouse reserve is sufficient for 6 operational days. Automatic reorder request generated for supplier batch.
-            </p>
-          </div>
-        </div>
-      </div>
 
       {/* 6. ADMIN LOG FEEDING MODAL */}
       {showLogModal && (
@@ -2188,7 +2182,7 @@ export default function FeedingPage() {
             <div className="modal-content border-0 rounded-4 overflow-hidden shadow-2xl">
               <div
                 className="modal-header p-4 border-0 text-white"
-                style={{ background: 'linear-gradient(135deg, #0B2C5F 0%, #0284C7 100%)' }}
+                style={{ background: 'linear-gradient(135deg, #FC563C 0%, #FC563C 100%)' }}
               >
                 <div className="d-flex align-items-center gap-3">
                   <div
@@ -2198,8 +2192,8 @@ export default function FeedingPage() {
                     <FaUtensils size={18} />
                   </div>
                   <div>
-                    <h5 className="modal-title fw-extrabold text-white mb-0">Log Feeding Session</h5>
-                    <span className="extra-small text-white-50">Admin Feeding Operations &amp; Rations Recording</span>
+                    <h5 className="modal-title fw-extrabold text-white mb-0">{t('Log Feeding Session')}</h5>
+                    <span className="extra-small text-white-50">{t('Admin Feeding Operations & Rations Recording')}</span>
                   </div>
                 </div>
                 <button
@@ -2215,14 +2209,14 @@ export default function FeedingPage() {
                   <div className="row g-3">
                     {/* Pond Selection */}
                     <div className="col-md-6">
-                      <label className="form-label extra-small fw-bold text-dark mb-1">Pond Basin</label>
+                      <label className="form-label extra-small fw-bold text-dark mb-1">{t('Pond')}</label>
                       <select
                         className="form-select form-select-sm fw-semibold"
                         value={adminLogForm.pond_id}
                         onChange={(e) => handleAdminFormPondChange(e.target.value)}
                         required
                       >
-                        <option value="">Select Pond...</option>
+                        <option value="">{t('Select Pond...')}</option>
                         {ponds.map((p) => {
                           const name = p.pond_name || p.name || `Pond #${p.id}`;
                           return <option key={p.id} value={p.id}>{name}</option>;
@@ -2232,7 +2226,7 @@ export default function FeedingPage() {
 
                     {/* Date Selection */}
                     <div className="col-md-6">
-                      <label className="form-label extra-small fw-bold text-dark mb-1">Feeding Date</label>
+                      <label className="form-label extra-small fw-bold text-dark mb-1">{t('Feeding Date')}</label>
                       <input
                         type="date"
                         className="form-control form-control-sm fw-semibold"
@@ -2261,14 +2255,14 @@ export default function FeedingPage() {
                                       border: isGrowout ? '1px solid #BFDBFE' : '1px solid #A7F3D0'
                                     }}
                                   >
-                                    {isGrowout ? `DOC Day ${doc || 20}+ • Grow-out Stage` : `DOC Day ${doc || 1} • Nursery Stage`}
+                                    {isGrowout ? `${t('DOC Day')} ${doc || 20}+ • ${t('Grow-out Stage')}` : `${t('DOC Day')} ${doc || 1} • ${t('Nursery Stage')}`}
                                   </span>
                                   <span className="extra-small text-muted">
-                                    Recommended: <strong>{isGrowout ? 'Grower Feed' : 'Starter Feed'}</strong>
+                                    {t('Recommended:')} <strong>{isGrowout ? t('Grower Feed') : t('Starter Feed')}</strong>
                                   </span>
                                 </div>
                                 <span className="extra-small text-secondary">
-                                  Target: <strong>{Number(pObj?.target_feed_kg || 45).toFixed(1)} kg/day</strong>
+                                  {t('Target:')} <strong>{Number(pObj?.target_feed_kg || 45).toFixed(1)} kg/{t('day')}</strong>
                                 </span>
                               </>
                             );
@@ -2280,21 +2274,21 @@ export default function FeedingPage() {
                     {/* Feeding Slot Buttons */}
                     <div className="col-12">
                       <label className="form-label extra-small fw-bold text-dark mb-1">
-                        Feeding Time Slot &amp; Daily Schedule
-                        <span className="text-muted ms-1 extra-small fw-normal">(Trays monitored after 6:00 AM)</span>
+                        {t('Feeding Time Slot & Daily Schedule')}
+                        <span className="text-muted ms-1 extra-small fw-normal">({t('Trays monitored after 6:00 AM')})</span>
                       </label>
                       <div className="d-flex flex-wrap gap-2">
-                        {['6:00 AM', '9:00 AM', '12:00 PM', '3:00 PM', '6:00 PM'].map((t) => {
-                          const isSelected = adminLogForm.feeding_time === t;
+                        {['6:00 AM', '9:00 AM', '12:00 PM', '3:00 PM', '6:00 PM'].map((tSlot) => {
+                          const isSelected = adminLogForm.feeding_time === tSlot;
                           const logged = records.find(
                             (r) =>
                               String(r.pond_id) === String(adminLogForm.pond_id) &&
                               formatYMD(r.record_date || r.created_at) === adminLogForm.record_date &&
-                              String(r.feeding_time || '').trim().toUpperCase().replace(/^0(\d:)/, '$1') === t.toUpperCase()
+                              String(r.feeding_time || '').trim().toUpperCase().replace(/^0(\d:)/, '$1') === tSlot.toUpperCase()
                           );
                           return (
                             <button
-                              key={t}
+                              key={tSlot}
                               type="button"
                               className={`btn btn-sm rounded-pill px-3 py-1.5 extra-small fw-bold transition-all d-flex align-items-center gap-1.5 ${isSelected
                                   ? 'btn-primary shadow-sm text-white'
@@ -2302,10 +2296,10 @@ export default function FeedingPage() {
                                     ? 'bg-success bg-opacity-10 text-success border border-success border-opacity-25'
                                     : 'bg-light text-dark border'
                                 }`}
-                              onClick={() => handleAdminSlotChange(t)}
+                              onClick={() => handleAdminSlotChange(tSlot)}
                             >
                               {logged ? <FaCheckCircle size={10} className="text-success" /> : <FaClock size={10} />}
-                              <span>{t}</span>
+                              <span>{tSlot}</span>
                               {logged && <span className="badge bg-success text-white extra-small ms-1">{logged.amount_kg}kg</span>}
                             </button>
                           );
@@ -2316,10 +2310,10 @@ export default function FeedingPage() {
                     {/* Amount in kg */}
                     <div className="col-md-6">
                       <label className="form-label extra-small fw-bold text-dark mb-1">
-                        Feed Amount (kg)
+                        {t('Feed Amount (kg)')}
                         {adminLogForm.amount_kg !== '' && !isNaN(parseFloat(adminLogForm.amount_kg)) && (
                           <span className="text-success ms-1 fw-bold">
-                            ≈ {Math.round(parseFloat(adminLogForm.amount_kg) * 1000).toLocaleString()} grams
+                            ≈ {Math.round(parseFloat(adminLogForm.amount_kg) * 1000).toLocaleString()} {t('grams')}
                           </span>
                         )}
                       </label>
@@ -2338,13 +2332,13 @@ export default function FeedingPage() {
                         required
                       />
                       <small className="extra-small text-muted mt-1 d-block">
-                        Auto-adjusted based on 4 check trays (20g/tray).
+                        {t('Auto-adjusted based on 4 check trays (20g/tray).')}
                       </small>
                     </div>
 
                     {/* Product Code */}
                     <div className="col-md-6">
-                      <label className="form-label extra-small fw-bold text-dark mb-1">Feed Formulation</label>
+                      <label className="form-label extra-small fw-bold text-dark mb-1">{t('Feed Formulation')}</label>
                       <select
                         className="form-select form-select-sm fw-semibold"
                         value={adminLogForm.product_code}
@@ -2357,19 +2351,19 @@ export default function FeedingPage() {
 
                     {/* Vitamins & Supplements */}
                     <div className="col-md-6">
-                      <label className="form-label extra-small fw-bold text-dark mb-1">Vitamins &amp; Supplements</label>
+                      <label className="form-label extra-small fw-bold text-dark mb-1">{t('Vitamins & Supplements')}</label>
                       <select
                         className="form-select form-select-sm fw-semibold"
                         value={adminLogForm.vitamin_name}
                         onChange={(e) => setAdminLogForm({ ...adminLogForm, vitamin_name: e.target.value })}
                       >
-                        <option value="Sanolife PRO-2, Sano Top-S">Sanolife PRO-2, Sano Top-S (Both Consumed • Standard)</option>
+                        <option value="Sanolife PRO-2, Sano Top-S">Sanolife PRO-2, Sano Top-S ({t('Both Consumed • Standard')})</option>
                         <option value="Sanolife PRO-2">Sanolife PRO-2</option>
                         <option value="Sano Top-S">Sano Top-S</option>
-                        <option value="None">None (No Vitamin)</option>
+                        <option value="None">{t('None (No Vitamin)')}</option>
                       </select>
                       <small className="extra-small text-muted mt-1 d-block">
-                        Both vitamins are pre-selected by default.
+                        {t('Both vitamins are pre-selected by default.')}
                       </small>
                     </div>
 
@@ -2377,19 +2371,19 @@ export default function FeedingPage() {
                     {adminLogForm.tray_monitoring_status && (
                       <div className="col-12">
                         <div className="p-2.5 rounded-3 bg-light border d-flex align-items-center gap-2">
-                          <span className="badge rounded-pill bg-primary px-2.5 py-1 extra-small">Tray Status</span>
-                          <span className="extra-small fw-bold text-dark">{adminLogForm.tray_monitoring_status}</span>
+                          <span className="badge rounded-pill bg-primary px-2.5 py-1 extra-small">{t('Tray Status')}</span>
+                          <span className="extra-small fw-bold text-dark">{t(adminLogForm.tray_monitoring_status)}</span>
                         </div>
                       </div>
                     )}
 
                     {/* Notes */}
                     <div className="col-12">
-                      <label className="form-label extra-small fw-bold text-dark mb-1">Notes / Remarks (Optional)</label>
+                      <label className="form-label extra-small fw-bold text-dark mb-1">{t('Notes / Remarks (Optional)')}</label>
                       <textarea
                         className="form-control form-control-sm"
                         rows="2"
-                        placeholder="e.g. Session supervised by Admin"
+                        placeholder={t('e.g. Session supervised by Admin')}
                         value={adminLogForm.notes}
                         onChange={(e) => setAdminLogForm({ ...adminLogForm, notes: e.target.value })}
                       />
@@ -2404,7 +2398,7 @@ export default function FeedingPage() {
                     onClick={() => setShowLogModal(false)}
                     disabled={savingLog}
                   >
-                    Cancel
+                    {t('Cancel')}
                   </button>
                   <button
                     type="submit"
@@ -2412,7 +2406,7 @@ export default function FeedingPage() {
                     style={{ background: 'linear-gradient(135deg, #16A34A 0%, #15803D 100%)', border: 'none' }}
                     disabled={savingLog}
                   >
-                    {savingLog ? 'Saving...' : 'Save Feeding Record'}
+                    {savingLog ? t('Saving...') : t('Save Feeding Record')}
                   </button>
                 </div>
               </form>

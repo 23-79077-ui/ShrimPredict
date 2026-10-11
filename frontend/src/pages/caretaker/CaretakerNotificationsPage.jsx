@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import api from '../../services/api';
 import Swal from 'sweetalert2';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 import {
   FaBell,
   FaCheckDouble,
@@ -20,6 +21,7 @@ import {
 
 export default function CaretakerNotificationsPage() {
   const { user } = useAuth();
+  const { t, isFilipino } = useLanguage();
   const [notifications, setNotifications] = useState([]);
   const [counts, setCounts] = useState({ unread: 0, active: 0, archived: 0, deleted: 0 });
   const [loading, setLoading] = useState(true);
@@ -219,12 +221,28 @@ export default function CaretakerNotificationsPage() {
 
   return (
     <div className="caretaker-notifications-hub">
-      {/* HERO CONTROL STRIP: BREADCRUMB, STATUS BADGE & ACTION BUTTONS */}
-      <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-        <div>
-          <h2 className="fw-extrabold mb-0 tracking-tight text-dark" style={{ fontSize: '1.75rem', letterSpacing: '-0.03em' }}>
-            Caretaker Notifications
-          </h2>
+      {/* 1. EXECUTIVE HERO OPERATIONS BANNER */}
+      <div className="disease-hero-banner d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+        <div className="d-flex align-items-center gap-3">
+          <div className="hero-icon-badge shadow-xs">
+            <FaBell />
+          </div>
+          <div>
+            <div className="d-flex align-items-center gap-2 flex-wrap">
+              <h3 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#FC563C', fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
+                {t('hero.caretakerNotifications', 'Caretaker Notifications & Alerts')}
+              </h3>
+              <span
+                className="badge rounded-pill extra-small px-3 py-1 fw-bold"
+                style={{ backgroundColor: 'rgba(252, 86, 60, 0.08)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.16)' }}
+              >
+                ● {t('hero.caretakerNotificationsBadge', 'Real-Time Broadcast Stream')}
+              </span>
+            </div>
+            <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
+              {t('hero.caretakerNotificationsSub', 'Real-time system alerts, automated water threshold notices, and maintenance status updates.')}
+            </p>
+          </div>
         </div>
 
         <div className="d-flex align-items-center gap-2 flex-wrap">
@@ -235,21 +253,16 @@ export default function CaretakerNotificationsPage() {
           )}
           <button
             type="button"
-            className="btn btn-sm rounded-pill bg-white border text-dark fw-semibold px-3 py-1.5 d-flex align-items-center gap-1.5 shadow-xs"
-            style={{ height: 36, fontSize: '0.8rem' }}
+            className="btn btn-sm btn-tri-outline px-3.5 py-2 shadow-xs d-flex align-items-center gap-1.5"
+            style={{ height: 38, fontSize: '0.8rem' }}
             onClick={loadNotifications}
           >
-            <FaSync size={11} className={loading ? 'fa-spin text-primary' : 'text-primary'} /> Refresh
+            <FaSync size={11} className={loading ? 'fa-spin' : ''} style={{ color: '#FC563C' }} /> {t('Refresh', 'Refresh')}
           </button>
           <button
             type="button"
-            className="btn btn-sm rounded-pill px-3.5 py-1.5 d-flex align-items-center gap-2 fw-bold text-white shadow-xs"
-            style={{
-              height: 36,
-              fontSize: '0.8rem',
-              background: 'linear-gradient(135deg, #0B2C5F 0%, #0284C7 100%)',
-              border: 'none',
-            }}
+            className="btn btn-sm btn-tri-orange px-3.5 py-2 d-flex align-items-center gap-2 fw-bold text-white shadow-xs"
+            style={{ height: 38, fontSize: '0.8rem' }}
             onClick={handleMarkAllRead}
             disabled={counts.unread === 0}
           >
@@ -272,8 +285,8 @@ export default function CaretakerNotificationsPage() {
                     : 'btn-white bg-white text-dark border'
                 }`}
                 style={{
-                  backgroundColor: currentTab === 'active' ? '#0B2C5F' : '#FFFFFF',
-                  borderColor: currentTab === 'active' ? '#0B2C5F' : '#E2E8F0',
+                  backgroundColor: currentTab === 'active' ? '#FC563C' : '#FFFFFF',
+                  borderColor: currentTab === 'active' ? '#FC563C' : '#E2E8F0',
                 }}
                 onClick={() => setCurrentTab('active')}
               >
@@ -288,8 +301,8 @@ export default function CaretakerNotificationsPage() {
                     : 'btn-white bg-white text-dark border'
                 }`}
                 style={{
-                  backgroundColor: currentTab === 'unread' ? '#0B2C5F' : '#FFFFFF',
-                  borderColor: currentTab === 'unread' ? '#0B2C5F' : '#E2E8F0',
+                  backgroundColor: currentTab === 'unread' ? '#FC563C' : '#FFFFFF',
+                  borderColor: currentTab === 'unread' ? '#FC563C' : '#E2E8F0',
                 }}
                 onClick={() => setCurrentTab('unread')}
               >
@@ -304,8 +317,8 @@ export default function CaretakerNotificationsPage() {
                     : 'btn-white bg-white text-dark border'
                 }`}
                 style={{
-                  backgroundColor: currentTab === 'archived' ? '#0B2C5F' : '#FFFFFF',
-                  borderColor: currentTab === 'archived' ? '#0B2C5F' : '#E2E8F0',
+                  backgroundColor: currentTab === 'archived' ? '#FC563C' : '#FFFFFF',
+                  borderColor: currentTab === 'archived' ? '#FC563C' : '#E2E8F0',
                 }}
                 onClick={() => setCurrentTab('archived')}
               >
@@ -370,20 +383,20 @@ export default function CaretakerNotificationsPage() {
           {loading ? (
             <div className="text-center py-5 text-muted">
               <div className="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
-              Loading notifications…
+              {t('Loading notifications…')}
             </div>
           ) : notifications.length === 0 ? (
             <div className="text-center py-5">
               <FaBell className="text-muted opacity-50 display-4 mb-2" />
-              <h6 className="fw-semibold text-muted">No admin responses found</h6>
+              <h6 className="fw-semibold text-muted">{t('No admin responses found')}</h6>
               <p className="small text-muted mb-0">
                 {currentTab === 'deleted'
-                  ? 'No deleted notifications in history.'
+                  ? t('No deleted notifications in history.')
                   : currentTab === 'archived'
-                  ? 'No archived notifications.'
+                  ? t('No archived notifications.')
                   : currentTab === 'unread'
-                  ? 'All admin responses are marked as read.'
-                  : 'No admin updates returned for your submitted reports yet.'}
+                  ? t('All admin responses are marked as read.')
+                  : t('No admin updates returned for your submitted reports yet.')}
               </p>
             </div>
           ) : (
@@ -408,7 +421,7 @@ export default function CaretakerNotificationsPage() {
                     <div className="flex-grow-1">
                       <div className="d-flex align-items-center gap-2 flex-wrap mb-1">
                         <h6 className={`mb-0 ${!notif.is_read ? 'fw-extrabold text-primary' : 'fw-bold text-dark'}`}>
-                          {notif.title}
+                          {t(notif.title)}
                         </h6>
 
                         {notif.pond_name && (
@@ -419,7 +432,7 @@ export default function CaretakerNotificationsPage() {
                       </div>
 
                       <p className="text-secondary small mb-2" style={{ lineHeight: 1.5 }}>
-                        {notif.message}
+                        {t(notif.message)}
                       </p>
 
                       <div className="d-flex align-items-center gap-3 extra-small text-muted">

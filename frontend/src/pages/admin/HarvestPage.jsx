@@ -12,18 +12,21 @@ import {
 } from 'react-icons/fa';
 import api, { safeArray } from '../../services/api';
 import AdminFilterToolbar from '../../components/AdminFilterToolbar';
+import { useLanguage } from '../../context/LanguageContext';
 
 const formatKg = (value = 0) => `${Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })} kg`;
 const formatTons = (value = 0) => `${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} tons`;
 const formatPct = (value = 0) => `${Number(value || 0).toFixed(2)}%`;
 
 export default function HarvestPage() {
+  const { t } = useLanguage();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(true);
   const [selectedCaretaker, setSelectedCaretaker] = useState('all');
   const [selectedPond, setSelectedPond] = useState('all');
+  const [activeChartTab, setActiveChartTab] = useState('feedVsHarvest'); // 'feedVsHarvest' | 'progressTrend'
 
   const loadData = async () => {
     setLoading(true);
@@ -55,44 +58,44 @@ export default function HarvestPage() {
     labels: predictions.map((item) => item.pond_name || `Pond ${item.pond_id}`),
     datasets: [
       {
-        label: 'Feed Consumed (kg)',
+        label: t('Feed Consumed (kg)'),
         data: predictions.map((item) => Number(item.total_feed_consumed_kg || 0)),
-        backgroundColor: '#0B2C5F',
+        backgroundColor: '#FC563C',
         borderRadius: 6,
       },
       {
-        label: 'Adjusted Harvest Est. (kg)',
+        label: t('Adjusted Harvest Est. (kg)'),
         data: predictions.map((item) => Number(item.adjusted_harvest_kg || 0)),
-        backgroundColor: '#EA580C',
+        backgroundColor: '#FC563C',
         borderRadius: 6,
       },
     ],
-  }), [predictions]);
+  }), [predictions, t]);
 
   const progressData = useMemo(() => ({
     labels: predictions.map((item) => item.pond_name || `Pond ${item.pond_id}`),
     datasets: [
       {
-        label: 'Feed Progress Toward Historical Baseline (%)',
+        label: t('Feed Progress Toward Historical Baseline (%)'),
         data: predictions.map((item) => Number(item.feed_progress_percentage || 0)),
-        borderColor: '#EA580C',
-        backgroundColor: 'rgba(234, 88, 12, 0.12)',
+        borderColor: '#FC563C',
+        backgroundColor: 'rgba(252, 86, 60, 0.12)',
         tension: 0.35,
         fill: true,
-        pointBackgroundColor: '#0B2C5F',
+        pointBackgroundColor: '#FC563C',
         pointBorderColor: '#FFFFFF',
         pointRadius: 4,
       },
     ],
-  }), [predictions]);
+  }), [predictions, t]);
 
   // Export CSV Handler
   const handleExportCSV = () => {
     if (predictions.length === 0) return;
-    const headers = ['Pond,Caretaker,Total Feed (kg),ABW (g),Baseline Est (kg),Adjusted Est (kg),Est Tons,Progress (%),Readiness,Status\n'];
+    const headers = ['Pond,Caretaker,Total Feed (kg),ABW (g),Target Yield (kg),Estimated Harvest (kg),Est Tons,Progress (%),Readiness\n'];
     const rows = predictions.map(
       (p) =>
-        `"${p.pond_name || `Pond ${p.pond_id}`}","${p.caretaker_names || 'N/A'}",${p.total_feed_consumed_kg || 0},${p.average_weight || 0},${p.baseline_harvest_kg || 0},${p.adjusted_harvest_kg || 0},${p.predicted_harvest_tons || 0},${p.feed_progress_percentage || 0},"${p.readiness_status || ''}","${p.data_completeness_status || ''}"`
+        `"${p.pond_name || `Pond ${p.pond_id}`}","${p.caretaker_names || 'N/A'}",${p.total_feed_consumed_kg || 0},${p.average_weight || 0},${p.baseline_harvest_kg || 0},${p.adjusted_harvest_kg || 0},${p.predicted_harvest_tons || 0},${p.feed_progress_percentage || 0},"${p.readiness_status || ''}"`
     );
     const blob = new Blob([headers.concat(rows).join('\n')], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -107,33 +110,23 @@ export default function HarvestPage() {
       {/* 1. HERO BANNER */}
       <div className="disease-hero-banner d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
         <div className="d-flex align-items-center gap-3">
-          <div
-            className="rounded-circle d-flex align-items-center justify-content-center shadow-xs flex-shrink-0"
-            style={{
-              width: 50,
-              height: 50,
-              background: 'linear-gradient(135deg, #0B2C5F 0%, #1E3A8A 100%)',
-              color: '#FFFFFF',
-              fontSize: '1.3rem',
-              border: '2px solid rgba(234, 88, 12, 0.3)'
-            }}
-          >
+          <div className="hero-icon-badge shadow-xs">
             <FaWeightHanging />
           </div>
           <div>
             <div className="d-flex align-items-center gap-2 flex-wrap">
-              <h3 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#0B2C5F', fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
-                Harvest Projections &amp; Biomass Intelligence
+              <h3 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#FC563C', fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
+                {t('Harvest Forecast & Yield Estimates')}
               </h3>
               <span
                 className="badge rounded-pill extra-small px-3 py-1 fw-bold"
-                style={{ backgroundColor: 'rgba(11, 44, 95, 0.08)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.16)' }}
+                style={{ backgroundColor: 'rgba(252, 86, 60, 0.08)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.16)' }}
               >
-                ● Feed-to-Yield Predictive Engine
+                {t('Feed-to-Yield Forecast')}
               </span>
             </div>
             <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
-              Historical feed consumption modeling, expected commercial yield weight, and harvest schedule optimization.
+              {t('Past feed records, expected harvest weight, and shrimp harvest schedule.')}
             </p>
           </div>
         </div>
@@ -146,7 +139,7 @@ export default function HarvestPage() {
             style={{ fontSize: '0.82rem', height: 40 }}
             onClick={loadData}
           >
-            <FaSync size={11} className={loading ? 'fa-spin me-1.5' : 'me-1.5'} /> Refresh Data
+            <FaSync size={11} className={loading ? 'fa-spin me-1.5' : 'me-1.5'} /> {t('Refresh')}
           </button>
 
           <button
@@ -155,7 +148,7 @@ export default function HarvestPage() {
             style={{ height: 40, fontSize: '0.82rem' }}
             onClick={handleExportCSV}
           >
-            <FaFileCsv size={13} className="me-1.5" /> Export Harvest CSV
+            <FaFileCsv size={13} className="me-1.5" /> {t('Export CSV')}
           </button>
         </div>
       </div>
@@ -167,12 +160,12 @@ export default function HarvestPage() {
           <div className="tri-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Predicted Yield Mass</span>
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">{t('Predicted Yield Mass')}</span>
                 <div className="tri-kpi-icon tri-kpi-icon-blue">
                   <FaWeightHanging size={17} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#0B2C5F', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+              <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
                 {formatKg(summary.adjusted_harvest_kg)}
               </h2>
             </div>
@@ -180,12 +173,12 @@ export default function HarvestPage() {
               <div className="tri-progress-track my-2.5">
                 <div
                   className="tri-progress-bar"
-                  style={{ width: '100%', background: 'linear-gradient(90deg, #0B2C5F 0%, #1E3A8A 100%)' }}
+                  style={{ width: '100%', background: 'linear-gradient(90deg, #172A39 0%, #FC563C 100%)' }}
                 />
               </div>
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small">Commercial Yield</span>
-                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(11, 44, 95, 0.06)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.15)' }}>
+                <span className="text-muted extra-small">{t('Commercial Yield')}</span>
+                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.06)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.15)' }}>
                   {formatTons(summary.predicted_harvest_tons)}
                 </span>
               </div>
@@ -198,26 +191,26 @@ export default function HarvestPage() {
           <div className="tri-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Total Feed Consumed</span>
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">{t('Total Feed Consumed')}</span>
                 <div className="tri-kpi-icon tri-kpi-icon-orange">
                   <FaSeedling size={17} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#EA580C', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+              <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
                 {formatKg(summary.total_feed_consumed_kg)}
               </h2>
             </div>
             <div>
-              <div className="tri-progress-track my-2.5" style={{ backgroundColor: 'rgba(234, 88, 12, 0.1)' }}>
+              <div className="tri-progress-track my-2.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.1)' }}>
                 <div
                   className="tri-progress-bar"
-                  style={{ width: '88%', background: 'linear-gradient(90deg, #EA580C 0%, #F97316 100%)' }}
+                  style={{ width: '88%', background: 'linear-gradient(90deg, #FC563C 0%, #6E7575 100%)' }}
                 />
               </div>
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small">Caretaker Field Logs</span>
-                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: '#FFF7ED', color: '#EA580C', border: '1px solid rgba(234, 88, 12, 0.25)' }}>
-                  Cumulative Cycle
+                <span className="text-muted extra-small">{t('Caretaker Field Logs')}</span>
+                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: '#E9E4E0', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.25)' }}>
+                  {t('Cumulative Cycle')}
                 </span>
               </div>
             </div>
@@ -229,12 +222,12 @@ export default function HarvestPage() {
           <div className="tri-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Historical Progress</span>
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">{t('Historical Progress')}</span>
                 <div className="tri-kpi-icon tri-kpi-icon-blue">
                   <FaChartLine size={17} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#0B2C5F', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+              <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
                 {formatPct(summary.average_feed_progress_percentage)}
               </h2>
             </div>
@@ -244,14 +237,14 @@ export default function HarvestPage() {
                   className="tri-progress-bar"
                   style={{
                     width: `${Math.min(100, Math.max(10, summary.average_feed_progress_percentage || 0))}%`,
-                    background: 'linear-gradient(90deg, #0B2C5F 0%, #1E3A8A 100%)'
+                    background: 'linear-gradient(90deg, #172A39 0%, #FC563C 100%)'
                   }}
                 />
               </div>
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small">Target Completion</span>
-                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(11, 44, 95, 0.06)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.15)' }}>
-                  15,000 kg Benchmark
+                <span className="text-muted extra-small">{t('Target Completion')}</span>
+                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.06)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.15)' }}>
+                  {t('15,000 kg Benchmark')}
                 </span>
               </div>
             </div>
@@ -263,26 +256,26 @@ export default function HarvestPage() {
           <div className="tri-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Per-Basin Benchmark</span>
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">{t('Average Per Pond')}</span>
                 <div className="tri-kpi-icon tri-kpi-icon-orange">
                   <FaCalendarAlt size={17} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#EA580C', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+              <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
                 {formatKg(feedReferenceKg)}
               </h2>
             </div>
             <div>
-              <div className="tri-progress-track my-2.5" style={{ backgroundColor: 'rgba(234, 88, 12, 0.1)' }}>
+              <div className="tri-progress-track my-2.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.1)' }}>
                 <div
                   className="tri-progress-bar"
-                  style={{ width: '100%', background: 'linear-gradient(90deg, #EA580C 0%, #F97316 100%)' }}
+                  style={{ width: '100%', background: 'linear-gradient(90deg, #FC563C 0%, #6E7575 100%)' }}
                 />
               </div>
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small">Standard Target</span>
-                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: '#FFF7ED', color: '#EA580C', border: '1px solid rgba(234, 88, 12, 0.25)' }}>
-                  ~{baselineHarvestTons} Tons Target
+                <span className="text-muted extra-small">{t('Standard Target')}</span>
+                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: '#E9E4E0', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.25)' }}>
+                  ~{baselineHarvestTons} {t('Tons Target')}
                 </span>
               </div>
             </div>
@@ -290,177 +283,182 @@ export default function HarvestPage() {
         </div>
       </div>
 
-      {/* Filter Toolbar */}
-      <AdminFilterToolbar
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        searchPlaceholder="Search harvest prediction, pond, caretaker..."
-        showFilters={showFilters}
-        onToggleFilters={() => setShowFilters(!showFilters)}
-        onRefresh={() => {
-          setSelectedCaretaker('all');
-          setSelectedPond('all');
-          loadData();
-        }}
-        loading={loading}
-        tabs={[{ id: 'all', label: 'All Predictions', count: predictions.length }]}
-        activeTab="all"
-        metaRight={
-          <>
-            Harvest Model: <strong>Feed-to-Harvest Baseline Intelligence</strong>
-          </>
-        }
-        filterFields={[
-          {
-            label: 'Production Basin',
-            type: 'select',
-            value: selectedPond,
-            onChange: setSelectedPond,
-            colClass: 'col-12 col-md-4',
-            options: [
-              { value: 'all', label: 'All Ponds' },
-              ...pondsList.map((p) => ({ value: p.id, label: p.pond_name }))
-            ]
-          },
-          {
-            label: 'Assigned Caretaker',
-            type: 'select',
-            value: selectedCaretaker,
-            onChange: setSelectedCaretaker,
-            colClass: 'col-12 col-md-4',
-            options: [
-              { value: 'all', label: 'All Caretakers' },
-              ...caretakers.map((c) => ({ value: c.id, label: c.full_name || `Caretaker ${c.id}` }))
-            ]
-          }
-        ]}
-        onResetFilters={() => {
-          setSearchQuery('');
-          setSelectedPond('all');
-          setSelectedCaretaker('all');
-        }}
-      />
-
       {/* Operational Disclaimer Alert */}
       <div
-        className="p-3 mb-4 rounded-4 d-flex align-items-start gap-3 shadow-xs"
-        style={{
-          backgroundColor: '#FFFFFF',
-          border: '1px solid rgba(234, 88, 12, 0.25)',
-          borderLeft: '4px solid #EA580C'
-        }}
+        className="p-3 mb-4 rounded-4 d-flex align-items-start gap-3 shadow-xs admin-operational-disclaimer"
       >
-        <div className="rounded-circle p-2 flex-shrink-0" style={{ backgroundColor: '#FFF7ED', color: '#EA580C' }}>
+        <div className="rounded-circle p-2 flex-shrink-0 admin-operational-disclaimer-icon">
           <FaExclamationTriangle size={15} />
         </div>
         <div>
-          <strong style={{ color: '#0B2C5F', fontSize: '0.9rem' }}>
-            {data?.method || 'Caretaker Historical Feed-to-Harvest Baseline Model'}
+          <strong style={{ color: '#FC563C', fontSize: '0.9rem' }}>
+            {data?.method ? t(data.method) : t('Caretaker Historical Feed-to-Harvest Baseline Model')}
           </strong>
           <div className="text-muted extra-small mt-0.5">
-            Historical baseline: caretakers reported that {formatKg(feedReferenceKg)} feed per pond usually yields around {formatTons(baselineHarvestTons)} harvest.
-            {' '}{data?.disclaimer || 'Harvest readiness is an operational estimate and must be confirmed by farm management.'}
+            {t('Historical baseline: caretakers reported that')} {formatKg(feedReferenceKg)} {t('feed per pond usually yields around')} {formatTons(baselineHarvestTons)} {t('harvest.')}
+            {' '}{data?.disclaimer ? t(data.disclaimer) : t('Harvest readiness is an operational estimate and must be confirmed by farm management.')}
           </div>
         </div>
       </div>
 
-      {/* 3. CHARTS ROW */}
-      <div className="row g-4 mb-4">
-        <div className="col-12 col-xl-7">
-          <div className="tri-card p-4 h-100">
-            <div className="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
-              <div>
-                <h5 className="fw-extrabold text-dark mb-0 tracking-tight">Feed-To-Harvest Estimate By Basin</h5>
-                <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
-                  Correlation comparison between feed ration mass dispensed vs projected biomass output (kg).
-                </p>
-              </div>
-              <span className="badge rounded-pill extra-small px-3 py-1 fw-bold" style={{ backgroundColor: 'rgba(11, 44, 95, 0.08)', color: '#0B2C5F' }}>
-                Comparative Bar
-              </span>
-            </div>
-            <div style={{ minHeight: 280 }}>
-              <Bar
-                data={feedVsHarvestData}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: { legend: { position: 'top', labels: { font: { family: "'Poppins', sans-serif", weight: '600', size: 11 } } } },
-                  scales: {
-                    x: { grid: { display: false } },
-                    y: { grid: { color: 'rgba(11, 44, 95, 0.06)' } }
-                  }
-                }}
-              />
-            </div>
+      {/* 3. UNIFIED HARVEST & FEED ANALYTICS (Toggleable between Estimate and Historical Trend) */}
+      <div className="tri-card p-4 mb-4">
+        <div className="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom flex-wrap gap-2" style={{ borderColor: 'rgba(252, 86, 60, 0.08)' }}>
+          <div>
+            <h5 className="fw-extrabold text-dark mb-0 tracking-tight">
+              {activeChartTab === 'feedVsHarvest' ? t('Feed-To-Harvest Estimate By Pond') : t('Past Feed Progress Trend')}
+            </h5>
+            <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
+              {activeChartTab === 'feedVsHarvest'
+                ? t('Comparison between total feed given vs expected shrimp harvest weight (kg).')
+                : t('Progress toward the 15,000 kg farm harvest goal.')}
+            </p>
+          </div>
+
+          {/* Toggle Pills */}
+          <div className="d-inline-flex p-1 rounded-pill bg-light border" style={{ borderColor: 'rgba(252, 86, 60, 0.15)' }}>
+            <button
+              type="button"
+              className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all ${
+                activeChartTab === 'feedVsHarvest' ? 'btn-tri-orange text-white shadow-xs' : 'btn-link text-muted text-decoration-none'
+              }`}
+              style={{ fontSize: '0.78rem' }}
+              onClick={() => setActiveChartTab('feedVsHarvest')}
+            >
+              <FaWeightHanging size={11} className="me-1.5" />
+              {t('Feed-To-Harvest Estimate')}
+            </button>
+            <button
+              type="button"
+              className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all ${
+                activeChartTab === 'progressTrend' ? 'btn-tri-orange text-white shadow-xs' : 'btn-link text-muted text-decoration-none'
+              }`}
+              style={{ fontSize: '0.78rem' }}
+              onClick={() => setActiveChartTab('progressTrend')}
+            >
+              <FaChartLine size={11} className="me-1.5" />
+              {t('Historical Progress Trend')}
+            </button>
           </div>
         </div>
 
-        <div className="col-12 col-xl-5">
-          <div className="tri-card p-4 h-100">
-            <div className="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
-              <div>
-                <h5 className="fw-extrabold text-dark mb-0 tracking-tight">Historical Feed Progress Trend</h5>
-                <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
-                  Progress curve against the 15,000 kg standard production threshold.
-                </p>
-              </div>
-              <span className="badge rounded-pill extra-small px-3 py-1 fw-bold" style={{ backgroundColor: '#FFF7ED', color: '#EA580C' }}>
-                Trajectory
-              </span>
-            </div>
-            <div style={{ minHeight: 280 }}>
-              <Line
-                data={progressData}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: { legend: { position: 'top', labels: { font: { family: "'Poppins', sans-serif", weight: '600', size: 11 } } } },
-                  scales: {
-                    x: { grid: { display: false } },
-                    y: { max: 100, grid: { color: 'rgba(11, 44, 95, 0.06)' } }
-                  }
-                }}
-              />
-            </div>
+        {activeChartTab === 'feedVsHarvest' ? (
+          <div style={{ minHeight: 290, height: 300 }}>
+            <Bar
+              data={feedVsHarvestData}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'top', labels: { font: { family: "'Poppins', sans-serif", weight: '600', size: 11 } } } },
+                scales: {
+                  x: { grid: { display: false } },
+                  y: { grid: { color: 'rgba(252, 86, 60, 0.06)' } }
+                }
+              }}
+            />
           </div>
-        </div>
+        ) : (
+          <div style={{ minHeight: 290, height: 300 }}>
+            <Line
+              data={progressData}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'top', labels: { font: { family: "'Poppins', sans-serif", weight: '600', size: 11 } } } },
+                scales: {
+                  x: { grid: { display: false } },
+                  y: { max: 100, grid: { color: 'rgba(252, 86, 60, 0.06)' } }
+                }
+              }}
+            />
+          </div>
+        )}
       </div>
 
-      {/* 4. PREDICTION TABLE */}
+      {/* 4. PREDICTION TABLE & INTEGRATED FILTER TOOLBAR */}
       <div className="tri-card p-4">
         <div className="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom flex-wrap gap-2">
           <div>
             <h5 className="fw-extrabold text-dark mb-0 tracking-tight d-flex align-items-center gap-2">
-              <FaWater style={{ color: '#0B2C5F' }} /> Pond Harvest Readiness &amp; Sampling
+              <FaWater style={{ color: '#FC563C' }} /> {t('Pond Harvest Readiness & Sampling')}
             </h5>
             <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
-              Showing {predictions.length} active pond predictions calculated by the telemetry model.
+              {t('Showing')} {predictions.length} {t('active pond predictions based on feeding and growth logs.')}
             </p>
           </div>
         </div>
 
+        {/* Integrated Filter Toolbar with Distinct Border */}
+        <AdminFilterToolbar
+          className="admin-search-section-box admin-filter-card"
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          searchPlaceholder={t('Search harvest prediction, pond, caretaker...')}
+          showFilters={showFilters}
+          onToggleFilters={() => setShowFilters(!showFilters)}
+          onRefresh={() => {
+            setSelectedCaretaker('all');
+            setSelectedPond('all');
+            loadData();
+          }}
+          loading={loading}
+          tabs={[{ id: 'all', label: t('All Predictions'), count: predictions.length }]}
+          activeTab="all"
+          metaRight={
+            <>
+              {t('Harvest Model:')} <strong>{t('Feed-to-Harvest Baseline Intelligence')}</strong>
+            </>
+          }
+          filterFields={[
+            {
+              label: t('Pond'),
+              type: 'select',
+              value: selectedPond,
+              onChange: setSelectedPond,
+              colClass: 'col-12 col-md-4',
+              options: [
+                { value: 'all', label: t('All Ponds') },
+                ...pondsList.map((p) => ({ value: p.id, label: p.pond_name }))
+              ]
+            },
+            {
+              label: t('Assigned Caretaker'),
+              type: 'select',
+              value: selectedCaretaker,
+              onChange: setSelectedCaretaker,
+              colClass: 'col-12 col-md-4',
+              options: [
+                { value: 'all', label: t('All Caretakers') },
+                ...caretakers.map((c) => ({ value: c.id, label: c.full_name || `Caretaker ${c.id}` }))
+              ]
+            }
+          ]}
+          onResetFilters={() => {
+            setSearchQuery('');
+            setSelectedPond('all');
+            setSelectedCaretaker('all');
+          }}
+        />
+
         {loading ? (
           <div className="text-center py-5 text-muted">
-            <div className="spinner-border" style={{ color: '#0B2C5F' }} role="status" />
-            <p className="mt-2 mb-0 extra-small fw-semibold">Loading harvest telemetry...</p>
+            <div className="spinner-border" style={{ color: '#FC563C' }} role="status" />
+            <p className="mt-2 mb-0 extra-small fw-semibold">{t('Loading harvest forecast...')}</p>
           </div>
         ) : (
-          <div className="table-responsive">
-            <table className="table tri-table align-middle mb-0">
-              <thead>
-                <tr>
-                  <th>Production Basin</th>
-                  <th>Caretaker</th>
-                  <th>Feed Consumed</th>
-                  <th>ABW (Sampling)</th>
-                  <th>Baseline Yield</th>
-                  <th>Adjusted Est.</th>
-                  <th>Tons Target</th>
-                  <th>Cycle Progress</th>
-                  <th>Readiness</th>
-                  <th>Data Integrity</th>
-                  <th>Last Calculated</th>
+          <div className="table-responsive admin-scrollable-table-4rows" style={{ maxHeight: 350, overflowY: 'auto', overflowX: 'hidden' }}>
+            <table className="table tri-table align-middle mb-0" style={{ fontSize: '0.80rem', tableLayout: 'fixed', width: '100%' }}>
+              <thead className="sticky-top">
+                <tr className="text-muted extra-small text-uppercase fw-extrabold" style={{ letterSpacing: '0.03em' }}>
+                  <th className="ps-3 py-2.5" style={{ width: '9%' }}>{t('Pond')}</th>
+                  <th className="py-2.5" style={{ width: '12%' }}>{t('Caretaker')}</th>
+                  <th className="py-2.5" style={{ width: '10%' }}>{t('Feed Used')}</th>
+                  <th className="py-2.5" style={{ width: '9%' }}>{t('ABW')}</th>
+                  <th className="py-2.5" style={{ width: '10%' }}>{t('Target Yield')}</th>
+                  <th className="py-2.5" style={{ width: '12%' }}>{t('Est. Harvest')}</th>
+                  <th className="py-2.5" style={{ width: '15%' }}>{t('Cycle Progress')}</th>
+                  <th className="py-2.5" style={{ width: '10%' }}>{t('Readiness')}</th>
+                  <th className="pe-3 py-2.5 text-end" style={{ width: '13%' }}>{t('Calculated')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -478,8 +476,8 @@ export default function HarvestPage() {
                   if (filtered.length === 0) {
                     return (
                       <tr>
-                        <td colSpan="11" className="text-muted text-center py-5">
-                          No pond harvest predictions match the search query or filters.
+                        <td colSpan="9" className="text-muted text-center py-5">
+                          {t('No pond harvest predictions match the search query or filters.')}
                         </td>
                       </tr>
                     );
@@ -487,63 +485,86 @@ export default function HarvestPage() {
 
                   return filtered.map((item) => (
                     <tr key={item.pond_id}>
-                      <td>
-                        <strong style={{ color: '#0B2C5F' }}>{item.pond_name || `Pond ${item.pond_id}`}</strong>
-                        <div className="text-muted extra-small">{item.pond_condition_summary}</div>
-                      </td>
-                      <td className="small">{item.caretaker_names || 'Caretaker account'}</td>
-                      <td>
-                        <span className="fw-bold" style={{ color: '#0B2C5F' }}>{formatKg(item.total_feed_consumed_kg)}</span>
-                      </td>
-                      <td>
+                      <td className="ps-3 py-2.5">
                         <span
-                          className="badge rounded-pill extra-small px-2.5 py-1 fw-bold"
-                          style={{ backgroundColor: '#F0FDF4', color: '#16A34A', border: '1px solid #BBF7D0' }}
+                          className="badge rounded-pill fw-bold px-2 py-1 d-inline-flex align-items-center gap-1 text-truncate"
+                          style={{ background: 'rgba(252, 86, 60, 0.08)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.16)', fontSize: '0.78rem', maxWidth: '100%' }}
+                          title={item.pond_name || `Pond ${item.pond_id}`}
+                        >
+                          <FaWater size={9} /> {item.pond_name || `Pond ${item.pond_id}`}
+                        </span>
+                      </td>
+                      <td className="small text-truncate py-2.5" style={{ fontSize: '0.78rem' }} title={item.caretaker_names || t('Caretaker account')}>
+                        {item.caretaker_names || t('Caretaker account')}
+                      </td>
+                      <td className="py-2.5">
+                        <span className="fw-bold" style={{ color: '#FC563C', fontSize: '0.82rem' }}>{formatKg(item.total_feed_consumed_kg)}</span>
+                      </td>
+                      <td className="py-2.5">
+                        <span
+                          className="badge rounded-pill extra-small px-2 py-0.5 fw-bold"
+                          style={{ backgroundColor: '#F0FDF4', color: '#16A34A', border: '1px solid #BBF7D0', fontSize: '0.74rem' }}
                         >
                           {Number(item.average_weight || 0) > 0 ? `${Number(item.average_weight).toFixed(1)} g` : '—'}
                         </span>
                       </td>
-                      <td className="small">{formatKg(item.baseline_harvest_kg)}</td>
-                      <td>
-                        <strong style={{ color: '#EA580C' }}>{formatKg(item.adjusted_harvest_kg)}</strong>
-                        <div className="text-muted extra-small">
-                          Ref: {formatTons(item.target_harvest_tons || baselineHarvestTons)}
+                      <td className="small text-secondary py-2.5" style={{ fontSize: '0.82rem' }}>{formatKg(item.baseline_harvest_kg)}</td>
+                      <td className="py-2.5">
+                        <span className="fw-bolder text-dark d-block" style={{ fontSize: '0.86rem' }}>{formatKg(item.adjusted_harvest_kg)}</span>
+                        <div className="mt-1">
+                          <span
+                            className="badge rounded-pill fw-bold font-mono px-2 py-0.5 d-inline-flex align-items-center gap-1 shadow-2xs"
+                            style={{
+                              backgroundColor: '#EFF6FF',
+                              color: '#1D4ED8',
+                              border: '1px solid #BFDBFE',
+                              fontSize: '0.70rem'
+                            }}
+                            title={`${formatTons(item.predicted_harvest_tons)} predicted harvest`}
+                          >
+                            <FaWeightHanging size={8} /> {formatTons(item.predicted_harvest_tons)}
+                          </span>
                         </div>
                       </td>
-                      <td>
-                        <span className="badge rounded-pill extra-small px-2.5 py-1 fw-bold" style={{ backgroundColor: 'rgba(11, 44, 95, 0.08)', color: '#0B2C5F' }}>
-                          {formatTons(item.predicted_harvest_tons)}
-                        </span>
-                      </td>
-                      <td style={{ minWidth: 140 }}>
-                        <div className="d-flex justify-content-between extra-small mb-1 font-mono">
-                          <span className="fw-bold" style={{ color: '#EA580C' }}>{formatPct(item.feed_progress_percentage)}</span>
-                          <span className="text-muted">{formatKg(item.remaining_feed_kg)} left</span>
+                      <td className="py-2.5">
+                        <div className="d-flex justify-content-between extra-small mb-1 font-mono" style={{ fontSize: '0.72rem' }}>
+                          <span className="fw-bold" style={{ color: '#FC563C' }}>{formatPct(item.feed_progress_percentage)}</span>
+                          <span className="text-muted">{formatKg(item.remaining_feed_kg)} {t('left')}</span>
                         </div>
-                        <div className="tri-progress-track" style={{ height: 6 }}>
+                        <div className="tri-progress-track" style={{ height: 5 }}>
                           <div
                             className="tri-progress-bar"
                             style={{
                               width: `${Math.min(100, item.feed_progress_visual_percentage || 0)}%`,
-                              background: 'linear-gradient(90deg, #EA580C, #F97316)'
+                              background: 'linear-gradient(90deg, #FC563C, #F97316)'
                             }}
                           />
                         </div>
                       </td>
-                      <td>
+                      <td className="py-2.5">
                         <span
-                          className="badge rounded-pill extra-small px-2.5 py-1 fw-bold"
+                          className="badge rounded-pill extra-small px-2 py-0.5 fw-bold text-truncate d-inline-block"
                           style={{
-                            backgroundColor: String(item.readiness_status || '').toLowerCase().includes('ready') ? '#F0FDF4' : 'rgba(11, 44, 95, 0.08)',
-                            color: String(item.readiness_status || '').toLowerCase().includes('ready') ? '#16A34A' : '#0B2C5F',
-                            border: '1px solid rgba(11, 44, 95, 0.12)'
+                            maxWidth: '100%',
+                            fontSize: '0.72rem',
+                            backgroundColor: String(item.readiness_status || '').toLowerCase().includes('ready') ? '#F0FDF4' : 'rgba(252, 86, 60, 0.08)',
+                            color: String(item.readiness_status || '').toLowerCase().includes('ready') ? '#16A34A' : '#FC563C',
+                            border: '1px solid rgba(252, 86, 60, 0.12)'
                           }}
                         >
-                          {item.readiness_status}
+                          {t(item.readiness_status)}
                         </span>
                       </td>
-                      <td className="extra-small text-muted">{item.data_completeness_status}</td>
-                      <td className="extra-small text-muted font-mono">{item.calculated_at}</td>
+                      <td className="pe-3 py-2.5 text-end">
+                        <div className="d-flex flex-column align-items-end" style={{ lineHeight: 1.25 }}>
+                          <span className="fw-semibold text-dark text-truncate" style={{ fontSize: '0.74rem' }}>
+                            {String(item.calculated_at || '').split(' ')[0]}
+                          </span>
+                          <span className="extra-small text-muted font-mono text-truncate" style={{ fontSize: '0.68rem' }}>
+                            {String(item.calculated_at || '').split(' ').slice(1).join(' ')}
+                          </span>
+                        </div>
+                      </td>
                     </tr>
                   ));
                 })()}

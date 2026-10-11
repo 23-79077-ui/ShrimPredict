@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import AdminFilterToolbar from '../../components/AdminFilterToolbar';
 import api from '../../services/api';
 import Swal from 'sweetalert2';
+import { useLanguage } from '../../context/LanguageContext';
 import {
   FaExclamationTriangle,
   FaCheckCircle,
@@ -19,7 +20,112 @@ import {
   FaTimes,
   FaCamera,
   FaSearchPlus,
+  FaBolt,
+  FaFlask,
+  FaLightbulb,
+  FaHashtag,
+  FaCalendarAlt,
+  FaWrench,
+  FaExclamationCircle
 } from 'react-icons/fa';
+
+// Severity Metadata Helper for clear visual distinction
+const getSeverityMeta = (severity) => {
+  switch ((severity || '').toLowerCase()) {
+    case 'critical':
+      return {
+        label: 'Critical Severity',
+        color: '#EF4444',
+        accentBg: '#FEF2F2',
+        border: '#FCA5A5',
+        badgeBg: '#FEE2E2',
+        badgeText: '#991B1B',
+        indicator: '#DC2626',
+        cardBorder: '#EF4444',
+        icon: FaExclamationTriangle,
+      };
+    case 'high':
+      return {
+        label: 'High Severity',
+        color: '#F97316',
+        accentBg: '#FFF7ED',
+        border: '#FDBA74',
+        badgeBg: '#FFEDD5',
+        badgeText: '#C2410C',
+        indicator: '#EA580C',
+        cardBorder: '#F97316',
+        icon: FaExclamationCircle,
+      };
+    case 'medium':
+      return {
+        label: 'Medium Severity',
+        color: '#EAB308',
+        accentBg: '#FEFCE8',
+        border: '#FDE047',
+        badgeBg: '#FEF9C3',
+        badgeText: '#854D0E',
+        indicator: '#CA8A04',
+        cardBorder: '#EAB308',
+        icon: FaClock,
+      };
+    case 'low':
+    default:
+      return {
+        label: 'Low Severity',
+        color: '#10B981',
+        accentBg: '#ECFDF5',
+        border: '#A7F3D0',
+        badgeBg: '#D1FAE5',
+        badgeText: '#065F46',
+        indicator: '#059669',
+        cardBorder: '#10B981',
+        icon: FaCheckCircle,
+      };
+  }
+};
+
+// Category / Problem Type Helper for distinct badges and icons
+const getProblemTypeMeta = (type) => {
+  const tStr = (type || '').toLowerCase();
+  if (tStr.includes('equipment') || tStr.includes('pump') || tStr.includes('motor') || tStr.includes('aerator')) {
+    return {
+      icon: FaTools,
+      bg: '#EEF2FF',
+      text: '#4338CA',
+      border: '#C7D2FE',
+    };
+  }
+  if (tStr.includes('water') || tStr.includes('oxygen') || tStr.includes('ph') || tStr.includes('salinity') || tStr.includes('quality')) {
+    return {
+      icon: FaFlask,
+      bg: '#ECFEFF',
+      text: '#0E7490',
+      border: '#A5F3FC',
+    };
+  }
+  if (tStr.includes('electric') || tStr.includes('power') || tStr.includes('kuryente') || tStr.includes('generator')) {
+    return {
+      icon: FaBolt,
+      bg: '#FFFBEB',
+      text: '#B45309',
+      border: '#FDE68A',
+    };
+  }
+  if (tStr.includes('pond') || tStr.includes('dyke') || tStr.includes('net') || tStr.includes('gate') || tStr.includes('structure')) {
+    return {
+      icon: FaWrench,
+      bg: '#F3E8FF',
+      text: '#7E22CE',
+      border: '#E9D5FF',
+    };
+  }
+  return {
+    icon: FaExclamationTriangle,
+    bg: '#F1F5F9',
+    text: '#334155',
+    border: '#CBD5E1',
+  };
+};
 
 // Helper to resolve media URLs to absolute Apache XAMPP server address
 const resolveMediaUrl = (url) => {
@@ -42,6 +148,7 @@ const resolveMediaUrl = (url) => {
 };
 
 export default function AdminReportsPage() {
+  const { t } = useLanguage();
   const [searchParams] = useSearchParams();
   const targetId = searchParams.get('id') || searchParams.get('report_id');
   const targetPond = searchParams.get('pond');
@@ -149,7 +256,7 @@ export default function AdminReportsPage() {
         inputLabel: 'Resolution Notes / Actions Taken (Optional):',
         inputPlaceholder: 'e.g. Aerator motor repaired and tested by maintenance team.',
         showCancelButton: true,
-        confirmButtonColor: '#0B2C5F',
+        confirmButtonColor: '#FC563C',
         confirmButtonText: 'Yes, Mark as Done',
       });
 
@@ -208,42 +315,30 @@ export default function AdminReportsPage() {
     switch (severity) {
       case 'Critical':
         return (
-          <span
-            className="badge rounded-pill px-2.5 py-1 extra-small fw-bold d-inline-flex align-items-center gap-1"
-            style={{ backgroundColor: '#FEF2F2', color: '#B91C1C', border: '1px solid #FECACA' }}
-          >
+          <span className="badge rounded-pill px-2.5 py-1 extra-small fw-bold d-inline-flex align-items-center gap-1 admin-badge-critical">
             <span className="rounded-circle bg-danger" style={{ width: 6, height: 6 }} />
-            Critical Severity
+            {t('Critical Severity')}
           </span>
         );
       case 'High':
         return (
-          <span
-            className="badge rounded-pill px-2.5 py-1 extra-small fw-bold d-inline-flex align-items-center gap-1"
-            style={{ backgroundColor: '#FFF7ED', color: '#EA580C', border: '1px solid rgba(234, 88, 12, 0.3)' }}
-          >
-            <span className="rounded-circle" style={{ width: 6, height: 6, backgroundColor: '#EA580C' }} />
-            High Severity
+          <span className="badge rounded-pill px-2.5 py-1 extra-small fw-bold d-inline-flex align-items-center gap-1 admin-badge-high">
+            <span className="rounded-circle" style={{ width: 6, height: 6, backgroundColor: '#FC563C' }} />
+            {t('High Severity')}
           </span>
         );
       case 'Medium':
         return (
-          <span
-            className="badge rounded-pill px-2.5 py-1 extra-small fw-bold d-inline-flex align-items-center gap-1"
-            style={{ backgroundColor: '#FFFBEB', color: '#B45309', border: '1px solid #FDE68A' }}
-          >
+          <span className="badge rounded-pill px-2.5 py-1 extra-small fw-bold d-inline-flex align-items-center gap-1 admin-badge-medium">
             <span className="rounded-circle bg-warning" style={{ width: 6, height: 6 }} />
-            Medium Severity
+            {t('Medium Severity')}
           </span>
         );
       default:
         return (
-          <span
-            className="badge rounded-pill px-2.5 py-1 extra-small fw-bold d-inline-flex align-items-center gap-1"
-            style={{ backgroundColor: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0' }}
-          >
+          <span className="badge rounded-pill px-2.5 py-1 extra-small fw-bold d-inline-flex align-items-center gap-1 admin-badge-low">
             <span className="rounded-circle bg-success" style={{ width: 6, height: 6 }} />
-            Low Severity
+            {t('Low Severity')}
           </span>
         );
     }
@@ -254,58 +349,26 @@ export default function AdminReportsPage() {
     switch (status) {
       case 'Pending':
         return (
-          <span
-            className="badge rounded-pill px-3 py-1.5 fw-bold d-inline-flex align-items-center gap-1.5"
-            style={{
-              backgroundColor: '#FFF7ED',
-              color: '#EA580C',
-              border: '1px solid rgba(234, 88, 12, 0.3)',
-              fontSize: '0.8rem'
-            }}
-          >
-            <FaClock size={11} /> Pending Review
+          <span className="badge rounded-pill px-3 py-1.5 fw-bold d-inline-flex align-items-center gap-1.5 admin-status-pending" style={{ fontSize: '0.8rem' }}>
+            <FaClock size={11} /> {t('Pending Review')}
           </span>
         );
       case 'In Progress':
         return (
-          <span
-            className="badge rounded-pill px-3 py-1.5 fw-bold d-inline-flex align-items-center gap-1.5"
-            style={{
-              backgroundColor: '#EFF6FF',
-              color: '#1D4ED8',
-              border: '1px solid #BFDBFE',
-              fontSize: '0.8rem'
-            }}
-          >
-            <FaTools size={11} /> In Progress
+          <span className="badge rounded-pill px-3 py-1.5 fw-bold d-inline-flex align-items-center gap-1.5 admin-status-progress" style={{ fontSize: '0.8rem' }}>
+            <FaTools size={11} /> {t('In Progress')}
           </span>
         );
       case 'Done':
         return (
-          <span
-            className="badge rounded-pill px-3 py-1.5 fw-bold d-inline-flex align-items-center gap-1.5"
-            style={{
-              backgroundColor: '#ECFDF5',
-              color: '#047857',
-              border: '1px solid #A7F3D0',
-              fontSize: '0.8rem'
-            }}
-          >
-            <FaCheckCircle size={11} /> Resolved
+          <span className="badge rounded-pill px-3 py-1.5 fw-bold d-inline-flex align-items-center gap-1.5 admin-status-done" style={{ fontSize: '0.8rem' }}>
+            <FaCheckCircle size={11} /> {t('Resolved')}
           </span>
         );
       default:
         return (
-          <span
-            className="badge rounded-pill px-3 py-1.5 fw-bold d-inline-flex align-items-center gap-1.5"
-            style={{
-              backgroundColor: '#F1F5F9',
-              color: '#475569',
-              border: '1px solid #CBD5E1',
-              fontSize: '0.8rem'
-            }}
-          >
-            {status || 'Unknown'}
+          <span className="badge rounded-pill px-3 py-1.5 fw-bold d-inline-flex align-items-center gap-1.5 admin-status-default" style={{ fontSize: '0.8rem' }}>
+            {t(status || 'Unknown')}
           </span>
         );
     }
@@ -314,34 +377,25 @@ export default function AdminReportsPage() {
   return (
     <div>
       {/* 1. HERO HEADER */}
-      <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+      <div className="disease-hero-banner d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
         <div className="d-flex align-items-center gap-3">
-          <div
-            className="rounded-3 d-flex align-items-center justify-content-center shadow-xs flex-shrink-0"
-            style={{
-              width: 48,
-              height: 48,
-              background: 'linear-gradient(135deg, rgba(11, 44, 95, 0.08) 0%, rgba(30, 58, 138, 0.14) 100%)',
-              color: '#0B2C5F',
-              border: '1px solid rgba(11, 44, 95, 0.14)'
-            }}
-          >
+          <div className="hero-icon-badge shadow-xs">
             <FaTools size={20} />
           </div>
           <div>
             <div className="d-flex align-items-center gap-2 flex-wrap">
-              <h3 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#0B2C5F', fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
-                Equipment &amp; Maintenance Reports
+              <h3 className="fw-extrabold mb-0 tracking-tight text-dark" style={{ fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
+                {t('Equipment & Maintenance Reports')}
               </h3>
               <span
                 className="badge rounded-pill extra-small px-3 py-1 fw-bold"
-                style={{ backgroundColor: 'rgba(11, 44, 95, 0.08)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.16)' }}
+                style={{ backgroundColor: 'rgba(252, 86, 60, 0.08)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.16)' }}
               >
-                ● Field Audit Stream
+                {t('Caretaker Farm Reports')}
               </span>
             </div>
             <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
-              Review incoming caretaker requests, attached telemetry imagery, and track facility work orders.
+              {t('Review caretaker reports, attached photos, and track farm maintenance.')}
             </p>
           </div>
         </div>
@@ -352,7 +406,7 @@ export default function AdminReportsPage() {
           style={{ fontSize: '0.82rem', height: 40 }}
           onClick={loadReports}
         >
-          <FaSync size={11} className={loading ? 'fa-spin me-1.5' : 'me-1.5'} /> Refresh Reports
+          <FaSync size={11} className={loading ? 'fa-spin me-1.5' : 'me-1.5'} /> {t('Refresh')}
         </button>
       </div>
 
@@ -363,12 +417,12 @@ export default function AdminReportsPage() {
           <div className="tri-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Total Filed Reports</span>
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">{t('Total Filed Reports')}</span>
                 <div className="tri-kpi-icon tri-kpi-icon-blue">
                   <FaExclamationTriangle size={16} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#0B2C5F', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+              <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
                 {counts.total}
               </h2>
             </div>
@@ -377,9 +431,9 @@ export default function AdminReportsPage() {
                 <div className="tri-progress-bar tri-progress-bar-navy" style={{ width: '100%' }} />
               </div>
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small">Caretaker Entries</span>
-                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(11, 44, 95, 0.06)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.15)' }}>
-                  Total Filed
+                <span className="text-muted extra-small">{t('Caretaker Entries')}</span>
+                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.06)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.15)' }}>
+                  {t('Total Filed')}
                 </span>
               </div>
             </div>
@@ -388,20 +442,20 @@ export default function AdminReportsPage() {
 
         {/* Pending Review */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="tri-kpi-card" style={{ borderColor: counts.pending > 0 ? 'rgba(234, 88, 12, 0.28)' : 'rgba(11, 44, 95, 0.12)' }}>
+          <div className="tri-kpi-card" style={{ borderColor: counts.pending > 0 ? 'rgba(252, 86, 60, 0.28)' : 'rgba(252, 86, 60, 0.12)' }}>
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Pending Review</span>
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">{t('Pending Review')}</span>
                 <div className="tri-kpi-icon tri-kpi-icon-orange">
                   <FaClock size={16} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: counts.pending > 0 ? '#EA580C' : '#0B2C5F', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+              <h2 className="fw-extrabold mb-1" style={{ color: '#EA580C', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
                 {counts.pending}
               </h2>
             </div>
             <div>
-              <div className="tri-progress-track my-2.5" style={{ backgroundColor: 'rgba(234, 88, 12, 0.1)' }}>
+              <div className="tri-progress-track my-2.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.1)' }}>
                 <div
                   className="tri-progress-bar tri-progress-bar-orange"
                   style={{
@@ -410,9 +464,9 @@ export default function AdminReportsPage() {
                 />
               </div>
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small">Awaiting Action</span>
-                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: '#FFF7ED', color: '#EA580C', border: '1px solid rgba(234, 88, 12, 0.25)' }}>
-                  Review Needed
+                <span className="text-muted extra-small">{t('Awaiting Action')}</span>
+                <span className="badge rounded-pill extra-small px-2 py-0.5 admin-badge-high">
+                  {t('Review Needed')}
                 </span>
               </div>
             </div>
@@ -424,12 +478,12 @@ export default function AdminReportsPage() {
           <div className="tri-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">In Progress</span>
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">{t('In Progress')}</span>
                 <div className="tri-kpi-icon tri-kpi-icon-blue">
                   <FaTools size={16} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#0B2C5F', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+              <h2 className="fw-extrabold mb-1" style={{ color: '#2563EB', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
                 {counts.in_progress}
               </h2>
             </div>
@@ -443,9 +497,9 @@ export default function AdminReportsPage() {
                 />
               </div>
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small">Active Work Orders</span>
-                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(11, 44, 95, 0.06)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.15)' }}>
-                  Assigned
+                <span className="text-muted extra-small">{t('Active Repairs')}</span>
+                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.06)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.15)' }}>
+                  {t('Assigned')}
                 </span>
               </div>
             </div>
@@ -457,12 +511,12 @@ export default function AdminReportsPage() {
           <div className="tri-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Resolved / Done</span>
+                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">{t('Resolved / Done')}</span>
                 <div className="tri-kpi-icon tri-kpi-icon-blue">
                   <FaCheckCircle size={16} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#0B2C5F', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+              <h2 className="fw-extrabold mb-1" style={{ color: '#059669', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
                 {counts.done}
               </h2>
             </div>
@@ -477,9 +531,9 @@ export default function AdminReportsPage() {
                 />
               </div>
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small">Closed Requests</span>
-                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0' }}>
-                  Verified
+                <span className="text-muted extra-small">{t('Finished Repairs')}</span>
+                <span className="badge rounded-pill extra-small px-2 py-0.5 admin-badge-low">
+                  {t('Verified')}
                 </span>
               </div>
             </div>
@@ -487,83 +541,86 @@ export default function AdminReportsPage() {
         </div>
       </div>
 
-      {/* 3. ADMIN FILTER TOOLBAR */}
-      <AdminFilterToolbar
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        searchPlaceholder="Search maintenance issue, pond basin, caretaker..."
-        showFilters={showFilters}
-        onToggleFilters={() => setShowFilters(!showFilters)}
-        onRefresh={loadReports}
-        loading={loading}
-        tabs={[
-          { id: 'all', label: 'All Reports', count: counts.total },
-          { id: 'Pending', label: 'Pending Review', count: counts.pending },
-          { id: 'In Progress', label: 'In Progress', count: counts.in_progress },
-          { id: 'Done', label: 'Resolved / Done', count: counts.done }
-        ]}
-        activeTab={currentTab}
-        onTabChange={setCurrentTab}
-        metaRight={
-          <>
-            Facility SOP: <strong className="text-dark">Maintenance &amp; Incident Protocols</strong>
-          </>
-        }
-        filterFields={[
-          {
-            label: 'Severity Level',
-            type: 'select',
-            value: severityFilter,
-            onChange: setSeverityFilter,
-            colClass: 'col-12 col-md-4',
-            options: [
-              { value: 'all', label: 'All Severities' },
-              { value: 'Critical', label: 'Critical Only' },
-              { value: 'High', label: 'High Only' },
-              { value: 'Medium', label: 'Medium Only' },
-              { value: 'Low', label: 'Low Only' }
-            ]
-          },
-          {
-            label: 'Assigned Caretaker',
-            type: 'select',
-            value: caretakerFilter,
-            onChange: setCaretakerFilter,
-            colClass: 'col-12 col-md-4',
-            options: [
-              { value: 'all', label: 'All Caretakers' },
-              ...caretakers.map((c) => ({ value: String(c.id), label: c.full_name }))
-            ]
-          }
-        ]}
-        onResetFilters={() => {
-          setSearchQuery('');
-          setCurrentTab('all');
-          setSeverityFilter('all');
-          setCaretakerFilter('all');
-        }}
-      />
-
-      {/* 4. MAINTENANCE REPORTS FEED CARD */}
-      <div className="tri-card p-4">
+      {/* 3. MAINTENANCE REPORTS FEED CARD WITH INTEGRATED FILTER TOOLBAR */}
+      <div className="tri-card p-4 admin-feed-wrapper">
         <div className="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom flex-wrap gap-2">
           <div>
             <h5 className="fw-extrabold text-dark mb-0 d-flex align-items-center gap-2">
-              <FaTools className="text-primary" /> Maintenance Incident Stream
+              <FaTools className="text-primary" /> {t('Farm Maintenance & Issues List')}
             </h5>
             <p className="extra-small text-muted mb-0 mt-0.5">
-              Chronological log of equipment breakdowns, facility repairs, and caretaker work tickets
+              {t('List of equipment breakdowns, pond repairs, and caretaker notes')}
             </p>
           </div>
-          <span className="badge rounded-pill bg-light text-secondary border px-3 py-1.5 extra-small fw-bold">
-            {reports.length} Reports Logged
-          </span>
+          <div className="d-flex align-items-center gap-2 flex-wrap">
+            <span className="badge rounded-pill admin-incident-count-badge px-3 py-1.5 extra-small fw-bold">
+              {reports.length} {t('Reports Logged')}
+            </span>
+          </div>
         </div>
+
+        {/* Integrated Filter Toolbar with Distinct Border */}
+        <AdminFilterToolbar
+          className="admin-reports-search-box admin-filter-card"
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          searchPlaceholder={t('Search maintenance issue, pond, caretaker...')}
+          showFilters={showFilters}
+          onToggleFilters={() => setShowFilters(!showFilters)}
+          onRefresh={loadReports}
+          loading={loading}
+          tabs={[
+            { id: 'all', label: t('All Reports'), count: counts.total },
+            { id: 'Pending', label: t('Pending Review'), count: counts.pending },
+            { id: 'In Progress', label: t('In Progress'), count: counts.in_progress },
+            { id: 'Done', label: t('Resolved / Done'), count: counts.done }
+          ]}
+          activeTab={currentTab}
+          onTabChange={setCurrentTab}
+          metaRight={
+            <>
+              {t('Farm Guide:')} <strong className="text-dark">{t('Maintenance & Incident Steps')}</strong>
+            </>
+          }
+          filterFields={[
+            {
+              label: t('Severity Level'),
+              type: 'select',
+              value: severityFilter,
+              onChange: setSeverityFilter,
+              colClass: 'col-12 col-md-4',
+              options: [
+                { value: 'all', label: t('All Severities') },
+                { value: 'Critical', label: t('Critical Only') },
+                { value: 'High', label: t('High Only') },
+                { value: 'Medium', label: t('Medium Only') },
+                { value: 'Low', label: t('Low Only') }
+              ]
+            },
+            {
+              label: t('Assigned Caretaker'),
+              type: 'select',
+              value: caretakerFilter,
+              onChange: setCaretakerFilter,
+              colClass: 'col-12 col-md-4',
+              options: [
+                { value: 'all', label: t('All Caretakers') },
+                ...caretakers.map((c) => ({ value: String(c.id), label: c.full_name }))
+              ]
+            }
+          ]}
+          onResetFilters={() => {
+            setSearchQuery('');
+            setCurrentTab('all');
+            setSeverityFilter('all');
+            setCaretakerFilter('all');
+          }}
+        />
 
         {loading ? (
           <div className="text-center py-5 text-muted">
             <div className="spinner-border text-primary spinner-border-sm me-2" role="status" />
-            Loading maintenance reports…
+            {t('Loading maintenance reports…')}
           </div>
         ) : (() => {
           const filteredReportsList = reports.filter((r) => {
@@ -579,69 +636,106 @@ export default function AdminReportsPage() {
 
           if (filteredReportsList.length === 0) {
             return (
-              <div className="text-center py-5 bg-light rounded-4 border">
+              <div className="text-center py-5 admin-empty-state-box rounded-4 border">
                 <FaExclamationTriangle className="text-muted opacity-50 fs-2 mb-2" />
-                <h6 className="fw-bold text-dark">No maintenance reports found</h6>
-                <p className="extra-small text-muted mb-0">No caretaker issue entries match the selected filters.</p>
+                <h6 className="fw-bold text-dark">{t('No maintenance reports found')}</h6>
+                <p className="extra-small text-muted mb-0">{t('No caretaker issue entries match the selected filters.')}</p>
               </div>
             );
           }
 
           return (
-            <div className="d-flex flex-column gap-3.5">
-              {filteredReportsList.map((report) => {
+            <div className="admin-scrollable-cards-4items" style={{ maxHeight: '520px', overflowY: 'auto', paddingRight: '6px' }}>
+              <div className="d-flex flex-column gap-3.5">
+                {filteredReportsList.map((report) => {
                 const resolvedPhotoUrl = resolveMediaUrl(report.photo_url);
                 const resolvedVideoUrl = resolveMediaUrl(report.video_url);
                 const isHighlighted = checkIsHighlighted(report);
                 const isPending = report.status === 'Pending';
                 const isDone = report.status === 'Done';
 
-                // Status border accent color
-                const leftAccentColor = isPending ? '#EA580C' : isDone ? '#10B981' : '#0B2C5F';
+                const sevMeta = getSeverityMeta(report.severity_level);
+                const probMeta = getProblemTypeMeta(report.problem_type);
+                const ProbIcon = probMeta.icon;
+                const SevIcon = sevMeta.icon;
+
+                // Status border accent color: distinct by severity when unresolved, emerald when done
+                const leftAccentColor = isDone ? '#10B981' : sevMeta.color;
 
                 return (
                   <div
                     key={report.id}
                     id={`maintenance-report-${report.id}`}
-                    className={`rounded-4 p-4 border transition-all ${isHighlighted ? 'highlighted-report-card' : ''}`}
+                    className={`rounded-4 p-4 border transition-all admin-incident-card ${isHighlighted ? 'highlighted-report-card' : ''}`}
                     style={{
-                      backgroundColor: '#FFFFFF',
-                      borderLeft: `4px solid ${leftAccentColor}`,
-                      boxShadow: '0 1px 4px rgba(11, 44, 95, 0.05), 0 6px 16px -4px rgba(11, 44, 95, 0.04)'
+                      borderLeft: `6px solid ${leftAccentColor}`,
                     }}
                   >
                     {/* Top Row: Badges, Title, Status & Actions */}
                     <div className="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
                       <div>
-                        {/* Meta Tags */}
+                        {/* Meta Tags with Clear Severity & Category Differentiation */}
                         <div className="d-flex align-items-center gap-2 flex-wrap mb-2">
-                          {renderSeverityBadge(report.severity_level)}
+                          {/* Enhanced Severity Badge with matching color and icon */}
                           <span
-                            className="badge rounded-pill px-2.5 py-1 extra-small fw-semibold"
-                            style={{ backgroundColor: '#F1F5F9', color: '#475569', border: '1px solid #E2E8F0' }}
+                            className="badge rounded-pill px-3 py-1 extra-small fw-bold d-inline-flex align-items-center gap-1.5 shadow-2xs"
+                            style={{
+                              backgroundColor: sevMeta.badgeBg,
+                              color: sevMeta.badgeText,
+                              border: `1px solid ${sevMeta.border}`,
+                            }}
                           >
-                            {report.problem_type}
+                            <span
+                              className="rounded-circle"
+                              style={{
+                                width: 7,
+                                height: 7,
+                                backgroundColor: sevMeta.indicator,
+                                boxShadow: report.severity_level === 'Critical' && !isDone ? `0 0 6px ${sevMeta.indicator}` : 'none',
+                              }}
+                            />
+                            <SevIcon size={10} />
+                            {t(sevMeta.label)}
                           </span>
+
+                          {/* Problem Type Badge with Distinct Category Icon */}
                           <span
-                            className="badge rounded-pill px-2.5 py-1 extra-small fw-bold"
-                            style={{ backgroundColor: 'rgba(11, 44, 95, 0.08)', color: '#0B2C5F', border: '1px solid rgba(11, 44, 95, 0.16)' }}
+                            className="badge rounded-pill px-2.5 py-1 extra-small fw-bold d-inline-flex align-items-center gap-1.5 shadow-2xs"
+                            style={{
+                              backgroundColor: probMeta.bg,
+                              color: probMeta.text,
+                              border: `1px solid ${probMeta.border}`,
+                            }}
                           >
-                            <FaWater className="me-1" /> {report.pond_name}
+                            <ProbIcon size={11} />
+                            {t(report.problem_type || 'General')}
                           </span>
-                          <div className="d-inline-flex align-items-center gap-1.5 bg-light border rounded-pill px-2.5 py-0.5">
+
+                          {/* Pond Location Badge */}
+                          <span className="badge rounded-pill px-2.5 py-1 extra-small fw-bold admin-pond-badge d-inline-flex align-items-center gap-1">
+                            <FaWater size={10} /> {report.pond_name}
+                          </span>
+
+                          {/* Caretaker Info Pill */}
+                          <div className="d-inline-flex align-items-center gap-1.5 admin-caretaker-pill rounded-pill px-2.5 py-0.5">
                             <div
                               className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0"
-                              style={{ width: 18, height: 18, fontSize: '0.62rem', background: '#0B2C5F' }}
+                              style={{ width: 18, height: 18, fontSize: '0.62rem', background: '#FC563C' }}
                             >
                               {(report.caretaker_name || 'C').charAt(0).toUpperCase()}
                             </div>
-                            <span className="extra-small text-dark fw-semibold">{report.caretaker_name}</span>
+                            <span className="extra-small fw-semibold admin-caretaker-pill-text">{report.caretaker_name}</span>
                           </div>
                         </div>
 
-                        {/* Incident Title */}
-                        <h5 className="fw-extrabold mb-0 mt-1" style={{ color: '#0B2C5F', fontSize: '1.1rem', letterSpacing: '-0.01em' }}>
-                          {report.specific_issue}
+                        {/* Incident Title: Crisp, bold, high-contrast dark text */}
+                        <h5 className="fw-extrabold mb-1 mt-2 text-dark fs-5 d-flex align-items-center gap-2 flex-wrap">
+                          <span>{report.specific_issue}</span>
+                          {report.severity_level === 'Critical' && !isDone && (
+                            <span className="badge bg-danger text-white rounded-pill extra-small px-2.5 py-0.5 fw-bold text-uppercase shadow-2xs" style={{ fontSize: '0.68rem', letterSpacing: '0.04em' }}>
+                              {t('Critical Alert')}
+                            </span>
+                          )}
                         </h5>
                       </div>
 
@@ -655,9 +749,9 @@ export default function AdminReportsPage() {
                             type="button"
                             className="btn btn-sm btn-tri-navy px-3 py-1.5 shadow-xs extra-small fw-bold"
                             onClick={() => handleUpdateStatus(report, 'Done')}
-                            title="Mark this maintenance issue as Resolved"
+                            title={t('Mark this maintenance issue as Resolved')}
                           >
-                            <FaCheckCircle size={11} className="me-1" /> Mark Done
+                            <FaCheckCircle size={11} className="me-1" /> {t('Mark Done')}
                           </button>
                         )}
 
@@ -666,9 +760,9 @@ export default function AdminReportsPage() {
                             type="button"
                             className="btn btn-sm btn-tri-outline px-3 py-1.5 shadow-xs extra-small fw-bold"
                             onClick={() => handleUpdateStatus(report, 'In Progress')}
-                            title="Set status to In Progress"
+                            title={t('Set status to In Progress')}
                           >
-                            <FaTools size={11} className="me-1" /> In Progress
+                            <FaTools size={11} className="me-1" /> {t('In Progress')}
                           </button>
                         )}
 
@@ -677,9 +771,9 @@ export default function AdminReportsPage() {
                             type="button"
                             className="btn btn-sm btn-tri-outline px-3 py-1.5 shadow-xs extra-small fw-bold"
                             onClick={() => handleUpdateStatus(report, 'Pending')}
-                            title="Reopen Report"
+                            title={t('Reopen Report')}
                           >
-                            <FaClock size={11} className="me-1" /> Reopen
+                            <FaClock size={11} className="me-1" /> {t('Reopen')}
                           </button>
                         )}
 
@@ -687,58 +781,57 @@ export default function AdminReportsPage() {
                           type="button"
                           className="btn-action-squircle action-delete"
                           onClick={() => handleDeleteReport(report)}
-                          title="Delete Report"
+                          title={t('Delete Report')}
                         >
                           <FaTrashAlt size={12} />
                         </button>
                       </div>
                     </div>
 
-                    {/* Description & Suggested Action Box */}
-                    <div
-                      className="p-3.5 rounded-3 mb-3"
-                      style={{ backgroundColor: '#F8FAFD', border: '1px solid rgba(11, 44, 95, 0.08)' }}
-                    >
-                      <p className="text-dark mb-0 fw-medium" style={{ fontSize: '0.9rem', lineHeight: '1.6' }}>
+                    {/* Description & Suggested Action Box: Crisp modern card */}
+                    <div className="p-3.5 rounded-3 mb-3 admin-incident-desc-box border shadow-2xs">
+                      <div className="d-flex align-items-center gap-2 mb-1.5">
+                        <FaCommentDots className="text-muted" size={13} />
+                        <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">{t('Issue Description & Notes')}</span>
+                      </div>
+                      <p className="admin-incident-desc-text mb-0 fw-medium" style={{ fontSize: '0.92rem', lineHeight: '1.6' }}>
                         {report.description}
                       </p>
                       {report.suggested_action && (
-                        <div
-                          className="mt-2.5 pt-2.5 border-top d-flex align-items-baseline gap-2 extra-small"
-                          style={{ borderColor: 'rgba(11, 44, 95, 0.08)' }}
-                        >
-                          <span className="badge bg-light text-primary border extra-small fw-bold">Suggested Action</span>
-                          <span className="text-secondary fst-italic">"{report.suggested_action}"</span>
+                        <div className="mt-3 pt-2.5 border-top d-flex align-items-center gap-2.5 extra-small admin-incident-suggested-row flex-wrap">
+                          <span className="badge admin-suggested-action-badge px-2.5 py-1 extra-small fw-bold d-inline-flex align-items-center gap-1">
+                            <FaLightbulb size={11} /> {t('Suggested Action')}
+                          </span>
+                          <span className="admin-suggested-action-text fw-semibold">
+                            "{report.suggested_action}"
+                          </span>
                         </div>
                       )}
                     </div>
 
                     {/* Attached Media Evidence Gallery */}
                     {(resolvedPhotoUrl || resolvedVideoUrl) && (
-                      <div
-                        className="p-3.5 rounded-3 mb-3"
-                        style={{ backgroundColor: 'rgba(11, 44, 95, 0.02)', border: '1px solid rgba(11, 44, 95, 0.08)' }}
-                      >
+                      <div className="p-3.5 rounded-3 mb-3 admin-media-gallery-box">
                         <div className="d-flex align-items-center justify-content-between mb-2">
                           <h6 className="fw-bold text-dark mb-0 extra-small text-uppercase tracking-wider d-flex align-items-center gap-1.5">
-                            <FaCamera className="text-primary" /> Attached Media Evidence
+                            <FaCamera className="text-primary" /> {t('Attached Photos & Videos')}
                           </h6>
-                          <span className="text-muted extra-small">Field Telemetry</span>
+                          <span className="text-muted extra-small">{t('Pond Notes & Photos')}</span>
                         </div>
 
                         <div className="row g-2.5 align-items-stretch">
                           {/* Attached Photo Evidence */}
                           {resolvedPhotoUrl && (
                             <div className={resolvedVideoUrl ? 'col-md-5' : 'col-md-6'}>
-                              <div className="bg-white p-2 rounded-3 border shadow-xs h-100 d-flex flex-column justify-content-between">
+                              <div className="admin-media-card p-2 rounded-3 border shadow-xs h-100 d-flex flex-column justify-content-between">
                                 <div className="d-flex align-items-center justify-content-between mb-1.5">
                                   <span
                                     className="badge px-2 py-0.5 extra-small fw-semibold d-flex align-items-center gap-1"
-                                    style={{ backgroundColor: 'rgba(11, 44, 95, 0.08)', color: '#0B2C5F' }}
+                                    style={{ backgroundColor: 'rgba(252, 86, 60, 0.08)', color: '#FC563C' }}
                                   >
-                                    <FaImage size={10} /> Photo Evidence
+                                    <FaImage size={10} /> {t('Photo Evidence')}
                                   </span>
-                                  <span className="text-muted extra-small">Click to zoom</span>
+                                  <span className="text-muted extra-small">{t('Click to zoom')}</span>
                                 </div>
 
                                 <div
@@ -756,7 +849,7 @@ export default function AdminReportsPage() {
                                     }}
                                   />
                                   <div className="position-absolute bottom-0 w-100 bg-dark bg-opacity-75 text-white text-center py-1 extra-small fw-semibold">
-                                    <FaSearchPlus className="me-1" size={10} /> View Full Image
+                                    <FaSearchPlus className="me-1" size={10} /> {t('View Full Image')}
                                   </div>
                                 </div>
                               </div>
@@ -766,15 +859,12 @@ export default function AdminReportsPage() {
                           {/* Attached Playable Video Evidence */}
                           {resolvedVideoUrl && (
                             <div className={resolvedPhotoUrl ? 'col-md-7' : 'col-md-8'}>
-                              <div className="bg-white p-2 rounded-3 border shadow-xs h-100 d-flex flex-column justify-content-between">
+                              <div className="admin-media-card p-2 rounded-3 border shadow-xs h-100 d-flex flex-column justify-content-between">
                                 <div className="d-flex align-items-center justify-content-between mb-1.5">
-                                  <span
-                                    className="badge px-2 py-0.5 extra-small fw-semibold d-flex align-items-center gap-1"
-                                    style={{ backgroundColor: '#FFF7ED', color: '#EA580C', border: '1px solid rgba(234, 88, 12, 0.25)' }}
-                                  >
-                                    <FaVideo size={10} /> Video Recording
+                                  <span className="badge px-2 py-0.5 extra-small fw-semibold d-flex align-items-center gap-1 admin-video-badge">
+                                    <FaVideo size={10} /> {t('Video Recording')}
                                   </span>
-                                  <span className="text-muted extra-small">Playable HD</span>
+                                  <span className="text-muted extra-small">{t('Playable HD')}</span>
                                 </div>
 
                                 <div className="rounded-2 overflow-hidden bg-black shadow-xs" style={{ minHeight: 150 }}>
@@ -785,7 +875,7 @@ export default function AdminReportsPage() {
                                     style={{ width: '100%', maxHeight: 165, borderRadius: 4, display: 'block' }}
                                     preload="metadata"
                                   >
-                                    Your browser does not support playing HTML5 video.
+                                    {t('Your browser does not support playing HTML5 video.')}
                                   </video>
                                 </div>
                               </div>
@@ -797,10 +887,7 @@ export default function AdminReportsPage() {
 
                     {/* Resolution Notes Callout */}
                     {report.admin_notes && (
-                      <div
-                        className="p-3 rounded-3 mb-3 d-flex align-items-start gap-2"
-                        style={{ backgroundColor: '#ECFDF5', border: '1px solid #A7F3D0', fontSize: '0.84rem' }}
-                      >
+                      <div className="p-3 rounded-3 mb-3 d-flex align-items-start gap-2 admin-resolution-box" style={{ fontSize: '0.84rem' }}>
                         <div
                           className="rounded-circle d-flex align-items-center justify-content-center text-success flex-shrink-0 mt-0.5"
                           style={{ width: 24, height: 24, backgroundColor: 'rgba(4, 120, 87, 0.12)' }}
@@ -809,45 +896,48 @@ export default function AdminReportsPage() {
                         </div>
                         <div className="flex-grow-1">
                           <div className="d-flex align-items-center justify-content-between flex-wrap gap-1">
-                            <strong className="text-success">Admin Resolution Notes ({report.resolved_by || 'Admin'}):</strong>
+                            <strong className="text-success">{t('Admin Resolution Notes')} ({report.resolved_by || 'Admin'}):</strong>
                             {report.resolved_at && (
                               <span className="extra-small text-muted">
                                 {new Date(report.resolved_at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
                               </span>
                             )}
                           </div>
-                          <p className="text-dark mb-0 mt-0.5 extra-small">{report.admin_notes}</p>
+                          <p className="admin-resolution-notes-text mb-0 mt-0.5 extra-small">{report.admin_notes}</p>
                         </div>
                       </div>
                     )}
 
                     {/* Footer: Date Stamp */}
-                    <div
-                      className="d-flex justify-content-between align-items-center flex-wrap pt-3 mt-3 border-top text-muted extra-small"
-                      style={{ borderColor: 'rgba(11, 44, 95, 0.08)' }}
-                    >
-                      <span className="fw-semibold">Report ID #{report.id}</span>
-                      <span>
-                        Filed on:{' '}
-                        {new Date(report.created_at || Date.now()).toLocaleString('en-US', {
-                          dateStyle: 'medium',
-                          timeStyle: 'short',
-                        })}
+                    <div className="d-flex justify-content-between align-items-center flex-wrap pt-2.5 mt-2.5 border-top text-muted extra-small admin-incident-footer">
+                      <span className="fw-bold d-inline-flex align-items-center gap-1 text-dark">
+                        <FaHashtag size={11} className="text-muted" /> {t('Report ID #')}{report.id}
+                      </span>
+                      <span className="d-inline-flex align-items-center gap-1.5">
+                        <FaCalendarAlt size={11} className="text-muted" />
+                        {t('Filed on:')}{' '}
+                        <strong className="text-dark ms-0.5">
+                          {new Date(report.created_at || Date.now()).toLocaleString('en-US', {
+                            dateStyle: 'medium',
+                            timeStyle: 'short',
+                          })}
+                        </strong>
                       </span>
                     </div>
                   </div>
                 );
               })}
             </div>
-          );
-        })()}
-      </div>
+          </div>
+        );
+      })()}
+    </div>
 
       {/* Full-screen Photo Preview Modal */}
       {previewImage && (
         <div
           className="modal show d-block"
-          style={{ backgroundColor: 'rgba(11, 44, 95, 0.75)', backdropFilter: 'blur(6px)', zIndex: 1060 }}
+          style={{ backgroundColor: 'rgba(252, 86, 60, 0.75)', backdropFilter: 'blur(6px)', zIndex: 1060 }}
           onClick={() => setPreviewImage(null)}
         >
           <div className="modal-dialog modal-dialog-centered modal-lg" onClick={(e) => e.stopPropagation()}>

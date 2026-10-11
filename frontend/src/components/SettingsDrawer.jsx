@@ -41,7 +41,7 @@ export default function SettingsDrawer({
       key: 'profile',
       label: 'Operator Profile',
       desc: 'Personal profile, name & contact info',
-      icon: <FaUser size={15} style={{ color: '#0284C7' }} />,
+      icon: <FaUser size={15} style={{ color: '#FC563C' }} />,
       badge: 'Profile'
     },
     {
@@ -86,7 +86,7 @@ export default function SettingsDrawer({
       key: 'general',
       label: 'System General Settings',
       desc: 'Farm identity, branding & operational mode',
-      icon: <FaCog size={15} style={{ color: '#0284C7' }} />,
+      icon: <FaCog size={15} style={{ color: '#FC563C' }} />,
       badge: 'General'
     },
     {
@@ -166,7 +166,7 @@ export default function SettingsDrawer({
         <div
           className="p-3.5 px-4 d-flex align-items-center justify-content-between border-bottom"
           style={{
-            backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
+            backgroundColor: isDark ? '#1E293B' : '#E9E4E0',
             borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0'
           }}
         >
@@ -176,7 +176,7 @@ export default function SettingsDrawer({
               style={{
                 width: 36,
                 height: 36,
-                background: 'linear-gradient(135deg, #0B2C5F 0%, #FF7A00 100%)'
+                background: 'linear-gradient(135deg, #FC563C 0%, #FC563C 100%)'
               }}
             >
               <FaCog size={16} />
@@ -209,7 +209,7 @@ export default function SettingsDrawer({
                 width: 44,
                 height: 44,
                 fontSize: '1rem',
-                background: 'linear-gradient(135deg, #FF7A00 0%, #0B2C5F 100%)'
+                background: 'linear-gradient(135deg, #FC563C 0%, #FC563C 100%)'
               }}
             >
               {(user?.full_name || 'User').slice(0, 2).toUpperCase()}
@@ -283,7 +283,7 @@ export default function SettingsDrawer({
         <div
           className="p-3.5 px-4 border-top d-flex align-items-center justify-content-between gap-2"
           style={{
-            backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
+            backgroundColor: isDark ? '#1E293B' : '#E9E4E0',
             borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0'
           }}
         >

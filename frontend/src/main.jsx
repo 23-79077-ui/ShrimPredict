@@ -4,28 +4,27 @@ import App from './App';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './index.css';
 
-// Global helper to apply theme live
-export const applyAppTheme = (themeName) => {
-  const isDark = themeName === 'dark';
-  localStorage.setItem('shrim_theme', isDark ? 'dark' : 'light');
-  
-  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-  document.documentElement.setAttribute('data-bs-theme', isDark ? 'dark' : 'light');
-  
-  if (isDark) {
-    document.body.classList.add('dark-theme');
-    document.body.classList.remove('light-theme');
-  } else {
-    document.body.classList.add('light-theme');
-    document.body.classList.remove('dark-theme');
-  }
+import {
+  applyAppTheme,
+  getEffectiveTheme,
+  getThemePreference,
+  getTimeBasedTheme,
+  resetThemeToAuto,
+  setManualTheme,
+  initThemeSystem
+} from './utils/theme';
 
-  window.dispatchEvent(new CustomEvent('shrim-theme-changed', { detail: { theme: isDark ? 'dark' : 'light' } }));
+export {
+  applyAppTheme,
+  getEffectiveTheme,
+  getThemePreference,
+  getTimeBasedTheme,
+  resetThemeToAuto,
+  setManualTheme
 };
 
-// Initialize Dark/Light theme on startup
-const savedTheme = localStorage.getItem('shrim_theme') || 'dark';
-applyAppTheme(savedTheme);
+// Initialize theme on app startup (auto 6am-6pm light, 6pm-6am dark unless manually chosen)
+initThemeSystem();
 
 const container = document.getElementById('root');
 let root = container._reactRootContainer;

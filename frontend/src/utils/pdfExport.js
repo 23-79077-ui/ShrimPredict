@@ -25,17 +25,17 @@ export function downloadDashboardPDF({ stats, feedingRecords, caretakerName, dat
       display: flex;
       justify-content: space-between;
       align-items: center;
-      border-bottom: 3px solid #0B2C5F;
+      border-bottom: 3px solid #FC563C;
       padding-bottom: 12px;
       margin-bottom: 20px;
     }
     .brand {
       font-size: 26px;
       font-weight: 800;
-      color: #0B2C5F;
+      color: #FC563C;
       letter-spacing: -0.5px;
     }
-    .brand span { color: #FF7A00; }
+    .brand span { color: #FC563C; }
     .report-title {
       font-size: 16px;
       font-weight: 700;
@@ -47,7 +47,7 @@ export function downloadDashboardPDF({ stats, feedingRecords, caretakerName, dat
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 12px;
-      background: #f8fafc;
+      background: #E9E4E0;
       border: 1px solid #e2e8f0;
       border-radius: 8px;
       padding: 12px 16px;
@@ -69,7 +69,7 @@ export function downloadDashboardPDF({ stats, feedingRecords, caretakerName, dat
       background: #f1f5f9;
     }
     .metric-card strong { display: block; font-size: 10px; color: #475569; text-transform: uppercase; }
-    .metric-card .val { font-size: 18px; font-weight: 800; color: #0B2C5F; margin-top: 4px; }
+    .metric-card .val { font-size: 18px; font-weight: 800; color: #FC563C; margin-top: 4px; }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -82,14 +82,14 @@ export function downloadDashboardPDF({ stats, feedingRecords, caretakerName, dat
       font-size: 11px;
     }
     th {
-      background-color: #0B2C5F;
+      background-color: #FC563C;
       color: #ffffff;
       font-weight: 600;
       text-transform: uppercase;
       font-size: 10px;
       letter-spacing: 0.5px;
     }
-    tr:nth-child(even) { background-color: #f8fafc; }
+    tr:nth-child(even) { background-color: #E9E4E0; }
     .footer {
       margin-top: 25px;
       border-top: 1px solid #e2e8f0;
@@ -126,7 +126,7 @@ export function downloadDashboardPDF({ stats, feedingRecords, caretakerName, dat
     <div class="metric-card"><strong>Total Feed Consumed</strong><div class="val">${totalKg.toFixed(1)} kg</div></div>
   </div>
 
-  <h4 style="font-size: 13px; margin-bottom: 6px; color: #0B2C5F; text-transform: uppercase;">Caretaker Feeding Records Summary</h4>
+  <h4 style="font-size: 13px; margin-bottom: 6px; color: #FC563C; text-transform: uppercase;">Caretaker Feeding Records Summary</h4>
   <table>
     <thead>
       <tr>
