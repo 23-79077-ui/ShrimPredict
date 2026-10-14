@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import {
   FaCamera,
@@ -120,6 +120,9 @@ const SEVERITY_LEVELS = [
 export default function ReportsPage() {
   const { t } = useLanguage();
   const { user } = useAuth();
+  const location = useLocation();
+  const scanReport = location.state?.scanReport;
+  const scanReportPrefillHandled = useRef(false);
   const [searchParams] = useSearchParams();
   const targetId = searchParams.get('id') || searchParams.get('report_id');
 
@@ -270,6 +273,59 @@ export default function ReportsPage() {
       setUploadingImage(false);
     }
   };
+
+  useEffect(() => {
+    if (!scanReport || loadingPonds || scanReportPrefillHandled.current) return;
+    scanReportPrefillHandled.current = true;
+
+    const matchedPond = ponds.find((pond) => (
+      String(pond.pond_name || pond.name || '').toLowerCase()
+      === String(scanReport.pondName || '').toLowerCase()
+    )) || ponds[0];
+    const diagnosis = String(scanReport.diseaseName || 'Shrimp health assessment');
+    const diagnosisNotes = String(scanReport.description || '').trim();
+    const recommendation = String(scanReport.recommendation || '').trim();
+
+    setActiveTab('submit');
+    setForm((prev) => ({
+      ...prev,
+      pondId: matchedPond?.id ? String(matchedPond.id) : prev.pondId,
+      problemType: 'Disease / Sick Shrimp',
+      specificIssue: `${diagnosis} detected`,
+      severityLevel: scanReport.status === 'Diseased' ? 'High' : 'Medium',
+      description: [
+        `Disease scan result: ${diagnosis}.`,
+        diagnosisNotes,
+      ].filter(Boolean).join('\n\n'),
+      suggestedAction: recommendation,
+    }));
+
+    if (scanReport.imageFile instanceof File) {
+      setImageFile(scanReport.imageFile);
+      setImagePreview(URL.createObjectURL(scanReport.imageFile));
+
+      const formData = new FormData();
+      formData.append('file', scanReport.imageFile);
+      setUploadingImage(true);
+      api.post('/upload_report_media.php', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+        .then((res) => {
+          if (res.data?.success) {
+            setForm((prev) => ({ ...prev, photoUrl: res.data.file_url }));
+          } else {
+            throw new Error(res.data?.message || 'The scan photo could not be uploaded.');
+          }
+        })
+        .catch((error) => {
+          console.error('Disease scan photo upload failed:', error);
+          Swal.fire({
+            icon: 'error',
+            title: 'Photo Upload Error',
+            text: error.response?.data?.message || error.message || 'Failed to attach the scan photo.',
+          });
+        })
+        .finally(() => setUploadingImage(false));
+    }
+  }, [loadingPonds, ponds, scanReport]);
 
   const handleVideoChange = async (e) => {
     const file = e.target.files[0];

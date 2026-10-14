@@ -1326,10 +1326,10 @@ export default function FeedingPage() {
         </div>
       </div>
 
-      {/* 2. 4 TRI-COLOR OPERATIONAL TELEMETRY CARDS */}
+      {/* 2. OPERATIONAL TELEMETRY CARDS (3-COLUMN CLEAN GRID) */}
       <div className="row g-3 g-xl-4 mb-4">
         {/* Card 1: Total Feed Dispensed */}
-        <div className="col-12 col-sm-6 col-xl-3">
+        <div className="col-12 col-md-4">
           <div className="tri-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
@@ -1360,7 +1360,7 @@ export default function FeedingPage() {
         </div>
 
         {/* Card 2: 7-Day Feed Volume */}
-        <div className="col-12 col-sm-6 col-xl-3">
+        <div className="col-12 col-md-4">
           <div className="tri-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
@@ -1391,7 +1391,7 @@ export default function FeedingPage() {
         </div>
 
         {/* Card 3: Feed Cost */}
-        <div className="col-12 col-sm-6 col-xl-3">
+        <div className="col-12 col-md-4">
           <div className="tri-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
@@ -1422,7 +1422,7 @@ export default function FeedingPage() {
         </div>
 
         {/* Card 4: Average Daily Feed */}
-        <div className="col-12 col-sm-6 col-xl-3">
+        <div className="col-12 col-md-4">
           <div className="tri-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">

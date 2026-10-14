@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { FaBug, FaCamera, FaCheck, FaExclamationTriangle, FaFilePdf, FaFilter, FaHistory, FaImage, FaInfoCircle, FaQrcode, FaRobot, FaSearch, FaShieldAlt, FaSpinner, FaTimesCircle, FaUpload, FaWater } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
+import { FaBug, FaCamera, FaCheck, FaExclamationTriangle, FaFileAlt, FaFilePdf, FaFilter, FaHistory, FaImage, FaInfoCircle, FaQrcode, FaRobot, FaSearch, FaShieldAlt, FaSpinner, FaTimesCircle, FaUpload, FaWater } from 'react-icons/fa';
 import Swal from 'sweetalert2';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -20,6 +21,7 @@ function isPrimaryDiagnosisLabel(value) {
 export default function DiseaseScanPage() {
   const { user } = useAuth();
   const { t, isFilipino } = useLanguage();
+  const navigate = useNavigate();
 
   const [currentTheme, setCurrentTheme] = useState(() => getEffectiveTheme());
   useEffect(() => {
@@ -164,19 +166,65 @@ export default function DiseaseScanPage() {
     const video = videoRef.current;
     if (!video || !streaming) return;
 
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const doCapture = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    const dataUrl = canvas.toDataURL('image/png');
-    setImage(dataUrl);
-    setImageFile(null);
-    setImageSource('Captured photo');
-    setResult(null);
-    setAdditionalScanEnabled(false);
-    setShowAdditionalPrompt(false);
+      const dataUrl = canvas.toDataURL('image/png');
+      setImage(dataUrl);
+      setImageFile(null);
+      setImageSource('Captured photo');
+      setResult(null);
+      setAdditionalScanEnabled(false);
+      setShowAdditionalPrompt(false);
+    };
+
+    const track = video.srcObject?.getVideoTracks()[0];
+    const capabilities = track?.getCapabilities && track.getCapabilities();
+    const hasTorch = capabilities && capabilities.torch;
+
+    if (hasTorch) {
+      Swal.fire({
+        title: 'Enable Flashlight?',
+        text: 'Do you want to turn on the device flashlight for this photo?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Yes',
+        cancelButtonText: 'No',
+        customClass: {
+          popup: 'shrim-swal-popup',
+          title: 'shrim-swal-title',
+          confirmButton: 'btn btn-tri-navy px-4 py-2 rounded-pill fw-bold shadow-sm',
+          cancelButton: 'btn btn-secondary px-4 py-2 rounded-pill fw-bold shadow-sm ms-2'
+        },
+        buttonsStyling: false,
+      }).then(async (result) => {
+        if (result.isConfirmed) {
+          try {
+            await track.applyConstraints({ advanced: [{ torch: true }] });
+            // Wait briefly for the camera to adjust to the new lighting
+            setTimeout(async () => {
+              doCapture();
+              try {
+                await track.applyConstraints({ advanced: [{ torch: false }] });
+              } catch (offErr) {
+                console.error('Failed to turn off torch:', offErr);
+              }
+            }, 800);
+          } catch (e) {
+            console.error('Failed to enable torch:', e);
+            doCapture();
+          }
+        } else {
+          doCapture();
+        }
+      });
+    } else {
+      doCapture();
+    }
   };
 
   const handleImageUpload = (event) => {
@@ -404,15 +452,39 @@ export default function DiseaseScanPage() {
     handleScan(true);
   };
 
+  const handleReportDiagnosis = async () => {
+    if (!diseaseTitle || !image) return;
+
+    try {
+      const reportImage = imageFile || await dataUrlToFile(image);
+      navigate('/caretaker/reports', {
+        state: {
+          scanReport: {
+            pondName: selectedPond,
+            diseaseName: diseaseTitle,
+            status: healthStatus,
+            description: descriptionText,
+            recommendation: result?.recommendation || '',
+            imageFile: reportImage,
+          },
+        },
+      });
+    } catch (error) {
+      console.error('Unable to prepare disease scan report:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Unable to Open Report',
+        text: 'The scan photo could not be attached. Please try uploading the image again.',
+      });
+    }
+  };
+
   const exportPdf = () => {
     const rows = filteredHistory.map((item) => `
       <tr>
         <td>${item.created_at || ''}</td>
         <td>${item.pond_name || item.disease_name || 'N/A'}</td>
         <td>${item.disease_name || 'N/A'}</td>
-        <td>${item.confidence_score || 0}%</td>
-        <td>${item.model_used || 'Desktop/Shrimp Model'}</td>
-        <td>${item.risk_level || ''}</td>
         <td>${item.health_status || item.status || ''}</td>
       </tr>
     `).join('');
@@ -434,8 +506,8 @@ export default function DiseaseScanPage() {
         <body>
           <h1>ShrimPredict Disease Detection History</h1>
           <table>
-            <thead><tr><th>Date</th><th>Pond</th><th>Disease / Condition</th><th>Confidence</th><th>Model Used</th><th>Risk</th><th>Status</th></tr></thead>
-            <tbody>${rows || '<tr><td colspan="7">No records</td></tr>'}</tbody>
+            <thead><tr><th>Date</th><th>Pond</th><th>Disease / Condition</th><th>Status</th></tr></thead>
+            <tbody>${rows || '<tr><td colspan="4">No records</td></tr>'}</tbody>
           </table>
         </body>
       </html>
@@ -531,8 +603,6 @@ export default function DiseaseScanPage() {
       item.disease_name,
       item.pond_name,
       item.caretaker_name,
-      item.model_used,
-      item.risk_level,
       item.health_status,
       item.status,
       item.created_at,
@@ -1012,6 +1082,13 @@ export default function DiseaseScanPage() {
                               style={{ width: `${Math.min(100, Math.max(0, displayConfidence))}%` }}
                             />
                           </div>
+                          <button
+                            type="button"
+                            className="btn btn-tri-orange btn-sm mt-3 d-inline-flex align-items-center gap-2"
+                            onClick={handleReportDiagnosis}
+                          >
+                            <FaFileAlt /> Report
+                          </button>
                         </div>
                       )}
 
@@ -1157,16 +1234,13 @@ export default function DiseaseScanPage() {
                 <th className="ps-3 py-3">Date &amp; Time</th>
                 <th className="py-3">Pond</th>
                 <th className="py-3">Disease / Outcome</th>
-                <th className="py-3">Confidence</th>
-                <th className="py-3">Model Used</th>
-                <th className="py-3">Risk Level</th>
                 <th className="py-3 pe-3 text-end">Pipeline Status</th>
               </tr>
             </thead>
             <tbody>
               {filteredHistory.length === 0 && (
                 <tr>
-                  <td colSpan="7" className="text-center py-5 text-muted extra-small fw-medium">
+                  <td colSpan="4" className="text-center py-5 text-muted extra-small fw-medium">
                     {historySearch
                       ? `No scan logs matching "${historySearch}".`
                       : 'No disease scans recorded yet.'}
@@ -1184,28 +1258,6 @@ export default function DiseaseScanPage() {
                     <td>
                       <span className="fw-bold" style={{ color: isHealthy ? '#047857' : isDiseased ? '#FC563C' : '#FC563C' }}>
                         {item.disease_name}
-                      </span>
-                    </td>
-                    <td className="fw-extrabold" style={{ color: '#FC563C' }}>
-                      {Number(item.confidence_score || 0).toFixed(2)}%
-                    </td>
-                    <td>
-                      <span className="extra-small text-muted d-inline-flex align-items-center gap-1">
-                        <FaRobot style={{ color: '#FC563C' }} /> {item.model_used || 'Desktop Model'}
-                      </span>
-                    </td>
-                    <td>
-                      <span
-                        className="badge rounded-pill extra-small fw-bold px-2.5 py-1"
-                        style={
-                          item.risk_level === 'High'
-                            ? { backgroundColor: '#FEF2F2', color: '#B91C1C', border: '1px solid #FECACA' }
-                            : item.risk_level === 'Medium'
-                            ? { backgroundColor: '#E9E4E0', color: '#FC563C', border: '1px solid #6E7575' }
-                            : { backgroundColor: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0' }
-                        }
-                      >
-                        {item.risk_level || 'Low'}
                       </span>
                     </td>
                     <td className="pe-3 text-end">
