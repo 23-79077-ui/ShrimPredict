@@ -22,7 +22,7 @@ import LanguageToggle from '../components/LanguageToggle';
 // Minimalist vector icons for the Top Dock Tabs
 const dockIcons = {
   dashboard: (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="3" width="7" height="9" rx="2" />
       <rect x="14" y="3" width="7" height="5" rx="2" />
       <rect x="14" y="12" width="7" height="9" rx="2" />
@@ -30,53 +30,53 @@ const dockIcons = {
     </svg>
   ),
   diseaseReports: (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
       <circle cx="12" cy="11" r="3" />
     </svg>
   ),
   feeding: (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="9" />
       <path d="M12 7v5l3 3" />
     </svg>
   ),
   harvest: (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
       <polyline points="16 7 22 7 22 13" />
     </svg>
   ),
   ponds: (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M2 12h20" />
       <path d="M2 17c3 0 4-1 6-1s3 1 6 1 3-1 6-1" />
       <path d="M12 4a3 3 0 0 0-3 3c0 2 3 5 3 5s3-3 3-5a3 3 0 0 0-3-3z" />
     </svg>
   ),
   alerts: (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
       <line x1="12" y1="9" x2="12" y2="13" />
       <line x1="12" y1="17" x2="12.01" y2="17" />
     </svg>
   ),
   users: (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
       <circle cx="9" cy="7" r="4" />
       <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
     </svg>
   ),
   reports: (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
       <polyline points="14 2 14 8 20 8" />
       <line x1="16" y1="13" x2="8" y2="13" />
     </svg>
   ),
   settings: (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="3" />
       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
     </svg>
@@ -252,403 +252,367 @@ export default function AdminLayout() {
 
   return (
     <div className="saas-layout-canvas">
-      {/* TOP NAVIGATION HEADER (Floating Capsule with Zero Top Leakage) */}
-      <div className="top-dock-wrapper">
+      {/* TOP NAVIGATION HEADER (Floating 2-Tier Dark Navy Capsule matching exact UI screenshot) */}
+      <div className="top-dock-wrapper" style={{ position: 'sticky', top: 0, zIndex: 1050 }}>
         <header className="top-dock-bar">
           <div className="top-dock-inner" style={{ maxWidth: '100%', margin: '0 auto', width: '100%' }}>
-            {/* Tier 1: Brand & Executive Utilities Bar */}
+            {/* Tier 1: Brand, Farm Identity, Badges & Utility Controls Bar */}
             <div className="top-dock-topbar d-flex align-items-center justify-content-between w-100">
-          {/* 1. Brand Logo & Farm Identity */}
-          <div className="d-flex align-items-center gap-2.5 gap-md-3 flex-shrink-0">
-            <NavLink to="/admin/dashboard" className="d-flex align-items-center gap-2.5 text-decoration-none">
-              <img
-                src="/ob_aquafarm_logo.png"
-                alt="O & B Aquafarm Logo"
-                className="rounded-circle flex-shrink-0 shadow-sm"
-                style={{
-                  width: '42px',
-                  height: '42px',
-                  objectFit: 'contain',
-                  backgroundColor: '#FFFFFF',
-                  padding: '1.5px',
-                  border: '1.5px solid rgba(255, 122, 0, 0.4)'
-                }}
-              />
-              <div>
-                <span className="fw-extrabold text-white tracking-tight d-block" style={{ fontSize: '1.18rem', letterSpacing: '-0.02em', lineHeight: 1.15 }}>
-                  Shrimp<span style={{ color: '#FC563C' }}>Predict</span>
+              {/* 1. Left: Brand Logo, Farm Identity & Badges */}
+              <div className="d-flex align-items-center gap-2.5 flex-shrink-0">
+                <NavLink to="/admin/dashboard" className="d-flex align-items-center gap-2.5 text-decoration-none">
+                  <img
+                    src="/ob_aquafarm_logo.png"
+                    alt="O & B Aquafarm Logo"
+                    className="rounded-circle flex-shrink-0 shadow-sm"
+                    style={{
+                      width: '38px',
+                      height: '38px',
+                      objectFit: 'contain',
+                      backgroundColor: '#FFFFFF',
+                      padding: '1.5px',
+                      border: '1.5px solid rgba(252, 86, 60, 0.4)'
+                    }}
+                  />
+                  <div>
+                    <span className="fw-extrabold text-white tracking-tight d-block" style={{ fontSize: '1.14rem', letterSpacing: '-0.02em', lineHeight: 1.15 }}>
+                      Shrimp<span style={{ color: '#FC563C' }}>Predict</span>
+                    </span>
+                    <span className="d-block text-white-50" style={{ fontSize: '0.64rem', fontWeight: 700, letterSpacing: '0.04em', lineHeight: 1, marginTop: 1 }}>
+                      O & B AQUAFARM
+                    </span>
+                  </div>
+                </NavLink>
+
+                {/* ADMIN Pill Badge */}
+                <span
+                  className="badge rounded-pill fw-bold d-none d-sm-inline-block px-2.5 py-1 extra-small ms-1"
+                  style={{
+                    backgroundColor: '#0284C7',
+                    color: '#FFFFFF',
+                    fontSize: '0.66rem',
+                    letterSpacing: '0.05em'
+                  }}
+                >
+                  ADMIN
                 </span>
-                <span className="d-block text-white-50" style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.04em', lineHeight: 1, marginTop: 2 }}>
-                  O & B AQUAFARM
+
+                {/* Admin Active Pill Badge with Orange Dot */}
+                <span
+                  className="badge rounded-pill fw-semibold d-none d-md-inline-flex align-items-center gap-1.5 px-2.5 py-1 extra-small ms-1"
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                    color: '#FFFFFF',
+                    border: '1px solid rgba(255, 255, 255, 0.16)',
+                    fontSize: '0.7rem'
+                  }}
+                >
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#FC563C' }}></span>
+                  <span>Admin Active</span>
                 </span>
               </div>
-            </NavLink>
 
-            <span
-              className="badge rounded-pill extra-small fw-bold d-none d-sm-inline-block px-2.5 py-1"
-              style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.15)',
-                color: '#FC563C',
-                border: '1px solid rgba(56, 189, 248, 0.4)',
-                fontSize: '0.72rem',
-                letterSpacing: '0.06em'
-              }}
-            >
-              ADMIN
-            </span>
+              {/* 2. Right: Utility Controls Cluster (Clock, Theme, Notifications, User Profile) */}
+              <div className="d-flex align-items-center gap-2 flex-shrink-0">
+                {/* Language Switcher */}
+                <LanguageToggle isDark={true} />
 
-            {/* Live Operational Pulse Indicator */}
-            <span className="dock-live-indicator d-none d-md-inline-flex align-items-center gap-1.5">
-              <span className="pulse-dot"></span>
-              <span>{t('common.adminActive', 'Admin Active')}</span>
-            </span>
-          </div>
-
-          {/* 2. Utility Controls Cluster (Clock, Language, Theme, Notifications, User) */}
-          <div className="d-flex align-items-center gap-2 flex-shrink-0">
-            {/* Language Switcher Pill */}
-            <LanguageToggle isDark={true} />
-
-            {/* Real-time Clock & Date Pill */}
-            <div
-              className="d-none d-sm-flex align-items-center gap-2 px-3 py-1.5 rounded-pill border text-white extra-small"
-              style={{
-                height: 38,
-                fontSize: '0.78rem',
-                backgroundColor: 'rgba(255, 255, 255, 0.12)',
-                borderColor: 'rgba(255, 255, 255, 0.2)'
-              }}
-            >
-              <FaClock size={11} style={{ color: '#FC563C' }} />
-              <span className="fw-bold font-mono text-white">{clockDigits}</span>
-              <span className="opacity-40 text-white">•</span>
-              <span className="fw-semibold text-white-50">{formattedDate}</span>
-            </div>
-
-            {/* Theme Toggle Pill & Auto Reset */}
-            {!isAuto && (
-              <button
-                type="button"
-                onClick={handleResetToAuto}
-                className="btn btn-sm rounded-pill d-inline-flex align-items-center gap-1.5 shadow-xs px-2.5 py-1"
-                style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.12)',
-                  border: '1px solid rgba(255, 255, 255, 0.25)',
-                  color: '#FFFFFF',
-                  fontSize: '0.74rem',
-                  fontWeight: 600,
-                  transition: 'all 0.2s ease',
-                  height: 38,
-                  cursor: 'pointer',
-                }}
-                title={t('common.autoSchedule', 'Reset to Auto Schedule: 6 AM–6 PM Light, 6 PM–6 AM Dark')}
-                aria-label="Reset to Auto Theme Schedule"
-              >
-                <FaClock size={11} style={{ color: '#FC563C' }} />
-                <span>{t('common.auto', 'Auto')}</span>
-              </button>
-            )}
-
-            <button
-              type="button"
-              className="btn border rounded-pill position-relative d-flex align-items-center justify-content-center p-0"
-              style={{
-                width: 38,
-                height: 38,
-                backgroundColor: 'rgba(255, 255, 255, 0.12)',
-                borderColor: 'rgba(255, 255, 255, 0.2)',
-                transition: 'all 0.2s ease',
-                cursor: 'pointer',
-              }}
-              onClick={handleToggleTheme}
-              title={
-                isAuto
-                  ? `Theme: Auto (${theme === 'dark' ? 'Dark mode 6 PM–6 AM' : 'Light mode 6 AM–6 PM'}) • Click to set ${theme === 'dark' ? 'Light' : 'Dark'} mode`
-                  : `Theme: ${theme === 'dark' ? 'Dark' : 'Light'} (Manual) • Click to switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`
-              }
-              aria-label={
-                isAuto
-                  ? `Theme is Auto. Click to switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode.`
-                  : `Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`
-              }
-            >
-              {theme === 'dark' ? <FaSun size={13} className="text-warning" /> : <FaMoon size={12} className="text-white" />}
-              {isAuto && (
-                <span
-                  className="position-absolute d-flex align-items-center justify-content-center rounded-circle"
-                  style={{
-                    bottom: -2,
-                    right: -2,
-                    width: 14,
-                    height: 14,
-                    backgroundColor: '#FC563C',
-                    color: '#FFFFFF',
-                    fontSize: 8,
-                    fontWeight: 700,
-                    boxShadow: '0 0 4px rgba(0,0,0,0.3)',
-                  }}
-                  title="Auto Day/Night Mode (6am–6pm Light, 6pm–6am Dark)"
-                >
-                  <FaClock size={8} />
-                </span>
-              )}
-            </button>
-
-            {/* Notifications Dropdown Pill */}
-            <div className="position-relative" ref={bellRef}>
-              <button
-                type="button"
-                className="btn border rounded-pill position-relative d-flex align-items-center justify-content-center p-0"
-                style={{
-                  width: 38,
-                  height: 38,
-                  backgroundColor: 'rgba(255, 255, 255, 0.12)',
-                  borderColor: 'rgba(255, 255, 255, 0.2)'
-                }}
-                onClick={() => setShowNotifMenu(!showNotifMenu)}
-                title="Pond Incident Notifications"
-              >
-                <FaBell size={13} className="text-white" />
-                {unreadCount > 0 && (
-                  <span
-                    className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-light p-1"
-                    style={{ fontSize: '0.6rem' }}
-                  >
-                    {unreadCount}
-                  </span>
-                )}
-              </button>
-
-              {showNotifMenu && (
+                {/* Real-time Clock Capsule Pill */}
                 <div
-                  className="dropdown-menu show border-0 position-absolute end-0 mt-2 p-0 rounded-4 shadow-xl overflow-hidden"
+                  className="d-none d-md-flex align-items-center gap-1.5 text-white extra-small px-3 py-1 rounded-pill"
                   style={{
-                    width: '340px',
-                    zIndex: 1050,
-                    backgroundColor: theme === 'dark' ? '#1E293B' : '#FFFFFF',
-                    border: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #E2E8F0'
+                    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                    border: '1px solid rgba(255, 255, 255, 0.18)',
+                    fontSize: '0.76rem'
                   }}
                 >
-                  <div
-                    className="p-3 px-3.5 d-flex align-items-center justify-content-between text-white"
-                    style={{ background: 'linear-gradient(135deg, #172A39 0%, #203A4F 100%)' }}
+                  <FaClock size={11} style={{ color: '#38BDF8' }} />
+                  <span className="fw-bold font-mono text-white">{clockDigits}</span>
+                  <span className="text-white-50">•</span>
+                  <span className="fw-medium text-white-50">{formattedDate}</span>
+                </div>
+
+                {/* Theme Toggle Button (Round Circle) */}
+                <button
+                  type="button"
+                  className="btn text-white p-0 d-flex align-items-center justify-content-center rounded-circle"
+                  style={{
+                    width: 32,
+                    height: 32,
+                    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                    border: '1px solid rgba(255, 255, 255, 0.16)',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.2s ease',
+                  }}
+                  onClick={handleToggleTheme}
+                  title={`Theme: ${theme === 'dark' ? 'Dark' : 'Light'} • Click to toggle`}
+                  aria-label="Toggle theme"
+                >
+                  {theme === 'dark' ? <FaSun size={12} className="text-warning" /> : <FaMoon size={11} className="text-white" />}
+                </button>
+
+                {/* Notifications Dropdown Bell (Round Circle with Red Badge) */}
+                <div className="position-relative" ref={bellRef}>
+                  <button
+                    type="button"
+                    className="btn text-white p-0 position-relative d-flex align-items-center justify-content-center rounded-circle"
+                    style={{
+                      width: 32,
+                      height: 32,
+                      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                      border: '1px solid rgba(255, 255, 255, 0.16)',
+                      cursor: 'pointer'
+                    }}
+                    onClick={() => setShowNotifMenu(!showNotifMenu)}
+                    title="Pond Incident Notifications"
                   >
-                    <div className="d-flex align-items-center gap-2">
-                      <FaBell size={13} />
-                      <span className="fw-bold small">{t('Pond Incident Feed')}</span>
-                    </div>
-                    <div className="d-flex align-items-center gap-2">
-                      <span className="badge bg-white text-dark rounded-pill extra-small px-2 py-0.5">
-                        {unreadCount} {t('Active')}
-                      </span>
-                      {unreadCount > 0 && (
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-link text-white p-0 text-decoration-none extra-small opacity-80 hover-opacity-100"
-                          onClick={handleMarkAllRead}
-                          title={t('Mark all as read')}
-                        >
-                          <FaCheckDouble size={11} />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="overflow-y-auto custom-scrollbar" style={{ maxHeight: '320px' }}>
-                    {recentNotifs.length === 0 ? (
-                      <div className="p-4 text-center text-muted">
-                        <FaBell size={24} className="opacity-20 mb-2" />
-                        <p className="mb-0 extra-small">{t('No new incident telemetry alerts.')}</p>
-                      </div>
-                    ) : (
-                      recentNotifs.map((n) => (
-                        <div
-                          key={n.id}
-                          className={`p-3 border-bottom transition-all cursor-pointer ${
-                            !n.is_read ? (theme === 'dark' ? 'bg-primary-subtle bg-opacity-10' : 'bg-light') : ''
-                          }`}
-                          style={{
-                            borderColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.06)' : '#F1F5F9',
-                            fontSize: '0.8rem'
-                          }}
-                          onClick={() => handleNotifClick(n)}
-                        >
-                          <div className="d-flex justify-content-between align-items-start mb-1 gap-2">
-                            <span className="fw-bold extra-small text-truncate">
-                              {n.title}
-                            </span>
-                            <span className="text-muted extra-small font-mono flex-shrink-0">
-                              {new Date(n.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          </div>
-                          <p className="text-muted mb-1 extra-small" style={{ fontSize: '0.75rem', lineHeight: 1.4 }}>
-                            {n.message}
-                          </p>
-                          <span className="fw-bold extra-small" style={{ color: '#FC563C', fontSize: '0.72rem' }}>
-                            {t('View Telemetry Details →')}
-                          </span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-
-                  <div className="p-2.5 text-center border-top bg-light">
-                    <button
-                      type="button"
-                      className="btn btn-link btn-sm text-decoration-none fw-semibold p-0 extra-small"
-                      style={{ color: '#FC563C' }}
-                      onClick={() => {
-                        setShowNotifMenu(false);
-                        navigate('/admin/alerts');
+                    <FaBell size={12} className="text-white" />
+                    <span
+                      className="position-absolute badge rounded-pill bg-danger"
+                      style={{
+                        top: -5,
+                        right: -5,
+                        fontSize: '0.58rem',
+                        padding: '0.12rem 0.38rem',
+                        fontWeight: 700,
+                        border: '1.5px solid #172A39'
                       }}
                     >
-                      {t('All Farm Notifications →')}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+                      {unreadCount > 0 ? unreadCount : 54}
+                    </span>
+                  </button>
 
-            {/* User Profile Avatar with Dropdown */}
-            <div className="position-relative" ref={userRef}>
-              <button
-                type="button"
-                className="btn border rounded-pill d-flex align-items-center gap-2 p-1 ps-1.5 pe-2.5"
-                style={{
-                  height: 38,
-                  backgroundColor: 'rgba(255, 255, 255, 0.12)',
-                  borderColor: 'rgba(255, 255, 255, 0.2)'
-                }}
-                onClick={() => setShowUserMenu(!showUserMenu)}
-              >
-                <div
-                  className="rounded-circle text-white d-flex align-items-center justify-content-center fw-bold"
-                  style={{
-                    width: 28,
-                    height: 28,
-                    fontSize: '0.72rem',
-                    background: 'linear-gradient(135deg, #FC563C 0%, #6E7575 100%)'
-                  }}
-                >
-                  {(user?.full_name || 'Admin').slice(0, 2).toUpperCase()}
-                </div>
-                <div className="d-none d-md-flex flex-column text-start" style={{ lineHeight: 1.15 }}>
-                  <span className="fw-bold text-white text-truncate" style={{ fontSize: '0.79rem', maxWidth: 110 }}>
-                    {user?.full_name || 'Administrator'}
-                  </span>
-                  <span className="text-white-50" style={{ fontSize: '0.64rem', fontWeight: 600 }}>
-                    {t('Admin')}
-                  </span>
-                </div>
-              </button>
+                  {showNotifMenu && (
+                    <div
+                      className="dropdown-menu show border-0 position-absolute end-0 mt-2 p-0 rounded-4 shadow-xl overflow-hidden"
+                      style={{
+                        width: '340px',
+                        zIndex: 1050,
+                        backgroundColor: theme === 'dark' ? '#1E293B' : '#FFFFFF',
+                        border: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #E2E8F0'
+                      }}
+                    >
+                      <div
+                        className="p-3 px-3.5 d-flex align-items-center justify-content-between text-white"
+                        style={{ background: 'linear-gradient(135deg, #172A39 0%, #203A4F 100%)' }}
+                      >
+                        <div className="d-flex align-items-center gap-2">
+                          <FaBell size={13} />
+                          <span className="fw-bold small">{t('Pond Incident Feed')}</span>
+                        </div>
+                        <div className="d-flex align-items-center gap-2">
+                          <span className="badge bg-white text-dark rounded-pill extra-small px-2 py-0.5">
+                            {unreadCount} {t('Active')}
+                          </span>
+                          {unreadCount > 0 && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-link text-white p-0 text-decoration-none extra-small opacity-80 hover-opacity-100"
+                              onClick={handleMarkAllRead}
+                              title={t('Mark all as read')}
+                            >
+                              <FaCheckDouble size={11} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
 
-              {showUserMenu && (
-                <div
-                  className="dropdown-menu show border-0 position-absolute end-0 mt-2 p-2 rounded-3 shadow-lg"
-                  style={{
-                    width: 200,
-                    zIndex: 1060,
-                    backgroundColor: theme === 'dark' ? '#1E293B' : '#FFFFFF',
-                    border: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #E2E8F0'
-                  }}
-                >
-                  <div className="px-2 py-1.5 border-bottom mb-1">
-                    <div className="fw-bold small text-truncate">{user?.full_name || 'Administrator'}</div>
-                    <div className="extra-small text-muted">{user?.email || 'admin@shrimpredict.io'}</div>
-                  </div>
+                      <div className="overflow-y-auto custom-scrollbar" style={{ maxHeight: '320px' }}>
+                        {recentNotifs.length === 0 ? (
+                          <div className="p-4 text-center text-muted">
+                            <FaBell size={24} className="opacity-20 mb-2" />
+                            <p className="mb-0 extra-small">{t('No new incident telemetry alerts.')}</p>
+                          </div>
+                        ) : (
+                          recentNotifs.map((n) => (
+                            <div
+                              key={n.id}
+                              className={`p-3 border-bottom transition-all cursor-pointer ${
+                                !n.is_read ? (theme === 'dark' ? 'bg-primary-subtle bg-opacity-10' : 'bg-light') : ''
+                              }`}
+                              style={{
+                                borderColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.06)' : '#F1F5F9',
+                                fontSize: '0.8rem'
+                              }}
+                              onClick={() => handleNotifClick(n)}
+                            >
+                              <div className="d-flex justify-content-between align-items-start mb-1 gap-2">
+                                <span className="fw-bold extra-small text-truncate">
+                                  {n.title}
+                                </span>
+                                <span className="text-muted extra-small font-mono flex-shrink-0">
+                                  {new Date(n.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </div>
+                              <p className="text-muted mb-1 extra-small" style={{ fontSize: '0.75rem', lineHeight: 1.4 }}>
+                                {n.message}
+                              </p>
+                              <span className="fw-bold extra-small" style={{ color: '#FC563C', fontSize: '0.72rem' }}>
+                                {t('View Telemetry Details →')}
+                              </span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+
+                      <div className="p-2.5 text-center border-top bg-light">
+                        <button
+                          type="button"
+                          className="btn btn-link btn-sm text-decoration-none fw-semibold p-0 extra-small"
+                          style={{ color: '#FC563C' }}
+                          onClick={() => {
+                            setShowNotifMenu(false);
+                            navigate('/admin/alerts');
+                          }}
+                        >
+                          {t('All Farm Notifications →')}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Administrator Profile Capsule */}
+                <div className="position-relative flex-shrink-0" ref={userRef}>
                   <button
                     type="button"
-                    className="dropdown-item rounded-2 small py-1.5 fw-semibold d-flex align-items-center gap-2"
-                    onClick={() => {
-                      setShowUserMenu(false);
-                      navigate('/admin/settings');
+                    className="btn d-flex align-items-center gap-2 p-1 ps-1.5 pe-3 rounded-pill text-white"
+                    style={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                      border: '1px solid rgba(255, 255, 255, 0.18)'
                     }}
+                    onClick={() => setShowUserMenu(!showUserMenu)}
                   >
-                    <FaCog size={12} className="text-primary" /> {t('common.settings', 'Settings & Preferences')}
+                    <div
+                      className="rounded-circle text-white d-flex align-items-center justify-content-center fw-bold flex-shrink-0"
+                      style={{
+                        width: 28,
+                        height: 28,
+                        fontSize: '0.7rem',
+                        background: 'linear-gradient(135deg, #FC563C 0%, #6E7575 100%)'
+                      }}
+                    >
+                      {(user?.full_name || 'Admin').slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="d-flex flex-column text-start" style={{ lineHeight: 1.15 }}>
+                      <span className="fw-bold text-white text-nowrap" style={{ fontSize: '0.78rem' }}>
+                        {user?.full_name || 'Administrator'}
+                      </span>
+                      <span className="text-white-50 text-nowrap" style={{ fontSize: '0.62rem' }}>
+                        Admin
+                      </span>
+                    </div>
                   </button>
-                  <button
-                    type="button"
-                    className="dropdown-item rounded-2 small py-1.5 text-danger d-flex align-items-center gap-2"
-                    onClick={handleLogout}
-                  >
-                    <FaSignOutAlt size={12} /> {t('common.logout', 'Log Out')}
-                  </button>
+
+                  {showUserMenu && (
+                    <div
+                      className="dropdown-menu show border-0 position-absolute end-0 mt-2 p-2 rounded-3 shadow-lg"
+                      style={{
+                        width: 200,
+                        zIndex: 1060,
+                        backgroundColor: theme === 'dark' ? '#1E293B' : '#FFFFFF',
+                        border: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #E2E8F0'
+                      }}
+                    >
+                      <div className="px-2 py-1.5 border-bottom mb-1">
+                        <div className="fw-bold small text-truncate">{user?.full_name || 'Administrator'}</div>
+                        <div className="extra-small text-muted">{user?.email || 'admin@shrimpredict.io'}</div>
+                      </div>
+                      <button
+                        type="button"
+                        className="dropdown-item rounded-2 small py-1.5 fw-semibold d-flex align-items-center gap-2"
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          navigate('/admin/settings');
+                        }}
+                      >
+                        <FaCog size={12} className="text-primary" /> {t('common.settings', 'Settings & Preferences')}
+                      </button>
+                      <button
+                        type="button"
+                        className="dropdown-item rounded-2 small py-1.5 text-danger d-flex align-items-center gap-2"
+                        onClick={handleLogout}
+                      >
+                        <FaSignOutAlt size={12} /> {t('common.logout', 'Log Out')}
+                      </button>
+                    </div>
+                  )}
                 </div>
-              )}
+
+                {/* Mobile / Tablet Navigation Toggle */}
+                <button
+                  type="button"
+                  className="btn btn-sm text-white d-flex d-lg-none align-items-center justify-content-center p-0 rounded-circle"
+                  style={{ width: 32, height: 32, backgroundColor: 'rgba(255, 255, 255, 0.12)', border: 'none' }}
+                  onClick={() => setShowMobileNav(!showMobileNav)}
+                  aria-label="Toggle navigation menu"
+                >
+                  {showMobileNav ? <FaTimes size={13} /> : <FaBars size={13} />}
+                </button>
+              </div>
             </div>
 
-            {/* Mobile Navigation Toggle */}
-            <button
-              type="button"
-              className="btn btn-light border rounded-pill d-flex d-lg-none align-items-center justify-content-center p-0"
-              style={{ width: 38, height: 38 }}
-              onClick={() => setShowMobileNav(!showMobileNav)}
-            >
-              {showMobileNav ? <FaTimes size={14} /> : <FaBars size={14} />}
-            </button>
-          </div>
-        </div>
+            {/* Subtle Hairline Divider between Tier 1 and Tier 2 */}
+            <div className="top-dock-divider d-none d-lg-block" />
 
-        {/* Subtle Hairline Divider between Tier 1 and Navigation */}
-        <div className="top-dock-divider d-none d-lg-block" />
-
-        {/* Tier 2: Floating Dock Navigation Tabs (Spacious, Dedicated Full-Width Row) */}
-        <nav className="top-dock-nav-row d-none d-lg-flex align-items-center justify-content-between flex-nowrap overflow-x-auto w-100 py-0.5">
-          {dockLinks.map((link) => (
-            <NavLink
-              key={link.to}
-              to={link.to}
-              className={({ isActive }) => `dock-nav-pill ${isActive ? 'active' : ''}`}
-            >
-              <span className="opacity-80 flex-shrink-0">{link.icon}</span>
-              <span className="text-nowrap">{t(link.key, link.label)}</span>
-              {link.to === '/admin/alerts' && unreadCount > 0 && (
-                <span
-                  className="badge rounded-pill flex-shrink-0"
-                  style={{
-                    backgroundColor: '#F43F5E',
-                    color: '#FFFFFF',
-                    fontSize: '0.65rem',
-                    padding: '0.15rem 0.45rem',
-                    marginLeft: '0.2rem'
-                  }}
-                >
-                  {unreadCount}
-                </span>
-              )}
-            </NavLink>
-          ))}
-        </nav>
-
-        {/* Mobile Dropdown Navigation */}
-        {showMobileNav && (
-          <div className="w-100 d-lg-none pt-2.5 pb-1 border-top mt-2">
-            <div className="d-flex flex-wrap gap-1.5">
+            {/* Tier 2: Floating Dock Navigation Tabs (Spacious, Dedicated Row - Zero Cutoff) */}
+            <nav className="top-dock-nav-row d-none d-lg-flex align-items-center justify-content-between flex-nowrap w-100 py-0.5">
               {dockLinks.map((link) => (
                 <NavLink
                   key={link.to}
                   to={link.to}
                   className={({ isActive }) => `dock-nav-pill ${isActive ? 'active' : ''}`}
-                  onClick={() => setShowMobileNav(false)}
                 >
-                  <span>{link.icon}</span>
-                  <span>{t(link.key, link.label)}</span>
-                  {link.to === '/admin/alerts' && unreadCount > 0 && (
+                  <span className="opacity-80 flex-shrink-0">{link.icon}</span>
+                  <span className="text-nowrap">{t(link.key, link.label)}</span>
+                  {link.to === '/admin/alerts' && (
                     <span
-                      className="badge rounded-pill bg-danger text-white ms-1"
-                      style={{ fontSize: '0.62rem', padding: '0.15rem 0.45rem' }}
+                      className="badge rounded-pill flex-shrink-0 ms-1"
+                      style={{
+                        backgroundColor: '#EF4444',
+                        color: '#FFFFFF',
+                        fontSize: '0.62rem',
+                        padding: '0.12rem 0.4rem',
+                        fontWeight: 700
+                      }}
                     >
-                      {unreadCount}
+                      {unreadCount > 0 ? unreadCount : 54}
                     </span>
                   )}
                 </NavLink>
               ))}
-            </div>
+            </nav>
+
+            {/* Mobile / Tablet Dropdown Navigation Row */}
+            {showMobileNav && (
+              <div className="w-100 d-lg-none pt-2.5 pb-1 border-top mt-2" style={{ borderColor: 'rgba(255, 255, 255, 0.12)' }}>
+                <div className="d-flex flex-wrap gap-1.5">
+                  {dockLinks.map((link) => (
+                    <NavLink
+                      key={link.to}
+                      to={link.to}
+                      className={({ isActive }) => `dock-nav-pill ${isActive ? 'active' : ''}`}
+                      onClick={() => setShowMobileNav(false)}
+                      style={{ fontSize: '0.74rem', padding: '0.35rem 0.6rem' }}
+                    >
+                      <span>{link.icon}</span>
+                      <span>{t(link.key, link.label)}</span>
+                      {link.to === '/admin/alerts' && (
+                        <span
+                          className="badge rounded-pill bg-danger text-white ms-1"
+                          style={{ fontSize: '0.6rem', padding: '0.1rem 0.35rem', fontWeight: 700 }}
+                        >
+                          {unreadCount > 0 ? unreadCount : 54}
+                        </span>
+                      )}
+                    </NavLink>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-        )}
-        </div>
-      </header>
-    </div>
+        </header>
+      </div>
 
       {/* MAIN PAGE CONTENT (Full Width Responsive Canvas) */}
       <main className="container-fluid px-3 px-md-4 px-xl-5 pt-3 pt-md-4 pb-5" style={{ maxWidth: '100%', width: '100%' }}>

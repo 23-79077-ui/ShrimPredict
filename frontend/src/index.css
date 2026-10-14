@@ -5704,7 +5704,11 @@
    color: #172A39;
    font-family: 'Poppins', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
    letter-spacing: -0.01em;
- }
+   overflow-x: hidden !important;
+  max-width: 100vw;
+  width: 100%;
+  box-sizing: border-box;
+}
 
  [data-theme="dark"] .saas-layout-canvas,
  body.dark-theme .saas-layout-canvas {
@@ -5718,15 +5722,19 @@
 
  /*  FLOATING TOP NAVIGATION DOCK (Capsule Floating with Zero Content Bleed) */
  .top-dock-wrapper {
-   position: sticky;
-   top: 0;
-   left: 0;
-   right: 0;
-   z-index: 1040;
-   padding: 0.85rem 1.25rem 0.65rem 1.25rem;
-   background: #F8FAFF;
-   transition: all 0.25s ease;
- }
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1040;
+  padding: 0.45rem 0.65rem 0.35rem 0.65rem;
+  background: #F8FAFC;
+  transition: all 0.25s ease;
+  overflow-x: clip;
+  max-width: 100vw;
+  width: 100%;
+  box-sizing: border-box;
+}
 
  [data-theme="dark"] .top-dock-wrapper,
  body.dark-theme .top-dock-wrapper {
@@ -5734,20 +5742,21 @@
  }
 
  .top-dock-bar {
-   max-width: 1480px;
-   margin: 0 auto;
-   width: 100%;
-   background: linear-gradient(135deg, #172A39 0%, #203A4F 100%) !important;
-   border: 1px solid rgba(255, 255, 255, 0.16) !important;
-   border-radius: 20px !important;
+  max-width: 100% !important;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+  background: linear-gradient(135deg, #172A39 0%, #203A4F 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  border-radius: 20px !important;
    box-shadow: 0 10px 30px rgba(7, 23, 51, 0.38), 0 2px 8px rgba(7, 23, 51, 0.2) !important;
-   padding: 0.65rem 1.25rem 0.55rem 1.25rem;
-   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-   font-family: 'Poppins', sans-serif;
-   position: relative;
-   z-index: 1045;
-   color: #FFFFFF !important;
- }
+   padding: 0.65rem 1.25rem 0.55rem 1.25rem !important;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: 'Poppins', sans-serif;
+  position: relative;
+  z-index: 1045;
+  color: #FFFFFF !important;
+}
 
  [data-theme="dark"] .top-dock-bar,
  body.dark-theme .top-dock-bar {
@@ -5802,9 +5811,9 @@
 
  /* Dock Pill Navigation Links (Evenly Distributed Edge-to-Edge) */
  .dock-nav-pill {
-   border-radius: 9999px;
-   padding: 0.44rem 0.65rem;
-   font-size: 0.81rem;
+  border-radius: 9999px;
+  padding: 0.42rem 0.65rem !important;
+   font-size: 0.81rem !important;
    font-weight: 600;
    color: rgba(255, 255, 255, 0.88);
    text-decoration: none;
@@ -5812,14 +5821,14 @@
    align-items: center;
    justify-content: center;
    text-align: center;
-   gap: 0.35rem;
+   gap: 0.35rem !important;
    border: 1px solid transparent;
    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-   white-space: nowrap;
+   white-space: nowrap !important;
    font-family: 'Poppins', sans-serif;
    letter-spacing: -0.01em;
-   flex: 1 1 auto;
- }
+   flex: 1 1 auto !important;
+}
 
  @media (max-width: 1440px) {
    .top-dock-bar {
@@ -9983,3 +9992,258 @@
    background-color: rgba(255, 255, 255, 0.08) !important;
    color: #E2E8F0 !important;
  }
+
+/* ==========================================================================
+   HIGH-FIDELITY ADMIN DASHBOARD DESIGN SYSTEM (ShrimpPredict)
+   Palette: Dark Navy (#172A39), Coral-Orange (#FC563C), Cool Gray (#F8FAFC), Pure White (#FFFFFF)
+   ========================================================================== */
+
+/* Top dock bar refinement for sleek single row */
+.top-dock-bar {
+  border-radius: 18px !important;
+  padding: 0.55rem 1.25rem !important;
+  box-shadow: 0 8px 24px rgba(7, 23, 51, 0.28) !important;
+}
+
+/* Minimalist Clean KPI Cards (No heavy top gradients, soft shadow backdrop, clean rounded corners) */
+.shrimp-kpi-card {
+  background: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  border-radius: 16px !important;
+  padding: 1.35rem 1.45rem !important;
+  box-shadow: 0 2px 10px -2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.02) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  height: 100% !important;
+  min-height: 155px !important;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.shrimp-kpi-card:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 20px -4px rgba(15, 23, 42, 0.07), 0 2px 6px -1px rgba(15, 23, 42, 0.04) !important;
+}
+
+[data-theme="dark"] .shrimp-kpi-card,
+body.dark-theme .shrimp-kpi-card {
+  background: #1E293B !important;
+  border-color: #334155 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Unified Filter Toolbar Row */
+.unified-filter-toolbar {
+  background: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  border-radius: 14px !important;
+  padding: 0.75rem 1rem !important;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.03) !important;
+}
+
+[data-theme="dark"] .unified-filter-toolbar,
+body.dark-theme .unified-filter-toolbar {
+  background: #1E293B !important;
+  border-color: #334155 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important;
+}
+
+.minimal-filter-control {
+  background-color: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  border-radius: 9px !important;
+  height: 38px !important;
+  font-size: 0.81rem !important;
+  color: #334155 !important;
+  font-weight: 500 !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.minimal-filter-control:focus {
+  border-color: #FC563C !important;
+  box-shadow: 0 0 0 3px rgba(252, 86, 60, 0.12) !important;
+  outline: none !important;
+}
+
+[data-theme="dark"] .minimal-filter-control,
+body.dark-theme .minimal-filter-control {
+  background-color: #0F172A !important;
+  border-color: #334155 !important;
+  color: #E2E8F0 !important;
+}
+
+/* Compact Pond Tile Cards */
+.compact-pond-card {
+  background: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  border-radius: 14px !important;
+  padding: 1.1rem 1.15rem !important;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.03) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  height: 100% !important;
+  min-height: 180px !important;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease !important;
+}
+
+.compact-pond-card:hover {
+  transform: translateY(-2px) !important;
+  border-color: #CBD5E1 !important;
+  box-shadow: 0 6px 16px -3px rgba(15, 23, 42, 0.07) !important;
+}
+
+[data-theme="dark"] .compact-pond-card,
+body.dark-theme .compact-pond-card {
+  background: #1E293B !important;
+  border-color: #334155 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Understated action buttons for pond tiles */
+.btn-understated-view {
+  background-color: #F8FAFC !important;
+  border: 1px solid #E2E8F0 !important;
+  color: #475569 !important;
+  font-size: 0.74rem !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+  padding: 0.32rem 0.75rem !important;
+  transition: all 0.15s ease !important;
+}
+
+.btn-understated-view:hover {
+  background-color: #F1F5F9 !important;
+  color: #1E293B !important;
+  border-color: #CBD5E1 !important;
+}
+
+.btn-understated-feed {
+  background-color: #FFF5F3 !important;
+  border: 1px solid rgba(252, 86, 60, 0.25) !important;
+  color: #FC563C !important;
+  font-size: 0.74rem !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+  padding: 0.32rem 0.75rem !important;
+  transition: all 0.15s ease !important;
+}
+
+.btn-understated-feed:hover {
+  background-color: #FEE7E2 !important;
+  color: #E03E22 !important;
+  border-color: rgba(252, 86, 60, 0.45) !important;
+}
+
+/* Circular Milestone Visualization for Harvest Forecast */
+.harvest-circular-timeline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  width: 100%;
+  padding: 0.5rem 0.25rem 1rem 0.25rem;
+}
+
+.harvest-circular-timeline::before {
+  content: '';
+  position: absolute;
+  top: 26px;
+  left: 6%;
+  right: 6%;
+  height: 3px;
+  background: #E2E8F0;
+  z-index: 1;
+}
+
+[data-theme="dark"] .harvest-circular-timeline::before,
+body.dark-theme .harvest-circular-timeline::before {
+  background: #334155;
+}
+
+.harvest-timeline-fill {
+  position: absolute;
+  top: 26px;
+  left: 6%;
+  height: 3px;
+  background: linear-gradient(90deg, #172A39 0%, #FC563C 100%);
+  z-index: 2;
+  transition: width 0.4s ease;
+}
+
+.harvest-milestone-item {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.harvest-milestone-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.78rem;
+  background: #FFFFFF;
+  border: 2.5px solid #E2E8F0;
+  color: #64748B;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+  margin-bottom: 0.4rem;
+}
+
+.harvest-milestone-circle.completed {
+  background: #172A39;
+  border-color: #172A39;
+  color: #FFFFFF;
+}
+
+.harvest-milestone-circle.active {
+  background: #FC563C;
+  border-color: #FC563C;
+  color: #FFFFFF;
+  box-shadow: 0 0 0 4px rgba(252, 86, 60, 0.22);
+}
+
+.harvest-milestone-circle.upcoming {
+  background: #F8FAFC;
+  border-color: #E2E8F0;
+  color: #94A3B8;
+}
+
+[data-theme="dark"] .harvest-milestone-circle.upcoming,
+body.dark-theme .harvest-milestone-circle.upcoming {
+  background: #0F172A;
+  border-color: #334155;
+  color: #64748B;
+}
+
+/* Green Pulse Dot for • Live indicator */
+.pulse-dot-green {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #10B981;
+  display: inline-block;
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  animation: pulseGreen 2s infinite;
+}
+
+@keyframes pulseGreen {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
