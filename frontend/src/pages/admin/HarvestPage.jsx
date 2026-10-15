@@ -101,7 +101,7 @@ export default function HarvestPage() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `ShrimpPredict_Harvest_Model_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `ShrimpPredict_Harvest_Forecast_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
   };
 

@@ -18,7 +18,6 @@ import {
 import {
   FaSeedling,
   FaCalendarWeek,
-  FaCoins,
   FaChartLine,
   FaWater,
   FaHistory,
@@ -1260,7 +1259,7 @@ export default function FeedingPage() {
     `;
 
     Swal.fire({
-      title: `<div style="display: flex; align-items: center; gap: 8px; font-family: 'Poppins', sans-serif;"><span style="color: #FC563C; font-weight: 800; font-size: 1.25rem;">Pond Feeding Logs: ${pondName}</span></div>`,
+      title: `<div style="display: flex; align-items: center; gap: 8px; font-family: 'Poppins', sans-serif;"><span style="color: #FC563C; font-weight: 800; font-size: 1.25rem;">Pond Feeding Logs Reports: ${pondName}</span></div>`,
       html: logHtml,
       width: 820,
       showCloseButton: true,
@@ -1275,7 +1274,7 @@ export default function FeedingPage() {
       <div className="d-flex align-items-center justify-content-between flex-wrap gap-2.5 mb-3">
         <div className="d-flex align-items-center gap-2.5">
           <h3 className="fw-extrabold mb-0 tracking-tight text-dark" style={{ fontSize: '1.48rem', letterSpacing: '-0.02em' }}>
-            {t('Feeding Logs & Farm Feed Records')}
+            {t('Feeding Logs Reports & Farm Feed Records')}
           </h3>
           <span
             className="badge rounded-pill d-inline-flex align-items-center gap-1.5 px-2.5 py-1"
@@ -1322,10 +1321,10 @@ export default function FeedingPage() {
         </div>
       </div>
 
-      {/* 2. OPERATIONAL TELEMETRY CARDS (4-COLUMN CLEAN KPI ROW) */}
+      {/* 2. OPERATIONAL TELEMETRY CARDS (3-COLUMN CLEAN KPI ROW) */}
       <div className="row g-3 g-xl-4 mb-4">
         {/* Card 1: Total Feed Dispensed */}
-        <div className="col-12 col-sm-6 col-xl-3">
+        <div className="col-12 col-md-4">
           <div className="shrimp-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
@@ -1354,7 +1353,7 @@ export default function FeedingPage() {
         </div>
 
         {/* Card 2: 7-Day Feed Volume */}
-        <div className="col-12 col-sm-6 col-xl-3">
+        <div className="col-12 col-md-4">
           <div className="shrimp-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
@@ -1382,37 +1381,8 @@ export default function FeedingPage() {
           </div>
         </div>
 
-        {/* Card 3: Feed Cost */}
-        <div className="col-12 col-sm-6 col-xl-3">
-          <div className="shrimp-kpi-card">
-            <div>
-              <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">
-                  {t('Estimated Nutrition Cost')}
-                </span>
-                <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: 34, height: 34, backgroundColor: '#F1F5F9', color: '#172A39' }}>
-                  <FaCoins size={15} />
-                </div>
-              </div>
-              <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.2rem', letterSpacing: '-0.03em' }}>
-                {metrics.estimatedCost}
-              </h2>
-            </div>
-            <div className="pt-2">
-              <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-secondary small fw-medium">
-                  ₱35.00/kg {t('avg')}
-                </span>
-                <span className="badge rounded-pill px-2.5 py-1 extra-small" style={{ backgroundColor: '#F1F5F9', color: '#475569', fontWeight: 600 }}>
-                  {t('Nutrition Budget')}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Card 4: Average Daily Feed */}
-        <div className="col-12 col-sm-6 col-xl-3">
+        {/* Card 3: Average Daily Feed */}
+        <div className="col-12 col-md-4">
           <div className="shrimp-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">

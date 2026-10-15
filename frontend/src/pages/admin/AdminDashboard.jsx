@@ -1790,7 +1790,7 @@ export default function AdminDashboard() {
                                   className="btn btn-understated-feed d-inline-flex align-items-center gap-1"
                                   onClick={() => navigate(`/admin/feeding?pond=${encodeURIComponent(p.pond_name || p.name)}`)}
                                 >
-                                  <FaUtensils size={10} /> {t('Feeding Logs')}
+                                  <FaUtensils size={10} /> {t('Feeding Logs Reports')}
                                 </button>
                               </div>
                             </div>
@@ -2883,9 +2883,9 @@ export default function AdminDashboard() {
               <button
                 type="button"
                 className="btn btn-sm btn-tri-outline px-3 py-1 extra-small shadow-xs"
-                onClick={() => navigate('/admin/disease-reports')}
+                onClick={() => navigate('/admin/scan-reports')}
               >
-                {t('All Detection Reports →')}
+                {t('All Scan Reports →')}
               </button>
             </div>
 
@@ -2959,7 +2959,7 @@ export default function AdminDashboard() {
                           type="button"
                           className="btn btn-sm btn-tri-navy px-3 py-1 flex-grow-1 extra-small shadow-xs"
                           style={{ fontSize: '0.72rem' }}
-                          onClick={() => navigate(`/admin/disease-reports?pond=${encodeURIComponent(item.pond)}`)}
+                          onClick={() => navigate(`/admin/scan-reports?pond=${encodeURIComponent(item.pond)}`)}
                         >
                           <FaEye size={10} className="me-1" /> {t('Inspect Details')}
                         </button>

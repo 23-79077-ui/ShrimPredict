@@ -6,6 +6,7 @@ import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import DiseaseReportsPage from './pages/admin/DiseaseReportsPage';
+import WaterQualityReportsPage from './pages/admin/WaterQualityReportsPage';
 import PondMonitoringPage from './pages/admin/PondMonitoringPage';
 import FeedingPage from './pages/admin/FeedingPage';
 import HarvestPage from './pages/admin/HarvestPage';
@@ -60,7 +61,11 @@ function AppRoutes() {
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<AdminDashboard />} />
         <Route path="notifications" element={<NotificationsPage />} />
+        <Route path="scan-reports" element={<DiseaseReportsPage />} />
         <Route path="disease-reports" element={<DiseaseReportsPage />} />
+        <Route path="water-quality-reports" element={<WaterQualityReportsPage />} />
+        <Route path="water-quality" element={<WaterQualityReportsPage />} />
+        <Route path="pond-reports" element={<PondMonitoringPage />} />
         <Route path="ponds" element={<PondMonitoringPage />} />
         <Route path="feeding" element={<FeedingPage />} />
         <Route path="harvest" element={<HarvestPage />} />

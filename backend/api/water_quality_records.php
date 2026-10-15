@@ -38,6 +38,7 @@ function ensureWaterQualityTable($conn) {
             image_path VARCHAR(255) DEFAULT NULL,
             raw_ocr_text TEXT DEFAULT NULL,
             notes TEXT DEFAULT NULL,
+            status VARCHAR(30) DEFAULT 'Normal',
             record_date DATE NOT NULL,
             recorded_at DATETIME NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -46,6 +47,12 @@ function ensureWaterQualityTable($conn) {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     ";
     $conn->exec($tableSql);
+
+    try {
+        $conn->exec("ALTER TABLE water_quality_records ADD COLUMN status VARCHAR(30) DEFAULT 'Safe'");
+    } catch (Throwable $ignored) {
+        // Column already exists
+    }
 
     $uploadsDir = __DIR__ . '/../uploads/water_quality';
     if (!is_dir($uploadsDir)) {
@@ -393,6 +400,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
+        // Calculate record water quality health status (Safe vs Critical)
+        $isDoSafe = ($dissolvedOxygen >= 5.0 && $dissolvedOxygen <= 10.0);
+        $isTempSafe = ($temperature >= 26.0 && $temperature <= 32.0);
+        $isPhSafe = ($phLevel >= 7.5 && $phLevel <= 8.5);
+        $isSalSafe = ($salinity >= 15.0 && $salinity <= 28.0);
+
+        $recordStatus = ($isDoSafe && $isTempSafe && $isPhSafe && $isSalSafe) ? 'Safe' : 'Critical';
+        if (!empty($_POST['status'])) {
+            $candidate = ucfirst(trim((string)$_POST['status']));
+            if (in_array($candidate, ['Safe', 'Critical'], true)) {
+                $recordStatus = $candidate;
+            }
+        }
+
         // Check if an existing record should be updated
         $isUpdate = false;
         if ($recordId > 0) {
@@ -418,6 +439,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     temperature = :temperature,
                     ph_level = :ph_level,
                     salinity = :salinity,
+                    status = :status,
                     capture_mode = :capture_mode,
                     record_date = :record_date,
                     notes = :notes
@@ -429,6 +451,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ':temperature' => $temperature,
                 ':ph_level' => $phLevel,
                 ':salinity' => $salinity,
+                ':status' => $recordStatus,
                 ':capture_mode' => $captureMode,
                 ':record_date' => $recordDate,
                 ':notes' => $notes,
@@ -459,9 +482,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Insert new record into water_quality_records table
             $insertStmt = $conn->prepare('
                 INSERT INTO water_quality_records
-                (pond_id, caretaker_id, recorded_by_name, dissolved_oxygen, temperature, ph_level, salinity, capture_mode, ocr_confidence, image_path, raw_ocr_text, notes, record_date, recorded_at)
+                (pond_id, caretaker_id, recorded_by_name, dissolved_oxygen, temperature, ph_level, salinity, status, capture_mode, ocr_confidence, image_path, raw_ocr_text, notes, record_date, recorded_at)
                 VALUES
-                (:pond_id, :caretaker_id, :recorded_by_name, :dissolved_oxygen, :temperature, :ph_level, :salinity, :capture_mode, :ocr_confidence, :image_path, :raw_ocr_text, :notes, :record_date, :recorded_at)
+                (:pond_id, :caretaker_id, :recorded_by_name, :dissolved_oxygen, :temperature, :ph_level, :salinity, :status, :capture_mode, :ocr_confidence, :image_path, :raw_ocr_text, :notes, :record_date, :recorded_at)
             ');
 
             $insertStmt->execute([
@@ -472,6 +495,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ':temperature' => $temperature,
                 ':ph_level' => $phLevel,
                 ':salinity' => $salinity,
+                ':status' => $recordStatus,
                 ':capture_mode' => $captureMode,
                 ':ocr_confidence' => $ocrConfidence,
                 ':image_path' => $imagePath,
@@ -553,6 +577,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'temperature' => $temperature,
                 'ph_level' => $phLevel,
                 'salinity' => $salinity,
+                'status' => $recordStatus,
                 'capture_mode' => $captureMode,
                 'image_path' => $imagePath,
                 'new_pond_status' => $newStatus,

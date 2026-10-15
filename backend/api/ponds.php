@@ -35,6 +35,11 @@ function ensurePondMonitoringColumns($conn) {
         'total_feed_kg' => 'ALTER TABLE ponds ADD COLUMN total_feed_kg DECIMAL(10,2) DEFAULT NULL',
         'latest_image' => 'ALTER TABLE ponds ADD COLUMN latest_image VARCHAR(255) DEFAULT NULL',
         'assigned_caretaker_name' => 'ALTER TABLE ponds ADD COLUMN assigned_caretaker_name VARCHAR(100) DEFAULT NULL',
+        'shrimp_weight_g' => 'ALTER TABLE ponds ADD COLUMN shrimp_weight_g DECIMAL(6,2) DEFAULT 18.50',
+        'cycle_target_feed_kg' => 'ALTER TABLE ponds ADD COLUMN cycle_target_feed_kg DECIMAL(10,2) DEFAULT 800.00',
+        'remaining_feed_kg' => 'ALTER TABLE ponds ADD COLUMN remaining_feed_kg DECIMAL(10,2) DEFAULT 155.00',
+        'is_active' => 'ALTER TABLE ponds ADD COLUMN is_active TINYINT(1) NOT NULL DEFAULT 1',
+        'operational_status' => 'ALTER TABLE ponds ADD COLUMN operational_status VARCHAR(20) NOT NULL DEFAULT "Active"',
     ];
 
     foreach ($needed as $column => $sql) {
@@ -91,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $stmt = $conn->query('
             SELECT p.*, 
                    GROUP_CONCAT(DISTINCT u_cp.id ORDER BY u_cp.full_name SEPARATOR ",") AS caretaker_ids,
-                   COALESCE(GROUP_CONCAT(DISTINCT u_cp.full_name ORDER BY u_cp.full_name SEPARATOR ", "), u_legacy.full_name, p.assigned_caretaker_name) AS caretaker_name,
+                   COALESCE(NULLIF(TRIM(p.assigned_caretaker_name), ""), GROUP_CONCAT(DISTINCT u_cp.full_name ORDER BY u_cp.full_name SEPARATOR ", "), u_legacy.full_name, "Unassigned") AS caretaker_name,
                    COALESCE(SUBSTRING_INDEX(GROUP_CONCAT(DISTINCT u_cp.id ORDER BY u_cp.full_name SEPARATOR ","), ",", 1), u_legacy.id) AS caretaker_id
             FROM ponds p
             LEFT JOIN caretaker_ponds cp ON p.id = cp.pond_id
@@ -196,9 +201,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 $diseaseAlertsCount++;
             }
 
-            $feedToday = $feedRow ? (float)$feedRow['feed_today_kg'] : (is_numeric($p['feed_today_kg'] ?? null) ? (float)$p['feed_today_kg'] : 0.0);
-            $totalFeed = $feedRow ? (float)$feedRow['total_feed_kg'] : (is_numeric($p['total_feed_kg'] ?? null) ? (float)$p['total_feed_kg'] : 0.0);
+            $dbTotalFeed = is_numeric($p['total_feed_kg'] ?? null) ? (float)$p['total_feed_kg'] : 0.0;
+            $loggedTotalFeed = $feedRow ? (float)$feedRow['total_feed_kg'] : 0.0;
+            $totalFeed = max($dbTotalFeed, $loggedTotalFeed);
+
+            $feedToday = $feedRow && (float)$feedRow['feed_today_kg'] > 0
+                ? (float)$feedRow['feed_today_kg']
+                : (is_numeric($p['feed_today_kg'] ?? null) ? (float)$p['feed_today_kg'] : 0.0);
             $totalFeedSum += $feedToday;
+
+            $cycleTarget = is_numeric($p['cycle_target_feed_kg'] ?? null) && (float)$p['cycle_target_feed_kg'] > 0
+                ? (float)$p['cycle_target_feed_kg']
+                : 800.0;
+            $remainingFeed = is_numeric($p['remaining_feed_kg'] ?? null) && (float)$p['remaining_feed_kg'] >= 0
+                ? (float)$p['remaining_feed_kg']
+                : max(0.0, round($cycleTarget - $totalFeed, 2));
+            $shrimpWeight = is_numeric($p['shrimp_weight_g'] ?? null) && (float)$p['shrimp_weight_g'] > 0
+                ? (float)$p['shrimp_weight_g']
+                : 18.50;
+
+            $rawStatus = trim((string)($p['status'] ?? ''));
+            $isInactive = (strtolower($rawStatus) === 'inactive') 
+                || (isset($p['is_active']) && (int)$p['is_active'] === 0)
+                || (isset($p['operational_status']) && strtolower(trim($p['operational_status'])) === 'inactive')
+                || empty($stockingDateStr);
+            $operationalStatus = $isInactive ? 'Inactive' : 'Active';
 
             $ponds[] = [
                 'id' => $pondId,
@@ -209,9 +236,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 'dissolved_oxygen' => is_numeric($p['dissolved_oxygen'] ?? null) ? (float)$p['dissolved_oxygen'] : null,
                 'water_level' => is_numeric($p['water_level'] ?? null) ? (float)$p['water_level'] : null,
                 'status' => $status,
+                'operational_status' => $operationalStatus,
+                'is_active' => !$isInactive,
                 'area_sqm' => is_numeric($p['area_sqm'] ?? null) ? (int)$p['area_sqm'] : null,
                 'stocking_date' => $stockingDateStr,
                 'current_age_days' => $ageDays,
+                'doc' => $ageDays,
+                'shrimp_weight_g' => $shrimpWeight,
+                'cycle_target_feed_kg' => $cycleTarget,
+                'remaining_feed_kg' => $remainingFeed,
                 'growth_percentage' => is_numeric($p['growth_percentage'] ?? null) ? (float)$p['growth_percentage'] : null,
                 'disease_detection' => $disease,
                 'disease_confidence' => $diseaseConfidence,
@@ -296,17 +329,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         try {
             $conn->beginTransaction();
 
-            $stmt = $conn->prepare('
-                UPDATE ponds
-                SET pond_name = :pond_name,
-                    assigned_caretaker_name = :assigned_caretaker_name
-                WHERE id = :id
-            ');
-            $stmt->execute([
+            $updateFields = [
+                'pond_name = :pond_name',
+                'assigned_caretaker_name = :assigned_caretaker_name',
+            ];
+            $params = [
                 ':pond_name' => $pondName,
                 ':assigned_caretaker_name' => $caretakerName,
-                ':id' => $pondId
-            ]);
+                ':id' => $pondId,
+            ];
+
+            if (isset($data['stocking_date']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $data['stocking_date'])) {
+                $updateFields[] = 'stocking_date = :stocking_date';
+                $params[':stocking_date'] = $data['stocking_date'];
+            }
+            if (isset($data['shrimp_weight_g']) && is_numeric($data['shrimp_weight_g'])) {
+                $updateFields[] = 'shrimp_weight_g = :shrimp_weight_g';
+                $params[':shrimp_weight_g'] = (float)$data['shrimp_weight_g'];
+            }
+            if (isset($data['cycle_target_feed_kg']) && is_numeric($data['cycle_target_feed_kg'])) {
+                $updateFields[] = 'cycle_target_feed_kg = :cycle_target_feed_kg';
+                $params[':cycle_target_feed_kg'] = (float)$data['cycle_target_feed_kg'];
+            }
+            if (isset($data['remaining_feed_kg']) && is_numeric($data['remaining_feed_kg'])) {
+                $updateFields[] = 'remaining_feed_kg = :remaining_feed_kg';
+                $params[':remaining_feed_kg'] = (float)$data['remaining_feed_kg'];
+            }
+
+            $stmt = $conn->prepare('UPDATE ponds SET ' . implode(', ', $updateFields) . ' WHERE id = :id');
+            $stmt->execute($params);
 
             $removePondAssignments = $conn->prepare('DELETE FROM caretaker_ponds WHERE pond_id = :pond_id');
             $removePondAssignments->execute([':pond_id' => $pondId]);

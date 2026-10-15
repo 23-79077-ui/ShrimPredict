@@ -376,11 +376,11 @@ export default function DiseaseReportsPage() {
   // Export CSV Handler
   const handleExportCSV = () => {
     if (filteredReports.length === 0) {
-      Swal.fire({ icon: 'warning', title: 'No Data', text: 'No disease diagnostic reports available to export.', confirmButtonColor: '#FC563C' });
+      Swal.fire({ icon: 'warning', title: 'No Data', text: 'No scan reports available to export.', confirmButtonColor: '#FC563C' });
       return;
     }
 
-    const headers = ['Report ID,Pond,Detected Disease,Risk Level,Date & Time,Recommendation\n'];
+    const headers = ['Report ID,Pond,Scan Result,Risk Level,Date & Time,Recommendation\n'];
     const rows = filteredReports.map(
       (r) => `${r.id},"${r.pond_name || 'N/A'}","${r.disease_name || 'Unknown'}","${r.risk_level || 'Low'}","${r.created_at || r.report_date || ''}","${(r.recommendation || '').replace(/"/g, '""')}"`
     );
@@ -389,7 +389,7 @@ export default function DiseaseReportsPage() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `ShrimpPredict_Disease_Diagnostics_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `ShrimpPredict_Scan_Reports_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
   };
 
@@ -400,7 +400,7 @@ export default function DiseaseReportsPage() {
         <div>
           <div className="d-flex align-items-center gap-2">
             <h3 className="fw-extrabold text-dark mb-0 tracking-tight" style={{ letterSpacing: '-0.02em' }}>
-              {t('Shrimp Health & Disease Reports')}
+              {t('Shrimp Health & Scan Reports')}
             </h3>
             <span className="badge rounded-pill extra-small px-2.5 py-1 fw-bold bg-white border text-secondary d-flex align-items-center gap-1.5 shadow-2xs">
               <span className="pulse-dot-green"></span>
@@ -408,7 +408,7 @@ export default function DiseaseReportsPage() {
             </span>
           </div>
           <p className="text-muted mb-0 small mt-0.5">
-            O&amp;B Aquafarm • Shrimp health checks, disease scan results, and recommended farm actions
+            O&amp;B Aquafarm • Shrimp health checks, scan results, and recommended farm actions
           </p>
         </div>
 
@@ -434,12 +434,12 @@ export default function DiseaseReportsPage() {
 
       {/* 2. 4 SHRIMP KPI CARDS */}
       <div className="row g-3 g-xl-4 mb-4">
-        {/* Card 1: Total Disease Scans */}
+        {/* Card 1: Total Scan Reports */}
         <div className="col-12 col-sm-6 col-xl-3">
           <div className="shrimp-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-2">
-                <span className="kpi-label">{t('Total Disease Scans')}</span>
+                <span className="kpi-label">{t('Total Scan Reports')}</span>
                 <div className="kpi-icon-bubble">
                   <FaMicroscope size={14} />
                 </div>
@@ -550,7 +550,7 @@ export default function DiseaseReportsPage() {
               onClick={() => setActiveChartTab('pathology')}
             >
               <FaMicroscope size={11} className="me-1.5" />
-              {t('Disease Breakdown')}
+              {t('Scan Breakdown')}
             </button>
             <button
               type="button"
@@ -640,10 +640,10 @@ export default function DiseaseReportsPage() {
         <div className="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom flex-wrap gap-2" style={{ borderColor: '#E2E8F0' }}>
           <div>
             <h5 className="fw-extrabold mb-1 tracking-tight text-dark" style={{ fontSize: '1.1rem' }}>
-              {t('Caretaker Diagnostic Stream')}
+              {t('Caretaker Scan History Stream')}
             </h5>
             <p className="text-secondary small mb-0" style={{ fontSize: '0.82rem' }}>
-              {t('Microscopic images and real-time pathology results submitted by field farm caretakers.')}
+              {t('Microscopic images and real-time scan diagnosis results submitted by field farm caretakers.')}
             </p>
           </div>
           <span className="badge rounded-pill px-3 py-1.5 extra-small border" style={{ backgroundColor: '#F8FAFC', color: '#475569', borderColor: '#E2E8F0' }}>
@@ -656,14 +656,14 @@ export default function DiseaseReportsPage() {
           className="admin-search-section-box admin-filter-card"
           searchQuery={search}
           onSearchChange={setSearch}
-          searchPlaceholder={t('Search disease, pond, caretaker, action...')}
+          searchPlaceholder={t('Search scan report, pond, caretaker, action...')}
           showFilters={true}
           onExportCSV={handleExportCSV}
           exportLabel={t('Export CSV')}
           onRefresh={loadReports}
           loading={loading}
           tabs={[
-            { id: 'all', label: t('All Disease Scans'), count: filteredReports.length },
+            { id: 'all', label: t('All Scan Reports'), count: filteredReports.length },
             { id: 'High', label: t('Critical WSD') },
             { id: 'Medium', label: t('Moderate Risk') },
             { id: 'Low', label: t('Safe / Normal') }
@@ -695,7 +695,7 @@ export default function DiseaseReportsPage() {
               colClass: 'col-12 col-md-4',
               options: [
                 { value: 'newest', label: t('Newest Scans First') },
-                { value: 'name-asc', label: t('Disease Name (A - Z)') }
+                { value: 'name-asc', label: t('Condition / Result (A - Z)') }
               ]
             }
           ]}
@@ -713,7 +713,7 @@ export default function DiseaseReportsPage() {
               <tr className="text-secondary extra-small text-uppercase fw-bold" style={{ letterSpacing: '0.03em' }}>
                 <th className="py-2.5 ps-3" style={{ width: '8%' }}>{t('Scan')}</th>
                 <th className="py-2.5" style={{ width: '10%' }}>{t('Pond')}</th>
-                <th className="py-2.5" style={{ width: '15%' }}>{t('Detected Disease')}</th>
+                <th className="py-2.5" style={{ width: '15%' }}>{t('Scan Result')}</th>
                 <th className="py-2.5" style={{ width: '13%' }}>{t('Threat Level')}</th>
                 <th className="py-2.5" style={{ width: '13%' }}>{t('Date & Time')}</th>
                 <th className="py-2.5" style={{ width: '29%' }}>{t('Recommended Action')}</th>
@@ -724,14 +724,14 @@ export default function DiseaseReportsPage() {
               {loading ? (
                 <tr>
                   <td colSpan="7" className="text-center py-5 text-muted">
-                    <FaSync className="fa-spin me-2" style={{ color: '#FC563C' }} /> {t('Loading disease scan records...')}
+                    <FaSync className="fa-spin me-2" style={{ color: '#FC563C' }} /> {t('Loading scan records...')}
                   </td>
                 </tr>
               ) : filteredReports.length === 0 ? (
                 <tr>
                   <td colSpan="7" className="text-center py-5 text-muted">
                     <FaMicroscope size={28} className="mb-2 opacity-25 d-block mx-auto" />
-                    {t('No disease scans match the selected filter criteria.')}
+                    {t('No scan records match the selected filter criteria.')}
                   </td>
                 </tr>
               ) : (
@@ -916,7 +916,7 @@ export default function DiseaseReportsPage() {
                   </div>
                   <div>
                     <h5 className="fw-extrabold text-white mb-0 tracking-tight" style={{ fontSize: '1.2rem' }}>
-                      {t('Diagnostic Pathology Telemetry:')} {selectedReport.disease_name}
+                      {t('Scan Pathology Telemetry:')} {selectedReport.disease_name}
                     </h5>
                     <p className="text-white text-opacity-75 mb-0 extra-small">
                       {t('Scan Record')} #{selectedReport.id} • {formatDate(selectedReport.created_at || selectedReport.report_date)}

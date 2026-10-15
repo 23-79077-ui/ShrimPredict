@@ -290,6 +290,7 @@ export default function WaterQualityHistoryModal({
                       <th className="py-3 px-2 text-center">Temp (°C)</th>
                       <th className="py-3 px-2 text-center">pH Balance</th>
                       <th className="py-3 px-2 text-center">Salinity (ppt)</th>
+                      <th className="py-3 px-2 text-center">Status</th>
                       <th className="py-3 px-2 text-center">Capture Mode</th>
                       <th className="py-3 px-2">Recorded By</th>
                       <th className="py-3 px-2 text-center">Photo Proof</th>
@@ -393,6 +394,25 @@ export default function WaterQualityHistoryModal({
                             >
                               {salNum.toFixed(1)}
                             </span>
+                          </td>
+
+                          {/* Status */}
+                          <td className="px-2 py-2.5 text-center">
+                            {(() => {
+                              const s = String(r.status || '').toLowerCase();
+                              const isSafe = s === 'safe' || s === 'normal' || (!s && !isDoLow && !isTempAbnormal && !isPhAbnormal && !isSalAbnormal);
+                              return (
+                                <span
+                                  className={`badge rounded-pill px-2.5 py-1 extra-small fw-bold ${
+                                    isSafe
+                                      ? 'bg-success bg-opacity-15 text-success border border-success border-opacity-25'
+                                      : 'bg-danger bg-opacity-15 text-danger border border-danger border-opacity-25'
+                                  }`}
+                                >
+                                  {isSafe ? 'Safe' : 'Critical'}
+                                </span>
+                              );
+                            })()}
                           </td>
 
                           {/* Capture Mode */}

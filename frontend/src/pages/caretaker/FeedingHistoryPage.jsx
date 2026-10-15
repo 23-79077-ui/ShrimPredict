@@ -914,14 +914,8 @@ export default function FeedingHistoryPage() {
   const currentScope = selectedPondFilter === 'all' ? 'All Assigned Ponds' : selectedPond?.pond_name || 'Selected Pond';
 
   const totalFeedKg = filteredRecords.reduce((sum, record) => sum + (parseFloat(record.amount_kg) || 0), 0);
-  const totalLogsCount = filteredRecords.length;
-  const pondsWithRecords = new Set(filteredRecords.map((record) => String(record.pond_id || record.pond_name || '')).filter(Boolean)).size;
-
   const vitaminRecords = filteredRecords.filter((record) => record.has_vitamin || (record.vitamin_name && record.vitamin_name !== 'None'));
   const vitaminLogsCount = vitaminRecords.length;
-
-  const latestRecord = filteredRecords[0];
-  const latestDateText = latestRecord?.record_date ? `Latest: ${latestRecord.record_date}` : 'No records';
 
   // Export to Excel / CSV
   const handleExportCSV = () => {
@@ -1167,104 +1161,6 @@ export default function FeedingHistoryPage() {
         </div>
       )}
 
-      {/* 3. 4 SHRIMP KPI CARDS */}
-      <div className="row g-3 g-xl-4 mb-4">
-        {/* Card 1: Feed Consumed */}
-        <div className="col-12 col-sm-6 col-xl-3">
-          <div className="shrimp-kpi-card">
-            <div>
-              <div className="d-flex align-items-center justify-content-between mb-2">
-                <span className="kpi-label">Feed Consumed</span>
-                <div className="kpi-icon-bubble">
-                  <FaUtensils size={14} />
-                </div>
-              </div>
-              <div className="kpi-value text-dark">
-                {totalFeedKg.toFixed(2)} <span className="kpi-value-unit">kg</span>
-              </div>
-              <div className="extra-small text-muted fw-semibold mt-1">
-                Total mass: <strong className="font-mono text-dark">{Math.round(totalFeedKg * 1000).toLocaleString()} g</strong>
-              </div>
-            </div>
-            <div className="mt-3 pt-2 border-top d-flex justify-content-between align-items-center">
-              <span className="extra-small text-muted text-truncate" style={{ maxWidth: 130 }}>{currentScope}</span>
-              <span className="badge rounded-pill extra-small px-2 py-0.5 bg-light border text-secondary">Cumulative</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Card 2: Feeding Logs */}
-        <div className="col-12 col-sm-6 col-xl-3">
-          <div className="shrimp-kpi-card">
-            <div>
-              <div className="d-flex align-items-center justify-content-between mb-2">
-                <span className="kpi-label">Feeding Logs</span>
-                <div className="kpi-icon-bubble">
-                  <FaCalendarAlt size={14} />
-                </div>
-              </div>
-              <div className="kpi-value text-dark">
-                {totalLogsCount} <span className="kpi-value-unit">entries</span>
-              </div>
-              <div className="extra-small text-muted fw-semibold mt-1">
-                Daily summaries: <strong className="font-mono text-dark">{dailyGroupedRecords.length} days</strong>
-              </div>
-            </div>
-            <div className="mt-3 pt-2 border-top d-flex justify-content-between align-items-center">
-              <span className="extra-small text-muted">Logged sessions</span>
-              <span className="badge rounded-pill extra-small px-2 py-0.5 bg-light border text-secondary">Recorded</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Card 3: Active Ponds */}
-        <div className="col-12 col-sm-6 col-xl-3">
-          <div className="shrimp-kpi-card">
-            <div>
-              <div className="d-flex align-items-center justify-content-between mb-2">
-                <span className="kpi-label">Active Ponds</span>
-                <div className="kpi-icon-bubble">
-                  <FaWater size={14} />
-                </div>
-              </div>
-              <div className="kpi-value text-dark">
-                {pondsWithRecords} <span className="kpi-value-unit">/ {assignedPonds.length || 1}</span>
-              </div>
-              <div className="extra-small text-muted fw-semibold mt-1">
-                Assigned ponds: <strong className="text-dark">{assignedPonds.length} ponds</strong>
-              </div>
-            </div>
-            <div className="mt-3 pt-2 border-top d-flex justify-content-between align-items-center">
-              <span className="extra-small text-muted">Ponds with logs</span>
-              <span className="badge rounded-pill extra-small px-2 py-0.5 bg-light border text-secondary">Active</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Card 4: Supplements */}
-        <div className="col-12 col-sm-6 col-xl-3">
-          <div className="shrimp-kpi-card">
-            <div>
-              <div className="d-flex align-items-center justify-content-between mb-2">
-                <span className="kpi-label">Supplements</span>
-                <div className="kpi-icon-bubble">
-                  <FaLeaf size={14} />
-                </div>
-              </div>
-              <div className="kpi-value text-dark">
-                {vitaminLogsCount} <span className="kpi-value-unit">sessions</span>
-              </div>
-              <div className="extra-small text-muted fw-semibold mt-1 text-truncate">
-                {latestDateText}
-              </div>
-            </div>
-            <div className="mt-3 pt-2 border-top d-flex justify-content-between align-items-center">
-              <span className="extra-small text-muted text-truncate" style={{ maxWidth: 130 }}>Sanolife &amp; Sano Top</span>
-              <span className="badge rounded-pill extra-small px-2 py-0.5 bg-light border text-secondary">Additives</span>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* INTEGRATED FEEDING ANALYTICS & GROWTH HUB (TOGGLEABLE) */}
       <div className="bg-white border rounded-4 p-4 mb-4 shadow-2xs" style={{ borderColor: '#E2E8F0' }}>

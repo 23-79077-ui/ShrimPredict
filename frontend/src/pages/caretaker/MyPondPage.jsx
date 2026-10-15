@@ -1591,6 +1591,18 @@ export default function MyPondPage() {
                   >
                     Verified Baseline
                   </span>
+                  {activeWqRecord?.status && (
+                    <span
+                      className="badge rounded-pill extra-small fw-bold px-2.5 py-0.5"
+                      style={
+                        String(activeWqRecord.status).toLowerCase() === 'critical'
+                          ? { backgroundColor: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }
+                          : { backgroundColor: '#ECFDF5', color: '#059669', border: '1px solid #A7F3D0' }
+                      }
+                    >
+                      {String(activeWqRecord.status).toLowerCase() === 'critical' ? 'Critical' : 'Safe'}
+                    </span>
+                  )}
                 </div>
                 <div className="d-flex align-items-center gap-3 flex-wrap mt-1 extra-small text-muted">
                   <span>DO: <strong className="text-dark">{activeWqRecord?.dissolved_oxygen}</strong> mg/L</span>

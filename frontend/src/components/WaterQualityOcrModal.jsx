@@ -626,43 +626,36 @@ export function parseTelemetryText(rawText = '') {
 const PARAM_GUIDELINES = {
   do: { label: 'Dissolved Oxygen', unit: 'mg/L', min: 0, max: 200, optimalMin: 5.0, optimalMax: 8.5, warnMin: 4.0 },
   temp: { label: 'Temperature', unit: '°C', min: 15, max: 45, optimalMin: 26.0, optimalMax: 32.0, warnMax: 34.0 },
-  ph: { label: 'pH Level', unit: '', min: 4, max: 12, optimalMin: 7.5, optimalMax: 8.3, warnMin: 7.0, warnMax: 8.8 },
+  ph: { label: 'pH Level', unit: '', min: 4, max: 12, optimalMin: 7.5, optimalMax: 8.5, warnMin: 7.0, warnMax: 8.8 },
   salinity: { label: 'Salinity', unit: 'ppt', min: 0, max: 50, optimalMin: 15.0, optimalMax: 28.0, warnMin: 10.0, warnMax: 35.0 },
 };
 
 function getParameterStatus(type, val) {
   const num = parseFloat(val);
-  if (isNaN(num)) return { label: 'Waiting for Input', badgeClass: 'bg-secondary text-white' };
+  if (isNaN(num)) return { label: 'Waiting for Input', badgeClass: 'bg-secondary text-white', isSafe: false };
   const g = PARAM_GUIDELINES[type];
-  if (!g) return { label: 'Recorded', badgeClass: 'bg-primary text-white' };
+  if (!g) return { label: 'Safe', badgeClass: 'bg-success text-white', isSafe: true };
+
+  let isSafe = false;
 
   if (type === 'do') {
     if (num > 25) {
-      if (num < 50) return { label: 'Critical Anoxia (<50% Sat)', badgeClass: 'bg-danger text-white' };
-      if (num < 70) return { label: 'Warning: Low (<70% Sat)', badgeClass: 'bg-warning text-dark' };
-      return { label: `Optimal Safe (${num.toFixed(1)}% Sat)`, badgeClass: 'bg-success text-white' };
+      isSafe = num >= 70;
+    } else {
+      isSafe = num >= g.optimalMin && num <= 10.0;
     }
-    if (num < g.warnMin) return { label: 'Critical Anoxia (<4.0 mg/L)', badgeClass: 'bg-danger text-white' };
-    if (num < g.optimalMin) return { label: 'Warning: Low (<5.0 mg/L)', badgeClass: 'bg-warning text-dark' };
-    return { label: 'Optimal Safe (≥5.0 mg/L)', badgeClass: 'bg-success text-white' };
-  }
-  if (type === 'temp') {
-    if (num >= g.warnMax || num < 22) return { label: 'Critical Temp Warning', badgeClass: 'bg-danger text-white' };
-    if (num > g.optimalMax || num < g.optimalMin) return { label: 'Elevated Temp', badgeClass: 'bg-warning text-dark' };
-    return { label: 'Optimal Safe (26-32°C)', badgeClass: 'bg-success text-white' };
-  }
-  if (type === 'ph') {
-    if (num < g.warnMin || num > g.warnMax) return { label: 'Critical pH Imbalance', badgeClass: 'bg-danger text-white' };
-    if (num < g.optimalMin || num > g.optimalMax) return { label: 'Sub-Optimal pH', badgeClass: 'bg-warning text-dark' };
-    return { label: 'Optimal Safe (7.5-8.3)', badgeClass: 'bg-success text-white' };
-  }
-  if (type === 'salinity') {
-    if (num < g.warnMin || num > g.warnMax) return { label: 'Extreme Salinity', badgeClass: 'bg-danger text-white' };
-    if (num < g.optimalMin || num > g.optimalMax) return { label: 'Sub-Optimal Salinity', badgeClass: 'bg-warning text-dark' };
-    return { label: 'Optimal Safe (15-28 ppt)', badgeClass: 'bg-success text-white' };
+  } else if (type === 'temp') {
+    isSafe = num >= g.optimalMin && num <= g.optimalMax;
+  } else if (type === 'ph') {
+    isSafe = num >= g.optimalMin && num <= g.optimalMax;
+  } else if (type === 'salinity') {
+    isSafe = num >= g.optimalMin && num <= g.optimalMax;
   }
 
-  return { label: 'Recorded', badgeClass: 'bg-primary text-white' };
+  if (isSafe) {
+    return { label: 'Safe', badgeClass: 'bg-success text-white', isSafe: true };
+  }
+  return { label: 'Critical', badgeClass: 'bg-danger text-white', isSafe: false };
 }
 
 // Clean 7-segment letter substitution artifacts (e.g. B -> 8, S -> 5, O/D/A -> 0, l/I/i -> 1, Z -> 2)
@@ -2090,6 +2083,12 @@ export default function WaterQualityOcrModal({
       formData.append('temperature', tempVal);
       formData.append('ph_level', phVal);
       formData.append('salinity', salVal);
+      const doStat = getParameterStatus('do', doVal);
+      const tempStat = getParameterStatus('temp', tempVal);
+      const phStat = getParameterStatus('ph', phVal);
+      const salStat = getParameterStatus('salinity', salVal);
+      const overallStatus = (doStat.isSafe && tempStat.isSafe && phStat.isSafe && salStat.isSafe) ? 'Safe' : 'Critical';
+      formData.append('status', overallStatus);
       formData.append('capture_mode', primaryMode === 'sheet' || meterMode === 'sheet' ? 'data_sheet' : 'device_screen');
       formData.append('record_date', recordDate);
       if (editingRecordId) {
@@ -2789,7 +2788,7 @@ export default function WaterQualityOcrModal({
 
                             <div className="d-flex align-items-center justify-content-between mt-2 pt-1 border-top border-purple border-opacity-10">
                               <span className="extra-small text-muted" style={{ fontSize: '0.7rem' }}>
-                                Range: 7.5 – 8.3
+                                Range: 7.5 – 8.5
                               </span>
                               <span className={`badge ${getParameterStatus('ph', verifiedValues.ph).badgeClass} extra-small`}>
                                 {getParameterStatus('ph', verifiedValues.ph).label}

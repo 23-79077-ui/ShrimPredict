@@ -47,6 +47,11 @@ const dockIcons = {
       <polyline points="16 7 22 7 22 13" />
     </svg>
   ),
+  waterQuality: (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
+    </svg>
+  ),
   ponds: (
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M2 12h20" />
@@ -86,10 +91,11 @@ const dockIcons = {
 // Navigation Links for the Floating Top Dock
 const dockLinks = [
   { to: '/admin/dashboard', key: 'nav.dashboard', label: 'Dashboard', icon: dockIcons.dashboard },
-  { to: '/admin/disease-reports', key: 'nav.diseaseReports', label: 'Disease Reports', icon: dockIcons.diseaseReports },
-  { to: '/admin/feeding', key: 'nav.feeding', label: 'Feeding Logs', icon: dockIcons.feeding },
-  { to: '/admin/harvest', key: 'nav.harvest', label: 'Harvest', icon: dockIcons.harvest },
-  { to: '/admin/ponds', key: 'nav.ponds', label: 'Ponds', icon: dockIcons.ponds },
+  { to: '/admin/scan-reports', key: 'nav.scanReports', label: 'Scan Reports', icon: dockIcons.diseaseReports },
+  { to: '/admin/feeding', key: 'nav.feeding', label: 'Feeding Logs Reports', icon: dockIcons.feeding },
+  { to: '/admin/water-quality-reports', key: 'nav.waterQualityReports', label: 'Water Quality Reports', icon: dockIcons.waterQuality },
+  { to: '/admin/harvest', key: 'nav.harvest', label: 'Harvest Forecast', icon: dockIcons.harvest },
+  { to: '/admin/pond-reports', key: 'nav.pondReports', label: 'Pond Reports', icon: dockIcons.ponds },
   { to: '/admin/alerts', key: 'nav.alerts', label: 'Alerts', icon: dockIcons.alerts },
   { to: '/admin/users', key: 'nav.users', label: 'Users', icon: dockIcons.users },
   { to: '/admin/reports', key: 'nav.reports', label: 'Reports', icon: dockIcons.reports },
@@ -239,12 +245,14 @@ export default function AdminLayout() {
     if (pondName) queryParams.push(`pond=${encodeURIComponent(pondName)}`);
     const queryString = queryParams.length > 0 ? `?${queryParams.join('&')}` : '';
 
-    if (actionType === 'disease_scan' || title.includes('disease') || msg.includes('wssv')) {
-      navigate('/admin/disease-reports' + queryString);
+    if (actionType === 'disease_scan' || actionType === 'scan_report' || title.includes('disease') || title.includes('scan') || msg.includes('wssv')) {
+      navigate('/admin/scan-reports' + queryString);
     } else if (actionType === 'feeding' || title.includes('feed')) {
       navigate('/admin/feeding' + queryString);
-    } else if (actionType === 'water_quality' || title.includes('pond')) {
-      navigate('/admin/ponds' + queryString);
+    } else if (actionType === 'water_quality' || title.includes('water') || title.includes('dissolved oxygen') || title.includes('ph level') || title.includes('salinity')) {
+      navigate('/admin/water-quality-reports' + queryString);
+    } else if (actionType === 'pond' || title.includes('pond')) {
+      navigate('/admin/pond-reports' + queryString);
     } else {
       navigate('/admin/reports' + queryString);
     }
@@ -561,7 +569,13 @@ export default function AdminLayout() {
                 <NavLink
                   key={link.to}
                   to={link.to}
-                  className={({ isActive }) => `dock-nav-pill ${isActive ? 'active' : ''}`}
+                  className={({ isActive }) => {
+                    const isCurrentActive = isActive ||
+                      (link.to === '/admin/scan-reports' && (location.pathname.startsWith('/admin/scan-reports') || location.pathname.startsWith('/admin/disease-reports'))) ||
+                      (link.to === '/admin/water-quality-reports' && (location.pathname.startsWith('/admin/water-quality-reports') || location.pathname.startsWith('/admin/water-quality'))) ||
+                      (link.to === '/admin/pond-reports' && (location.pathname.startsWith('/admin/pond-reports') || location.pathname.startsWith('/admin/ponds')));
+                    return `dock-nav-pill ${isCurrentActive ? 'active' : ''}`;
+                  }}
                 >
                   <span className="opacity-80 flex-shrink-0">{link.icon}</span>
                   <span className="text-nowrap">{t(link.key, link.label)}</span>
@@ -591,7 +605,13 @@ export default function AdminLayout() {
                     <NavLink
                       key={link.to}
                       to={link.to}
-                      className={({ isActive }) => `dock-nav-pill ${isActive ? 'active' : ''}`}
+                      className={({ isActive }) => {
+                        const isCurrentActive = isActive ||
+                          (link.to === '/admin/scan-reports' && (location.pathname.startsWith('/admin/scan-reports') || location.pathname.startsWith('/admin/disease-reports'))) ||
+                          (link.to === '/admin/water-quality-reports' && (location.pathname.startsWith('/admin/water-quality-reports') || location.pathname.startsWith('/admin/water-quality'))) ||
+                          (link.to === '/admin/pond-reports' && (location.pathname.startsWith('/admin/pond-reports') || location.pathname.startsWith('/admin/ponds')));
+                        return `dock-nav-pill ${isCurrentActive ? 'active' : ''}`;
+                      }}
                       onClick={() => setShowMobileNav(false)}
                       style={{ fontSize: '0.74rem', padding: '0.35rem 0.6rem' }}
                     >
