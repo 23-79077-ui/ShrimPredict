@@ -306,38 +306,39 @@ export default function NotificationsPage() {
 
   return (
     <div className="pb-5" style={{ fontFamily: "'Poppins', sans-serif" }}>
-      {/* HERO BANNER */}
-      <div className="disease-hero-banner d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
-        <div className="d-flex align-items-center gap-3">
-          <div className="hero-icon-badge shadow-xs">
-            <FaBell />
-          </div>
-          <div>
-            <div className="d-flex align-items-center gap-2 flex-wrap">
-              <h3 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#FC563C', fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
-                {t('Operational Notifications & System Dispatch')}
-              </h3>
-              <span
-                className="badge rounded-pill extra-small px-3 py-1 fw-bold"
-                style={{ backgroundColor: 'rgba(252, 86, 60, 0.08)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.16)' }}
-              >
-                ● {t('Live Incident Stream')}
-              </span>
-            </div>
-            <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
-              {t('Real-time feed alerts, water telemetry variances, and caretaker biometric reports.')}
-            </p>
-          </div>
+      {/* 1. TITLE HEADER ROW */}
+      <div className="d-flex align-items-center justify-content-between flex-wrap gap-2.5 mb-3">
+        <div className="d-flex align-items-center gap-2.5">
+          <h3 className="fw-extrabold mb-0 tracking-tight text-dark" style={{ fontSize: '1.48rem', letterSpacing: '-0.02em' }}>
+            {t('Operational Notifications & System Dispatch')}
+          </h3>
+          <span
+            className="badge rounded-pill d-inline-flex align-items-center gap-1.5 px-2.5 py-1"
+            style={{
+              backgroundColor: '#ECFDF5',
+              color: '#059669',
+              border: '1px solid #A7F3D0',
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              letterSpacing: '0.02em',
+            }}
+          >
+            <span className="pulse-dot-green" />
+            {t('• Live Feed')}
+          </span>
         </div>
 
-        <button
-          type="button"
-          className="btn btn-sm btn-tri-outline px-3.5 py-2 shadow-xs"
-          style={{ fontSize: '0.82rem', height: 40 }}
-          onClick={loadNotifications}
-        >
-          <FaSync size={11} className={loading ? 'fa-spin me-1.5' : 'me-1.5'} /> {t('Refresh Dispatch')}
-        </button>
+        {/* Action Controls */}
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            className="btn btn-sm minimal-filter-control d-inline-flex align-items-center gap-1.5 px-3 py-2 shadow-2xs hover-shadow"
+            onClick={loadNotifications}
+            disabled={loading}
+          >
+            <FaSync size={11} className={loading ? 'fa-spin' : ''} /> {t('Refresh')}
+          </button>
+        </div>
       </div>
 
       <AdminFilterToolbar
@@ -410,7 +411,7 @@ export default function NotificationsPage() {
       />
 
       {/* Notifications List Container */}
-      <div className="tri-card p-4" ref={dropdownRef}>
+      <div className="bg-white border rounded-4 p-4 shadow-2xs" style={{ borderColor: '#E2E8F0' }} ref={dropdownRef}>
         <div className="card-body p-0">
           {loading ? (
             <div className="text-center py-5 text-muted">

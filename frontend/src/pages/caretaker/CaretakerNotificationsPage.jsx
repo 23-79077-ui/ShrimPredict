@@ -221,48 +221,39 @@ export default function CaretakerNotificationsPage() {
 
   return (
     <div className="caretaker-notifications-hub">
-      {/* 1. EXECUTIVE HERO OPERATIONS BANNER */}
-      <div className="disease-hero-banner d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
-        <div className="d-flex align-items-center gap-3">
-          <div className="hero-icon-badge shadow-xs">
-            <FaBell />
+      {/* 1. TITLE HEADER */}
+      <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
+        <div>
+          <div className="d-flex align-items-center gap-2">
+            <h3 className="fw-extrabold text-dark mb-0 tracking-tight" style={{ letterSpacing: '-0.02em' }}>
+              {t('hero.caretakerNotifications', 'Caretaker Notifications & Alerts')}
+            </h3>
+            <span className="badge rounded-pill extra-small px-2.5 py-1 fw-bold bg-white border text-secondary d-flex align-items-center gap-1.5 shadow-2xs">
+              <span className="pulse-dot-green"></span>
+              {t('hero.caretakerNotificationsBadge', 'Real-Time Broadcast Stream')}
+            </span>
           </div>
-          <div>
-            <div className="d-flex align-items-center gap-2 flex-wrap">
-              <h3 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#FC563C', fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
-                {t('hero.caretakerNotifications', 'Caretaker Notifications & Alerts')}
-              </h3>
-              <span
-                className="badge rounded-pill extra-small px-3 py-1 fw-bold"
-                style={{ backgroundColor: 'rgba(252, 86, 60, 0.08)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.16)' }}
-              >
-                ● {t('hero.caretakerNotificationsBadge', 'Real-Time Broadcast Stream')}
-              </span>
-            </div>
-            <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
-              {t('hero.caretakerNotificationsSub', 'Real-time system alerts, automated water threshold notices, and maintenance status updates.')}
-            </p>
-          </div>
+          <p className="text-muted mb-0 small mt-0.5">
+            {t('hero.caretakerNotificationsSub', 'Real-time system alerts, automated water threshold notices, and maintenance status updates.')}
+          </p>
         </div>
 
         <div className="d-flex align-items-center gap-2 flex-wrap">
           {counts.unread > 0 && (
-            <span className="badge rounded-pill px-3 py-1.5 extra-small fw-bold" style={{ backgroundColor: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>
+            <span className="badge rounded-pill px-2.5 py-1 extra-small fw-bold" style={{ backgroundColor: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>
               {counts.unread} Unread
             </span>
           )}
           <button
             type="button"
-            className="btn btn-sm btn-tri-outline px-3.5 py-2 shadow-xs d-flex align-items-center gap-1.5"
-            style={{ height: 38, fontSize: '0.8rem' }}
+            className="btn btn-sm btn-understated-view shadow-2xs"
             onClick={loadNotifications}
           >
-            <FaSync size={11} className={loading ? 'fa-spin' : ''} style={{ color: '#FC563C' }} /> {t('Refresh', 'Refresh')}
+            <FaSync size={11} className={loading ? 'fa-spin' : ''} /> {t('Refresh', 'Refresh')}
           </button>
           <button
             type="button"
-            className="btn btn-sm btn-tri-orange px-3.5 py-2 d-flex align-items-center gap-2 fw-bold text-white shadow-xs"
-            style={{ height: 38, fontSize: '0.8rem' }}
+            className="btn btn-sm btn-understated-feed shadow-2xs"
             onClick={handleMarkAllRead}
             disabled={counts.unread === 0}
           >
@@ -272,73 +263,58 @@ export default function CaretakerNotificationsPage() {
       </div>
 
       {/* TABS AND FILTERS NAVIGATION */}
-      <div className="asymmetric-card p-3 mb-4">
-        <div>
-          <div className="d-flex justify-content-between align-items-center flex-wrap gap-3">
-            {/* View Tabs */}
-            <div className="d-flex align-items-center gap-1.5 flex-wrap">
-              <button
-                type="button"
-                className={`btn btn-sm rounded-pill px-3 py-1.5 extra-small fw-semibold transition-all ${
-                  currentTab === 'active'
-                    ? 'btn-dark text-white'
-                    : 'btn-white bg-white text-dark border'
-                }`}
-                style={{
-                  backgroundColor: currentTab === 'active' ? '#FC563C' : '#FFFFFF',
-                  borderColor: currentTab === 'active' ? '#FC563C' : '#E2E8F0',
-                }}
-                onClick={() => setCurrentTab('active')}
-              >
-                Active <span className="badge rounded-pill bg-light text-dark ms-1">{counts.active}</span>
-              </button>
+      <div className="unified-filter-toolbar mb-4">
+        <div className="d-flex align-items-center gap-1.5 flex-wrap">
+          <button
+            type="button"
+            className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold border-0 transition-all ${
+              currentTab === 'active'
+                ? 'bg-white shadow-2xs text-dark'
+                : 'text-muted'
+            }`}
+            onClick={() => setCurrentTab('active')}
+          >
+            Active <span className="badge rounded-pill bg-light text-dark ms-1">{counts.active}</span>
+          </button>
 
-              <button
-                type="button"
-                className={`btn btn-sm rounded-pill px-3 py-1.5 extra-small fw-semibold transition-all ${
-                  currentTab === 'unread'
-                    ? 'btn-dark text-white'
-                    : 'btn-white bg-white text-dark border'
-                }`}
-                style={{
-                  backgroundColor: currentTab === 'unread' ? '#FC563C' : '#FFFFFF',
-                  borderColor: currentTab === 'unread' ? '#FC563C' : '#E2E8F0',
-                }}
-                onClick={() => setCurrentTab('unread')}
-              >
-                Unread <span className="badge rounded-pill bg-danger text-white ms-1">{counts.unread}</span>
-              </button>
+          <button
+            type="button"
+            className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold border-0 transition-all ${
+              currentTab === 'unread'
+                ? 'bg-white shadow-2xs text-dark'
+                : 'text-muted'
+            }`}
+            onClick={() => setCurrentTab('unread')}
+          >
+            Unread <span className="badge rounded-pill bg-danger text-white ms-1">{counts.unread}</span>
+          </button>
 
-              <button
-                type="button"
-                className={`btn btn-sm rounded-pill px-3 py-1.5 extra-small fw-semibold transition-all ${
-                  currentTab === 'archived'
-                    ? 'btn-dark text-white'
-                    : 'btn-white bg-white text-dark border'
-                }`}
-                style={{
-                  backgroundColor: currentTab === 'archived' ? '#FC563C' : '#FFFFFF',
-                  borderColor: currentTab === 'archived' ? '#FC563C' : '#E2E8F0',
-                }}
-                onClick={() => setCurrentTab('archived')}
-              >
-                <FaArchive size={10} className="me-1" /> Archived{' '}
-                <span className="badge rounded-pill bg-secondary bg-opacity-25 text-dark ms-1">{counts.archived}</span>
-              </button>
+          <button
+            type="button"
+            className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold border-0 transition-all ${
+              currentTab === 'archived'
+                ? 'bg-white shadow-2xs text-dark'
+                : 'text-muted'
+            }`}
+            onClick={() => setCurrentTab('archived')}
+          >
+            <FaArchive size={10} className="me-1" /> Archived{' '}
+            <span className="badge rounded-pill bg-secondary bg-opacity-25 text-dark ms-1">{counts.archived}</span>
+          </button>
 
-              <button
-                type="button"
-                className={`btn btn-sm rounded-pill px-3 py-1.5 extra-small fw-semibold transition-all ${
-                  currentTab === 'deleted'
-                    ? 'btn-danger text-white'
-                    : 'btn-white bg-white text-dark border'
-                }`}
-                onClick={() => setCurrentTab('deleted')}
-              >
-                <FaTrashAlt size={10} className="me-1" /> Deleted History{' '}
-                <span className="badge rounded-pill bg-dark text-white ms-1">{counts.deleted || 0}</span>
-              </button>
-            </div>
+          <button
+            type="button"
+            className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold border-0 transition-all ${
+              currentTab === 'deleted'
+                ? 'bg-white shadow-2xs text-danger'
+                : 'text-muted'
+            }`}
+            onClick={() => setCurrentTab('deleted')}
+          >
+            <FaTrashAlt size={10} className="me-1" /> Deleted History{' '}
+            <span className="badge rounded-pill bg-dark text-white ms-1">{counts.deleted || 0}</span>
+          </button>
+        </div>
 
             {/* Date Filter Toolbar */}
             <div className="d-flex align-items-center gap-2 flex-wrap">
@@ -374,8 +350,6 @@ export default function CaretakerNotificationsPage() {
               )}
             </div>
           </div>
-        </div>
-      </div>
 
       {/* Notifications List Container */}
       <div className="asymmetric-card p-0 overflow-hidden" ref={dropdownRef}>

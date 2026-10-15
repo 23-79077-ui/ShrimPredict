@@ -376,63 +376,65 @@ export default function AdminReportsPage() {
 
   return (
     <div>
-      {/* 1. HERO HEADER */}
-      <div className="disease-hero-banner d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
-        <div className="d-flex align-items-center gap-3">
-          <div className="hero-icon-badge shadow-xs">
-            <FaTools size={20} />
-          </div>
-          <div>
-            <div className="d-flex align-items-center gap-2 flex-wrap">
-              <h3 className="fw-extrabold mb-0 tracking-tight text-dark" style={{ fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
-                {t('Equipment & Maintenance Reports')}
-              </h3>
-              <span
-                className="badge rounded-pill extra-small px-3 py-1 fw-bold"
-                style={{ backgroundColor: 'rgba(252, 86, 60, 0.08)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.16)' }}
-              >
-                {t('Caretaker Farm Reports')}
-              </span>
-            </div>
-            <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
-              {t('Review caretaker reports, attached photos, and track farm maintenance.')}
-            </p>
-          </div>
+      {/* 1. TITLE HEADER ROW */}
+      <div className="d-flex align-items-center justify-content-between flex-wrap gap-2.5 mb-3">
+        <div className="d-flex align-items-center gap-2.5">
+          <h3 className="fw-extrabold mb-0 tracking-tight text-dark" style={{ fontSize: '1.48rem', letterSpacing: '-0.02em' }}>
+            {t('Equipment & Maintenance Reports')}
+          </h3>
+          <span
+            className="badge rounded-pill d-inline-flex align-items-center gap-1.5 px-2.5 py-1"
+            style={{
+              backgroundColor: '#ECFDF5',
+              color: '#059669',
+              border: '1px solid #A7F3D0',
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              letterSpacing: '0.02em',
+            }}
+          >
+            <span className="pulse-dot-green" />
+            {t('• Caretaker Logs')}
+          </span>
         </div>
 
-        <button
-          type="button"
-          className="btn btn-sm btn-tri-outline px-3.5 py-2 shadow-xs"
-          style={{ fontSize: '0.82rem', height: 40 }}
-          onClick={loadReports}
-        >
-          <FaSync size={11} className={loading ? 'fa-spin me-1.5' : 'me-1.5'} /> {t('Refresh')}
-        </button>
+        {/* Action Controls */}
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            className="btn btn-sm minimal-filter-control d-inline-flex align-items-center gap-1.5 px-3 py-2 shadow-2xs hover-shadow"
+            onClick={loadReports}
+            disabled={loading}
+          >
+            <FaSync size={11} className={loading ? 'fa-spin' : ''} /> {t('Refresh')}
+          </button>
+        </div>
       </div>
 
-      {/* 2. 4 TRI-COLOR OPERATIONAL KPI CARDS */}
+      {/* 2. 4 OPERATIONAL KPI CARDS */}
       <div className="row g-3 g-xl-4 mb-4">
         {/* Total Reports */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="tri-kpi-card">
+          <div className="shrimp-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">{t('Total Filed Reports')}</span>
-                <div className="tri-kpi-icon tri-kpi-icon-blue">
-                  <FaExclamationTriangle size={16} />
+                <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">
+                  {t('Total Filed Reports')}
+                </span>
+                <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: 34, height: 34, backgroundColor: '#F1F5F9', color: '#172A39' }}>
+                  <FaExclamationTriangle size={15} />
                 </div>
               </div>
               <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
                 {counts.total}
               </h2>
             </div>
-            <div>
-              <div className="tri-progress-track my-2.5">
-                <div className="tri-progress-bar tri-progress-bar-navy" style={{ width: '100%' }} />
-              </div>
+            <div className="pt-2">
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small">{t('Caretaker Entries')}</span>
-                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.06)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.15)' }}>
+                <span className="text-secondary small fw-medium">
+                  {t('Caretaker Entries')}
+                </span>
+                <span className="badge rounded-pill px-2.5 py-1 extra-small" style={{ backgroundColor: '#F1F5F9', color: '#475569', fontWeight: 600 }}>
                   {t('Total Filed')}
                 </span>
               </div>
@@ -442,30 +444,26 @@ export default function AdminReportsPage() {
 
         {/* Pending Review */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="tri-kpi-card" style={{ borderColor: counts.pending > 0 ? 'rgba(252, 86, 60, 0.28)' : 'rgba(252, 86, 60, 0.12)' }}>
+          <div className="shrimp-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">{t('Pending Review')}</span>
-                <div className="tri-kpi-icon tri-kpi-icon-orange">
-                  <FaClock size={16} />
+                <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">
+                  {t('Pending Review')}
+                </span>
+                <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: 34, height: 34, backgroundColor: '#FFF7ED', color: '#EA580C' }}>
+                  <FaClock size={15} />
                 </div>
               </div>
               <h2 className="fw-extrabold mb-1" style={{ color: '#EA580C', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
                 {counts.pending}
               </h2>
             </div>
-            <div>
-              <div className="tri-progress-track my-2.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.1)' }}>
-                <div
-                  className="tri-progress-bar tri-progress-bar-orange"
-                  style={{
-                    width: counts.total > 0 ? `${Math.max(15, (counts.pending / counts.total) * 100)}%` : '20%'
-                  }}
-                />
-              </div>
+            <div className="pt-2">
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small">{t('Awaiting Action')}</span>
-                <span className="badge rounded-pill extra-small px-2 py-0.5 admin-badge-high">
+                <span className="text-secondary small fw-medium">
+                  {t('Awaiting Action')}
+                </span>
+                <span className="badge rounded-pill px-2.5 py-1 extra-small" style={{ backgroundColor: '#FFF7ED', color: '#C2410C', fontWeight: 600 }}>
                   {t('Review Needed')}
                 </span>
               </div>
@@ -475,30 +473,26 @@ export default function AdminReportsPage() {
 
         {/* In Progress */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="tri-kpi-card">
+          <div className="shrimp-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">{t('In Progress')}</span>
-                <div className="tri-kpi-icon tri-kpi-icon-blue">
-                  <FaTools size={16} />
+                <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">
+                  {t('In Progress')}
+                </span>
+                <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: 34, height: 34, backgroundColor: '#EFF6FF', color: '#2563EB' }}>
+                  <FaTools size={15} />
                 </div>
               </div>
               <h2 className="fw-extrabold mb-1" style={{ color: '#2563EB', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
                 {counts.in_progress}
               </h2>
             </div>
-            <div>
-              <div className="tri-progress-track my-2.5">
-                <div
-                  className="tri-progress-bar tri-progress-bar-navy"
-                  style={{
-                    width: counts.total > 0 ? `${Math.max(15, (counts.in_progress / counts.total) * 100)}%` : '15%'
-                  }}
-                />
-              </div>
+            <div className="pt-2">
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small">{t('Active Repairs')}</span>
-                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.06)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.15)' }}>
+                <span className="text-secondary small fw-medium">
+                  {t('Active Repairs')}
+                </span>
+                <span className="badge rounded-pill px-2.5 py-1 extra-small" style={{ backgroundColor: '#EFF6FF', color: '#1D4ED8', fontWeight: 600 }}>
                   {t('Assigned')}
                 </span>
               </div>
@@ -508,31 +502,26 @@ export default function AdminReportsPage() {
 
         {/* Done / Resolved */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="tri-kpi-card">
+          <div className="shrimp-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">{t('Resolved / Done')}</span>
-                <div className="tri-kpi-icon tri-kpi-icon-blue">
-                  <FaCheckCircle size={16} />
+                <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">
+                  {t('Resolved / Done')}
+                </span>
+                <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: 34, height: 34, backgroundColor: '#ECFDF5', color: '#059669' }}>
+                  <FaCheckCircle size={15} />
                 </div>
               </div>
               <h2 className="fw-extrabold mb-1" style={{ color: '#059669', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
                 {counts.done}
               </h2>
             </div>
-            <div>
-              <div className="tri-progress-track my-2.5" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)' }}>
-                <div
-                  className="tri-progress-bar"
-                  style={{
-                    width: counts.total > 0 ? `${Math.max(15, (counts.done / counts.total) * 100)}%` : '30%',
-                    background: 'linear-gradient(90deg, #10B981, #059669)'
-                  }}
-                />
-              </div>
+            <div className="pt-2">
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small">{t('Finished Repairs')}</span>
-                <span className="badge rounded-pill extra-small px-2 py-0.5 admin-badge-low">
+                <span className="text-secondary small fw-medium">
+                  {t('Finished Repairs')}
+                </span>
+                <span className="badge rounded-pill px-2.5 py-1 extra-small" style={{ backgroundColor: '#ECFDF5', color: '#047857', fontWeight: 600 }}>
                   {t('Verified')}
                 </span>
               </div>
@@ -542,18 +531,18 @@ export default function AdminReportsPage() {
       </div>
 
       {/* 3. MAINTENANCE REPORTS FEED CARD WITH INTEGRATED FILTER TOOLBAR */}
-      <div className="tri-card p-4 admin-feed-wrapper">
-        <div className="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom flex-wrap gap-2">
+      <div className="bg-white border rounded-4 p-4 shadow-2xs" style={{ borderColor: '#E2E8F0' }}>
+        <div className="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom flex-wrap gap-2" style={{ borderColor: '#E2E8F0' }}>
           <div>
             <h5 className="fw-extrabold text-dark mb-0 d-flex align-items-center gap-2">
-              <FaTools className="text-primary" /> {t('Farm Maintenance & Issues List')}
+              <FaTools style={{ color: '#FC563C' }} /> {t('Farm Maintenance & Issues List')}
             </h5>
-            <p className="extra-small text-muted mb-0 mt-0.5">
+            <p className="extra-small text-secondary mb-0 mt-0.5">
               {t('List of equipment breakdowns, pond repairs, and caretaker notes')}
             </p>
           </div>
           <div className="d-flex align-items-center gap-2 flex-wrap">
-            <span className="badge rounded-pill admin-incident-count-badge px-3 py-1.5 extra-small fw-bold">
+            <span className="badge rounded-pill px-3 py-1.5 extra-small border" style={{ backgroundColor: '#F8FAFC', color: '#475569', borderColor: '#E2E8F0' }}>
               {reports.length} {t('Reports Logged')}
             </span>
           </div>

@@ -327,35 +327,25 @@ export default function CaretakerSettingsPage() {
 
   return (
     <div className="caretaker-settings-hub pb-5 pt-2">
-      {/* 1. EXECUTIVE HERO OPERATIONS BANNER */}
-      <div className="disease-hero-banner d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
-        <div className="d-flex align-items-center gap-3">
-          <div className="hero-icon-badge shadow-xs">
-            <FaCog />
+      {/* 1. TITLE HEADER */}
+      <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+        <div>
+          <div className="d-flex align-items-center gap-2">
+            <h3 className="fw-extrabold text-dark mb-0 tracking-tight" style={{ letterSpacing: '-0.02em' }}>
+              {t('hero.caretakerSettings', 'Caretaker Account & System Settings')}
+            </h3>
+            <span className="badge rounded-pill extra-small px-2.5 py-1 fw-bold bg-white border text-secondary d-flex align-items-center gap-1.5 shadow-2xs">
+              <span className="pulse-dot-green"></span>
+              {t('hero.caretakerSettingsBadge', 'Operator Profile Verified')}
+            </span>
           </div>
-          <div>
-            <div className="d-flex align-items-center gap-2 flex-wrap">
-              <h3 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#FC563C', fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
-                {t('hero.caretakerSettings', 'Caretaker Account & System Settings')}
-              </h3>
-              <span
-                className="badge rounded-pill extra-small px-3 py-1 fw-bold"
-                style={{ backgroundColor: 'rgba(252, 86, 60, 0.08)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.16)' }}
-              >
-                ● {t('hero.caretakerSettingsBadge', 'Operator Profile Verified')}
-              </span>
-            </div>
-            <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
-              {t('hero.caretakerSettingsSub', 'Manage operator profile credentials, notification alerts, biometric security preferences, and display modes.')}
-            </p>
-          </div>
+          <p className="text-muted mb-0 small mt-0.5">
+            {t('hero.caretakerSettingsSub', 'Manage operator profile credentials, notification alerts, biometric security preferences, and display modes.')}
+          </p>
         </div>
 
         <div className="d-flex align-items-center gap-2 flex-wrap">
-          <span
-            className="badge rounded-pill extra-small px-3 py-2 fw-bold shadow-xs"
-            style={{ backgroundColor: 'rgba(252, 86, 60, 0.06)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.2)' }}
-          >
+          <span className="badge rounded-pill extra-small px-3 py-1.5 fw-bold bg-white border text-secondary shadow-2xs">
             ● Field Station Profile Active
           </span>
         </div>

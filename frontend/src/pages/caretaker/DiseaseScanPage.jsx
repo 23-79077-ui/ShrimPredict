@@ -616,37 +616,27 @@ export default function DiseaseScanPage() {
 
   return (
     <div className="caretaker-diseasescan-hub">
-      {/* 1. EXECUTIVE HERO OPERATIONS BANNER */}
-      <div className="disease-hero-banner d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
-        <div className="d-flex align-items-center gap-3">
-          <div className="hero-icon-badge shadow-xs">
-            <FaRobot />
+      {/* 1. TITLE HEADER */}
+      <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+        <div>
+          <div className="d-flex align-items-center gap-2">
+            <h3 className="fw-extrabold text-dark mb-0 tracking-tight" style={{ letterSpacing: '-0.02em' }}>
+              {t('hero.diseaseScan', 'Shrimp Disease Scan & Health Check')}
+            </h3>
+            <span className="badge rounded-pill extra-small px-2.5 py-1 fw-bold bg-white border text-secondary d-flex align-items-center gap-1.5 shadow-2xs">
+              <span className="pulse-dot-green"></span>
+              {t('hero.diseaseScanBadge', 'AI Photo Health Scanner')}
+            </span>
           </div>
-          <div>
-            <div className="d-flex align-items-center gap-2 flex-wrap">
-              <h3 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#FC563C', fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
-                {t('hero.diseaseScan', 'Shrimp Disease Scan & Health Check')}
-              </h3>
-              <span
-                className="badge rounded-pill extra-small px-3 py-1 fw-bold"
-                style={{ backgroundColor: 'rgba(252, 86, 60, 0.08)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.16)' }}
-              >
-                ● {t('hero.diseaseScanBadge', 'AI Photo Health Scanner')}
-              </span>
-            </div>
-            <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
-              {t('hero.diseaseScanSub', 'Check shrimp photos for White Spot Disease (WSSV), discoloration, and general shrimp health.')}
-            </p>
-          </div>
+          <p className="text-muted mb-0 small mt-0.5">
+            {t('hero.diseaseScanSub', 'Check shrimp photos for White Spot Disease (WSSV), discoloration, and general shrimp health.')}
+          </p>
         </div>
 
         <div className="d-flex align-items-center gap-2 flex-wrap">
-          <div
-            className="d-flex align-items-center gap-2 px-3 py-1.5 rounded-pill extra-small fw-bold shadow-xs"
-            style={{ backgroundColor: 'rgba(252, 86, 60, 0.06)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.2)' }}
-          >
+          <div className="badge rounded-pill extra-small px-3 py-1.5 fw-bold bg-white border text-secondary d-flex align-items-center gap-2 shadow-2xs">
             <span className="rounded-circle bg-success shadow-xs" style={{ width: 8, height: 8 }} />
-            <span>Diagnostic Pipeline Active (EfficientNet / CNN)</span>
+            <span>EfficientNet / CNN Pipeline Active</span>
           </div>
         </div>
       </div>
@@ -654,7 +644,7 @@ export default function DiseaseScanPage() {
       <div className="row g-4">
         {/* LEFT CARD: SCANNER & CONTROLS */}
         <div className="col-12 col-lg-7">
-          <div className="tri-card p-4 h-100 d-flex flex-column justify-content-between">
+          <div className="bg-white border rounded-4 p-4 h-100 d-flex flex-column justify-content-between shadow-2xs" style={{ borderColor: '#E2E8F0' }}>
             <div>
               {/* Card Sub-Header */}
               <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
@@ -668,10 +658,10 @@ export default function DiseaseScanPage() {
 
               {/* Pond Selection Pills */}
               <div
-                className="p-2.5 rounded-3 mb-3 d-flex align-items-center gap-2 flex-wrap caretaker-scan-strip"
-                style={{ border: '1px solid rgba(252, 86, 60, 0.15)' }}
+                className="p-2 rounded-3 mb-3 d-flex align-items-center gap-1.5 flex-wrap bg-light border"
+                style={{ borderColor: '#E2E8F0' }}
               >
-                <span className="extra-small fw-bold text-uppercase d-flex align-items-center gap-1 ps-1" style={{ color: '#FC563C' }}>
+                <span className="extra-small fw-bold text-uppercase d-flex align-items-center gap-1 ps-2 text-secondary">
                   <FaWater /> Pond:
                 </span>
                 {assignedPonds.map((pond) => {
@@ -681,8 +671,8 @@ export default function DiseaseScanPage() {
                     <button
                       key={pond.id || pName}
                       type="button"
-                      className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all d-inline-flex align-items-center gap-1.5 ${
-                        isSelected ? 'btn-tri-navy shadow-xs' : 'btn-tri-outline'
+                      className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all d-inline-flex align-items-center gap-1.5 border-0 ${
+                        isSelected ? 'bg-dark text-white shadow-2xs' : 'bg-white text-secondary shadow-2xs'
                       }`}
                       onClick={() => setSelectedPond(pName)}
                     >
@@ -790,7 +780,7 @@ export default function DiseaseScanPage() {
                 <div className="d-flex align-items-center gap-2 flex-grow-1">
                   <button
                     type="button"
-                    className="btn btn-tri-outline px-3 py-2 fw-bold extra-small flex-grow-1"
+                    className="btn btn-sm btn-understated-view px-3 py-2 fw-bold extra-small flex-grow-1 shadow-2xs"
                     onClick={captureImage}
                     disabled={!streaming || scanning}
                   >
@@ -798,7 +788,7 @@ export default function DiseaseScanPage() {
                   </button>
                   <button
                     type="button"
-                    className="btn btn-tri-outline px-3 py-2 fw-bold extra-small flex-grow-1"
+                    className="btn btn-sm btn-understated-view px-3 py-2 fw-bold extra-small flex-grow-1 shadow-2xs"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={scanning}
                   >
@@ -807,7 +797,7 @@ export default function DiseaseScanPage() {
                   {image && (
                     <button
                       type="button"
-                      className="btn btn-tri-outline-orange px-3 py-2 fw-bold extra-small"
+                      className="btn btn-sm btn-outline-danger px-3 py-2 fw-bold extra-small rounded-3"
                       onClick={clearSelectedImage}
                       disabled={scanning}
                       title="Clear selected image"
@@ -819,8 +809,8 @@ export default function DiseaseScanPage() {
 
                 <button
                   type="button"
-                  className="btn btn-tri-navy px-4 py-2 fw-bold extra-small flex-shrink-0 shadow-sm caretaker-scan-submit-btn"
-                  style={{ minWidth: 130 }}
+                  className="btn btn-sm px-4 py-2 fw-bold extra-small flex-shrink-0 shadow-2xs rounded-3 text-white"
+                  style={{ minWidth: 130, backgroundColor: '#FC563C' }}
                   onClick={() => handleScan(false)}
                   disabled={!scanReady}
                 >
@@ -832,32 +822,32 @@ export default function DiseaseScanPage() {
 
             {/* Literature Benchmark Accordion */}
             <div
-              className="mt-4 rounded-3 overflow-hidden caretaker-scan-strip"
-              style={{ border: '1px solid rgba(252, 86, 60, 0.15)' }}
+              className="mt-4 rounded-3 overflow-hidden bg-light border"
+              style={{ borderColor: '#E2E8F0' }}
             >
               <details>
-                <summary className="fw-bold p-3 extra-small" style={{ cursor: 'pointer', listStyle: 'none', color: '#FC563C' }}>
+                <summary className="fw-bold p-3 extra-small text-dark" style={{ cursor: 'pointer', listStyle: 'none' }}>
                   <FaInfoCircle className="me-2 text-primary" />
                   View Model Accuracy Literature &amp; Research Baselines
                 </summary>
-                <div className="p-3 pt-0 border-top" style={{ fontSize: '0.82rem' }}>
+                <div className="p-3 pt-0 border-top" style={{ fontSize: '0.82rem', borderColor: '#E2E8F0' }}>
                   <p className="mb-2 text-muted extra-small">Current detection baselines established by scientific literature:</p>
                   <ul className="mb-0 extra-small ps-3">
                     <li className="mb-1.5">
                       <strong>Advanced CNN (LeNet) Precision:</strong> Up to 96.1% Precision for <i>Penaeus vannamei</i> disease classification.
-                      <a href="https://doi.org/10.1016/j.aquaeng.2022.102296" target="_blank" rel="noopener noreferrer" className="ms-1 fw-bold" style={{ color: '#FC563C' }}>
+                      <a href="https://doi.org/10.1016/j.aquaeng.2022.102296" target="_blank" rel="noopener noreferrer" className="ms-1 fw-bold text-decoration-none" style={{ color: '#FC563C' }}>
                         (Read Study)
                       </a>
                     </li>
                     <li className="mb-1.5">
                       <strong>Deep Learning (YOLOv8):</strong> 92.0% mean Average Precision (mAP) for healthy vs. diseased classification.
-                      <a href="https://scholar.google.com/scholar?q=Video-Based+Disease+Detection+in+Vannamei+Shrimp+Using+YOLOv8" target="_blank" rel="noopener noreferrer" className="ms-1 fw-bold" style={{ color: '#FC563C' }}>
+                      <a href="https://scholar.google.com/scholar?q=Video-Based+Disease+Detection+in+Vannamei+Shrimp+Using+YOLOv8" target="_blank" rel="noopener noreferrer" className="ms-1 fw-bold text-decoration-none" style={{ color: '#FC563C' }}>
                         (Search Scholar)
                       </a>
                     </li>
                     <li className="mb-0">
                       <strong>WSSV Specific Detection (ANN/DL):</strong> 90.0% Accuracy Rate.
-                      <a href="https://scholar.google.com/scholar?q=Shrimp+disease+detection+using+deep+learning+techniques" target="_blank" rel="noopener noreferrer" className="ms-1 fw-bold" style={{ color: '#FC563C' }}>
+                      <a href="https://scholar.google.com/scholar?q=Shrimp+disease+detection+using+deep+learning+techniques" target="_blank" rel="noopener noreferrer" className="ms-1 fw-bold text-decoration-none" style={{ color: '#FC563C' }}>
                         (Search Scholar)
                       </a>
                     </li>
@@ -873,7 +863,7 @@ export default function DiseaseScanPage() {
 
         {/* RIGHT CARD: PIPELINE ASSESSMENT RESULT */}
         <div className="col-12 col-lg-5">
-          <div className="tri-card p-4 h-100 d-flex flex-column">
+          <div className="bg-white border rounded-4 p-4 h-100 d-flex flex-column shadow-2xs" style={{ borderColor: '#E2E8F0' }}>
             <div className="d-flex align-items-center justify-content-between mb-3">
               <h6 className="fw-bold mb-0 d-flex align-items-center gap-2">
                 <FaShieldAlt style={{ color: '#FC563C' }} /> Pipeline Assessment Result
@@ -1154,7 +1144,7 @@ export default function DiseaseScanPage() {
         </div>
 
       {/* DETECTION & PIPELINE HISTORY TABLE WITH FILTER TOOLSTRIP & EXPORT PDF */}
-      <div className="tri-card p-4 mt-4">
+      <div className="bg-white border rounded-4 p-4 mt-4 shadow-2xs" style={{ borderColor: '#E2E8F0' }}>
         <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-3">
           <div>
             <h5 className="fw-extrabold text-dark mb-1 d-flex align-items-center gap-2">
@@ -1165,60 +1155,40 @@ export default function DiseaseScanPage() {
 
           <div className="d-flex align-items-center gap-2 flex-wrap ms-auto">
             {/* Search Bar */}
-            <div
-              className="d-flex align-items-center px-3 rounded-pill bg-white shadow-xs"
-              style={{
-                width: 210,
-                height: 38,
-                border: isDark ? '1px solid rgba(56, 189, 248, 0.2)' : '1.5px solid #CBD5E1',
-              }}
-            >
-              <FaSearch className="text-muted extra-small me-2" />
+            <div className="position-relative" style={{ width: 220 }}>
+              <FaSearch className="position-absolute text-muted extra-small" style={{ top: 12, left: 12 }} />
               <input
                 type="text"
-                className="form-control form-control-sm border-0 shadow-none bg-transparent p-0 extra-small fw-medium"
+                className="minimal-filter-control ps-4 pe-2 fw-medium"
                 placeholder="Search history..."
                 value={historySearch}
                 onChange={(e) => setHistorySearch(e.target.value)}
-                style={{ height: '100%' }}
+                style={{ height: 38, width: '100%', fontSize: '0.8rem' }}
               />
             </div>
 
             {/* Status Filter */}
-            <div
-              className="d-flex align-items-center px-3 rounded-pill bg-white shadow-xs"
+            <select
+              className="minimal-filter-control fw-semibold cursor-pointer"
               style={{
                 height: 38,
-                border: isDark ? '1px solid rgba(56, 189, 248, 0.2)' : '1.5px solid #CBD5E1',
-                backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                minWidth: 150,
+                fontSize: '0.8rem',
               }}
+              value={historyStatusFilter}
+              onChange={(e) => setHistoryStatusFilter(e.target.value)}
+              aria-label="Filter scan history by status"
             >
-              <FaFilter size={11} style={{ color: '#FC563C' }} className="me-2 flex-shrink-0" />
-              <select
-                className="form-select form-select-sm border-0 bg-transparent fw-semibold extra-small p-0 shadow-none cursor-pointer"
-                style={{
-                  height: 36,
-                  width: 'auto',
-                  minWidth: 140,
-                  color: isDark ? '#F1F5F9' : '#1E293B',
-                  outline: 'none',
-                  fontSize: '0.8rem',
-                }}
-                value={historyStatusFilter}
-                onChange={(e) => setHistoryStatusFilter(e.target.value)}
-                aria-label="Filter scan history by status"
-              >
-                <option value="all">Filter: All Statuses</option>
-                <option value="Healthy">Status: Healthy</option>
-                <option value="Diseased">Status: Diseased</option>
-                <option value="Uncertain">Status: Uncertain</option>
-                <option value="Poor Image Quality">Status: Poor Quality</option>
-              </select>
-            </div>
+              <option value="all">Filter: All Statuses</option>
+              <option value="Healthy">Status: Healthy</option>
+              <option value="Diseased">Status: Diseased</option>
+              <option value="Uncertain">Status: Uncertain</option>
+              <option value="Poor Image Quality">Status: Poor Quality</option>
+            </select>
 
             {/* Export PDF Button */}
             <button
-              className="btn btn-tri-outline btn-sm px-3.5 extra-small fw-bold d-inline-flex align-items-center gap-1.5 text-nowrap"
+              className="btn btn-sm btn-understated-view px-3.5 extra-small fw-bold d-inline-flex align-items-center gap-1.5 text-nowrap shadow-2xs"
               style={{ height: 38 }}
               onClick={exportPdf}
             >
@@ -1227,14 +1197,14 @@ export default function DiseaseScanPage() {
           </div>
         </div>
 
-        <div className="table-responsive rounded-3" style={{ maxHeight: '290px', overflowY: 'auto', border: isDark ? '1px solid rgba(56, 189, 248, 0.2)' : '1.5px solid #CBD5E1' }}>
-          <table className="table tri-table align-middle mb-0">
-            <thead className="sticky-top shadow-xs" style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: isDark ? '#1E293B' : '#F8FAFC' }}>
+        <div className="table-responsive rounded-3 border" style={{ maxHeight: '290px', overflowY: 'auto', borderColor: '#E2E8F0' }}>
+          <table className="table table-hover align-middle mb-0">
+            <thead className="table-light sticky-top" style={{ position: 'sticky', top: 0, zIndex: 10 }}>
               <tr>
-                <th className="ps-3 py-3">Date &amp; Time</th>
-                <th className="py-3">Pond</th>
-                <th className="py-3">Disease / Outcome</th>
-                <th className="py-3 pe-3 text-end">Pipeline Status</th>
+                <th className="ps-3 py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Date &amp; Time</th>
+                <th className="py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Pond</th>
+                <th className="py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Disease / Outcome</th>
+                <th className="py-2.5 pe-3 text-end text-uppercase extra-small fw-bold text-muted border-0">Pipeline Status</th>
               </tr>
             </thead>
             <tbody>

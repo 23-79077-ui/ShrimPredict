@@ -1053,63 +1053,53 @@ export default function FeedingHistoryPage() {
 
   return (
     <div className="caretaker-history-hub">
-      {/* 1. EXECUTIVE HERO OPERATIONS BANNER */}
-      <div className="disease-hero-banner d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
-        <div className="d-flex align-items-center gap-3">
-          <div className="hero-icon-badge shadow-xs">
-            <FaUtensils />
+      {/* 1. TITLE HEADER */}
+      <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
+        <div>
+          <div className="d-flex align-items-center gap-2">
+            <h3 className="fw-extrabold text-dark mb-0 tracking-tight" style={{ letterSpacing: '-0.02em' }}>
+              {t('hero.feedingHistory', 'Daily Feeding Records & Tray Logs')}
+            </h3>
+            <span className="badge rounded-pill extra-small px-2.5 py-1 fw-bold bg-white border text-secondary d-flex align-items-center gap-1.5 shadow-2xs">
+              <span className="pulse-dot-green"></span>
+              {t('hero.feedingHistoryBadge', '5-Slot Schedule History')}
+            </span>
           </div>
-          <div>
-            <div className="d-flex align-items-center gap-2 flex-wrap">
-              <h3 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#FC563C', fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
-                {t('hero.feedingHistory', 'Daily Feeding Records & Tray Logs')}
-              </h3>
-              <span
-                className="badge rounded-pill extra-small px-3 py-1 fw-bold"
-                style={{ backgroundColor: 'rgba(252, 86, 60, 0.08)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.16)' }}
-              >
-                ● {t('hero.feedingHistoryBadge', '5-Slot Schedule History')}
-              </span>
-            </div>
-            <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
-              {t('hero.feedingHistorySub', 'Monitor daily feeding amounts, 5 feeding times, shrimp age (DOC), and vitamin additives.')}
-            </p>
-          </div>
+          <p className="text-muted mb-0 small mt-0.5">
+            {t('hero.feedingHistorySub', 'Monitor daily feeding amounts, 5 feeding times, shrimp age (DOC), and vitamin additives.')}
+          </p>
         </div>
 
-        {/* Action Controls Cluster */}
+        {/* Action Controls */}
         <div className="d-flex align-items-center gap-2 flex-wrap">
-          {/* Refresh / Sync Button */}
           <button
             type="button"
-            className="btn btn-sm btn-tri-outline px-3.5 py-2 shadow-xs hover-lift"
+            className="btn btn-sm btn-understated-view shadow-2xs"
             onClick={() => loadHistory(true)}
             disabled={refreshing}
             title="Sync Feeding Records with Farm Database"
           >
-            <FaSync size={11} className={refreshing ? 'fa-spin' : ''} style={{ color: '#FC563C' }} />
+            <FaSync size={11} className={refreshing ? 'fa-spin' : ''} />
             <span>{refreshing ? (isFilipino ? 'Nagsi-sync...' : 'Syncing...') : t('Sync')}</span>
           </button>
 
-          {/* Pond Cycle Calendar Shortcut */}
           <button
             type="button"
-            className="btn btn-sm btn-tri-outline px-3.5 py-2 shadow-xs hover-lift"
+            className="btn btn-sm btn-understated-view shadow-2xs"
             onClick={() => {
               const activePond = assignedPonds.find((p) => String(p.id) === String(selectedPondFilter)) || assignedPonds[0] || null;
               setCalendarModalPond(activePond);
             }}
             title="View Pond Calendar & Growth Schedule"
           >
-            <FaCalendarAlt size={11} style={{ color: '#FC563C' }} />
+            <FaCalendarAlt size={11} />
             <span>Pond Cycle Calendar</span>
           </button>
 
-          {/* Export Dropdown */}
           <div className="position-relative">
             <button
               type="button"
-              className="btn btn-sm btn-tri-navy px-3.5 py-2 shadow-xs hover-lift"
+              className="btn btn-sm btn-understated-feed shadow-2xs"
               onClick={() => setShowExportMenu(!showExportMenu)}
               title="Export Feeding Data to CSV or PDF"
             >
@@ -1117,11 +1107,10 @@ export default function FeedingHistoryPage() {
               <span>Export</span>
               <FaChevronDown size={9} className="opacity-75 ms-1" />
             </button>
-
             {showExportMenu && (
               <div
                 className="position-absolute end-0 mt-1 bg-white shadow-lg rounded-4 border py-1.5"
-                style={{ zIndex: 1050, minWidth: 180, borderColor: 'rgba(252, 86, 60, 0.12)' }}
+                style={{ zIndex: 1050, minWidth: 180, borderColor: '#E2E8F0' }}
               >
                 <button
                   type="button"
@@ -1143,67 +1132,34 @@ export default function FeedingHistoryPage() {
         </div>
       </div>
 
-      {/* POND QUICK-SELECTOR NAVIGATION STRIP (TRI-POND PILLS) */}
+      {/* 2. POND QUICK-SELECTOR NAVIGATION STRIP */}
       {assignedPonds.length > 0 && (
-        <div className="mb-4">
-          <div className="d-flex align-items-center gap-2 flex-wrap tri-pond-pill-strip">
-            <span className="extra-small fw-bold text-uppercase tracking-wider me-1" style={{ color: '#FC563C', fontSize: '0.72rem' }}>
-              <FaWater className="me-1 text-primary" size={11} /> Select Pond:
+        <div className="unified-filter-toolbar mb-4">
+          <div className="d-flex align-items-center gap-1.5 flex-wrap">
+            <span className="extra-small fw-bold text-secondary text-uppercase tracking-wider me-1">
+              <FaWater size={11} className="me-1 text-primary" /> Pond:
             </span>
-
-            {/* "All Ponds" Pill */}
             <button
               type="button"
-              className={`tri-pond-pill border-0 ${selectedPondFilter === 'all' ? 'btn-tri-navy text-white shadow-sm' : 'bg-white text-dark shadow-xs'}`}
-              style={{
-                border: selectedPondFilter === 'all' ? 'none' : '1px solid rgba(252, 86, 60, 0.12)',
-              }}
+              className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold border-0 transition-all ${selectedPondFilter === 'all' ? 'bg-white shadow-2xs text-dark' : 'text-muted'}`}
               onClick={() => setSelectedPondFilter('all')}
             >
-              <FaLayerGroup size={11} />
-              <span>All Ponds ({records.length})</span>
+              All Ponds ({records.length})
             </button>
-
-            {/* Assigned Pond Pills */}
             {assignedPonds.map((pond) => {
               const isSelected = String(selectedPondFilter) === String(pond.id);
               const pondRecords = records.filter((r) => String(r.pond_id) === String(pond.id));
               const currentDoc = computeDoc(pond.stocking_date, todayYMD);
-
               return (
                 <button
                   key={pond.id}
                   type="button"
-                  className={`tri-pond-pill border-0 ${isSelected ? 'btn-tri-orange text-white shadow-sm' : 'bg-white text-dark shadow-xs'}`}
-                  style={{
-                    border: isSelected ? 'none' : '1px solid rgba(252, 86, 60, 0.12)',
-                  }}
+                  className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold border-0 transition-all ${isSelected ? 'bg-white shadow-2xs text-dark' : 'text-muted'}`}
                   onClick={() => setSelectedPondFilter(String(pond.id))}
                 >
-                  <FaWater size={11} className={isSelected ? 'text-white' : 'text-primary'} />
-                  <span>{pond.pond_name}</span>
-                  {currentDoc && (
-                    <span
-                      className="badge rounded-pill extra-small px-1.5 py-0.5 ms-1"
-                      style={{
-                        backgroundColor: isSelected ? 'rgba(255, 255, 255, 0.25)' : 'rgba(252, 86, 60, 0.08)',
-                        color: isSelected ? '#FFFFFF' : '#FC563C',
-                        fontSize: '0.66rem',
-                      }}
-                    >
-                      DOC {currentDoc}
-                    </span>
-                  )}
-                  <span
-                    className="badge rounded-pill extra-small px-1.5 py-0.5"
-                    style={{
-                      backgroundColor: isSelected ? 'rgba(255, 255, 255, 0.2)' : '#F1F5F9',
-                      color: isSelected ? '#FFFFFF' : '#64748B',
-                      fontSize: '0.66rem',
-                    }}
-                  >
-                    {pondRecords.length}
-                  </span>
+                  {pond.pond_name}
+                  {currentDoc && <span className="badge rounded-pill bg-light text-dark ms-1.5">DOC {currentDoc}</span>}
+                  <span className="badge rounded-pill bg-secondary bg-opacity-10 text-secondary ms-1">{pondRecords.length}</span>
                 </button>
               );
             })}
@@ -1211,151 +1167,107 @@ export default function FeedingHistoryPage() {
         </div>
       )}
 
-      {/* 4 TRI-COLOR TELEMETRY CARDS */}
+      {/* 3. 4 SHRIMP KPI CARDS */}
       <div className="row g-3 g-xl-4 mb-4">
-        {/* Card 1: Cumulative Feed Intake */}
+        {/* Card 1: Feed Consumed */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="tri-kpi-card">
+          <div className="shrimp-kpi-card">
             <div>
-              <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Feed Consumed</span>
-                <div className="tri-kpi-icon tri-kpi-icon-blue">
-                  <FaUtensils size={17} />
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <span className="kpi-label">Feed Consumed</span>
+                <div className="kpi-icon-bubble">
+                  <FaUtensils size={14} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
-                {totalFeedKg.toFixed(2)} <small className="fs-6 text-muted fw-normal">kg</small>
-              </h2>
-              <div className="extra-small text-muted fw-semibold">
-                Total mass: <strong className="font-mono" style={{ color: '#FC563C' }}>{Math.round(totalFeedKg * 1000).toLocaleString()} g</strong>
+              <div className="kpi-value text-dark">
+                {totalFeedKg.toFixed(2)} <span className="kpi-value-unit">kg</span>
+              </div>
+              <div className="extra-small text-muted fw-semibold mt-1">
+                Total mass: <strong className="font-mono text-dark">{Math.round(totalFeedKg * 1000).toLocaleString()} g</strong>
               </div>
             </div>
-            <div>
-              <div className="tri-progress-track my-2.5">
-                <div
-                  className="tri-progress-bar"
-                  style={{
-                    width: `${Math.min(100, Math.max(12, (totalFeedKg / Math.max(1, (assignedPonds?.length || 1) * 50)) * 100))}%`,
-                    background: 'linear-gradient(90deg, #172A39 0%, #FC563C 100%)',
-                  }}
-                />
-              </div>
-              <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small text-truncate" style={{ maxWidth: 140 }}>{currentScope}</span>
-                <span className="badge badge-tri-navy rounded-pill extra-small px-2 py-0.5">Feeding Stats</span>
-              </div>
+            <div className="mt-3 pt-2 border-top d-flex justify-content-between align-items-center">
+              <span className="extra-small text-muted text-truncate" style={{ maxWidth: 130 }}>{currentScope}</span>
+              <span className="badge rounded-pill extra-small px-2 py-0.5 bg-light border text-secondary">Cumulative</span>
             </div>
           </div>
         </div>
 
-        {/* Card 2: Total Feeding Logs */}
+        {/* Card 2: Feeding Logs */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="tri-kpi-card" style={{ borderColor: 'rgba(252, 86, 60, 0.16)' }}>
+          <div className="shrimp-kpi-card">
             <div>
-              <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Feeding Logs</span>
-                <div className="tri-kpi-icon tri-kpi-icon-orange">
-                  <FaCalendarAlt size={17} />
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <span className="kpi-label">Feeding Logs</span>
+                <div className="kpi-icon-bubble">
+                  <FaCalendarAlt size={14} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
-                {totalLogsCount} <small className="fs-6 text-muted fw-normal">entries</small>
-              </h2>
-              <div className="extra-small text-muted fw-semibold">
-                Daily summaries: <strong className="font-mono" style={{ color: '#FC563C' }}>{dailyGroupedRecords.length} days</strong>
+              <div className="kpi-value text-dark">
+                {totalLogsCount} <span className="kpi-value-unit">entries</span>
+              </div>
+              <div className="extra-small text-muted fw-semibold mt-1">
+                Daily summaries: <strong className="font-mono text-dark">{dailyGroupedRecords.length} days</strong>
               </div>
             </div>
-            <div>
-              <div className="tri-progress-track my-2.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.1)' }}>
-                <div
-                  className="tri-progress-bar"
-                  style={{
-                    width: `${Math.min(100, Math.max(10, (totalLogsCount / Math.max(1, (assignedPonds?.length || 1) * 15)) * 100))}%`,
-                    background: 'linear-gradient(90deg, #FC563C 0%, #6E7575 100%)',
-                  }}
-                />
-              </div>
-              <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small">Logged sessions</span>
-                <span className="badge badge-tri-orange rounded-pill extra-small px-2 py-0.5">Recorded</span>
-              </div>
+            <div className="mt-3 pt-2 border-top d-flex justify-content-between align-items-center">
+              <span className="extra-small text-muted">Logged sessions</span>
+              <span className="badge rounded-pill extra-small px-2 py-0.5 bg-light border text-secondary">Recorded</span>
             </div>
           </div>
         </div>
 
-        {/* Card 3: Active Production Basins */}
+        {/* Card 3: Active Ponds */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="tri-kpi-card">
+          <div className="shrimp-kpi-card">
             <div>
-              <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Active Ponds</span>
-                <div className="tri-kpi-icon tri-kpi-icon-blue">
-                  <FaWater size={17} />
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <span className="kpi-label">Active Ponds</span>
+                <div className="kpi-icon-bubble">
+                  <FaWater size={14} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
-                {pondsWithRecords} <small className="fs-6 text-muted fw-normal">/ {assignedPonds.length || 1}</small>
-              </h2>
-              <div className="extra-small text-muted fw-semibold">
-                Assigned ponds: <strong style={{ color: '#FC563C' }}>{assignedPonds.length} ponds</strong>
+              <div className="kpi-value text-dark">
+                {pondsWithRecords} <span className="kpi-value-unit">/ {assignedPonds.length || 1}</span>
+              </div>
+              <div className="extra-small text-muted fw-semibold mt-1">
+                Assigned ponds: <strong className="text-dark">{assignedPonds.length} ponds</strong>
               </div>
             </div>
-            <div>
-              <div className="tri-progress-track my-2.5">
-                <div
-                  className="tri-progress-bar"
-                  style={{
-                    width: `${Math.min(100, Math.max(15, (pondsWithRecords / Math.max(1, assignedPonds?.length || 1)) * 100))}%`,
-                    background: 'linear-gradient(90deg, #172A39 0%, #FC563C 100%)',
-                  }}
-                />
-              </div>
-              <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small">Ponds with logs</span>
-                <span className="badge badge-tri-navy rounded-pill extra-small px-2 py-0.5">Active</span>
-              </div>
+            <div className="mt-3 pt-2 border-top d-flex justify-content-between align-items-center">
+              <span className="extra-small text-muted">Ponds with logs</span>
+              <span className="badge rounded-pill extra-small px-2 py-0.5 bg-light border text-secondary">Active</span>
             </div>
           </div>
         </div>
 
-        {/* Card 4: Vitamins & Probiotics Logged */}
+        {/* Card 4: Supplements */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="tri-kpi-card" style={{ borderColor: 'rgba(252, 86, 60, 0.16)' }}>
+          <div className="shrimp-kpi-card">
             <div>
-              <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Supplements</span>
-                <div className="tri-kpi-icon tri-kpi-icon-orange">
-                  <FaLeaf size={17} />
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <span className="kpi-label">Supplements</span>
+                <div className="kpi-icon-bubble">
+                  <FaLeaf size={14} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
-                {vitaminLogsCount} <small className="fs-6 text-muted fw-normal">sessions</small>
-              </h2>
-              <div className="extra-small text-muted fw-semibold text-truncate">
+              <div className="kpi-value text-dark">
+                {vitaminLogsCount} <span className="kpi-value-unit">sessions</span>
+              </div>
+              <div className="extra-small text-muted fw-semibold mt-1 text-truncate">
                 {latestDateText}
               </div>
             </div>
-            <div>
-              <div className="tri-progress-track my-2.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.1)' }}>
-                <div
-                  className="tri-progress-bar"
-                  style={{
-                    width: `${Math.min(100, Math.max(10, (vitaminLogsCount / Math.max(1, totalLogsCount || 1)) * 100))}%`,
-                    background: 'linear-gradient(90deg, #FC563C 0%, #6E7575 100%)',
-                  }}
-                />
-              </div>
-              <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small text-truncate" style={{ maxWidth: 140 }}>Sanolife &amp; Sano Top</span>
-                <span className="badge badge-tri-orange rounded-pill extra-small px-2 py-0.5">Additives</span>
-              </div>
+            <div className="mt-3 pt-2 border-top d-flex justify-content-between align-items-center">
+              <span className="extra-small text-muted text-truncate" style={{ maxWidth: 130 }}>Sanolife &amp; Sano Top</span>
+              <span className="badge rounded-pill extra-small px-2 py-0.5 bg-light border text-secondary">Additives</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* INTEGRATED FEEDING ANALYTICS & GROWTH HUB (TOGGLEABLE) */}
-      <div className="tri-card p-4 mb-4">
+      <div className="bg-white border rounded-4 p-4 mb-4 shadow-2xs" style={{ borderColor: '#E2E8F0' }}>
         <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2.5">
           {/* Left: Mode Toggle Buttons & Basin Indicator */}
           <div className="d-flex align-items-center gap-2 flex-wrap">
@@ -1789,33 +1701,25 @@ export default function FeedingHistoryPage() {
       </div>
 
       {/* MAIN CONTENT CONTAINER: TOOLBAR, CONTROLS & TABLE */}
-      <div className="tri-card p-3.5 p-md-4 mb-4">
+      <div className="bg-white border rounded-4 p-4 mb-4 shadow-2xs" style={{ borderColor: '#E2E8F0' }}>
         {/* TOOLBAR ROW 1: SEARCH, DATE FILTER PRESETS & RESET */}
         <div className="d-flex justify-content-between align-items-center flex-wrap gap-2.5 mb-3">
           {/* Live Search Input */}
-          <div
-            className="d-flex align-items-center bg-white rounded-pill px-3 shadow-xs"
-            style={{
-              width: '100%',
-              maxWidth: 280,
-              minWidth: 180,
-              height: 38,
-              border: '1px solid rgba(252, 86, 60, 0.15)',
-            }}
-          >
-            <FaSearch className="text-muted extra-small me-2 flex-shrink-0" />
+          <div className="position-relative" style={{ width: '100%', maxWidth: 280, minWidth: 180 }}>
+            <FaSearch className="position-absolute text-muted extra-small" style={{ top: 12, left: 12 }} />
             <input
               type="text"
-              className="form-control form-control-sm border-0 shadow-none bg-transparent p-0 extra-small fw-semibold text-dark"
+              className="minimal-filter-control ps-4 pe-4 fw-medium text-dark"
               placeholder="Search pond, date, feed, vitamins..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ outline: 'none' }}
+              style={{ width: '100%', height: 38, fontSize: '0.82rem' }}
             />
             {searchTerm && (
               <button
                 type="button"
-                className="btn btn-link p-0 text-muted extra-small ms-1"
+                className="btn btn-link p-0 text-muted extra-small position-absolute"
+                style={{ top: 10, right: 12 }}
                 onClick={() => setSearchTerm('')}
               >
                 <FaTimes size={11} />
@@ -1825,50 +1729,39 @@ export default function FeedingHistoryPage() {
 
           {/* Date Range Selector Pill */}
           <div className="d-flex align-items-center gap-2 flex-wrap">
-            <div
-              className="d-flex align-items-center gap-2 px-3 py-1 rounded-pill bg-white shadow-xs"
-              style={{ border: '1px solid rgba(252, 86, 60, 0.15)', height: 38 }}
+            <select
+              className="minimal-filter-control fw-semibold cursor-pointer"
+              style={{ height: 38, minWidth: 130, fontSize: '0.8rem' }}
+              value={dateFilter}
+              onChange={(e) => {
+                setDateFilter(e.target.value);
+                if (e.target.value !== 'custom') setCustomDate('');
+              }}
             >
-              <FaCalendarAlt size={12} style={{ color: '#FC563C' }} />
-              <select
-                className="form-select form-select-sm border-0 bg-transparent fw-bold p-0 extra-small shadow-none cursor-pointer"
-                style={{ width: 115, height: '100%', outline: 'none', color: '#FC563C' }}
-                value={dateFilter}
-                onChange={(e) => {
-                  setDateFilter(e.target.value);
-                  if (e.target.value !== 'custom') setCustomDate('');
-                }}
-              >
-                <option value="all">All Dates</option>
-                <option value="today">Today</option>
-                <option value="yesterday">Yesterday</option>
-                <option value="week">Past 7 Days</option>
-                <option value="month">Past 30 Days</option>
-                <option value="custom">Custom Date...</option>
-              </select>
-            </div>
+              <option value="all">All Dates</option>
+              <option value="today">Today</option>
+              <option value="yesterday">Yesterday</option>
+              <option value="week">Past 7 Days</option>
+              <option value="month">Past 30 Days</option>
+              <option value="custom">Custom Date...</option>
+            </select>
 
             {/* Custom Date Input (Shown when custom is selected) */}
             {dateFilter === 'custom' && (
-              <div
-                className="d-flex align-items-center gap-1.5 px-3 py-1 rounded-pill bg-white shadow-xs"
-                style={{ border: '1px solid #FC563C', height: 38 }}
-              >
-                <input
-                  type="date"
-                  className="form-control form-control-sm border-0 bg-transparent fw-bold p-0 extra-small shadow-none"
-                  style={{ width: 125, height: '100%', outline: 'none', color: '#FC563C' }}
-                  value={customDate}
-                  onChange={(e) => setCustomDate(e.target.value)}
-                />
-              </div>
+              <input
+                type="date"
+                className="minimal-filter-control fw-semibold"
+                style={{ width: 140, height: 38, fontSize: '0.8rem' }}
+                value={customDate}
+                onChange={(e) => setCustomDate(e.target.value)}
+              />
             )}
 
             {/* Reset Filters Button */}
             {isFiltered && (
               <button
                 type="button"
-                className="btn btn-sm btn-tri-outline px-3 py-1.5 extra-small shadow-xs hover-lift"
+                className="btn btn-sm btn-understated-view shadow-2xs"
                 style={{ height: 38 }}
                 onClick={handleResetFilters}
                 title="Reset all active filters"
@@ -1880,16 +1773,16 @@ export default function FeedingHistoryPage() {
         </div>
 
         {/* TOOLBAR ROW 2: CULTURE STAGE FILTER PILLS & VIEW MODE SEGMENTED SWITCH */}
-        <div className="d-flex justify-content-between align-items-center flex-wrap gap-2.5 pt-3 pb-3 border-top" style={{ borderColor: 'rgba(252, 86, 60, 0.08)' }}>
+        <div className="d-flex justify-content-between align-items-center flex-wrap gap-2.5 pt-3 pb-3 border-top" style={{ borderColor: '#E2E8F0' }}>
           {/* Stage Filter Pills */}
-          <div className="d-flex align-items-center gap-2 flex-wrap">
-            <span className="extra-small fw-bold text-uppercase tracking-wider me-1 text-muted" style={{ fontSize: '0.72rem' }}>
+          <div className="d-flex align-items-center gap-1 bg-light p-1 rounded-3 border" style={{ borderColor: '#E2E8F0' }}>
+            <span className="extra-small fw-bold text-uppercase tracking-wider px-2 text-muted" style={{ fontSize: '0.7rem' }}>
               Phase:
             </span>
             <button
               type="button"
-              className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all ${
-                stageFilter === 'all' ? 'btn-tri-navy shadow-xs' : 'btn-tri-outline'
+              className={`btn btn-sm py-1 px-2.5 rounded-2 extra-small fw-bold border-0 transition-all ${
+                stageFilter === 'all' ? 'bg-white shadow-2xs text-dark' : 'text-muted'
               }`}
               onClick={() => setStageFilter('all')}
             >
@@ -1897,49 +1790,44 @@ export default function FeedingHistoryPage() {
             </button>
             <button
               type="button"
-              className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all ${
-                stageFilter === 'nursery' ? 'btn-tri-orange shadow-xs' : 'btn-tri-outline-orange'
+              className={`btn btn-sm py-1 px-2.5 rounded-2 extra-small fw-bold border-0 transition-all ${
+                stageFilter === 'nursery' ? 'bg-white shadow-2xs text-dark' : 'text-muted'
               }`}
               onClick={() => setStageFilter('nursery')}
             >
-              Nursery (DOC 1–19) ({nurseryRecordsCount})
+              Nursery (1–19) ({nurseryRecordsCount})
             </button>
             <button
               type="button"
-              className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all ${
-                stageFilter === 'growout' ? 'btn-tri-navy shadow-xs' : 'btn-tri-outline'
+              className={`btn btn-sm py-1 px-2.5 rounded-2 extra-small fw-bold border-0 transition-all ${
+                stageFilter === 'growout' ? 'bg-white shadow-2xs text-dark' : 'text-muted'
               }`}
               onClick={() => setStageFilter('growout')}
             >
-              Grow-out (DOC 20+) ({growoutRecordsCount})
+              Grow-out (20+) ({growoutRecordsCount})
             </button>
           </div>
 
           {/* View Mode Switcher: Daily Total View vs Per Slot View */}
-          <div className="d-flex align-items-center gap-2">
-            <span className="extra-small fw-bold text-uppercase tracking-wider text-muted me-1 d-none d-md-inline" style={{ fontSize: '0.72rem' }}>
-              View Mode:
-            </span>
-            <div className="tri-segmented-switch">
-              <button
-                type="button"
-                className={`tri-segmented-item ${viewMode === 'daily' ? 'active' : ''}`}
-                onClick={() => setViewMode('daily')}
-                title="Aggregate daily total kg per pond"
-              >
-                <FaLayerGroup size={11} />
-                <span>Daily Total</span>
-              </button>
-              <button
-                type="button"
-                className={`tri-segmented-item ${viewMode === 'slot' ? 'active' : ''}`}
-                onClick={() => setViewMode('slot')}
-                title="Itemize every individual feeding slot"
-              >
-                <FaClock size={11} />
-                <span>Per Slot</span>
-              </button>
-            </div>
+          <div className="d-flex align-items-center gap-1 bg-light p-1 rounded-3 border" style={{ borderColor: '#E2E8F0' }}>
+            <button
+              type="button"
+              className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold border-0 transition-all d-flex align-items-center gap-1.5 ${viewMode === 'daily' ? 'bg-white shadow-2xs text-dark' : 'text-muted'}`}
+              onClick={() => setViewMode('daily')}
+              title="Aggregate daily total kg per pond"
+            >
+              <FaLayerGroup size={11} />
+              <span>Daily Total</span>
+            </button>
+            <button
+              type="button"
+              className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold border-0 transition-all d-flex align-items-center gap-1.5 ${viewMode === 'slot' ? 'bg-white shadow-2xs text-dark' : 'text-muted'}`}
+              onClick={() => setViewMode('slot')}
+              title="Itemize every individual feeding slot"
+            >
+              <FaClock size={11} />
+              <span>Per Slot</span>
+            </button>
           </div>
         </div>
 
@@ -1986,25 +1874,25 @@ export default function FeedingHistoryPage() {
           </div>
         ) : (
           <div
-            className="table-responsive rounded-4 position-relative"
+            className="table-responsive rounded-4 position-relative border"
             style={{
               maxHeight: '290px',
               overflowY: 'auto',
-              border: isDark ? '1px solid rgba(56, 189, 248, 0.2)' : '1.5px solid #CBD5E1',
+              borderColor: '#E2E8F0',
             }}
           >
-            <table className="table tri-table align-middle mb-0">
+            <table className="table table-hover align-middle mb-0">
               {viewMode === 'daily' ? (
                 <>
-                  <thead style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: isDark ? '#1E293B' : '#F8FAFC' }}>
+                  <thead className="table-light sticky-top" style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                     <tr>
-                      <th className="ps-3 py-3">Pond</th>
-                      <th className="py-3">Stage &amp; DOC</th>
-                      <th className="py-3">Log Date</th>
-                      <th className="py-3">Daily Feed Mass</th>
-                      <th className="py-3">5-Slot Feeding Schedule</th>
-                      <th className="py-3">Feed Formulation &amp; Additives</th>
-                      <th className="pe-3 py-3 text-center" style={{ width: 180 }}>Actions</th>
+                      <th className="ps-3 py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Pond</th>
+                      <th className="py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Stage &amp; DOC</th>
+                      <th className="py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Log Date</th>
+                      <th className="py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Daily Feed Mass</th>
+                      <th className="py-2.5 text-uppercase extra-small fw-bold text-muted border-0">5-Slot Feeding Schedule</th>
+                      <th className="py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Feed Formulation &amp; Additives</th>
+                      <th className="pe-3 py-2.5 text-center text-uppercase extra-small fw-bold text-muted border-0" style={{ width: 180 }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2177,15 +2065,15 @@ export default function FeedingHistoryPage() {
                 </>
               ) : (
                 <>
-                  <thead style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: isDark ? '#1E293B' : '#F8FAFC' }}>
+                  <thead className="table-light sticky-top" style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                     <tr>
-                      <th className="ps-3 py-3">Pond</th>
-                      <th className="py-3">Stage &amp; DOC</th>
-                      <th className="py-3">Feeding Slot</th>
-                      <th className="py-3">Feed Mass &amp; Formulation</th>
-                      <th className="py-3">Supplements Status</th>
-                      <th className="py-3">Log Date &amp; Caretaker</th>
-                      <th className="pe-3 py-3 text-center" style={{ width: 160 }}>Actions</th>
+                      <th className="ps-3 py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Pond</th>
+                      <th className="py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Stage &amp; DOC</th>
+                      <th className="py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Feeding Slot</th>
+                      <th className="py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Feed Mass &amp; Formulation</th>
+                      <th className="py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Supplements Status</th>
+                      <th className="py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Log Date &amp; Caretaker</th>
+                      <th className="pe-3 py-2.5 text-center text-uppercase extra-small fw-bold text-muted border-0" style={{ width: 160 }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>

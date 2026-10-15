@@ -505,48 +505,40 @@ export default function ReportsPage() {
 
   return (
     <div className="caretaker-reports-hub">
-      {/* 1. EXECUTIVE HERO OPERATIONS BANNER */}
-      <div className="disease-hero-banner d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
-        <div className="d-flex align-items-center gap-3">
-          <div className="hero-icon-badge shadow-xs">
-            <FaTools />
+      {/* 1. TITLE HEADER */}
+      <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
+        <div>
+          <div className="d-flex align-items-center gap-2">
+            <h3 className="fw-extrabold text-dark mb-0 tracking-tight" style={{ letterSpacing: '-0.02em' }}>
+              {t('hero.caretakerReports', 'Pond Issue & Incident Reports')}
+            </h3>
+            <span className="badge rounded-pill extra-small px-2.5 py-1 fw-bold bg-white border text-secondary d-flex align-items-center gap-1.5 shadow-2xs">
+              <span className="pulse-dot-green"></span>
+              {t('hero.caretakerReportsBadge', 'Incident & Maintenance Dispatch')}
+            </span>
           </div>
-          <div>
-            <div className="d-flex align-items-center gap-2 flex-wrap">
-              <h3 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#FC563C', fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
-                {t('hero.caretakerReports', 'Pond Issue & Incident Reports')}
-              </h3>
-              <span
-                className="badge rounded-pill extra-small px-3 py-1 fw-bold"
-                style={{ backgroundColor: 'rgba(252, 86, 60, 0.08)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.16)' }}
-              >
-                ● {t('hero.caretakerReportsBadge', 'Incident & Maintenance Dispatch')}
-              </span>
-            </div>
-            <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
-              {t('hero.caretakerReportsSub', 'Log field abnormalities, machinery downtime, and biological anomalies with photo/video evidence for rapid admin dispatch.')}
-            </p>
-          </div>
+          <p className="text-muted mb-0 small mt-0.5">
+            {t('hero.caretakerReportsSub', 'Log field abnormalities, machinery downtime, and biological anomalies with photo/video evidence.')}
+          </p>
         </div>
 
-        {/* Action Controls Cluster & View Toggle Switch */}
-        <div className="d-flex align-items-center gap-2.5 flex-wrap">
+        {/* Action Controls & Tab Switcher */}
+        <div className="d-flex align-items-center gap-2 flex-wrap">
           <button
             type="button"
-            className="btn btn-sm btn-tri-outline px-3.5 py-2 shadow-xs hover-lift"
+            className="btn btn-sm btn-understated-view shadow-2xs"
             onClick={() => loadMyReports(true)}
             disabled={loadingReports}
             title="Sync Incident Reports"
           >
-            <FaSync size={11} className={loadingReports ? 'fa-spin' : ''} style={{ color: '#FC563C' }} />
+            <FaSync size={11} className={loadingReports ? 'fa-spin' : ''} />
             <span>{t('Sync')}</span>
           </button>
 
-          {/* Segmented Mode Switcher */}
-          <div className="tri-segmented-switch">
+          <div className="d-flex align-items-center gap-1 bg-light p-1 rounded-3 border" style={{ borderColor: '#E2E8F0' }}>
             <button
               type="button"
-              className={`tri-segmented-item ${activeTab === 'submit' ? 'active' : ''}`}
+              className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold border-0 transition-all d-flex align-items-center gap-1.5 ${activeTab === 'submit' ? 'bg-white shadow-2xs text-dark' : 'text-muted'}`}
               onClick={() => setActiveTab('submit')}
             >
               <FaPaperPlane size={11} />
@@ -554,20 +546,13 @@ export default function ReportsPage() {
             </button>
             <button
               type="button"
-              className={`tri-segmented-item ${activeTab === 'history' ? 'active' : ''}`}
+              className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold border-0 transition-all d-flex align-items-center gap-1.5 ${activeTab === 'history' ? 'bg-white shadow-2xs text-dark' : 'text-muted'}`}
               onClick={() => setActiveTab('history')}
             >
               <FaHistory size={11} />
               <span>History</span>
               {myReports.length > 0 && (
-                <span
-                  className="badge rounded-pill extra-small px-1.5 py-0.5 ms-1"
-                  style={{
-                    backgroundColor: activeTab === 'history' ? '#FFFFFF' : '#E2E8F0',
-                    color: activeTab === 'history' ? '#FC563C' : '#475569',
-                    fontSize: '0.67rem',
-                  }}
-                >
+                <span className="badge rounded-pill bg-secondary bg-opacity-10 text-secondary ms-1">
                   {myReports.length}
                 </span>
               )}
@@ -576,138 +561,100 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      {/* 4 TRI-COLOR TELEMETRY CARDS */}
+      {/* 4 SHRIMP KPI CARDS */}
       <div className="row g-3 g-xl-4 mb-4">
-        {/* Card 1: Assigned Basins */}
+        {/* Card 1: Assigned Ponds */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="tri-kpi-card">
+          <div className="shrimp-kpi-card">
             <div>
-              <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Assigned Ponds</span>
-                <div className="tri-kpi-icon tri-kpi-icon-blue">
-                  <FaWater size={17} />
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <span className="kpi-label">Assigned Ponds</span>
+                <div className="kpi-icon-bubble">
+                  <FaWater size={14} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
-                {ponds.length} <small className="fs-6 text-muted fw-normal">ponds</small>
-              </h2>
-              <div className="extra-small text-muted fw-semibold">
+              <div className="kpi-value text-dark">
+                {ponds.length} <span className="kpi-value-unit">ponds</span>
+              </div>
+              <div className="extra-small text-muted fw-semibold mt-1">
                 Available for dispatch
               </div>
             </div>
-            <div>
-              <div className="tri-progress-track my-2.5">
-                <div className="tri-progress-bar" style={{ width: '100%', background: '#FC563C' }} />
-              </div>
-              <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small">Operational coverage</span>
-                <span className="badge badge-tri-navy rounded-pill extra-small px-2 py-0.5">Monitored</span>
-              </div>
+            <div className="mt-3 pt-2 border-top d-flex justify-content-between align-items-center">
+              <span className="extra-small text-muted">Operational coverage</span>
+              <span className="badge rounded-pill extra-small px-2 py-0.5 bg-light border text-secondary">Monitored</span>
             </div>
           </div>
         </div>
 
-        {/* Card 2: Pending Review */}
+        {/* Card 2: Pending Action */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="tri-kpi-card" style={{ borderColor: 'rgba(252, 86, 60, 0.16)' }}>
+          <div className="shrimp-kpi-card">
             <div>
-              <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Pending Action</span>
-                <div className="tri-kpi-icon tri-kpi-icon-orange">
-                  <FaClock size={17} />
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <span className="kpi-label">Pending Action</span>
+                <div className="kpi-icon-bubble">
+                  <FaClock size={14} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
-                {pendingReports} <small className="fs-6 text-muted fw-normal">open</small>
-              </h2>
-              <div className="extra-small text-muted fw-semibold">
+              <div className="kpi-value text-dark">
+                {pendingReports} <span className="kpi-value-unit">open</span>
+              </div>
+              <div className="extra-small text-muted fw-semibold mt-1">
                 Awaiting admin review
               </div>
             </div>
-            <div>
-              <div className="tri-progress-track my-2.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.1)' }}>
-                <div
-                  className="tri-progress-bar"
-                  style={{
-                    width: `${Math.min(100, Math.max(10, (pendingReports / Math.max(1, myReports.length || 1)) * 100))}%`,
-                    background: 'linear-gradient(90deg, #FC563C 0%, #6E7575 100%)',
-                  }}
-                />
-              </div>
-              <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small">Awaiting triage</span>
-                <span className="badge badge-tri-orange rounded-pill extra-small px-2 py-0.5">Pending</span>
-              </div>
+            <div className="mt-3 pt-2 border-top d-flex justify-content-between align-items-center">
+              <span className="extra-small text-muted">Awaiting triage</span>
+              <span className="badge rounded-pill extra-small px-2 py-0.5 bg-light border text-secondary">Pending</span>
             </div>
           </div>
         </div>
 
-        {/* Card 3: In Progress (Handling) */}
+        {/* Card 3: In Progress */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="tri-kpi-card">
+          <div className="shrimp-kpi-card">
             <div>
-              <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">In Progress</span>
-                <div className="tri-kpi-icon tri-kpi-icon-blue">
-                  <FaTools size={17} />
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <span className="kpi-label">In Progress</span>
+                <div className="kpi-icon-bubble">
+                  <FaTools size={14} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
-                {inProgressReports} <small className="fs-6 text-muted fw-normal">active</small>
-              </h2>
-              <div className="extra-small text-muted fw-semibold">
+              <div className="kpi-value text-dark">
+                {inProgressReports} <span className="kpi-value-unit">active</span>
+              </div>
+              <div className="extra-small text-muted fw-semibold mt-1">
                 Under active repair
               </div>
             </div>
-            <div>
-              <div className="tri-progress-track my-2.5">
-                <div
-                  className="tri-progress-bar"
-                  style={{
-                    width: `${Math.min(100, Math.max(10, (inProgressReports / Math.max(1, myReports.length || 1)) * 100))}%`,
-                    background: 'linear-gradient(90deg, #172A39 0%, #FC563C 100%)',
-                  }}
-                />
-              </div>
-              <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small">Technician assigned</span>
-                <span className="badge badge-tri-navy rounded-pill extra-small px-2 py-0.5">Handling</span>
-              </div>
+            <div className="mt-3 pt-2 border-top d-flex justify-content-between align-items-center">
+              <span className="extra-small text-muted">Technician assigned</span>
+              <span className="badge rounded-pill extra-small px-2 py-0.5 bg-light border text-secondary">Handling</span>
             </div>
           </div>
         </div>
 
-        {/* Card 4: Resolved Incidents */}
+        {/* Card 4: Resolved */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="tri-kpi-card" style={{ borderColor: 'rgba(252, 86, 60, 0.16)' }}>
+          <div className="shrimp-kpi-card">
             <div>
-              <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Resolved</span>
-                <div className="tri-kpi-icon tri-kpi-icon-orange">
-                  <FaCheckCircle size={17} />
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <span className="kpi-label">Resolved</span>
+                <div className="kpi-icon-bubble">
+                  <FaCheckCircle size={14} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
-                {doneReports} <small className="fs-6 text-muted fw-normal">resolved</small>
-              </h2>
-              <div className="extra-small text-muted fw-semibold">
+              <div className="kpi-value text-dark">
+                {doneReports} <span className="kpi-value-unit">resolved</span>
+              </div>
+              <div className="extra-small text-muted fw-semibold mt-1">
                 Completed corrective actions
               </div>
             </div>
-            <div>
-              <div className="tri-progress-track my-2.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.1)' }}>
-                <div
-                  className="tri-progress-bar"
-                  style={{
-                    width: `${Math.min(100, Math.max(10, (doneReports / Math.max(1, myReports.length || 1)) * 100))}%`,
-                    background: 'linear-gradient(90deg, #FC563C 0%, #10B981 100%)',
-                  }}
-                />
-              </div>
-              <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small">Archived solutions</span>
-                <span className="badge badge-tri-orange rounded-pill extra-small px-2 py-0.5">Done</span>
-              </div>
+            <div className="mt-3 pt-2 border-top d-flex justify-content-between align-items-center">
+              <span className="extra-small text-muted">Archived solutions</span>
+              <span className="badge rounded-pill extra-small px-2 py-0.5 bg-light border text-secondary">Done</span>
             </div>
           </div>
         </div>
@@ -715,17 +662,17 @@ export default function ReportsPage() {
 
       {/* TAB 1: SUBMIT NEW INCIDENT REPORT */}
       {activeTab === 'submit' && (
-        <div className="tri-card p-3.5 p-md-4 mb-4">
-          <div className="d-flex align-items-center justify-content-between mb-3 pb-3 border-bottom flex-wrap gap-2" style={{ borderColor: 'rgba(252, 86, 60, 0.08)' }}>
+        <div className="bg-white border rounded-4 p-4 mb-4 shadow-2xs" style={{ borderColor: '#E2E8F0' }}>
+          <div className="d-flex align-items-center justify-content-between mb-3 pb-3 border-bottom flex-wrap gap-2" style={{ borderColor: '#E2E8F0' }}>
             <div>
-              <h5 className="fw-extrabold mb-0" style={{ color: '#FC563C', letterSpacing: '-0.02em' }}>
+              <h5 className="fw-extrabold text-dark mb-0 tracking-tight">
                 Submit Field Incident &amp; Abnormality Report
               </h5>
               <small className="text-muted">
                 Report pond issues, broken equipment, or shrimp health problems with photos to the farm manager.
               </small>
             </div>
-            <div className="badge badge-tri-navy px-3 py-1.5 rounded-pill extra-small fw-bold d-flex align-items-center gap-1.5">
+            <div className="badge rounded-pill extra-small px-3 py-1.5 fw-bold bg-white border text-secondary d-flex align-items-center gap-1.5 shadow-2xs">
               <FaShieldAlt /> <span>Direct Admin Notification</span>
             </div>
           </div>
@@ -1041,11 +988,11 @@ export default function ReportsPage() {
 
       {/* TAB 2: INCIDENT HISTORY & RESOLUTION TRACKING */}
       {activeTab === 'history' && (
-        <div className="tri-card p-3.5 p-md-4 mb-4">
+        <div className="bg-white border rounded-4 p-4 mb-4 shadow-2xs" style={{ borderColor: '#E2E8F0' }}>
           {/* TOOLBAR CONTROLS */}
-          <div className="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom flex-wrap gap-2.5" style={{ borderColor: 'rgba(252, 86, 60, 0.08)' }}>
+          <div className="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom flex-wrap gap-2.5" style={{ borderColor: '#E2E8F0' }}>
             <div>
-              <h5 className="fw-extrabold mb-0" style={{ color: '#FC563C', letterSpacing: '-0.02em' }}>
+              <h5 className="fw-extrabold text-dark mb-0 tracking-tight">
                 Incident Logs &amp; Corrective Resolution History
               </h5>
               <small className="text-muted">
@@ -1054,23 +1001,21 @@ export default function ReportsPage() {
             </div>
 
             {/* Search Input */}
-            <div
-              className="d-flex align-items-center bg-white rounded-pill px-3 shadow-xs"
-              style={{ width: '100%', maxWidth: 280, minWidth: 170, height: 38, border: '1px solid rgba(252, 86, 60, 0.15)' }}
-            >
-              <FaSearch className="text-muted extra-small me-2" />
+            <div className="position-relative" style={{ width: '100%', maxWidth: 280, minWidth: 170 }}>
+              <FaSearch className="position-absolute text-muted extra-small" style={{ top: 12, left: 12 }} />
               <input
                 type="text"
-                className="form-control form-control-sm border-0 shadow-none bg-transparent p-0 extra-small fw-semibold text-dark"
+                className="minimal-filter-control ps-4 pe-4 fw-medium text-dark"
                 placeholder="Search issues, pond, notes..."
                 value={historySearch}
                 onChange={(e) => setHistorySearch(e.target.value)}
-                style={{ outline: 'none' }}
+                style={{ width: '100%', height: 38, fontSize: '0.82rem' }}
               />
               {historySearch && (
                 <button
                   type="button"
-                  className="btn btn-link p-0 text-muted extra-small ms-1"
+                  className="btn btn-link p-0 text-muted extra-small position-absolute"
+                  style={{ top: 10, right: 12 }}
                   onClick={() => setHistorySearch('')}
                 >
                   <FaTimes size={11} />
@@ -1082,14 +1027,14 @@ export default function ReportsPage() {
           {/* FILTER PILLS STRIP */}
           <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
             {/* Status Filter Pills */}
-            <div className="d-flex align-items-center gap-1.5 flex-wrap">
-              <span className="extra-small fw-bold text-uppercase tracking-wider text-muted me-1" style={{ fontSize: '0.7rem' }}>
+            <div className="d-flex align-items-center gap-1 bg-light p-1 rounded-3 border" style={{ borderColor: '#E2E8F0' }}>
+              <span className="extra-small fw-bold text-uppercase tracking-wider px-2 text-muted" style={{ fontSize: '0.7rem' }}>
                 Status:
               </span>
               <button
                 type="button"
-                className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all ${
-                  historyStatusFilter === 'all' ? 'btn-tri-navy shadow-xs' : 'btn-tri-outline'
+                className={`btn btn-sm py-1 px-2.5 rounded-2 extra-small fw-bold border-0 transition-all ${
+                  historyStatusFilter === 'all' ? 'bg-white shadow-2xs text-dark' : 'text-muted'
                 }`}
                 onClick={() => setHistoryStatusFilter('all')}
               >
@@ -1097,8 +1042,8 @@ export default function ReportsPage() {
               </button>
               <button
                 type="button"
-                className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all ${
-                  historyStatusFilter === 'Pending' ? 'btn-tri-orange shadow-xs' : 'btn-tri-outline-orange'
+                className={`btn btn-sm py-1 px-2.5 rounded-2 extra-small fw-bold border-0 transition-all ${
+                  historyStatusFilter === 'Pending' ? 'bg-white shadow-2xs text-dark' : 'text-muted'
                 }`}
                 onClick={() => setHistoryStatusFilter('Pending')}
               >
@@ -1106,8 +1051,8 @@ export default function ReportsPage() {
               </button>
               <button
                 type="button"
-                className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all ${
-                  historyStatusFilter === 'In Progress' ? 'btn-tri-navy shadow-xs' : 'btn-tri-outline'
+                className={`btn btn-sm py-1 px-2.5 rounded-2 extra-small fw-bold border-0 transition-all ${
+                  historyStatusFilter === 'In Progress' ? 'bg-white shadow-2xs text-dark' : 'text-muted'
                 }`}
                 onClick={() => setHistoryStatusFilter('In Progress')}
               >
@@ -1115,8 +1060,8 @@ export default function ReportsPage() {
               </button>
               <button
                 type="button"
-                className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all ${
-                  historyStatusFilter === 'Done' ? 'btn-tri-navy shadow-xs' : 'btn-tri-outline'
+                className={`btn btn-sm py-1 px-2.5 rounded-2 extra-small fw-bold border-0 transition-all ${
+                  historyStatusFilter === 'Done' ? 'bg-white shadow-2xs text-dark' : 'text-muted'
                 }`}
                 onClick={() => setHistoryStatusFilter('Done')}
               >
@@ -1127,61 +1072,31 @@ export default function ReportsPage() {
             {/* Basin & Severity Dropdowns */}
             <div className="d-flex align-items-center gap-2 flex-wrap">
               {/* Basin Filter */}
-              <div
-                className="d-flex align-items-center gap-1.5 px-3 py-1 rounded-pill bg-white shadow-xs"
-                style={{ border: '1px solid rgba(252, 86, 60, 0.14)', height: 34 }}
+              <select
+                className="minimal-filter-control fw-semibold cursor-pointer"
+                style={{ height: 38, minWidth: 120, fontSize: '0.8rem' }}
+                value={historyPondFilter}
+                onChange={(e) => setHistoryPondFilter(e.target.value)}
               >
-                <FaWater size={11} style={{ color: '#FC563C' }} />
-                <select
-                  className="form-select form-select-sm border-0 bg-transparent fw-bold p-0 pe-3 extra-small shadow-none cursor-pointer"
-                  style={{
-                    width: 'auto',
-                    outline: 'none',
-                    color: '#FC563C',
-                    backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%230B2C5F' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
-                    backgroundRepeat: 'no-repeat',
-                    backgroundPosition: 'right center',
-                    backgroundSize: '11px 11px',
-                    paddingRight: '1.1rem'
-                  }}
-                  value={historyPondFilter}
-                  onChange={(e) => setHistoryPondFilter(e.target.value)}
-                >
-                  <option value="all">All Ponds</option>
-                  {ponds.map((p) => (
-                    <option key={p.id} value={p.id}>{p.pond_name}</option>
-                  ))}
-                </select>
-              </div>
+                <option value="all">All Ponds</option>
+                {ponds.map((p) => (
+                  <option key={p.id} value={p.id}>{p.pond_name}</option>
+                ))}
+              </select>
 
               {/* Severity Filter */}
-              <div
-                className="d-flex align-items-center gap-1.5 px-3 py-1 rounded-pill bg-white shadow-xs"
-                style={{ border: '1px solid rgba(252, 86, 60, 0.14)', height: 34 }}
+              <select
+                className="minimal-filter-control fw-semibold cursor-pointer"
+                style={{ height: 38, minWidth: 120, fontSize: '0.8rem' }}
+                value={historySeverityFilter}
+                onChange={(e) => setHistorySeverityFilter(e.target.value)}
               >
-                <FaExclamationTriangle size={11} style={{ color: '#FC563C' }} />
-                <select
-                  className="form-select form-select-sm border-0 bg-transparent fw-bold p-0 pe-3 extra-small shadow-none cursor-pointer"
-                  style={{
-                    width: 'auto',
-                    outline: 'none',
-                    color: '#FC563C',
-                    backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%230B2C5F' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
-                    backgroundRepeat: 'no-repeat',
-                    backgroundPosition: 'right center',
-                    backgroundSize: '11px 11px',
-                    paddingRight: '1.1rem'
-                  }}
-                  value={historySeverityFilter}
-                  onChange={(e) => setHistorySeverityFilter(e.target.value)}
-                >
-                  <option value="all">All Severity</option>
-                  <option value="Critical">Critical</option>
-                  <option value="High">High</option>
-                  <option value="Medium">Medium</option>
-                  <option value="Low">Low</option>
-                </select>
-              </div>
+                <option value="all">All Severity</option>
+                <option value="Critical">Critical</option>
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+              </select>
 
               {isHistoryFiltered && (
                 <button

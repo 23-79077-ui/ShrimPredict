@@ -239,63 +239,74 @@ export default function CaretakerDashboard() {
 
   return (
     <div className="caretaker-dashboard-hub">
-      {/* 1. EXECUTIVE HERO OPERATIONS BANNER */}
-      <div className="disease-hero-banner d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
-        <div className="d-flex align-items-center gap-3">
-          <div className="hero-icon-badge shadow-xs">
-            <FaWater />
-          </div>
-          <div>
-            <div className="d-flex align-items-center gap-2 flex-wrap">
-              <h3 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#FC563C', fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
-                {t('hero.caretakerDashboard', 'Daily Farm Dashboard')}
-              </h3>
-              <span
-                className="badge rounded-pill extra-small px-3 py-1 fw-bold"
-                style={{ backgroundColor: 'rgba(252, 86, 60, 0.08)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.16)' }}
-              >
-                {t('hero.caretakerDashboardBadge', '● Live Pond Updates')}
-              </span>
-            </div>
-            <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
-              {t('hero.caretakerDashboardSub', 'O&B Aquafarm • Daily Pond Overview, Feeding Logs & Water Quality Checks')}
-            </p>
-          </div>
+      {/* 1. TITLE HEADER DIRECTLY BELOW NAVBAR */}
+      <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
+        <div className="d-flex align-items-center gap-2.5">
+          <h3 className="fw-extrabold mb-0 tracking-tight text-dark" style={{ fontSize: '1.48rem', letterSpacing: '-0.02em' }}>
+            {t('hero.caretakerDashboard', 'Daily Farm Dashboard')}
+          </h3>
+          <span
+            className="badge rounded-pill d-inline-flex align-items-center gap-1.5 px-2.5 py-1"
+            style={{
+              backgroundColor: '#ECFDF5',
+              color: '#059669',
+              border: '1px solid #A7F3D0',
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              letterSpacing: '0.02em',
+            }}
+          >
+            <span className="pulse-dot-green" />
+            {t('• Live')}
+          </span>
         </div>
 
-        {/* Compact Pill-Shaped Filter Controls */}
-        <div className="d-flex align-items-center gap-2 flex-wrap">
-          {/* Pond Selector Pill */}
-          <div
-            className="d-flex align-items-center gap-1.5 px-3 py-1.5 rounded-pill bg-white shadow-xs"
-            style={{ border: '1px solid rgba(252, 86, 60, 0.15)', height: 38 }}
-          >
-            <FaWater style={{ color: '#FC563C', fontSize: '0.82rem' }} />
-            <select
-              className="form-select form-select-sm border-0 bg-transparent fw-semibold p-0 ps-1 cursor-pointer"
-              style={{ width: 'auto', minWidth: 155, fontSize: '0.82rem', outline: 'none', color: '#FC563C' }}
-              value={selectedPondFilter}
-              onChange={(e) => setSelectedPondFilter(e.target.value)}
-            >
-              <option value="all">{t('All Assigned Ponds')} ({assignedPonds.length})</option>
-              {assignedPonds.map((pond) => (
-                <option key={pond.id} value={String(pond.id)}>
-                  {pond.pond_name}
-                </option>
-              ))}
-            </select>
-          </div>
+        <button
+          type="button"
+          className="btn btn-sm d-inline-flex align-items-center gap-2 px-3.5 py-2 rounded-3 text-secondary shadow-2xs hover-shadow"
+          style={{
+            backgroundColor: isDark ? '#1E293B' : '#F1F5F9',
+            border: isDark ? '1px solid #334155' : '1px solid #E2E8F0',
+            color: isDark ? '#E2E8F0' : '#475569',
+            fontSize: '0.8rem',
+            fontWeight: 600,
+            transition: 'all 0.15s ease',
+          }}
+          onClick={loadData}
+          disabled={loading}
+          title="Refresh Dashboard"
+        >
+          <FaSync size={11} className={loading ? 'fa-spin' : ''} />
+          <span>{t('Refresh')}</span>
+        </button>
+      </div>
 
-          {/* Interactive Date Selector Pill */}
-          <div
-            className="d-flex align-items-center gap-2 px-3 py-1.5 rounded-pill bg-white shadow-xs"
-            style={{ border: '1px solid rgba(252, 86, 60, 0.15)', height: 38 }}
+      {/* 2. UNIFIED FILTER TOOLBAR ROW */}
+      <div className="unified-filter-toolbar d-flex align-items-center justify-content-between flex-wrap gap-2.5 mb-4">
+        {/* Pond Filter */}
+        <div className="position-relative" style={{ minWidth: 200 }}>
+          <select
+            className="form-select form-select-sm minimal-filter-control px-2.5"
+            value={selectedPondFilter}
+            onChange={(e) => setSelectedPondFilter(e.target.value)}
           >
-            <FaCalendarAlt size={12} style={{ color: '#FC563C' }} />
+            <option value="all">{t('All Assigned Ponds')} ({assignedPonds.length})</option>
+            {assignedPonds.map((pond) => (
+              <option key={pond.id} value={String(pond.id)}>
+                {pond.pond_name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Minimalist Filter Controls Cluster */}
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          {/* Date Picker */}
+          <div className="position-relative">
             <input
               type="date"
-              className="form-control form-control-sm border-0 bg-transparent fw-semibold p-0"
-              style={{ width: 115, fontSize: '0.82rem', outline: 'none', color: '#FC563C' }}
+              className="form-control form-control-sm minimal-filter-control px-2.5"
+              style={{ minWidth: 145 }}
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
               title="Select date to inspect feeding records & DOC"
@@ -306,25 +317,20 @@ export default function CaretakerDashboard() {
           {selectedDate !== todayStr && (
             <button
               type="button"
-              className="btn btn-sm btn-tri-outline px-3 py-1.5 shadow-xs"
-              style={{ height: 38, fontSize: '0.8rem' }}
+              className="btn btn-sm btn-link text-muted p-1 extra-small text-decoration-none"
               onClick={() => setSelectedDate(todayStr)}
-              title="Return to today's real date"
+              title="Return to today's date"
             >
-              {t('Reset to Today')}
+              <FaTimes size={11} className="me-1" /> {t('Today')}
             </button>
           )}
 
-          {/* DOC Presets Quick Jump Dropdown */}
+          {/* DOC Presets Dropdown */}
           {availableDates.length > 0 && (
-            <div
-              className="d-none d-md-flex align-items-center gap-1.5 px-3 py-1.5 rounded-pill bg-white shadow-xs"
-              style={{ border: '1px solid rgba(252, 86, 60, 0.15)', height: 38 }}
-            >
-              <span className="extra-small fw-bold text-uppercase tracking-wider" style={{ color: '#FC563C', fontSize: '0.68rem' }}>DOC:</span>
+            <div className="position-relative d-none d-md-block">
               <select
-                className="form-select form-select-sm border-0 bg-transparent fw-semibold p-0 ps-1 cursor-pointer"
-                style={{ width: 'auto', minWidth: 150, fontSize: '0.8rem', outline: 'none', color: '#FC563C' }}
+                className="form-select form-select-sm minimal-filter-control px-2.5"
+                style={{ minWidth: 180 }}
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
                 title="Quick jump to Culture Day (DOC)"
@@ -347,309 +353,217 @@ export default function CaretakerDashboard() {
             </div>
           )}
 
-          {/* Sync Button */}
+          {/* Scan Water Quality Action */}
           <button
             type="button"
-            className="btn btn-sm btn-tri-outline px-3 py-1.5 shadow-xs"
-            style={{ height: 38, fontSize: '0.8rem' }}
-            onClick={loadData}
+            className="btn btn-sm minimal-filter-control d-inline-flex align-items-center gap-1.5 px-3 py-1.5 shadow-2xs hover-shadow"
+            style={{ fontWeight: 600, color: '#FC563C' }}
+            onClick={() => {
+              const firstUnverified = waterQualityChecklist.checklist?.find((p) => !p.is_verified_today);
+              setOcrTargetPondId(firstUnverified ? String(firstUnverified.pond_id) : (assignedPonds[0]?.id ? String(assignedPonds[0].id) : ''));
+              setIsOcrModalOpen(true);
+            }}
           >
-            <FaSync size={11} className={loading ? 'fa-spin' : ''} style={{ color: '#FC563C' }} /> {t('Sync')}
+            <FaCamera size={12} />
+            <span>{t('Scan Water Quality')}</span>
           </button>
         </div>
       </div>
 
-      {/* OPERATIONAL TELEMETRY & PERFORMANCE BOX (Dedicated Box Above Caretaker Activities) */}
-      <div className="tri-card p-4 p-md-4.5 mb-4">
-        <div className="d-flex justify-content-between align-items-center mb-3.5 flex-wrap gap-2">
-          <div className="d-flex align-items-center gap-2.5">
-            <span
-              className="badge rounded-pill px-3 py-1.5 fw-bold text-white extra-small shadow-xs"
-              style={{ background: '#FC563C', letterSpacing: '0.06em' }}
-            >
-              OPERATIONS
-            </span>
+      {/* 3. FOUR KPI CARDS (Minimalist, soft shadow backdrops, clean rounded corners) */}
+      <div className="row g-3 g-xl-4 mb-4">
+        {/* Card 1: ASSIGNED PONDS */}
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="shrimp-kpi-card">
             <div>
-              <h5 className="fw-bold mb-0 tracking-tight" style={{ color: '#FC563C', fontSize: '1.15rem', letterSpacing: '-0.02em' }}>
-                Today's Farm Overview
-              </h5>
-              <span className="text-muted extra-small">Daily farm tasks, feeding progress, and water readings summary</span>
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">
+                  {t('ASSIGNED PONDS')}
+                </span>
+                <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: 34, height: 34, backgroundColor: '#F1F5F9', color: '#172A39' }}>
+                  <FaWater size={15} />
+                </div>
+              </div>
+              <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.2rem', letterSpacing: '-0.03em' }}>
+                {assignedPonds.length}
+              </h2>
+            </div>
+            <div className="pt-2">
+              <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                <span className="text-secondary small fw-medium">
+                  {selectedPondFilter === 'all' ? t('All ponds active') : (selectedPondObj?.pond_name || t('Active'))}
+                </span>
+                <span className="badge rounded-pill px-2.5 py-1 extra-small" style={{ backgroundColor: '#F1F5F9', color: '#475569', fontWeight: 600 }}>
+                  {t('Active Fleet')}
+                </span>
+              </div>
             </div>
           </div>
-          <span className="badge bg-white rounded-pill px-3 py-1.5 extra-small shadow-xs" style={{ color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.15)' }}>
-            ● Daily Farm Status
-          </span>
         </div>
 
-        <div className="row g-3 g-xl-4">
-          {/* Card 1: Assigned Ponds */}
-          <div className="col-12 col-sm-6 col-xl-3">
-            <div className="tri-kpi-card" style={{ minHeight: 185 }}>
-              <div>
-                <div className="d-flex align-items-center justify-content-between mb-3">
-                  <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Assigned Ponds</span>
-                  <div className="tri-kpi-icon tri-kpi-icon-blue">
-                    <FaWater size={17} />
-                  </div>
+        {/* Card 2: TODAY'S LOGS */}
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="shrimp-kpi-card">
+            <div>
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">
+                  {t("TODAY'S LOGS")}
+                </span>
+                <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: 34, height: 34, backgroundColor: '#F1F5F9', color: '#172A39' }}>
+                  <FaUtensils size={15} />
                 </div>
-                <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.2rem', letterSpacing: '-0.03em' }}>
-                  {assignedPonds.length}
-                </h2>
               </div>
-              <div>
-                <div className="tri-progress-track my-2.5">
-                  <div className="tri-progress-bar" style={{ width: '100%', background: '#FC563C' }} />
-                </div>
-                <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                  <span className="text-muted extra-small text-truncate" style={{ maxWidth: 130 }}>
-                    {selectedPondFilter === 'all' ? 'All ponds active' : `Focused: ${selectedPondObj?.pond_name || 'Active'}`}
-                  </span>
-                  <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.06)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.15)' }}>
-                    Active
-                  </span>
-                </div>
+              <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.2rem', letterSpacing: '-0.03em' }}>
+                {filteredTodayRecords.length}
+              </h2>
+            </div>
+            <div className="pt-2">
+              <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                <span className="text-secondary small fw-medium text-truncate" style={{ maxWidth: 140 }}>
+                  {currentScope}
+                </span>
+                <span className="badge rounded-pill px-2.5 py-1 extra-small" style={{ backgroundColor: '#F1F5F9', color: '#475569', fontWeight: 600 }}>
+                  {t('Logged')}
+                </span>
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Card 2: Today's Feeding Logs */}
-          <div className="col-12 col-sm-6 col-xl-3">
-            <div className="tri-kpi-card" style={{ minHeight: 185 }}>
-              <div>
-                <div className="d-flex align-items-center justify-content-between mb-3">
-                  <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Today's Logs</span>
-                  <div className="tri-kpi-icon tri-kpi-icon-blue">
-                    <FaUtensils size={17} />
-                  </div>
+        {/* Card 3: TOTAL FEED TODAY */}
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="shrimp-kpi-card">
+            <div>
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">
+                  {t('TOTAL FEED TODAY')}
+                </span>
+                <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: 34, height: 34, backgroundColor: '#FFF5F3', color: '#FC563C' }}>
+                  <FaCheckCircle size={15} />
                 </div>
-                <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.2rem', letterSpacing: '-0.03em' }}>
-                  {filteredTodayRecords.length}
-                </h2>
               </div>
-              <div>
-                <div className="tri-progress-track my-2.5">
-                  <div
-                    className="tri-progress-bar"
-                    style={{
-                      width: `${Math.min(100, Math.max(10, (filteredTodayRecords.length / Math.max(1, assignedPonds.length * 4)) * 100))}%`,
-                      background: 'linear-gradient(90deg, #172A39 0%, #FC563C 100%)',
-                    }}
-                  />
-                </div>
-                <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                  <span className="text-muted extra-small text-truncate" style={{ maxWidth: 140 }}>
-                    {currentScope}
-                  </span>
-                  <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.06)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.15)' }}>
-                    Logged
-                  </span>
-                </div>
+              <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.2rem', letterSpacing: '-0.03em' }}>
+                {totalAmountToday.toFixed(2)} <small className="fs-6 text-muted fw-normal">kg</small>
+              </h2>
+            </div>
+            <div className="pt-2">
+              <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                <span className="text-secondary small fw-medium">
+                  {Math.round(totalGramsToday).toLocaleString()} g • 5 Slots
+                </span>
+                <span className="badge rounded-pill px-2.5 py-1 extra-small" style={{ backgroundColor: '#FFF5F3', color: '#FC563C', fontWeight: 600 }}>
+                  {t('Verified')}
+                </span>
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Card 3: Total Feed */}
-          <div className="col-12 col-sm-6 col-xl-3">
-            <div className="tri-kpi-card" style={{ minHeight: 185, borderColor: 'rgba(252, 86, 60, 0.15)' }}>
-              <div>
-                <div className="d-flex align-items-center justify-content-between mb-3">
-                  <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">
-                    Total Feed ({selectedDate === todayStr ? 'Today' : selectedDate})
-                  </span>
-                  <div className="tri-kpi-icon tri-kpi-icon-orange">
-                    <FaCheckCircle size={17} />
-                  </div>
-                </div>
-                <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.2rem', letterSpacing: '-0.03em' }}>
-                  {totalAmountToday.toFixed(2)} <small className="fs-6 text-muted fw-normal">kg</small>
-                </h2>
-                <div className="extra-small text-muted fw-semibold">
-                  Total grams: <strong className="font-mono" style={{ color: '#FC563C' }}>{Math.round(totalGramsToday).toLocaleString()} g</strong>
+        {/* Card 4: FEEDING SCHEDULE */}
+        <div className="col-12 col-sm-6 col-xl-3">
+          <div className="shrimp-kpi-card">
+            <div>
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">
+                  {t('SCHEDULE PROGRESS')}
+                </span>
+                <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: 34, height: 34, backgroundColor: '#F1F5F9', color: '#172A39' }}>
+                  <FaClock size={15} />
                 </div>
               </div>
-              <div>
-                <div className="tri-progress-track my-2.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.1)' }}>
-                  <div
-                    className="tri-progress-bar"
-                    style={{
-                      width: `${Math.min(100, Math.max(12, (totalAmountToday / Math.max(1, assignedPonds.length * 35)) * 100))}%`,
-                      background: 'linear-gradient(90deg, #FC563C 0%, #6E7575 100%)',
-                    }}
-                  />
-                </div>
-                <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                  <span className="text-muted extra-small">Distributed across 5 slots</span>
-                  <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: isDark ? 'rgba(252, 86, 60, 0.18)' : '#FFF5F2', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.25)' }}>
-                    5 Feedings
-                  </span>
-                </div>
-              </div>
+              <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.2rem', letterSpacing: '-0.03em' }}>
+                {feedingCompletion}%
+              </h2>
             </div>
-          </div>
-
-          {/* Card 4: Feeding Schedule Progress */}
-          <div className="col-12 col-sm-6 col-xl-3">
-            <div className="tri-kpi-card" style={{ minHeight: 185 }}>
-              <div>
-                <div className="d-flex align-items-center justify-content-between mb-3">
-                  <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">Feeding Schedule</span>
-                  <div className="tri-kpi-icon tri-kpi-icon-blue">
-                    <FaClock size={17} />
-                  </div>
-                </div>
-                <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.2rem', letterSpacing: '-0.03em' }}>
-                  {feedingCompletion}%
-                </h2>
-              </div>
-              <div>
-                <div className="tri-progress-track my-2.5">
-                  <div
-                    className="tri-progress-bar"
-                    style={{
-                      width: `${Math.max(5, feedingCompletion)}%`,
-                      background: 'linear-gradient(90deg, #172A39 0%, #FC563C 100%)',
-                    }}
-                  />
-                </div>
-                <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                  <span className="text-muted extra-small font-mono fw-semibold">{completedFeedingSlots}/5 Slots Logged</span>
-                  <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.06)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.15)' }}>
-                    {feedingCompletion === 100 ? 'Complete' : 'In Progress'}
-                  </span>
-                </div>
+            <div className="pt-2">
+              <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                <span className="text-secondary small fw-medium font-mono">
+                  {completedFeedingSlots}/5 Slots Logged
+                </span>
+                <span
+                  className="badge rounded-pill px-2.5 py-1 extra-small"
+                  style={{
+                    backgroundColor: feedingCompletion === 100 ? '#ECFDF5' : '#FFFBEB',
+                    color: feedingCompletion === 100 ? '#059669' : '#D97706',
+                    fontWeight: 600
+                  }}
+                >
+                  {feedingCompletion === 100 ? t('Complete') : t('In Progress')}
+                </span>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* CARETAKER OPERATIONS & ACTIVITY CENTER (GRAND BOX WITH TOGGLEABLE SECTIONS) */}
-      <div className="tri-card mb-4 mb-xl-5 overflow-hidden">
-        {/* Grand Header & Tab Switcher Bar */}
+      {/* 4. CARETAKER OPERATIONS & ACTIVITY CENTER */}
+      <div
+        className="rounded-4 mb-4 mb-xl-5 overflow-hidden bg-white border"
+        style={{
+          borderColor: isDark ? '#334155' : '#E2E8F0',
+          backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+          boxShadow: '0 2px 10px -2px rgba(15, 23, 42, 0.04)'
+        }}
+      >
+        {/* Header & Minimalist Tab Switcher Bar */}
         <div
-          className="p-3.5 p-md-4 d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3"
-          style={{
-            background: isDark ? 'linear-gradient(135deg, #172A39 0%, #203A4F 100%)' : '#FFFFFF',
-            borderBottom: isDark ? '1px solid rgba(56, 189, 248, 0.2)' : '2px solid #E2E8F0',
-            color: isDark ? '#FFFFFF' : '#0F172A'
-          }}
+          className="p-3.5 p-md-4 d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 border-bottom"
+          style={{ borderColor: isDark ? '#334155' : '#E2E8F0' }}
         >
-          <div className="d-flex align-items-center gap-3">
-            <div
-              className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0 shadow-sm"
-              style={{
-                width: 44,
-                height: 44,
-                background: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(252, 86, 60, 0.1)',
-                border: isDark ? '1px solid rgba(255, 255, 255, 0.22)' : '1.5px solid rgba(252, 86, 60, 0.25)',
-                color: '#FC563C',
-                fontSize: '1.2rem',
-              }}
-            >
-              <FaTasks />
-            </div>
-            <div>
-              <div className="d-flex align-items-center gap-2.5 flex-wrap">
-                <h5 className="fw-extrabold mb-0 tracking-tight" style={{ color: isDark ? '#FFFFFF' : '#0B2C5F', fontSize: '1.15rem' }}>
-                  {t('Caretaker Field Operations & Activity Center')}
-                </h5>
-                <span
-                  className="badge rounded-pill extra-small px-3 py-1 fw-bold"
-                  style={{
-                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(252, 86, 60, 0.08)',
-                    color: isDark ? '#FFFFFF' : '#FC563C',
-                    border: isDark ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid rgba(252, 86, 60, 0.16)'
-                  }}
-                >
-                  Daily Farm Activities &amp; Tasks
-                </span>
-              </div>
-              <p className="extra-small mb-0 mt-0.5" style={{ color: isDark ? 'rgba(255, 255, 255, 0.8)' : '#64748B' }}>
-                Check water quality before stocking, track daily pond feeding, view shrimp health scans, and see alerts.
-              </p>
-            </div>
+          <div>
+            <h5 className="fw-extrabold mb-0 tracking-tight text-dark" style={{ fontSize: '1.2rem', letterSpacing: '-0.02em' }}>
+              {t('Field Operations & Daily Tasks')}
+            </h5>
+            <p className="text-muted mb-0 extra-small" style={{ fontSize: '0.78rem' }}>
+              {t('Pre-stock water quality verification, assigned ponds live status, disease scans, and incidents.')}
+            </p>
           </div>
 
-          {/* Toggleable Tabs Segmented Control */}
-          <div className="d-flex align-items-center gap-2 flex-wrap ms-lg-auto">
+          {/* Minimalist Status Filter Tabs matching Admin Dashboard */}
+          <div className="d-flex align-items-center gap-1 p-1 rounded-pill bg-light border flex-wrap" style={{ borderColor: '#E2E8F0' }}>
             <button
               type="button"
-              className={`btn btn-sm ${activeActivityTab === 'waterQuality' ? 'btn-tri-orange shadow-xs' : 'btn-tri-outline'} d-inline-flex align-items-center gap-2 px-3 py-2 fw-bold`}
-              style={{ fontSize: '0.82rem', transition: 'all 0.2s ease' }}
+              className={`btn btn-sm rounded-pill px-2.5 py-0.5 extra-small fw-bold transition-all ${
+                activeActivityTab === 'waterQuality' ? 'text-white shadow-xs' : 'text-secondary border-0 bg-transparent'
+              }`}
+              style={activeActivityTab === 'waterQuality' ? { backgroundColor: '#172A39', borderColor: '#172A39' } : undefined}
               onClick={() => setActiveActivityTab('waterQuality')}
             >
-              <FaCamera size={12} />
-              <span>Scan Water Quality</span>
-              <span
-                className="badge rounded-pill ms-1"
-                style={{
-                  backgroundColor: activeActivityTab === 'waterQuality' ? 'rgba(255,255,255,0.28)' : 'rgba(252, 86, 60, 0.12)',
-                  color: activeActivityTab === 'waterQuality' ? '#FFFFFF' : '#FC563C',
-                  fontSize: '0.7rem'
-                }}
-              >
-                {waterQualityChecklist.verified_count}/{assignedPonds.length}
-              </span>
+              <FaCamera className="me-1" size={10} />
+              {t('Water Quality')} ({waterQualityChecklist.verified_count}/{assignedPonds.length})
             </button>
-
             <button
               type="button"
-              className={`btn btn-sm ${activeActivityTab === 'ponds' ? 'btn-tri-orange shadow-xs' : 'btn-tri-outline'} d-inline-flex align-items-center gap-2 px-3 py-2 fw-bold`}
-              style={{ fontSize: '0.82rem', transition: 'all 0.2s ease' }}
+              className={`btn btn-sm rounded-pill px-2.5 py-0.5 extra-small fw-bold transition-all ${
+                activeActivityTab === 'ponds' ? 'text-white shadow-xs' : 'text-secondary border-0 bg-transparent'
+              }`}
+              style={activeActivityTab === 'ponds' ? { backgroundColor: '#172A39', borderColor: '#172A39' } : undefined}
               onClick={() => setActiveActivityTab('ponds')}
             >
-              <FaWater size={12} />
-              <span>Assigned Ponds Live Overview</span>
-              <span
-                className="badge rounded-pill ms-1"
-                style={{
-                  backgroundColor: activeActivityTab === 'ponds' ? 'rgba(255,255,255,0.28)' : 'rgba(252, 86, 60, 0.12)',
-                  color: activeActivityTab === 'ponds' ? '#FFFFFF' : '#FC563C',
-                  fontSize: '0.7rem'
-                }}
-              >
-                {assignedPonds.length}
-              </span>
+              <FaWater className="me-1" size={10} />
+              {t('Ponds Live')} ({assignedPonds.length})
             </button>
-
             <button
               type="button"
-              className={`btn btn-sm ${activeActivityTab === 'disease' ? 'btn-tri-orange shadow-xs' : 'btn-tri-outline'} d-inline-flex align-items-center gap-2 px-3 py-2 fw-bold`}
-              style={{ fontSize: '0.82rem', transition: 'all 0.2s ease' }}
+              className={`btn btn-sm rounded-pill px-2.5 py-0.5 extra-small fw-bold transition-all ${
+                activeActivityTab === 'disease' ? 'text-white shadow-xs' : 'text-secondary border-0 bg-transparent'
+              }`}
+              style={activeActivityTab === 'disease' ? { backgroundColor: '#172A39', borderColor: '#172A39' } : undefined}
               onClick={() => setActiveActivityTab('disease')}
             >
-              <FaStethoscope size={12} />
-              <span>Shrimp Health &amp; Scans</span>
-              <span
-                className="badge rounded-pill ms-1"
-                style={{
-                  backgroundColor: activeActivityTab === 'disease' ? 'rgba(255,255,255,0.28)' : 'rgba(252, 86, 60, 0.12)',
-                  color: activeActivityTab === 'disease' ? '#FFFFFF' : '#FC563C',
-                  fontSize: '0.7rem'
-                }}
-              >
-                {filteredDiseaseScans.length}
-              </span>
+              <FaStethoscope className="me-1" size={10} />
+              {t('Health Scans')} ({filteredDiseaseScans.length})
             </button>
-
             <button
               type="button"
-              className={`btn btn-sm ${activeActivityTab === 'alerts' ? 'btn-tri-orange shadow-xs' : 'btn-tri-outline'} d-inline-flex align-items-center gap-2 px-3 py-2 fw-bold`}
-              style={{ fontSize: '0.82rem', transition: 'all 0.2s ease' }}
+              className={`btn btn-sm rounded-pill px-2.5 py-0.5 extra-small fw-bold transition-all ${
+                activeActivityTab === 'alerts' ? 'text-white shadow-xs' : 'text-secondary border-0 bg-transparent'
+              }`}
+              style={activeActivityTab === 'alerts' ? { backgroundColor: '#172A39', borderColor: '#172A39' } : undefined}
               onClick={() => setActiveActivityTab('alerts')}
             >
-              <FaExclamationTriangle size={12} />
-              <span>System Incident Alerts</span>
-              <span
-                className="badge rounded-pill ms-1"
-                style={{
-                  backgroundColor: activeActivityTab === 'alerts' ? 'rgba(255,255,255,0.28)' : (alerts.length > 0 ? 'rgba(239, 68, 68, 0.15)' : 'rgba(100, 116, 139, 0.1)'),
-                  color: activeActivityTab === 'alerts' ? '#FFFFFF' : (alerts.length > 0 ? '#EF4444' : '#64748B'),
-                  fontSize: '0.7rem'
-                }}
-              >
-                {alerts.length}
-              </span>
+              <FaExclamationTriangle className="me-1" size={10} />
+              {t('Alerts')} ({alerts.length})
             </button>
           </div>
         </div>
@@ -744,14 +658,13 @@ export default function CaretakerDashboard() {
                   return (
                     <div key={pond.id} className="col-12 col-md-6 col-lg-4">
                       <div
-                        className="p-4 rounded-4 caretaker-prestock-pond-card d-flex flex-column justify-content-between h-100 transition-all hover-shadow"
+                        className="p-3.5 rounded-3 d-flex flex-column justify-content-between h-100 transition-all hover-shadow bg-white"
                         style={{
                           backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                          border: isDark ? '1px solid rgba(56, 189, 248, 0.2)' : '1.5px solid #CBD5E1',
-                          borderLeft: isVerified ? '4px solid #16A34A' : '4px solid #FC563C',
-                          boxShadow: '0 4px 16px rgba(15, 23, 42, 0.06)',
-                          minHeight: 225,
-                          overflow: 'hidden',
+                          border: isDark ? '1px solid #334155' : '1px solid #E2E8F0',
+                          borderLeft: isVerified ? '4px solid #10B981' : '4px solid #FC563C',
+                          boxShadow: '0 1px 4px rgba(15, 23, 42, 0.03)',
+                          minHeight: 220,
                         }}
                       >
                         <div>
@@ -763,15 +676,15 @@ export default function CaretakerDashboard() {
                                 style={{
                                   width: 34,
                                   height: 34,
-                                  backgroundColor: isVerified ? (isDark ? 'rgba(22, 163, 74, 0.2)' : '#DCFCE7') : (isDark ? 'rgba(252, 86, 60, 0.15)' : '#FFF5F2'),
-                                  color: isVerified ? '#16A34A' : '#FC563C',
+                                  backgroundColor: isVerified ? '#ECFDF5' : '#FFF5F3',
+                                  color: isVerified ? '#059669' : '#FC563C',
                                   fontSize: '0.85rem',
                                 }}
                               >
                                 <FaWater />
                               </div>
                               <div>
-                                <strong className="d-block" style={{ color: isDark ? '#F1F5F9' : '#0B2C5F', fontSize: '1rem', lineHeight: 1.2 }}>
+                                <strong className="d-block text-dark fw-bold" style={{ fontSize: '1rem', lineHeight: 1.2 }}>
                                   {pond.pond_name}
                                 </strong>
                                 <span className="text-muted extra-small">Pond</span>
@@ -781,36 +694,28 @@ export default function CaretakerDashboard() {
                             {/* Status badge */}
                             {isVerified ? (
                               <span
-                                className="d-inline-flex align-items-center gap-1.5 px-3 py-1 rounded-pill"
+                                className="badge rounded-pill extra-small fw-bold px-2.5 py-1"
                                 style={{
-                                  backgroundColor: isDark ? 'rgba(22, 163, 74, 0.18)' : '#DCFCE7',
-                                  border: '1.5px solid #86EFAC',
-                                  color: '#15803D',
-                                  fontSize: '0.74rem',
-                                  fontWeight: 700,
-                                  whiteSpace: 'nowrap',
+                                  backgroundColor: '#ECFDF5',
+                                  border: '1px solid #A7F3D0',
+                                  color: '#059669',
+                                  fontSize: '0.72rem',
                                 }}
                               >
-                                <FaCheckCircle size={11} style={{ color: '#16A34A' }} />
-                                <span>Verified</span>
+                                <FaCheckCircle size={10} className="me-1" />
+                                {t('Verified')}
                               </span>
                             ) : (
                               <span
-                                className="d-inline-flex align-items-center gap-1.5 px-3 py-1 rounded-pill"
+                                className="badge rounded-pill extra-small fw-bold px-2.5 py-1"
                                 style={{
-                                  backgroundColor: isDark ? 'rgba(239, 68, 68, 0.18)' : '#FEE2E2',
-                                  border: '1.5px solid #FCA5A5',
-                                  color: '#B91C1C',
-                                  fontSize: '0.74rem',
-                                  fontWeight: 700,
-                                  whiteSpace: 'nowrap',
+                                  backgroundColor: '#FEF2F2',
+                                  border: '1px solid #FECACA',
+                                  color: '#DC2626',
+                                  fontSize: '0.72rem',
                                 }}
                               >
-                                <span
-                                  className="rounded-circle"
-                                  style={{ width: 6, height: 6, backgroundColor: '#EF4444' }}
-                                />
-                                <span>Needs Test</span>
+                                {t('Needs Test')}
                               </span>
                             )}
                           </div>
@@ -823,7 +728,7 @@ export default function CaretakerDashboard() {
                             return (
                               <div className="mb-3">
                                 <span
-                                  className="badge rounded-pill px-3 py-1.5 extra-small fw-bold"
+                                  className="badge rounded-pill px-2.5 py-1 extra-small fw-bold"
                                   style={{
                                     backgroundColor: isNursery ? '#ECFDF5' : '#EFF6FF',
                                     color: isNursery ? '#047857' : '#1D4ED8',
@@ -831,7 +736,7 @@ export default function CaretakerDashboard() {
                                     fontSize: '0.72rem',
                                   }}
                                 >
-                                  {isNursery ? `Day ${doc} Nursery (DOC #${doc})` : `Day ${doc} Grow-out (DOC #${doc})`}
+                                  {isNursery ? `DOC #${doc} Nursery` : `DOC #${doc} Grow-out`}
                                 </span>
                               </div>
                             );
@@ -839,44 +744,42 @@ export default function CaretakerDashboard() {
 
                           {/* Tier 3: Telemetry Cluster Strip */}
                           <div
-                            className={`p-3 rounded-3 mb-3.5 caretaker-telemetry-cluster ${isVerified ? 'verified' : 'unverified'}`}
+                            className="p-2.5 rounded-3 mb-3"
                             style={{
                               backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
-                              border: isVerified
-                                ? (isDark ? '1px solid rgba(56, 189, 248, 0.2)' : '1.5px solid #CBD5E1')
-                                : (isDark ? '1px dashed rgba(252, 86, 60, 0.35)' : '1.5px dashed #FDA4AF'),
+                              border: isDark ? '1px solid #334155' : '1px solid #E2E8F0',
                             }}
                           >
                             {isVerified ? (
                               <div className="d-flex align-items-center justify-content-between text-center px-1">
                                 <div>
-                                  <span className="extra-small d-block fw-bold text-uppercase" style={{ fontSize: '0.68rem', color: isDark ? '#94A3B8' : '#475569' }}>DO</span>
-                                  <strong style={{ color: '#0B2C5F', fontSize: '0.96rem' }}>{readings?.dissolved_oxygen ?? '—'}</strong>
-                                  <small className="text-muted" style={{ fontSize: '0.64rem' }}> mg/L</small>
+                                  <span className="extra-small d-block fw-bold text-muted text-uppercase" style={{ fontSize: '0.66rem' }}>DO</span>
+                                  <strong className="text-dark" style={{ fontSize: '0.92rem' }}>{readings?.dissolved_oxygen ?? '—'}</strong>
+                                  <small className="text-muted" style={{ fontSize: '0.62rem' }}> mg/L</small>
                                 </div>
-                                <div style={{ width: 1, height: 24, backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#CBD5E1' }} />
+                                <div style={{ width: 1, height: 20, backgroundColor: isDark ? '#334155' : '#CBD5E1' }} />
                                 <div>
-                                  <span className="extra-small d-block fw-bold text-uppercase" style={{ fontSize: '0.68rem', color: isDark ? '#94A3B8' : '#475569' }}>Temp</span>
-                                  <strong style={{ color: '#0B2C5F', fontSize: '0.96rem' }}>{readings?.temperature ?? '—'}</strong>
-                                  <small className="text-muted" style={{ fontSize: '0.64rem' }}> °C</small>
+                                  <span className="extra-small d-block fw-bold text-muted text-uppercase" style={{ fontSize: '0.66rem' }}>Temp</span>
+                                  <strong className="text-dark" style={{ fontSize: '0.92rem' }}>{readings?.temperature ?? '—'}</strong>
+                                  <small className="text-muted" style={{ fontSize: '0.62rem' }}> °C</small>
                                 </div>
-                                <div style={{ width: 1, height: 24, backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#CBD5E1' }} />
+                                <div style={{ width: 1, height: 20, backgroundColor: isDark ? '#334155' : '#CBD5E1' }} />
                                 <div>
-                                  <span className="extra-small d-block fw-bold text-uppercase" style={{ fontSize: '0.68rem', color: isDark ? '#94A3B8' : '#475569' }}>pH</span>
-                                  <strong style={{ color: '#0B2C5F', fontSize: '0.96rem' }}>{readings?.ph_level ?? '—'}</strong>
+                                  <span className="extra-small d-block fw-bold text-muted text-uppercase" style={{ fontSize: '0.66rem' }}>pH</span>
+                                  <strong className="text-dark" style={{ fontSize: '0.92rem' }}>{readings?.ph_level ?? '—'}</strong>
                                 </div>
-                                <div style={{ width: 1, height: 24, backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#CBD5E1' }} />
+                                <div style={{ width: 1, height: 20, backgroundColor: isDark ? '#334155' : '#CBD5E1' }} />
                                 <div>
-                                  <span className="extra-small d-block fw-bold text-uppercase" style={{ fontSize: '0.68rem', color: isDark ? '#94A3B8' : '#475569' }}>Salinity</span>
-                                  <strong style={{ color: '#0B2C5F', fontSize: '0.96rem' }}>{readings?.salinity ?? '—'}</strong>
-                                  <small className="text-muted" style={{ fontSize: '0.64rem' }}> ppt</small>
+                                  <span className="extra-small d-block fw-bold text-muted text-uppercase" style={{ fontSize: '0.66rem' }}>Salinity</span>
+                                  <strong className="text-dark" style={{ fontSize: '0.92rem' }}>{readings?.salinity ?? '—'}</strong>
+                                  <small className="text-muted" style={{ fontSize: '0.62rem' }}> ppt</small>
                                 </div>
                               </div>
                             ) : (
                               <div className="d-flex align-items-center gap-2 extra-small py-0.5 px-1">
-                                <FaLock size={12} style={{ color: '#EF4444', flexShrink: 0 }} />
-                                <span style={{ color: '#B91C1C', fontWeight: 700, fontSize: '0.78rem' }}>
-                                  Water test scan needed before adding shrimp
+                                <FaLock size={11} className="text-danger flex-shrink-0" />
+                                <span className="text-danger fw-bold" style={{ fontSize: '0.76rem' }}>
+                                  {t('Initial water test required before adding shrimp')}
                                 </span>
                               </div>
                             )}
@@ -884,26 +787,24 @@ export default function CaretakerDashboard() {
                         </div>
 
                         {/* Tier 4: Action Buttons Footer */}
-                        <div className="d-flex align-items-center justify-content-between gap-2 pt-3 mt-1 border-top" style={{ borderColor: 'rgba(252, 86, 60, 0.08)' }}>
+                        <div className="d-flex align-items-center justify-content-between gap-2 pt-2.5 mt-auto border-top" style={{ borderColor: isDark ? '#334155' : '#E2E8F0' }}>
                           <button
                             type="button"
-                            className="btn btn-sm btn-tri-outline px-3 py-1.5 extra-small fw-bold shadow-xs d-inline-flex align-items-center gap-1.5"
-                            style={{ fontSize: '0.78rem' }}
+                            className="btn btn-sm btn-understated-view px-3 py-1.5 extra-small fw-bold d-inline-flex align-items-center gap-1.5"
                             onClick={() => {
                               setHistoryTargetPond(pond);
                               setIsHistoryModalOpen(true);
                             }}
-                            title="View Water Quality Log History and past date records"
+                            title="View Water Quality Log History"
                           >
-                            <FaHistory size={11} style={{ color: '#FC563C' }} />
-                            <span>History</span>
+                            <FaHistory size={11} className="text-secondary" />
+                            <span>{t('History')}</span>
                           </button>
 
                           {!isVerified ? (
                             <button
                               type="button"
-                              className="btn btn-sm btn-tri-orange px-3.5 py-1.5 extra-small fw-bold shadow-xs d-inline-flex align-items-center gap-1.5"
-                              style={{ fontSize: '0.78rem' }}
+                              className="btn btn-sm btn-understated-feed px-3 py-1.5 extra-small fw-bold d-inline-flex align-items-center gap-1.5"
                               onClick={() => {
                                 setEditingWqRecord(null);
                                 setOcrTargetPondId(String(pond.id));
@@ -911,14 +812,13 @@ export default function CaretakerDashboard() {
                                 setIsOcrModalOpen(true);
                               }}
                             >
-                              <FaCamera size={12} />
-                              <span>Scan Readings</span>
+                              <FaCamera size={11} />
+                              <span>{t('Scan Readings')}</span>
                             </button>
                           ) : (
                             <button
                               type="button"
-                              className="btn btn-sm btn-tri-navy px-3.5 py-1.5 extra-small fw-bold shadow-xs d-inline-flex align-items-center gap-1.5"
-                              style={{ fontSize: '0.78rem' }}
+                              className="btn btn-sm btn-understated-view px-3 py-1.5 extra-small fw-bold d-inline-flex align-items-center gap-1.5"
                               onClick={() => {
                                 setEditingWqRecord(checkItem?.today_record || null);
                                 setOcrTargetPondId(String(pond.id));
@@ -928,7 +828,7 @@ export default function CaretakerDashboard() {
                               title="Re-scan / Update Today's Readings"
                             >
                               <FaSync size={11} />
-                              <span>Re-test (OCR)</span>
+                              <span>{t('Re-test (OCR)')}</span>
                             </button>
                           )}
                         </div>
@@ -965,32 +865,29 @@ export default function CaretakerDashboard() {
 
                 return (
                   <div key={pond.id} className="col-12 col-md-6 col-xl-4">
-                    <div
-                      className="card shadow-xs rounded-4 p-3.5 p-md-4 h-100 d-flex flex-column justify-content-between transition-all hover-shadow overflow-hidden bg-white"
-                      style={{ border: isDark ? '1px solid rgba(56, 189, 248, 0.2)' : '1.5px solid #CBD5E1' }}
-                    >
+                    <div className="compact-pond-card">
                       <div>
                         <div className="d-flex align-items-center justify-content-between mb-3">
                           <div className="d-flex align-items-center gap-2.5">
                             <div
                               className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                              style={{ width: 38, height: 38, background: 'rgba(252, 86, 60, 0.06)', color: '#FC563C' }}
+                              style={{ width: 36, height: 36, backgroundColor: '#F1F5F9', color: '#172A39' }}
                             >
-                              <FaWater size={16} />
+                              <FaWater size={15} />
                             </div>
                             <div>
-                              <h6 className="fw-bold mb-0 fs-6" style={{ color: '#FC563C' }}>{pond.pond_name}</h6>
+                              <strong className="d-block text-dark fw-bold" style={{ fontSize: '1rem', lineHeight: 1.2 }}>{pond.pond_name}</strong>
                               <div className="d-flex align-items-center gap-1.5 flex-wrap extra-small text-muted">
                                 <span>Pond</span>
                                 {pond.stocking_date && (() => {
                                   const doc = computeDoc(pond.stocking_date, selectedDate);
-                                  return doc ? <span>• <strong style={{ color: '#FC563C' }}>DOC #{doc}</strong></span> : null;
+                                  return doc ? <span>• <strong className="text-dark">DOC #{doc}</strong></span> : null;
                                 })()}
                               </div>
                             </div>
                           </div>
-                          <span className="badge rounded-pill px-2.5 py-1 extra-small fw-bold" style={{ backgroundColor: 'rgba(252, 86, 60, 0.06)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.14)' }}>
-                            ● Healthy / Normal
+                          <span className="badge rounded-pill px-2.5 py-1 extra-small fw-bold" style={{ backgroundColor: '#ECFDF5', color: '#059669', border: '1px solid #A7F3D0' }}>
+                            ● {t('Healthy')}
                           </span>
                         </div>
 
@@ -998,15 +895,15 @@ export default function CaretakerDashboard() {
                         <div className="my-2 py-1">
                           <div className="d-flex align-items-center justify-content-between extra-small text-muted mb-1.5">
                             <span className="fw-semibold">Today's Feeding Progress</span>
-                            <span className="fw-bold font-mono" style={{ color: '#FC563C' }}>{pondCompletedCount}/5 ({pondPct}%)</span>
+                            <span className="fw-bold font-mono text-dark">{pondCompletedCount}/5 ({pondPct}%)</span>
                           </div>
-                          <div className="progress rounded-pill mb-3" style={{ height: 7, backgroundColor: 'rgba(252, 86, 60, 0.06)' }}>
+                          <div className="progress rounded-pill mb-3" style={{ height: 6, backgroundColor: '#E2E8F0' }}>
                             <div
                               className="progress-bar rounded-pill"
                               role="progressbar"
                               style={{
                                 width: `${pondPct}%`,
-                                background: 'linear-gradient(90deg, #172A39 0%, #FC563C 100%)',
+                                backgroundColor: '#172A39',
                               }}
                             />
                           </div>
@@ -1016,15 +913,15 @@ export default function CaretakerDashboard() {
                             className="p-2.5 rounded-3"
                             style={{
                               backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
-                              border: isDark ? '1px solid rgba(56, 189, 248, 0.15)' : '1px solid #E2E8F0',
+                              border: isDark ? '1px solid #334155' : '1px solid #E2E8F0',
                             }}
                           >
                             <div className="d-flex align-items-center justify-content-between mb-2">
-                              <span className="extra-small fw-bold text-uppercase" style={{ color: isDark ? '#94A3B8' : '#64748B', fontSize: '0.68rem', letterSpacing: '0.03em' }}>
+                              <span className="extra-small fw-bold text-uppercase text-muted" style={{ fontSize: '0.68rem', letterSpacing: '0.03em' }}>
                                 Today's Logged Feeds ({pondLogs.length})
                               </span>
                               {pondLogs.length > 0 && (
-                                <span className="extra-small font-mono fw-bold" style={{ color: '#FC563C' }}>
+                                <span className="extra-small font-mono fw-bold text-dark">
                                   Total: {(pondLogs.reduce((sum, r) => sum + (parseFloat(r.amount_kg) || 0), 0)).toFixed(2)} kg
                                 </span>
                               )}
@@ -1037,14 +934,14 @@ export default function CaretakerDashboard() {
                                     key={log.id}
                                     className="d-flex align-items-center justify-content-between p-2 rounded-2 bg-white"
                                     style={{
-                                      border: '1px solid #E2E8F0',
+                                      border: isDark ? '1px solid #334155' : '1px solid #E2E8F0',
                                       fontSize: '0.74rem',
                                     }}
                                   >
                                     <div className="d-flex align-items-center gap-1.5 flex-wrap">
                                       <span
                                         className="badge rounded-pill px-2 py-0.5 extra-small fw-bold"
-                                        style={{ backgroundColor: '#FFF5F2', border: '1px solid #FECDD3', color: '#FC563C', fontSize: '0.68rem' }}
+                                        style={{ backgroundColor: '#FFF5F3', border: '1px solid rgba(252, 86, 60, 0.25)', color: '#FC563C', fontSize: '0.68rem' }}
                                       >
                                         {log.feeding_time || 'Slot'}
                                       </span>
@@ -1055,7 +952,7 @@ export default function CaretakerDashboard() {
                                     </div>
                                     <div className="d-flex align-items-center gap-1.5">
                                       {log.vitamin_name && log.vitamin_name !== 'None' && (
-                                        <span className="badge rounded-pill px-1.5 py-0.5 extra-small" style={{ backgroundColor: 'rgba(252, 86, 60, 0.08)', color: '#FC563C', fontSize: '0.65rem' }}>
+                                        <span className="badge rounded-pill px-1.5 py-0.5 extra-small" style={{ backgroundColor: '#F1F5F9', color: '#475569', fontSize: '0.65rem' }}>
                                           {log.vitamin_name}
                                         </span>
                                       )}
@@ -1076,37 +973,34 @@ export default function CaretakerDashboard() {
                       </div>
 
                       {/* Guaranteed 3-Column Single-Row Buttons (50% / 25% / 25%) */}
-                      <div className="row g-2 mt-3 pt-3 border-top" style={{ borderColor: 'rgba(252, 86, 60, 0.07)' }}>
+                      <div className="row g-2 mt-3 pt-3 border-top" style={{ borderColor: isDark ? '#334155' : '#E2E8F0' }}>
                         <div className="col-6">
                           <button
                             type="button"
-                            className="btn btn-sm btn-tri-navy w-100 py-1.5 extra-small shadow-xs text-nowrap"
-                            style={{ fontSize: '0.74rem' }}
+                            className="btn btn-sm btn-understated-feed w-100 py-1.5 extra-small fw-bold d-inline-flex align-items-center justify-content-center gap-1.5"
                             onClick={() => navigate('/caretaker/my-pond')}
                           >
-                            <FaPlus size={9} /> Log Feed
+                            <FaPlus size={10} /> {t('Log Feed')}
                           </button>
                         </div>
                         <div className="col-3">
                           <button
                             type="button"
-                            className="btn btn-sm btn-tri-outline w-100 py-1.5 extra-small shadow-xs text-nowrap"
-                            style={{ fontSize: '0.72rem' }}
+                            className="btn btn-sm btn-understated-view w-100 py-1.5 extra-small fw-bold d-inline-flex align-items-center justify-content-center gap-1"
                             onClick={() => navigate('/caretaker/disease-scan')}
                             title="Disease Scan"
                           >
-                            <FaStethoscope size={10} style={{ color: '#FC563C' }} /> Scan
+                            <FaStethoscope size={10} /> {t('Scan')}
                           </button>
                         </div>
                         <div className="col-3">
                           <button
                             type="button"
-                            className="btn btn-sm btn-tri-outline-orange w-100 py-1.5 extra-small shadow-xs text-nowrap"
-                            style={{ fontSize: '0.72rem' }}
+                            className="btn btn-sm btn-understated-view w-100 py-1.5 extra-small fw-bold d-inline-flex align-items-center justify-content-center gap-1"
                             onClick={() => navigate('/caretaker/reports')}
                             title="Report Pond Concern"
                           >
-                            <FaExclamationTriangle size={10} style={{ color: '#FC563C' }} /> Report
+                            <FaExclamationTriangle size={10} className="text-danger" /> {t('Report')}
                           </button>
                         </div>
                       </div>
@@ -1122,73 +1016,68 @@ export default function CaretakerDashboard() {
         {activeActivityTab === 'disease' && (
           <div className="p-3.5 p-md-4">
             <div className="d-flex align-items-center justify-content-between mb-3.5 gap-2 flex-wrap">
-              <div className="d-flex align-items-center gap-2">
-                <div
-                  className="rounded-circle d-flex align-items-center justify-content-center"
-                  style={{ width: 34, height: 34, background: 'rgba(252, 86, 60, 0.07)', color: '#FC563C' }}
-                >
-                  <FaStethoscope size={14} />
-                </div>
-                <h6 className="fw-bold mb-0 tracking-tight" style={{ color: isDark ? '#FFFFFF' : '#0B2C5F', fontSize: '1.05rem' }}>Shrimp Health &amp; Disease Scans</h6>
+              <div>
+                <h6 className="fw-bold mb-0 tracking-tight text-dark" style={{ fontSize: '1.05rem' }}>{t('Shrimp Health & Disease Scans')}</h6>
+                <small className="text-muted">{t('Recent AI health diagnostics submitted for assigned ponds.')}</small>
               </div>
 
               <div className="d-flex align-items-center gap-2 ms-auto">
                 <select
-                  className="form-select form-select-sm rounded-pill bg-white px-3 py-1 shadow-xs cursor-pointer extra-small fw-semibold"
-                  style={{ width: 'auto', minWidth: 140, height: 36, border: '1px solid rgba(252, 86, 60, 0.15)', color: '#FC563C' }}
+                  className="form-select form-select-sm minimal-filter-control px-2.5"
+                  style={{ width: 'auto', minWidth: 160 }}
                   value={selectedDiseasePondFilter}
                   onChange={(event) => setSelectedDiseasePondFilter(event.target.value)}
                 >
-                  <option value="all">All Assigned Ponds</option>
+                  <option value="all">{t('All Assigned Ponds')}</option>
                   {assignedPonds.map((pond) => (
                     <option key={pond.id} value={pond.pond_name}>
                       {pond.pond_name}
                     </option>
                   ))}
                 </select>
-                <span className="badge rounded-pill extra-small px-2.5 py-1.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.06)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.15)' }}>
+                <span className="badge rounded-pill extra-small px-2.5 py-1.5" style={{ backgroundColor: '#F1F5F9', color: '#475569', fontWeight: 600 }}>
                   {filteredDiseaseScans.length} Scans
                 </span>
               </div>
             </div>
 
             {latestDisease ? (
-              <div className="d-flex align-items-center p-3 rounded-4 bg-white mb-3" style={{ minHeight: 110, border: isDark ? '1px solid rgba(56, 189, 248, 0.2)' : '1.5px solid #CBD5E1' }}>
+              <div className="d-flex align-items-center p-3 rounded-3 bg-white mb-3" style={{ minHeight: 90, border: isDark ? '1px solid #334155' : '1px solid #E2E8F0' }}>
                 {latestDisease.image_path && (
                   <img
                     src={resolveImageUrl(latestDisease.image_path)}
                     alt="Latest disease scan"
                     className="rounded-3 me-3 flex-shrink-0"
-                    style={{ width: 64, height: 64, objectFit: 'cover', border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #CBD5E1' }}
+                    style={{ width: 60, height: 60, objectFit: 'cover', border: isDark ? '1px solid #334155' : '1px solid #E2E8F0' }}
                   />
                 )}
                 <div>
-                  <div className="fw-bold mb-1 fs-6" style={{ color: '#FC563C' }}>{latestDisease.disease_name}</div>
+                  <div className="fw-bold mb-1 text-dark fs-6">{latestDisease.disease_name}</div>
                   <div className="d-flex align-items-center gap-2 flex-wrap extra-small text-muted">
                     <span>Risk:</span>
-                    <span className="badge rounded-pill" style={{ backgroundColor: latestDisease.risk_level === 'High' ? '#FC563C' : '#FC563C', color: '#FFFFFF' }}>
+                    <span className="badge rounded-pill" style={{ backgroundColor: latestDisease.risk_level === 'High' ? '#DC2626' : '#10B981', color: '#FFFFFF' }}>
                       {latestDisease.risk_level || 'Safe'}
                     </span>
                     <span>•</span>
-                    <span>Confidence: <strong style={{ color: '#FC563C' }}>{latestDisease.confidence_score}%</strong></span>
+                    <span>Confidence: <strong className="text-dark">{latestDisease.confidence_score}%</strong></span>
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="text-center py-4 rounded-4 bg-white text-muted small mb-3" style={{ border: isDark ? '1px solid rgba(56, 189, 248, 0.2)' : '1.5px solid #CBD5E1' }}>
-                <FaStethoscope size={22} className="mb-2 opacity-40" style={{ color: '#FC563C' }} />
-                <p className="mb-0 fw-semibold" style={{ color: '#FC563C' }}>No disease scans recorded yet</p>
-                <small className="extra-small text-muted">All scans look healthy and normal.</small>
+              <div className="text-center py-4 rounded-3 bg-white text-muted small mb-3" style={{ border: isDark ? '1px solid #334155' : '1px solid #E2E8F0' }}>
+                <FaStethoscope size={22} className="mb-2 opacity-40 text-secondary" />
+                <p className="mb-0 fw-semibold text-dark">{t('No disease scans recorded yet')}</p>
+                <small className="extra-small text-muted">{t('All scans look healthy and normal.')}</small>
               </div>
             )}
 
-            <div className="pt-2 border-top d-flex justify-content-end">
+            <div className="pt-2 border-top d-flex justify-content-end" style={{ borderColor: isDark ? '#334155' : '#E2E8F0' }}>
               <button
                 type="button"
-                className="btn btn-sm btn-tri-orange px-3.5 py-1.5 extra-small fw-bold shadow-xs"
+                className="btn btn-sm btn-understated-feed px-3.5 py-1.5 extra-small fw-bold d-inline-flex align-items-center gap-1.5"
                 onClick={() => navigate('/caretaker/disease-scan')}
               >
-                Scan Shrimp Health <FaChevronRight size={10} />
+                <span>{t('Scan Shrimp Health')}</span> <FaChevronRight size={10} />
               </button>
             </div>
           </div>
@@ -1198,42 +1087,37 @@ export default function CaretakerDashboard() {
         {activeActivityTab === 'alerts' && (
           <div className="p-3.5 p-md-4">
             <div className="d-flex align-items-center justify-content-between mb-3.5 gap-2">
-              <div className="d-flex align-items-center gap-2">
-                <div
-                  className="rounded-circle d-flex align-items-center justify-content-center"
-                  style={{ width: 34, height: 34, background: 'rgba(252, 86, 60, 0.12)', color: '#FC563C' }}
-                >
-                  <FaExclamationTriangle size={14} />
-                </div>
-                <h6 className="fw-bold mb-0 tracking-tight" style={{ color: isDark ? '#FFFFFF' : '#0B2C5F', fontSize: '1.05rem' }}>System Incident Alerts</h6>
+              <div>
+                <h6 className="fw-bold mb-0 tracking-tight text-dark" style={{ fontSize: '1.05rem' }}>{t('System Incident Alerts')}</h6>
+                <small className="text-muted">{t('Live incidents and biosecurity warnings for assigned ponds.')}</small>
               </div>
-              <span className="badge rounded-pill extra-small px-2.5 py-1.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.12)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.25)' }}>
+              <span className="badge rounded-pill extra-small px-2.5 py-1.5" style={{ backgroundColor: alerts.length > 0 ? '#FEF2F2' : '#F1F5F9', color: alerts.length > 0 ? '#DC2626' : '#475569', border: alerts.length > 0 ? '1px solid #FECACA' : '1px solid #E2E8F0', fontWeight: 600 }}>
                 {alerts.length} Active
               </span>
             </div>
 
             {latestAlert ? (
-              <div className="d-flex flex-column justify-content-center p-3 rounded-4 caretaker-alert-box mb-3" style={{ minHeight: 110, border: isDark ? '1px solid rgba(252, 86, 60, 0.3)' : '1.5px solid #FECDD3' }}>
-                <div className="fw-bold d-flex align-items-center gap-2 mb-1 fs-6" style={{ color: '#FC563C' }}>
+              <div className="d-flex flex-column justify-content-center p-3 rounded-3 bg-white mb-3" style={{ minHeight: 90, border: '1px solid #FECACA' }}>
+                <div className="fw-bold d-flex align-items-center gap-2 mb-1 text-danger fs-6">
                   <FaExclamationTriangle size={13} /> {latestAlert.title}
                 </div>
                 <small className="text-muted" style={{ lineHeight: 1.45 }}>{latestAlert.message}</small>
               </div>
             ) : (
-              <div className="text-center py-4 rounded-4 caretaker-prestock-pond-card text-muted small mb-3" style={{ border: isDark ? '1px solid rgba(56, 189, 248, 0.2)' : '1.5px solid #CBD5E1' }}>
-                <FaShieldAlt size={22} className="mb-2 opacity-40" style={{ color: '#FC563C' }} />
-                <p className="mb-0 fw-semibold" style={{ color: '#FC563C' }}>No active alerts for your ponds</p>
-                <small className="extra-small text-muted">All ponds and water readings are in safe range.</small>
+              <div className="text-center py-4 rounded-3 bg-white text-muted small mb-3" style={{ border: isDark ? '1px solid #334155' : '1px solid #E2E8F0' }}>
+                <FaShieldAlt size={22} className="mb-2 opacity-40 text-secondary" />
+                <p className="mb-0 fw-semibold text-dark">{t('No active alerts for your ponds')}</p>
+                <small className="extra-small text-muted">{t('All ponds and water readings are in safe range.')}</small>
               </div>
             )}
 
-            <div className="pt-2 border-top d-flex justify-content-end">
+            <div className="pt-2 border-top d-flex justify-content-end" style={{ borderColor: isDark ? '#334155' : '#E2E8F0' }}>
               <button
                 type="button"
-                className="btn btn-sm btn-tri-outline-orange px-3.5 py-1.5 extra-small fw-bold shadow-xs"
+                className="btn btn-sm btn-understated-view px-3.5 py-1.5 extra-small fw-bold text-danger d-inline-flex align-items-center gap-1.5"
                 onClick={() => navigate('/caretaker/reports')}
               >
-                Submit Incident Report <FaChevronRight size={10} />
+                <span>{t('Submit Incident Report')}</span> <FaChevronRight size={10} />
               </button>
             </div>
           </div>

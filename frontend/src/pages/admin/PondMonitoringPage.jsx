@@ -89,29 +89,20 @@ function isDiseaseAlert(value) {
 function MetricCard({ title, value, detail, icon, tone = 'primary' }) {
   const isDanger = tone === 'danger';
   const isWarning = tone === 'warning';
-  const valueColor = isDanger ? '#DC2626' : isWarning ? '#EA580C' : '#0F172A';
+  const valueColor = isDanger ? '#DC2626' : isWarning ? '#EA580C' : '#172A39';
   return (
-    <div className="tri-kpi-card">
+    <div className="shrimp-kpi-card">
       <div>
         <div className="d-flex align-items-center justify-content-between mb-3">
-          <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">{title}</span>
-          <div className={`tri-kpi-icon ${isWarning || isDanger ? 'tri-kpi-icon-orange' : 'tri-kpi-icon-blue'}`}>{icon}</div>
+          <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">{title}</span>
+          <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: 34, height: 34, backgroundColor: isWarning ? '#FFF7ED' : isDanger ? '#FEF2F2' : '#F1F5F9', color: isWarning ? '#EA580C' : isDanger ? '#DC2626' : '#172A39' }}>{icon}</div>
         </div>
         <h3 className="fw-extrabold mb-1" style={{ color: valueColor, fontSize: '1.8rem', letterSpacing: '-0.02em' }}>
           {value}
         </h3>
       </div>
-      <div>
-        <div className="tri-progress-track my-2.5" style={{ backgroundColor: isOrange ? 'rgba(252, 86, 60, 0.1)' : 'rgba(252, 86, 60, 0.08)' }}>
-          <div
-            className="tri-progress-bar"
-            style={{
-              width: '100%',
-              background: isOrange ? 'linear-gradient(90deg, #FC563C 0%, #6E7575 100%)' : 'linear-gradient(90deg, #172A39 0%, #FC563C 100%)'
-            }}
-          />
-        </div>
-        <span className="text-muted extra-small d-block">{detail}</span>
+      <div className="pt-2">
+        <span className="text-secondary small fw-medium d-block">{detail}</span>
       </div>
     </div>
   );
@@ -537,58 +528,53 @@ export default function PondMonitoringPage() {
 
   return (
     <div className="pb-4">
-      {/* 1. EXECUTIVE HERO BANNER */}
-      <div className="disease-hero-banner d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
-        <div className="d-flex align-items-center gap-3">
-          <div className="hero-icon-badge shadow-xs">
-            <FaWater />
-          </div>
-          <div>
-            <div className="d-flex align-items-center gap-2 flex-wrap">
-              <h3 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#FC563C', fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
-                {t('Pond Water Quality & Status')}
-              </h3>
-              <span
-                className="badge rounded-pill extra-small px-3 py-1 fw-bold"
-                style={{ backgroundColor: 'rgba(252, 86, 60, 0.08)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.16)' }}
-              >
-                {t('Live Pond Readings')}
-              </span>
-            </div>
-            <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
-              {t('Monitor water quality (pH, DO, Salinity, Temp), shrimp growth, stocking dates, and water test records.')}
-            </p>
-          </div>
+      {/* 1. TITLE HEADER ROW */}
+      <div className="d-flex align-items-center justify-content-between flex-wrap gap-2.5 mb-3">
+        <div className="d-flex align-items-center gap-2.5">
+          <h3 className="fw-extrabold mb-0 tracking-tight text-dark" style={{ fontSize: '1.48rem', letterSpacing: '-0.02em' }}>
+            {t('Pond Water Quality & Status')}
+          </h3>
+          <span
+            className="badge rounded-pill d-inline-flex align-items-center gap-1.5 px-2.5 py-1"
+            style={{
+              backgroundColor: '#ECFDF5',
+              color: '#059669',
+              border: '1px solid #A7F3D0',
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              letterSpacing: '0.02em',
+            }}
+          >
+            <span className="pulse-dot-green" />
+            {t('• Live Telemetry')}
+          </span>
         </div>
 
         {/* Action Controls: Add Pond, Refresh, Export CSV */}
         <div className="d-flex align-items-center gap-2 flex-wrap">
           <button
             type="button"
-            className="btn btn-sm btn-tri-orange px-3.5 py-2 shadow-xs"
-            style={{ height: 40, fontSize: '0.82rem' }}
+            className="btn btn-sm btn-understated-feed d-inline-flex align-items-center gap-1.5 px-3.5 py-2 shadow-2xs hover-shadow"
             onClick={openAddPondModal}
           >
-            <FaPlus size={12} className="me-1.5" /> {t('+ Stock New Pond', 'Add Pond')}
+            <FaPlus size={11} /> {t('Stock New Pond')}
           </button>
 
           <button
             type="button"
-            className="btn btn-sm btn-tri-outline px-3.5 py-2 shadow-xs"
-            style={{ fontSize: '0.82rem', height: 40 }}
+            className="btn btn-sm minimal-filter-control d-inline-flex align-items-center gap-1.5 px-3 py-2 shadow-2xs hover-shadow"
             onClick={loadPondData}
             disabled={loading}
           >
-            <FaSync size={11} className={loading ? 'fa-spin me-1.5' : 'me-1.5'} /> {t('Refresh')}
+            <FaSync size={11} className={loading ? 'fa-spin' : ''} /> {t('Refresh')}
           </button>
 
           <button
             type="button"
-            className="btn btn-sm btn-tri-navy px-4 py-2 shadow-xs"
-            style={{ height: 40, fontSize: '0.82rem' }}
+            className="btn btn-sm minimal-filter-control d-inline-flex align-items-center gap-1.5 px-3.5 py-2 shadow-2xs hover-shadow"
             onClick={handleExportCSV}
           >
-            <FaFileCsv size={13} className="me-1.5" /> {t('Export CSV')}
+            <FaFileCsv size={12} className="text-secondary" /> {t('Export CSV')}
           </button>
         </div>
       </div>
@@ -604,31 +590,28 @@ export default function PondMonitoringPage() {
         {/* Total Ponds */}
         <div className="col-6 col-md-4 col-xl-2">
           <div
-            className="tri-kpi-card h-100 transition-all cursor-pointer d-flex flex-column justify-content-between"
+            className="shrimp-kpi-card h-100 transition-all cursor-pointer d-flex flex-column justify-content-between"
             style={{
-              backgroundColor: statusFilter === 'All' ? '#E9E4E0' : '#FFFFFF',
-              borderColor: statusFilter === 'All' ? '#FC563C' : 'rgba(252, 86, 60, 0.12)',
+              backgroundColor: statusFilter === 'All' ? '#F8FAFC' : '#FFFFFF',
+              borderColor: statusFilter === 'All' ? '#FC563C' : '#E2E8F0',
               boxShadow: statusFilter === 'All' ? '0 0 0 2px rgba(252, 86, 60, 0.2)' : undefined,
             }}
             onClick={() => setStatusFilter('All')}
             title="Click to view all ponds"
           >
             <div>
-              <div className="d-flex align-items-center justify-content-between mb-2" style={{ height: 34 }}>
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">{t('Total Ponds')}</span>
-                <div className="tri-kpi-icon tri-kpi-icon-blue" style={{ width: 34, height: 34 }}>
-                  <FaLayerGroup size={14} />
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">{t('Total Ponds')}</span>
+                <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: 30, height: 30, backgroundColor: '#F1F5F9', color: '#172A39' }}>
+                  <FaLayerGroup size={13} />
                 </div>
               </div>
-              <h3 className="fw-extrabold mb-1 d-flex align-items-baseline" style={{ height: 38, lineHeight: '38px', color: '#FC563C', fontSize: '1.75rem', letterSpacing: '-0.02em' }}>
+              <h3 className="fw-extrabold mb-1 d-flex align-items-baseline text-dark" style={{ height: 38, lineHeight: '38px', fontSize: '1.75rem', letterSpacing: '-0.02em' }}>
                 {summary.total_ponds}
               </h3>
             </div>
-            <div>
-              <div className="tri-progress-track my-2">
-                <div className="tri-progress-bar" style={{ width: '100%', background: 'linear-gradient(90deg, #FC563C, #172A39)' }} />
-              </div>
-              <span className="text-muted extra-small d-block">{t('Total Active Ponds')}</span>
+            <div className="pt-2">
+              <span className="text-secondary extra-small d-block fw-medium">{t('Total Active Ponds')}</span>
             </div>
           </div>
         </div>
@@ -636,19 +619,19 @@ export default function PondMonitoringPage() {
         {/* Healthy Ponds */}
         <div className="col-6 col-md-4 col-xl-2">
           <div
-            className="tri-kpi-card h-100 transition-all cursor-pointer d-flex flex-column justify-content-between"
+            className="shrimp-kpi-card h-100 transition-all cursor-pointer d-flex flex-column justify-content-between"
             style={{
               backgroundColor: statusFilter === 'Healthy' ? '#F0FDF4' : '#FFFFFF',
-              borderColor: statusFilter === 'Healthy' ? '#16A34A' : 'rgba(252, 86, 60, 0.12)',
+              borderColor: statusFilter === 'Healthy' ? '#16A34A' : '#E2E8F0',
               boxShadow: statusFilter === 'Healthy' ? '0 0 0 2px rgba(22, 163, 74, 0.25)' : undefined,
             }}
             onClick={() => setStatusFilter(statusFilter === 'Healthy' ? 'All' : 'Healthy')}
             title="Click to filter healthy ponds"
           >
             <div>
-              <div className="d-flex align-items-center justify-content-between mb-2" style={{ height: 34 }}>
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">{t('Healthy')}</span>
-                <span className="badge rounded-pill extra-small px-2 py-1 fw-bold" style={{ backgroundColor: '#F0FDF4', color: '#16A34A', border: '1px solid #BBF7D0' }}>
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">{t('Healthy')}</span>
+                <span className="badge rounded-pill extra-small px-2 py-0.5 fw-bold" style={{ backgroundColor: '#F0FDF4', color: '#16A34A', border: '1px solid #BBF7D0' }}>
                   {t('Stable')}
                 </span>
               </div>
@@ -656,11 +639,8 @@ export default function PondMonitoringPage() {
                 {summary.healthy_ponds}
               </h3>
             </div>
-            <div>
-              <div className="tri-progress-track my-2" style={{ backgroundColor: 'rgba(22, 163, 74, 0.1)' }}>
-                <div className="tri-progress-bar" style={{ width: summary.total_ponds > 0 ? `${(summary.healthy_ponds / summary.total_ponds) * 100}%` : '0%', background: 'linear-gradient(90deg, #16A34A, #22C55E)' }} />
-              </div>
-              <span className="text-muted extra-small d-block">{t('Optimal Water')}</span>
+            <div className="pt-2">
+              <span className="text-secondary extra-small d-block fw-medium">{t('Optimal Water')}</span>
             </div>
           </div>
         </div>
@@ -668,19 +648,19 @@ export default function PondMonitoringPage() {
         {/* Warning Ponds */}
         <div className="col-6 col-md-4 col-xl-2">
           <div
-            className="tri-kpi-card h-100 transition-all cursor-pointer d-flex flex-column justify-content-between"
+            className="shrimp-kpi-card h-100 transition-all cursor-pointer d-flex flex-column justify-content-between"
             style={{
               backgroundColor: statusFilter === 'Warning' ? '#FFFBEB' : '#FFFFFF',
-              borderColor: statusFilter === 'Warning' ? '#D97706' : 'rgba(252, 86, 60, 0.12)',
+              borderColor: statusFilter === 'Warning' ? '#D97706' : '#E2E8F0',
               boxShadow: statusFilter === 'Warning' ? '0 0 0 2px rgba(217, 119, 6, 0.25)' : undefined,
             }}
             onClick={() => setStatusFilter(statusFilter === 'Warning' ? 'All' : 'Warning')}
             title="Click to filter warning ponds"
           >
             <div>
-              <div className="d-flex align-items-center justify-content-between mb-2" style={{ height: 34 }}>
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">{t('Warning')}</span>
-                <span className="badge rounded-pill extra-small px-2 py-1 fw-bold" style={{ backgroundColor: '#FFFBEB', color: '#D97706', border: '1px solid #FDE68A' }}>
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">{t('Warning')}</span>
+                <span className="badge rounded-pill extra-small px-2 py-0.5 fw-bold" style={{ backgroundColor: '#FFFBEB', color: '#D97706', border: '1px solid #FDE68A' }}>
                   {t('Notice')}
                 </span>
               </div>
@@ -688,11 +668,8 @@ export default function PondMonitoringPage() {
                 {summary.warning_ponds}
               </h3>
             </div>
-            <div>
-              <div className="tri-progress-track my-2" style={{ backgroundColor: 'rgba(217, 119, 6, 0.1)' }}>
-                <div className="tri-progress-bar" style={{ width: summary.total_ponds > 0 ? `${(summary.warning_ponds / summary.total_ponds) * 100}%` : '0%', background: 'linear-gradient(90deg, #D97706, #F59E0B)' }} />
-              </div>
-              <span className="text-muted extra-small d-block">{t('Sub-optimal Water')}</span>
+            <div className="pt-2">
+              <span className="text-secondary extra-small d-block fw-medium">{t('Sub-optimal Water')}</span>
             </div>
           </div>
         </div>
@@ -700,19 +677,19 @@ export default function PondMonitoringPage() {
         {/* Critical Ponds */}
         <div className="col-6 col-md-4 col-xl-2">
           <div
-            className="tri-kpi-card h-100 transition-all cursor-pointer d-flex flex-column justify-content-between"
+            className="shrimp-kpi-card h-100 transition-all cursor-pointer d-flex flex-column justify-content-between"
             style={{
               backgroundColor: statusFilter === 'Critical' ? '#FEF2F2' : '#FFFFFF',
-              borderColor: statusFilter === 'Critical' ? '#DC2626' : (summary.critical_ponds > 0 ? 'rgba(220, 38, 38, 0.3)' : 'rgba(252, 86, 60, 0.12)'),
+              borderColor: statusFilter === 'Critical' ? '#DC2626' : '#E2E8F0',
               boxShadow: statusFilter === 'Critical' ? '0 0 0 2px rgba(220, 38, 38, 0.25)' : undefined,
             }}
             onClick={() => setStatusFilter(statusFilter === 'Critical' ? 'All' : 'Critical')}
             title="Click to filter critical alert ponds"
           >
             <div>
-              <div className="d-flex align-items-center justify-content-between mb-2" style={{ height: 34 }}>
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">{t('Critical')}</span>
-                <span className="badge rounded-pill extra-small px-2 py-1 fw-bold" style={{ backgroundColor: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">{t('Critical')}</span>
+                <span className="badge rounded-pill extra-small px-2 py-0.5 fw-bold" style={{ backgroundColor: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>
                   {t('Alert')}
                 </span>
               </div>
@@ -720,11 +697,8 @@ export default function PondMonitoringPage() {
                 {summary.critical_ponds}
               </h3>
             </div>
-            <div>
-              <div className="tri-progress-track my-2" style={{ backgroundColor: 'rgba(220, 38, 38, 0.1)' }}>
-                <div className="tri-progress-bar" style={{ width: summary.total_ponds > 0 ? `${Math.max(10, (summary.critical_ponds / summary.total_ponds) * 100)}%` : '0%', background: 'linear-gradient(90deg, #DC2626, #EF4444)' }} />
-              </div>
-              <span className="text-muted extra-small d-block">{t('Action Required')}</span>
+            <div className="pt-2">
+              <span className="text-secondary extra-small d-block fw-medium">{t('Action Required')}</span>
             </div>
           </div>
         </div>
@@ -732,19 +706,19 @@ export default function PondMonitoringPage() {
         {/* Isolated Ponds */}
         <div className="col-6 col-md-4 col-xl-2">
           <div
-            className="tri-kpi-card h-100 transition-all cursor-pointer d-flex flex-column justify-content-between"
+            className="shrimp-kpi-card h-100 transition-all cursor-pointer d-flex flex-column justify-content-between"
             style={{
               backgroundColor: statusFilter === 'Isolated' ? '#F5F3FF' : '#FFFFFF',
-              borderColor: statusFilter === 'Isolated' ? '#7C3AED' : (isolatedPondsCount > 0 ? 'rgba(124, 58, 237, 0.35)' : 'rgba(252, 86, 60, 0.12)'),
+              borderColor: statusFilter === 'Isolated' ? '#7C3AED' : '#E2E8F0',
               boxShadow: statusFilter === 'Isolated' ? '0 0 0 2px rgba(124, 58, 237, 0.25)' : undefined,
             }}
             onClick={() => setStatusFilter(statusFilter === 'Isolated' ? 'All' : 'Isolated')}
             title="Click to filter isolated quarantined ponds"
           >
             <div>
-              <div className="d-flex align-items-center justify-content-between mb-2" style={{ height: 34 }}>
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider" style={{ color: '#7C3AED' }}>{t('Isolated')}</span>
-                <span className="badge rounded-pill extra-small px-2 py-1 fw-bold" style={{ backgroundColor: '#EDE9FE', color: '#7C3AED', border: '1px solid #DDD6FE' }}>
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">{t('Isolated')}</span>
+                <span className="badge rounded-pill extra-small px-2 py-0.5 fw-bold" style={{ backgroundColor: '#EDE9FE', color: '#7C3AED', border: '1px solid #DDD6FE' }}>
                   {t('Bio-Lock')}
                 </span>
               </div>
@@ -752,55 +726,43 @@ export default function PondMonitoringPage() {
                 {isolatedPondsCount}
               </h3>
             </div>
-            <div>
-              <div className="tri-progress-track my-2" style={{ backgroundColor: 'rgba(124, 58, 237, 0.1)' }}>
-                <div
-                  className="tri-progress-bar"
-                  style={{
-                    width: summary.total_ponds > 0 ? `${Math.min(100, (isolatedPondsCount / summary.total_ponds) * 100)}%` : '0%',
-                    background: 'linear-gradient(90deg, #7C3AED, #9333EA)'
-                  }}
-                />
-              </div>
-              <span className="text-muted extra-small d-block">{t('Isolated Ponds')}</span>
+            <div className="pt-2">
+              <span className="text-secondary extra-small d-block fw-medium">{t('Isolated Ponds')}</span>
             </div>
           </div>
         </div>
 
         {/* Avg Feed Today */}
         <div className="col-6 col-md-4 col-xl-2">
-          <div className="tri-kpi-card h-100 d-flex flex-column justify-content-between">
+          <div className="shrimp-kpi-card h-100 d-flex flex-column justify-content-between">
             <div>
-              <div className="d-flex align-items-center justify-content-between mb-2" style={{ height: 34 }}>
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">{t('Feed Today')}</span>
-                <div className="tri-kpi-icon tri-kpi-icon-blue" style={{ width: 34, height: 34 }}>
-                  <FaUtensils size={14} />
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">{t('Feed Today')}</span>
+                <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: 30, height: 30, backgroundColor: '#F1F5F9', color: '#172A39' }}>
+                  <FaUtensils size={13} />
                 </div>
               </div>
-              <h3 className="fw-extrabold mb-1 d-flex align-items-baseline gap-1" style={{ height: 38, lineHeight: '38px', color: '#FC563C', fontSize: '1.75rem', letterSpacing: '-0.02em' }}>
+              <h3 className="fw-extrabold mb-1 d-flex align-items-baseline gap-1 text-dark" style={{ height: 38, lineHeight: '38px', fontSize: '1.75rem', letterSpacing: '-0.02em' }}>
                 <span>{summary.average_feed_today}</span> <small className="fs-6 text-muted fw-normal ms-1">kg</small>
               </h3>
             </div>
-            <div>
-              <div className="tri-progress-track my-2">
-                <div className="tri-progress-bar" style={{ width: '85%', background: 'linear-gradient(90deg, #FC563C, #172A39)' }} />
-              </div>
-              <span className="text-muted extra-small d-block">{t('Daily Consumption')}</span>
+            <div className="pt-2">
+              <span className="text-secondary extra-small d-block fw-medium">{t('Daily Consumption')}</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* 2b. COMBINED CULTURE MATURITY (AVG POND DOC) & HEALTH DISTRIBUTION */}
-      <div className="tri-card p-4 mb-4 position-relative overflow-hidden">
-        <div className="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom flex-wrap gap-2" style={{ borderColor: 'rgba(252, 86, 60, 0.08)' }}>
+      <div className="bg-white border rounded-4 p-4 mb-4 shadow-2xs" style={{ borderColor: '#E2E8F0' }}>
+        <div className="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom flex-wrap gap-2" style={{ borderColor: '#E2E8F0' }}>
           <div>
             <h5 className="fw-extrabold text-dark mb-0 tracking-tight d-flex align-items-center gap-2">
               <FaChartPie style={{ color: '#FC563C' }} /> {t('Health Distribution & Culture Age')}
             </h5>
-            <p className="small text-muted mb-0">{t('Computed overall health status breakdown and fleet average culture age across monitored ponds.')}</p>
+            <p className="small text-secondary mb-0">{t('Computed overall health status breakdown and fleet average culture age across monitored ponds.')}</p>
           </div>
-          <span className="badge badge-tri-navy rounded-pill px-3 py-1.5 extra-small">
+          <span className="badge rounded-pill px-3 py-1.5 extra-small border" style={{ backgroundColor: '#F8FAFC', color: '#475569', borderColor: '#E2E8F0' }}>
             {summary.total_ponds || 0} {t('Total Monitored Ponds')}
           </span>
         </div>
@@ -918,8 +880,8 @@ export default function PondMonitoringPage() {
       {/* 3. POND MONITORING TABLE CARD (WITH INTEGRATED SEARCH & PARAMETER FILTERS) */}
       <div className="row g-4 mb-4">
         <div className="col-12">
-          <div className="tri-card p-4 position-relative overflow-hidden">
-            <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3 pb-3 border-bottom">
+          <div className="bg-white border rounded-4 p-4 shadow-2xs" style={{ borderColor: '#E2E8F0' }}>
+            <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3 pb-3 border-bottom" style={{ borderColor: '#E2E8F0' }}>
               <div className="d-flex align-items-center gap-3">
                 <div
                   className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
@@ -1044,10 +1006,10 @@ export default function PondMonitoringPage() {
                 <p className="small text-muted mb-0">{t('No database records match the current filters.')}</p>
               </div>
             ) : (
-              <div className="table-responsive border rounded-3 shadow-xs admin-scrollable-table-ponds" style={{ maxHeight: 295, overflowY: 'auto', overflowX: 'auto' }}>
-                <table className="table tri-table align-middle mb-0" style={{ minWidth: '1380px' }}>
-                  <thead className="table-light sticky-top shadow-xs" style={{ top: 0, zIndex: 5 }}>
-                    <tr className="text-muted extra-small text-uppercase fw-extrabold" style={{ letterSpacing: '0.03em' }}>
+              <div className="table-responsive border rounded-3 admin-scrollable-table-ponds" style={{ maxHeight: 295, overflowY: 'auto', overflowX: 'auto', borderColor: '#E2E8F0' }}>
+                <table className="table table-hover align-middle mb-0" style={{ minWidth: '1380px' }}>
+                  <thead className="table-light border-bottom sticky-top" style={{ borderColor: '#E2E8F0', top: 0, zIndex: 5 }}>
+                    <tr className="text-secondary extra-small text-uppercase fw-bold" style={{ letterSpacing: '0.03em' }}>
                       <th className="ps-3.5 py-3" style={{ minWidth: '150px' }}>{t('Pond')}</th>
                       <th className="py-3" style={{ minWidth: '175px' }}>{t('Culture & Feed')}</th>
                       <th className="py-3" style={{ minWidth: '115px' }}>{t('Status')}</th>

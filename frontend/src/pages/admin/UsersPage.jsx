@@ -465,82 +465,81 @@ export default function UsersPage() {
 
   return (
     <div className="users-page-container pb-5" style={{ fontFamily: "'Poppins', sans-serif" }}>
-      {/* 1. HERO INTELLIGENCE & CONTROL BANNER */}
-      <div className="disease-hero-banner d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
-        <div className="d-flex align-items-center gap-3">
-          <div className="hero-icon-badge shadow-xs">
-            <FaUsers />
-          </div>
-          <div>
-            <div className="d-flex align-items-center gap-2 flex-wrap">
-              <h3 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#FC563C', fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
-                {t('Team & Caretaker Operations')}
-              </h3>
-              <span className="tag-green-safe d-inline-flex align-items-center gap-1">
-                <span className="rounded-circle" style={{ width: 6, height: 6, background: '#16A34A' }}></span>
-                {t('Role-Based Access Active')}
-              </span>
-            </div>
-            <p className="text-muted mb-0 small" style={{ fontSize: '0.84rem' }}>
-              {t('Manage farm supervisor credentials, assign active production basins, and audit caretaker telemetry records.')}
-            </p>
-          </div>
+      {/* 1. TITLE HEADER ROW */}
+      <div className="d-flex align-items-center justify-content-between flex-wrap gap-2.5 mb-3">
+        <div className="d-flex align-items-center gap-2.5">
+          <h3 className="fw-extrabold mb-0 tracking-tight text-dark" style={{ fontSize: '1.48rem', letterSpacing: '-0.02em' }}>
+            {t('Team & Caretaker Operations')}
+          </h3>
+          <span
+            className="badge rounded-pill d-inline-flex align-items-center gap-1.5 px-2.5 py-1"
+            style={{
+              backgroundColor: '#ECFDF5',
+              color: '#059669',
+              border: '1px solid #A7F3D0',
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              letterSpacing: '0.02em',
+            }}
+          >
+            <span className="pulse-dot-green" />
+            {t('• Directory Active')}
+          </span>
         </div>
 
         {/* Action Controls: Refresh, Export & Create */}
         <div className="d-flex align-items-center gap-2 flex-wrap">
           <button
             type="button"
-            className="btn btn-sm btn-tri-outline px-3.5 py-2 shadow-xs"
-            style={{ fontSize: '0.82rem', height: 40 }}
-            onClick={loadUsers}
-          >
-            <FaSync size={11} className={loading ? 'fa-spin me-1.5' : 'me-1.5'} /> {t('Refresh')}
-          </button>
-
-          <button
-            type="button"
-            className="btn btn-sm btn-tri-navy px-3.5 py-2 shadow-xs"
-            style={{ fontSize: '0.82rem', height: 40 }}
-            onClick={handleExportCSV}
-          >
-            <FaFileCsv size={12} className="me-1.5" /> {t('Export CSV')}
-          </button>
-
-          <button
-            type="button"
-            className="btn btn-sm btn-tri-orange px-4 py-2 shadow-xs"
-            style={{ height: 40, fontSize: '0.82rem' }}
+            className="btn btn-sm btn-understated-feed d-inline-flex align-items-center gap-1.5 px-3.5 py-2 shadow-2xs hover-shadow"
             onClick={openCreateModal}
           >
-            <FaPlus size={12} className="me-1.5" /> {t('+ Add New User')}
+            <FaPlus size={11} /> {t('Add New User')}
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-sm minimal-filter-control d-inline-flex align-items-center gap-1.5 px-3 py-2 shadow-2xs hover-shadow"
+            onClick={loadUsers}
+            disabled={loading}
+          >
+            <FaSync size={11} className={loading ? 'fa-spin' : ''} /> {t('Refresh')}
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-sm minimal-filter-control d-inline-flex align-items-center gap-1.5 px-3.5 py-2 shadow-2xs hover-shadow"
+            onClick={handleExportCSV}
+          >
+            <FaFileCsv size={12} className="text-secondary" /> {t('Export CSV')}
           </button>
         </div>
       </div>
 
-      {/* 2. 4 TRI-COLOR OPERATIONAL TELEMETRY CARDS */}
+      {/* 2. 4 OPERATIONAL KPI CARDS */}
       <div className="row g-3 g-xl-4 mb-4">
         {/* Card 1: Total Users */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="tri-kpi-card">
+          <div className="shrimp-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">{t('Total Directory')}</span>
-                <div className="tri-kpi-icon tri-kpi-icon-blue">
-                  <FaUsers size={17} />
+                <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">
+                  {t('Total Directory')}
+                </span>
+                <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: 34, height: 34, backgroundColor: '#F1F5F9', color: '#172A39' }}>
+                  <FaUsers size={15} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+              <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
                 {summary.total_users}
               </h2>
             </div>
-            <div>
-              <div className="tri-progress-track my-2.5">
-                <div className="tri-progress-bar" style={{ width: '100%', background: 'linear-gradient(90deg, #FC563C, #172A39)' }} />
-              </div>
+            <div className="pt-2">
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small">{t('Active Accounts')}</span>
-                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.06)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.15)' }}>
+                <span className="text-secondary small fw-medium">
+                  {t('Active Accounts')}
+                </span>
+                <span className="badge rounded-pill px-2.5 py-1 extra-small" style={{ backgroundColor: '#F1F5F9', color: '#475569', fontWeight: 600 }}>
                   {t('All Personnel')}
                 </span>
               </div>
@@ -550,25 +549,26 @@ export default function UsersPage() {
 
         {/* Card 2: Admins */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="tri-kpi-card">
+          <div className="shrimp-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">{t('System Admins')}</span>
-                <div className="tri-kpi-icon tri-kpi-icon-blue">
-                  <FaUserShield size={17} />
+                <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">
+                  {t('System Admins')}
+                </span>
+                <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: 34, height: 34, backgroundColor: '#F1F5F9', color: '#172A39' }}>
+                  <FaUserShield size={15} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+              <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
                 {summary.admin_count}
               </h2>
             </div>
-            <div>
-              <div className="tri-progress-track my-2.5">
-                <div className="tri-progress-bar" style={{ width: summary.total_users > 0 ? `${(summary.admin_count / summary.total_users) * 100}%` : '40%', background: 'linear-gradient(90deg, #FC563C, #172A39)' }} />
-              </div>
+            <div className="pt-2">
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small">{t('Root Access')}</span>
-                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.06)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.15)' }}>
+                <span className="text-secondary small fw-medium">
+                  {t('Root Access')}
+                </span>
+                <span className="badge rounded-pill px-2.5 py-1 extra-small" style={{ backgroundColor: '#F1F5F9', color: '#475569', fontWeight: 600 }}>
                   {t('Full Authority')}
                 </span>
               </div>
@@ -578,25 +578,26 @@ export default function UsersPage() {
 
         {/* Card 3: Caretakers */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="tri-kpi-card">
+          <div className="shrimp-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">{t('Field Caretakers')}</span>
-                <div className="tri-kpi-icon tri-kpi-icon-orange">
-                  <FaUserTie size={17} />
+                <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">
+                  {t('Field Caretakers')}
+                </span>
+                <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: 34, height: 34, backgroundColor: '#FFF7ED', color: '#FC563C' }}>
+                  <FaUserTie size={15} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+              <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
                 {summary.caretaker_count}
               </h2>
             </div>
-            <div>
-              <div className="tri-progress-track my-2.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.1)' }}>
-                <div className="tri-progress-bar" style={{ width: summary.total_users > 0 ? `${(summary.caretaker_count / summary.total_users) * 100}%` : '60%', background: 'linear-gradient(90deg, #FC563C, #F97316)' }} />
-              </div>
+            <div className="pt-2">
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small">{t('Basin Supervisors')}</span>
-                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: '#E9E4E0', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.25)' }}>
+                <span className="text-secondary small fw-medium">
+                  {t('Basin Supervisors')}
+                </span>
+                <span className="badge rounded-pill px-2.5 py-1 extra-small" style={{ backgroundColor: '#FFF7ED', color: '#C2410C', fontWeight: 600 }}>
                   {t('Field Operations')}
                 </span>
               </div>
@@ -606,25 +607,26 @@ export default function UsersPage() {
 
         {/* Card 4: Active Accounts */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="tri-kpi-card">
+          <div className="shrimp-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">{t('Operational Health')}</span>
-                <div className="tri-kpi-icon tri-kpi-icon-blue">
-                  <FaCheckCircle size={17} />
+                <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">
+                  {t('Operational Health')}
+                </span>
+                <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: 34, height: 34, backgroundColor: '#ECFDF5', color: '#059669' }}>
+                  <FaCheckCircle size={15} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+              <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
                 {summary.active_count}
               </h2>
             </div>
-            <div>
-              <div className="tri-progress-track my-2.5">
-                <div className="tri-progress-bar" style={{ width: '100%', background: 'linear-gradient(90deg, #16A34A, #22C55E)' }} />
-              </div>
+            <div className="pt-2">
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small">{t('Zero Locked')}</span>
-                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: '#F0FDF4', color: '#16A34A', border: '1px solid #BBF7D0' }}>
+                <span className="text-secondary small fw-medium">
+                  {t('Zero Locked')}
+                </span>
+                <span className="badge rounded-pill px-2.5 py-1 extra-small" style={{ backgroundColor: '#ECFDF5', color: '#059669', fontWeight: 600 }}>
                   {t('100% Operational')}
                 </span>
               </div>
@@ -701,20 +703,20 @@ export default function UsersPage() {
       />
 
       {/* 4. USERS TABLE MATRIX */}
-      <div className="tri-card p-4">
-        <div className="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
+      <div className="bg-white border rounded-4 p-4 shadow-2xs" style={{ borderColor: '#E2E8F0' }}>
+        <div className="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom" style={{ borderColor: '#E2E8F0' }}>
           <div>
             <h5 className="fw-extrabold text-dark mb-0 tracking-tight">{t('System Personnel Directory')}</h5>
-            <p className="text-muted small mb-0" style={{ fontSize: '0.82rem' }}>
+            <p className="text-secondary small mb-0" style={{ fontSize: '0.82rem' }}>
               {t('Authorized administrator profiles and operational field farm caretakers.')}
             </p>
           </div>
-          <span className="tag-cyan-active">
+          <span className="badge rounded-pill px-3 py-1.5 extra-small border" style={{ backgroundColor: '#F8FAFC', color: '#475569', borderColor: '#E2E8F0' }}>
             {t('Showing')} {sortedUsers.length} {t('of')} {users.length} {t('Users')}
           </span>
         </div>
 
-        <div className="table-responsive rounded-4 border" style={{ maxHeight: '560px', overflowY: 'auto' }}>
+        <div className="table-responsive rounded-4 border" style={{ maxHeight: '560px', overflowY: 'auto', borderColor: '#E2E8F0' }}>
           {loading ? (
             <div className="text-center py-5 text-muted">
               <FaSync className="fa-spin text-primary me-2" /> {t('Loading System Personnel Directory...')}
@@ -722,10 +724,10 @@ export default function UsersPage() {
           ) : sortedUsers.length === 0 ? (
             <div className="text-center py-5 text-muted">{t('No personnel records found matching filter criteria.')}</div>
           ) : (
-            <div className="table-responsive admin-scrollable-table-4rows" style={{ maxHeight: 215, overflowY: 'auto' }}>
-              <table className="table tri-table align-middle mb-0" style={{ fontSize: '0.85rem' }}>
-              <thead className="admin-sticky-thead" style={{ position: 'sticky', top: 0, zIndex: 5 }}>
-                <tr className="extra-small text-uppercase fw-bold">
+            <div className="table-responsive admin-scrollable-table-4rows rounded-3" style={{ maxHeight: 240, overflowY: 'auto' }}>
+              <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.85rem' }}>
+              <thead className="table-light border-bottom sticky-top" style={{ borderColor: '#E2E8F0', zIndex: 5 }}>
+                <tr className="extra-small text-uppercase fw-bold text-secondary">
                   <th className="ps-3 py-3" style={{ minWidth: 220 }}>{t('User Profile')}</th>
                   <th className="py-3" style={{ minWidth: 190 }}>{t('Contact Email')}</th>
                   <th className="py-3" style={{ minWidth: 140 }}>{t('Mobile Number')}</th>

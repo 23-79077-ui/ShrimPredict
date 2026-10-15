@@ -395,36 +395,28 @@ export default function DiseaseReportsPage() {
 
   return (
     <div className="disease-reports-container pb-5" style={{ fontFamily: "'Poppins', sans-serif" }}>
-      {/* 1. HERO INTELLIGENCE & BIOSECURITY CONTROL BANNER */}
-      <div className="disease-hero-banner d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
-        <div className="d-flex align-items-center gap-3">
-          <div className="hero-icon-badge shadow-xs">
-            <FaShieldVirus />
+      {/* 1. TITLE HEADER */}
+      <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
+        <div>
+          <div className="d-flex align-items-center gap-2">
+            <h3 className="fw-extrabold text-dark mb-0 tracking-tight" style={{ letterSpacing: '-0.02em' }}>
+              {t('Shrimp Health & Disease Reports')}
+            </h3>
+            <span className="badge rounded-pill extra-small px-2.5 py-1 fw-bold bg-white border text-secondary d-flex align-items-center gap-1.5 shadow-2xs">
+              <span className="pulse-dot-green"></span>
+              {t('AI Health Scanner Active')}
+            </span>
           </div>
-          <div>
-            <div className="d-flex align-items-center gap-2 flex-wrap">
-              <h3 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#FC563C', fontSize: '1.5rem', letterSpacing: '-0.02em' }}>
-                {t('Shrimp Health & Disease Reports')}
-              </h3>
-              <span
-                className="badge rounded-pill extra-small px-3 py-1 fw-bold"
-                style={{ backgroundColor: 'rgba(252, 86, 60, 0.08)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.16)' }}
-              >
-                {t('AI Health Scanner Active')}
-              </span>
-            </div>
-            <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
-              O&amp;B Aquafarm • Shrimp health checks, disease scan results, and recommended farm actions
-            </p>
-          </div>
+          <p className="text-muted mb-0 small mt-0.5">
+            O&amp;B Aquafarm • Shrimp health checks, disease scan results, and recommended farm actions
+          </p>
         </div>
 
         {/* Action Controls */}
         <div className="d-flex align-items-center gap-2 flex-wrap">
           <button
             type="button"
-            className="btn btn-sm btn-tri-outline px-3.5 py-2 shadow-xs"
-            style={{ fontSize: '0.82rem', height: 40 }}
+            className="btn btn-sm btn-understated-view shadow-2xs"
             onClick={loadReports}
           >
             <FaSync size={11} className={loading ? 'fa-spin me-1.5' : 'me-1.5'} /> {t('Refresh Data')}
@@ -432,156 +424,115 @@ export default function DiseaseReportsPage() {
 
           <button
             type="button"
-            className="btn btn-sm btn-tri-orange px-4 py-2 shadow-xs"
-            style={{ height: 40, fontSize: '0.82rem' }}
+            className="btn btn-sm btn-understated-feed shadow-2xs"
             onClick={handleExportCSV}
           >
-            <FaFileCsv size={13} className="me-1.5" /> {t('Export CSV')}
+            <FaFileCsv size={13} className="me-1.5 text-success" /> {t('Export CSV')}
           </button>
         </div>
       </div>
 
-      {/* 2. 4 TRI-COLOR OPERATIONAL TELEMETRY CARDS */}
+      {/* 2. 4 SHRIMP KPI CARDS */}
       <div className="row g-3 g-xl-4 mb-4">
-        {/* Card 1: Total Inferences */}
+        {/* Card 1: Total Disease Scans */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="tri-kpi-card">
+          <div className="shrimp-kpi-card">
             <div>
-              <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">{t('Total Disease Scans')}</span>
-                <div className="tri-kpi-icon tri-kpi-icon-blue">
-                  <FaMicroscope size={17} />
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <span className="kpi-label">{t('Total Disease Scans')}</span>
+                <div className="kpi-icon-bubble">
+                  <FaMicroscope size={14} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.2rem', letterSpacing: '-0.03em' }}>
+              <div className="kpi-value text-dark">
                 {summary.total}
-              </h2>
+              </div>
             </div>
-            <div>
-              <div className="tri-progress-track my-2.5">
-                <div
-                  className="tri-progress-bar"
-                  style={{ width: '100%', background: 'linear-gradient(90deg, #172A39 0%, #FC563C 100%)' }}
-                />
-              </div>
-              <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small">{t('Mobile Camera Uploads')}</span>
-                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.06)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.15)' }}>
-                  {t('Active Stream')}
-                </span>
-              </div>
+            <div className="mt-3 pt-2 border-top d-flex justify-content-between align-items-center">
+              <span className="extra-small text-muted">{t('Mobile Camera Uploads')}</span>
+              <span className="badge rounded-pill extra-small px-2 py-0.5 bg-light border text-secondary">Active</span>
             </div>
           </div>
         </div>
 
-        {/* Card 2: High Threat WSD Cases */}
+        {/* Card 2: Critical WSD Threats */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="tri-kpi-card" style={{ borderColor: summary.high > 0 ? 'rgba(252, 86, 60, 0.25)' : 'rgba(252, 86, 60, 0.12)' }}>
+          <div className="shrimp-kpi-card">
             <div>
-              <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">{t('Critical WSD Threats')}</span>
-                <div className="tri-kpi-icon tri-kpi-icon-orange">
-                  <FaExclamationTriangle size={17} />
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <span className="kpi-label">{t('Critical WSD Threats')}</span>
+                <div className="kpi-icon-bubble">
+                  <FaExclamationTriangle size={14} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: summary.high > 0 ? '#FC563C' : '#FC563C', fontSize: '2.2rem', letterSpacing: '-0.03em' }}>
+              <div className="kpi-value text-dark" style={summary.high > 0 ? { color: '#DC2626' } : {}}>
                 {summary.high}
-              </h2>
+              </div>
             </div>
-            <div>
-              <div className="tri-progress-track my-2.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.1)' }}>
-                <div
-                  className="tri-progress-bar"
-                  style={{
-                    width: summary.total > 0 ? `${Math.max(15, (summary.high / summary.total) * 100)}%` : '15%',
-                    background: 'linear-gradient(90deg, #FC563C 0%, #6E7575 100%)'
-                  }}
-                />
-              </div>
-              <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small">{t('Immediate Isolation')}</span>
-                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: '#E9E4E0', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.25)' }}>
-                  {summary.high > 0 ? t('Quarantine Active') : t('No Critical Alerts')}
-                </span>
-              </div>
+            <div className="mt-3 pt-2 border-top d-flex justify-content-between align-items-center">
+              <span className="extra-small text-muted">{t('Immediate Isolation')}</span>
+              <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: summary.high > 0 ? '#FEF2F2' : '#F1F5F9', color: summary.high > 0 ? '#DC2626' : '#64748B', border: summary.high > 0 ? '1px solid #FECACA' : '1px solid #E2E8F0' }}>
+                {summary.high > 0 ? t('Quarantine Active') : t('No Critical Alerts')}
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Card 3: CNN Model Confidence */}
+        {/* Card 3: CNN Vision Accuracy */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="tri-kpi-card">
+          <div className="shrimp-kpi-card">
             <div>
-              <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">{t('CNN Vision Accuracy')}</span>
-                <div className="tri-kpi-icon tri-kpi-icon-blue">
-                  <FaShieldVirus size={17} />
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <span className="kpi-label">{t('CNN Vision Accuracy')}</span>
+                <div className="kpi-icon-bubble">
+                  <FaShieldVirus size={14} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.2rem', letterSpacing: '-0.03em' }}>
+              <div className="kpi-value text-dark">
                 {summary.avgConfidence.toFixed(1)}%
-              </h2>
+              </div>
             </div>
-            <div>
-              <div className="tri-progress-track my-2.5">
-                <div
-                  className="tri-progress-bar"
-                  style={{ width: `${Math.min(100, summary.avgConfidence)}%`, background: 'linear-gradient(90deg, #172A39 0%, #FC563C 100%)' }}
-                />
-              </div>
-              <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small">{t('ResNet-50 Pathology Core')}</span>
-                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.06)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.15)' }}>
-                  F1-Score 0.96
-                </span>
-              </div>
+            <div className="mt-3 pt-2 border-top d-flex justify-content-between align-items-center">
+              <span className="extra-small text-muted">ResNet / EfficientNet Core</span>
+              <span className="badge rounded-pill extra-small px-2 py-0.5 bg-light border text-secondary">F1: 0.96</span>
             </div>
           </div>
         </div>
 
-        {/* Card 4: Pond Surveillance Scope */}
+        {/* Card 4: Surveillance Scope */}
         <div className="col-12 col-sm-6 col-xl-3">
-          <div className="tri-kpi-card" style={{ borderColor: 'rgba(252, 86, 60, 0.16)' }}>
+          <div className="shrimp-kpi-card">
             <div>
-              <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-muted extra-small fw-bold text-uppercase tracking-wider">{t('Surveillance Scope')}</span>
-                <div className="tri-kpi-icon tri-kpi-icon-orange">
-                  <FaWater size={17} />
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <span className="kpi-label">{t('Surveillance Scope')}</span>
+                <div className="kpi-icon-bubble">
+                  <FaWater size={14} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.2rem', letterSpacing: '-0.03em' }}>
+              <div className="kpi-value text-dark">
                 {pondFilter === 'all' ? `${pondOptions.length || 30} ${t('Ponds')}` : pondFilter}
-              </h2>
+              </div>
             </div>
-            <div>
-              <div className="tri-progress-track my-2.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.1)' }}>
-                <div
-                  className="tri-progress-bar"
-                  style={{ width: '100%', background: 'linear-gradient(90deg, #FC563C 0%, #6E7575 100%)' }}
-                />
-              </div>
-              <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-muted extra-small">{pondFilter === 'all' ? t('Farm Wide Surveillance') : t('Isolated Basin')}</span>
-                <span className="badge rounded-pill extra-small px-2 py-0.5" style={{ backgroundColor: '#E9E4E0', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.25)' }}>
-                  {t('Biosecurity Grid')}
-                </span>
-              </div>
+            <div className="mt-3 pt-2 border-top d-flex justify-content-between align-items-center">
+              <span className="extra-small text-muted">{pondFilter === 'all' ? t('Farm Wide') : t('Isolated')}</span>
+              <span className="badge rounded-pill extra-small px-2 py-0.5 bg-light border text-secondary">Grid Active</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* 3. UNIFIED VISUAL ANALYTICS (Toggleable: Pathology Breakdown | Threat Split | Wave Trend) */}
-      <div className="tri-card p-4 mb-4">
+      {/* 3. VISUAL ANALYTICS: INTERACTIVE CHARTS CONTAINER WITH MULTI-VIEW TABS */}
+      <div className="bg-white border rounded-4 p-4 mb-4 shadow-2xs" style={{ borderColor: '#E2E8F0' }}>
         {/* Header with Title and Toggle Pills */}
-        <div className="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom flex-wrap gap-2" style={{ borderColor: 'rgba(252, 86, 60, 0.08)' }}>
+        <div className="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom flex-wrap gap-2" style={{ borderColor: '#E2E8F0' }}>
           <div>
-            <h5 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#FC563C', fontSize: '1.15rem' }}>
+            <h5 className="fw-extrabold mb-1 tracking-tight text-dark" style={{ fontSize: '1.1rem' }}>
               {activeChartTab === 'pathology' && t('Pathology Classification Breakdown')}
               {activeChartTab === 'threat' && t('Biosecurity Threat Split')}
               {activeChartTab === 'trend' && t('Diagnostic Wave Trend')}
             </h5>
-            <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
+            <p className="text-secondary mb-0 small" style={{ fontSize: '0.82rem' }}>
               {activeChartTab === 'pathology' && t('Frequency distribution of diagnosed shrimp conditions from vision inference.')}
               {activeChartTab === 'threat' && t('Risk stratification ratio across fleet.')}
               {activeChartTab === 'trend' && t('7-day scanning activity volume from field uploads.')}
@@ -589,13 +540,13 @@ export default function DiseaseReportsPage() {
           </div>
 
           {/* Tab Toggle Pills */}
-          <div className="d-inline-flex p-1 rounded-pill bg-light border" style={{ borderColor: 'rgba(252, 86, 60, 0.15)' }}>
+          <div className="d-inline-flex p-1 rounded-pill bg-light border" style={{ borderColor: '#E2E8F0' }}>
             <button
               type="button"
               className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all ${
-                activeChartTab === 'pathology' ? 'btn-tri-orange text-white shadow-xs' : 'btn-link text-muted text-decoration-none'
+                activeChartTab === 'pathology' ? 'bg-white text-dark shadow-2xs border' : 'btn-link text-secondary text-decoration-none'
               }`}
-              style={{ fontSize: '0.78rem' }}
+              style={{ fontSize: '0.78rem', borderColor: activeChartTab === 'pathology' ? '#E2E8F0' : 'transparent' }}
               onClick={() => setActiveChartTab('pathology')}
             >
               <FaMicroscope size={11} className="me-1.5" />
@@ -604,9 +555,9 @@ export default function DiseaseReportsPage() {
             <button
               type="button"
               className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all ${
-                activeChartTab === 'threat' ? 'btn-tri-orange text-white shadow-xs' : 'btn-link text-muted text-decoration-none'
+                activeChartTab === 'threat' ? 'bg-white text-dark shadow-2xs border' : 'btn-link text-secondary text-decoration-none'
               }`}
-              style={{ fontSize: '0.78rem' }}
+              style={{ fontSize: '0.78rem', borderColor: activeChartTab === 'threat' ? '#E2E8F0' : 'transparent' }}
               onClick={() => setActiveChartTab('threat')}
             >
               <FaExclamationTriangle size={11} className="me-1.5" />
@@ -615,9 +566,9 @@ export default function DiseaseReportsPage() {
             <button
               type="button"
               className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all ${
-                activeChartTab === 'trend' ? 'btn-tri-orange text-white shadow-xs' : 'btn-link text-muted text-decoration-none'
+                activeChartTab === 'trend' ? 'bg-white text-dark shadow-2xs border' : 'btn-link text-secondary text-decoration-none'
               }`}
-              style={{ fontSize: '0.78rem' }}
+              style={{ fontSize: '0.78rem', borderColor: activeChartTab === 'trend' ? '#E2E8F0' : 'transparent' }}
               onClick={() => setActiveChartTab('trend')}
             >
               <FaChartLine size={11} className="me-1.5" />
@@ -632,9 +583,9 @@ export default function DiseaseReportsPage() {
             <div style={{ height: 260 }} className="my-2">
               <Bar data={diseaseChart} options={chartOptions} />
             </div>
-            <div className="pt-2.5 border-top d-flex justify-content-between align-items-center text-muted extra-small flex-wrap gap-2" style={{ borderColor: 'rgba(252, 86, 60, 0.08)' }}>
+            <div className="pt-2.5 border-top d-flex justify-content-between align-items-center text-muted extra-small flex-wrap gap-2" style={{ borderColor: '#E2E8F0' }}>
               <span>{t('Primary Threat:')} <strong style={{ color: '#FC563C' }}>WSSV (White Spot)</strong></span>
-              <span className="fw-bold" style={{ color: '#FC563C' }}>{t('Active Screening 24/7')}</span>
+              <span className="fw-bold text-secondary">{t('Active Screening 24/7')}</span>
             </div>
           </div>
         )}
@@ -648,22 +599,22 @@ export default function DiseaseReportsPage() {
                 className="position-absolute d-flex flex-column align-items-center justify-content-center text-center"
                 style={{ pointerEvents: 'none' }}
               >
-                <span className="fw-extrabold fs-3 mb-0" style={{ color: summary.high > 0 ? '#FC563C' : '#FC563C', lineHeight: 1.1 }}>
+                <span className="fw-extrabold fs-3 mb-0" style={{ color: summary.high > 0 ? '#FC563C' : '#172A39', lineHeight: 1.1 }}>
                   {summary.total}
                 </span>
                 <span className="extra-small text-muted text-uppercase fw-bold" style={{ fontSize: '0.68rem' }}>{t('Scans')}</span>
               </div>
             </div>
-            <div className="pt-2.5 border-top d-flex justify-content-center gap-2 flex-wrap extra-small" style={{ borderColor: 'rgba(252, 86, 60, 0.08)' }}>
-              <span className="badge badge-tri-navy rounded-pill px-2.5 py-1 d-inline-flex align-items-center gap-1">
+            <div className="pt-2.5 border-top d-flex justify-content-center gap-2 flex-wrap extra-small" style={{ borderColor: '#E2E8F0' }}>
+              <span className="badge rounded-pill px-2.5 py-1 d-inline-flex align-items-center gap-1 border" style={{ backgroundColor: '#F8FAFC', color: '#172A39', borderColor: '#E2E8F0' }}>
                 <span style={{ color: '#10B981' }}>●</span> {t('Safe')} ({summary.low})
               </span>
               {summary.medium > 0 && (
-                <span className="badge badge-tri-gray rounded-pill px-2.5 py-1 d-inline-flex align-items-center gap-1">
-                  <span style={{ color: '#6E7575' }}>●</span> {t('Moderate')} ({summary.medium})
+                <span className="badge rounded-pill px-2.5 py-1 d-inline-flex align-items-center gap-1 border" style={{ backgroundColor: '#F8FAFC', color: '#475569', borderColor: '#E2E8F0' }}>
+                  <span style={{ color: '#64748B' }}>●</span> {t('Moderate')} ({summary.medium})
                 </span>
               )}
-              <span className="badge badge-tri-orange rounded-pill px-2.5 py-1 d-inline-flex align-items-center gap-1">
+              <span className="badge rounded-pill px-2.5 py-1 d-inline-flex align-items-center gap-1 border" style={{ backgroundColor: '#FEF2F2', color: '#991B1B', borderColor: '#FCA5A5' }}>
                 <span style={{ color: '#FC563C' }}>●</span> {t('Critical')} ({summary.high})
               </span>
             </div>
@@ -676,26 +627,26 @@ export default function DiseaseReportsPage() {
             <div style={{ height: 260 }} className="my-2">
               <Line data={trendChart} options={chartOptions} />
             </div>
-            <div className="pt-2.5 border-top d-flex justify-content-between align-items-center text-muted extra-small flex-wrap gap-2" style={{ borderColor: 'rgba(252, 86, 60, 0.08)' }}>
-              <span>{t('Sampling Cadence:')} <strong style={{ color: '#FC563C' }}>{t('Daily Telemetry')}</strong></span>
-              <span className="fw-bold" style={{ color: '#FC563C' }}>{t('Mobile Sync OK')}</span>
+            <div className="pt-2.5 border-top d-flex justify-content-between align-items-center text-muted extra-small flex-wrap gap-2" style={{ borderColor: '#E2E8F0' }}>
+              <span>{t('Sampling Cadence:')} <strong className="text-dark">{t('Daily Telemetry')}</strong></span>
+              <span className="fw-bold text-secondary">{t('Mobile Sync OK')}</span>
             </div>
           </div>
         )}
       </div>
 
       {/* 4. CARETAKER SCAN HISTORY MATRIX TABLE & INTEGRATED SEARCH TOOLBAR */}
-      <div className="tri-card p-4 mb-4">
-        <div className="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom flex-wrap gap-2" style={{ borderColor: 'rgba(252, 86, 60, 0.08)' }}>
+      <div className="bg-white border rounded-4 p-4 mb-4 shadow-2xs" style={{ borderColor: '#E2E8F0' }}>
+        <div className="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom flex-wrap gap-2" style={{ borderColor: '#E2E8F0' }}>
           <div>
-            <h5 className="fw-extrabold mb-0 tracking-tight" style={{ color: '#FC563C', fontSize: '1.15rem' }}>
+            <h5 className="fw-extrabold mb-1 tracking-tight text-dark" style={{ fontSize: '1.1rem' }}>
               {t('Caretaker Diagnostic Stream')}
             </h5>
-            <p className="text-muted small mb-0" style={{ fontSize: '0.82rem' }}>
+            <p className="text-secondary small mb-0" style={{ fontSize: '0.82rem' }}>
               {t('Microscopic images and real-time pathology results submitted by field farm caretakers.')}
             </p>
           </div>
-          <span className="badge badge-tri-navy rounded-pill px-3 py-1.5 extra-small">
+          <span className="badge rounded-pill px-3 py-1.5 extra-small border" style={{ backgroundColor: '#F8FAFC', color: '#475569', borderColor: '#E2E8F0' }}>
             {t('Showing')} {filteredReports.length} {filteredReports.length === 1 ? t('Scan Record') : t('Scan Records')}
           </span>
         </div>
@@ -756,10 +707,10 @@ export default function DiseaseReportsPage() {
           }}
         />
 
-        <div className="table-responsive admin-scrollable-table-4rows-lg" style={{ maxHeight: '420px', overflowY: 'auto', overflowX: 'hidden' }}>
-          <table className="table tri-table table-hover align-middle mb-0" style={{ fontSize: '0.80rem', tableLayout: 'fixed', width: '100%' }}>
-            <thead className="sticky-top bg-white border-bottom">
-              <tr className="text-muted extra-small text-uppercase fw-extrabold" style={{ letterSpacing: '0.03em' }}>
+        <div className="table-responsive admin-scrollable-table-4rows-lg rounded-3 border" style={{ maxHeight: '420px', overflowY: 'auto', overflowX: 'hidden', borderColor: '#E2E8F0' }}>
+          <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.80rem', tableLayout: 'fixed', width: '100%' }}>
+            <thead className="sticky-top table-light border-bottom" style={{ borderColor: '#E2E8F0' }}>
+              <tr className="text-secondary extra-small text-uppercase fw-bold" style={{ letterSpacing: '0.03em' }}>
                 <th className="py-2.5 ps-3" style={{ width: '8%' }}>{t('Scan')}</th>
                 <th className="py-2.5" style={{ width: '10%' }}>{t('Pond')}</th>
                 <th className="py-2.5" style={{ width: '15%' }}>{t('Detected Disease')}</th>
