@@ -73,6 +73,7 @@ const dockIcons = {
 // Navigation Links for the Floating Top Dock
 const dockLinks = [
   { to: '/caretaker/dashboard', key: 'nav.dashboard', label: 'Dashboard', icon: dockIcons.dashboard },
+  { to: '/caretaker/my-tasks', key: 'nav.myTasks', label: 'My Tasks', icon: <FaCheckDouble size={15} /> },
   { to: '/caretaker/my-pond', key: 'nav.myPond', label: 'My Pond', icon: dockIcons.myPond },
   { to: '/caretaker/disease-scan', key: 'nav.diseaseScan', label: 'Disease Scan', icon: dockIcons.diseaseScan },
   { to: '/caretaker/feeding-history', key: 'nav.feedingHistory', label: 'Feeding History', icon: dockIcons.feedingHistory },

@@ -900,6 +900,7 @@ const phraseMapFil = {
   'Maintenance Incident Stream': 'Daloy ng mga Insidente sa Pasilidad',
   'Chronological log of equipment breakdowns, facility repairs, and caretaker work tickets': 'Kasaysayan ng mga sira sa gamit, pagkukumpuni, at tiket sa trabaho',
   'Reports Logged': 'Naitalang mga Ulat',
+  'Today’s Reports': 'Mga Ulat Ngayong Araw',
   'Loading maintenance reports…': 'Kinukuha ang mga ulat sa pasilidad…',
   'No maintenance reports found': 'Walang nahanap na ulat sa pasilidad',
   'No caretaker issue entries match the selected filters.': 'Walang naitalang isyu na tumutugma sa filter.',
@@ -1488,4 +1489,3 @@ export const t = (key, fallback = null) => {
 
   return fallback !== null ? fallback : key;
 };
-

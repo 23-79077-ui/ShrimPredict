@@ -37,13 +37,7 @@ import { getEffectiveTheme } from '../../utils/theme';
 const resolveMediaUrl = (url) => {
   if (!url) return '';
   if (url.startsWith('blob:') || url.startsWith('data:')) return url;
-  if (url.startsWith('http://') || url.startsWith('https://')) {
-    if (url.includes('localhost') || url.includes('127.0.0.1')) {
-      const cleaned = url.replace(/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/shrim_predict_api)?/i, '');
-      return cleaned.startsWith('/') ? cleaned : `/${cleaned}`;
-    }
-    return url;
-  }
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
   const cleanPath = url.startsWith('/') ? url : `/${url}`;
   if (cleanPath.startsWith('/shrim_predict_api')) return cleanPath.replace(/^\/shrim_predict_api/, '');
   return cleanPath;

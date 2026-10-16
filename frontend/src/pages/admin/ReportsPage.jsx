@@ -133,13 +133,7 @@ const resolveMediaUrl = (url) => {
   if (url.startsWith('blob:') || url.startsWith('data:')) {
     return url;
   }
-  if (url.startsWith('http://') || url.startsWith('https://')) {
-    if (url.includes('localhost') || url.includes('127.0.0.1')) {
-      const cleaned = url.replace(/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/shrim_predict_api)?/i, '');
-      return cleaned.startsWith('/') ? cleaned : `/${cleaned}`;
-    }
-    return url;
-  }
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
   const cleanPath = url.startsWith('/') ? url : `/${url}`;
   if (cleanPath.startsWith('/shrim_predict_api')) {
     return cleanPath.replace(/^\/shrim_predict_api/, '');
@@ -166,6 +160,7 @@ export default function AdminReportsPage() {
   const [currentTab, setCurrentTab] = useState('all'); // 'all' | 'Pending' | 'In Progress' | 'Done'
   const [severityFilter, setSeverityFilter] = useState('all'); // 'all' | 'Critical' | 'High' | 'Medium' | 'Low'
   const [caretakerFilter, setCaretakerFilter] = useState('all');
+  const [todayOnly, setTodayOnly] = useState(false);
 
   // Full-screen Image Modal Preview State
   const [previewImage, setPreviewImage] = useState(null);
@@ -228,6 +223,18 @@ export default function AdminReportsPage() {
     },
     [targetId, targetIssue, targetPond]
   );
+
+  const getLocalDateKey = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const todayDateKey = getLocalDateKey(new Date());
+  const todayReportCount = reports.filter((report) => (
+    String(report.created_at || '').replace('T', ' ').slice(0, 10) === todayDateKey
+  )).length;
 
   // Auto-scroll to highlighted target report card
   useEffect(() => {
@@ -545,6 +552,14 @@ export default function AdminReportsPage() {
             <span className="badge rounded-pill px-3 py-1.5 extra-small border" style={{ backgroundColor: '#F8FAFC', color: '#475569', borderColor: '#E2E8F0' }}>
               {reports.length} {t('Reports Logged')}
             </span>
+            <button
+              type="button"
+              className={`btn btn-sm rounded-pill px-3 py-1.5 extra-small fw-bold ${todayOnly ? 'btn-tri-orange' : 'btn-understated-view'}`}
+              aria-pressed={todayOnly}
+              onClick={() => setTodayOnly((active) => !active)}
+            >
+              {t('Today’s Reports')} ({todayReportCount})
+            </button>
           </div>
         </div>
 
@@ -603,6 +618,7 @@ export default function AdminReportsPage() {
             setCurrentTab('all');
             setSeverityFilter('all');
             setCaretakerFilter('all');
+            setTodayOnly(false);
           }}
         />
 
@@ -613,6 +629,7 @@ export default function AdminReportsPage() {
           </div>
         ) : (() => {
           const filteredReportsList = reports.filter((r) => {
+            if (todayOnly && String(r.created_at || '').replace('T', ' ').slice(0, 10) !== todayDateKey) return false;
             if (!searchQuery.trim()) return true;
             const q = searchQuery.toLowerCase();
             return (

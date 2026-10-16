@@ -15,6 +15,7 @@ import AlertsPage from './pages/admin/AlertsPage';
 import ReportsPage from './pages/admin/ReportsPage';
 import SettingsPage from './pages/admin/SettingsPage';
 import CaretakerDashboard from './pages/caretaker/CaretakerDashboard';
+import MyTasksPage from './pages/caretaker/MyTasksPage';
 import MyPondPage from './pages/caretaker/MyPondPage';
 import DiseaseScanPage from './pages/caretaker/DiseaseScanPage';
 import FeedingHistoryPage from './pages/caretaker/FeedingHistoryPage';
@@ -78,6 +79,7 @@ function AppRoutes() {
       <Route path="/caretaker" element={<ProtectedRoute role="caretaker"><CaretakerLayout /></ProtectedRoute>}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<CaretakerDashboard />} />
+        <Route path="my-tasks" element={<MyTasksPage />} />
         <Route path="my-pond" element={<MyPondPage />} />
         <Route path="disease-scan" element={<DiseaseScanPage />} />
         <Route path="feeding-history" element={<FeedingHistoryPage />} />

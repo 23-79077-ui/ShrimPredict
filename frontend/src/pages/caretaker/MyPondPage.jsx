@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import {
   FaCheckCircle,
@@ -126,6 +126,7 @@ export default function MyPondPage() {
   const { t, isFilipino } = useLanguage();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [currentTheme, setCurrentTheme] = useState(() => getEffectiveTheme());
   useEffect(() => {
@@ -144,6 +145,9 @@ export default function MyPondPage() {
   const [selectedPondId, setSelectedPondId] = useState('');
   const [formState, setFormState] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [showFeedingModal, setShowFeedingModal] = useState(false);
+  const pendingTaskSlotRef = useRef(null);
+  const handledTaskNavigationRef = useRef(false);
   const [todayLogs, setTodayLogs] = useState([]);
   const [weeklySampling, setWeeklySampling] = useState(null);
   const [previousDayLastFeed, setPreviousDayLastFeed] = useState(null);
@@ -184,6 +188,23 @@ export default function MyPondPage() {
     if (user?.pond_id) return [{ id: user.pond_id, pond_name: 'Assigned Pond', status: 'Healthy' }];
     return [];
   }, [dbPonds, user?.assigned_ponds, user?.pond_id]);
+
+  useEffect(() => {
+    const taskEntry = location.state?.feedingTask;
+    if (!taskEntry || !assignedPonds.length) return;
+
+    const targetPond = assignedPonds.find((pond) => String(pond.id) === String(taskEntry.pondId));
+    if (!targetPond) return;
+
+    pendingTaskSlotRef.current = {
+      pondId: String(targetPond.id),
+      slot: taskEntry.slot,
+    };
+    setRecordDate(defaultDateStr);
+    setSelectedPondId(String(targetPond.id));
+    setShowFeedingModal(true);
+    navigate(location.pathname, { replace: true, state: null });
+  }, [assignedPonds, defaultDateStr, location.pathname, location.state, navigate]);
 
   // Water Quality Inspection Protocol States
   const [waterQualityStatus, setWaterQualityStatus] = useState({}); // { [pondId]: { is_verified, record } }
@@ -612,6 +633,22 @@ export default function MyPondPage() {
   // Auto-select first un-logged feeding time slot when changing pond or after log submission
   useEffect(() => {
     if (!selectedPondId) return;
+    if (pendingTaskSlotRef.current?.pondId === String(selectedPondId)) {
+      const requestedSlot = pendingTaskSlotRef.current.slot;
+      setFormState((prev) => {
+        const current = prev[selectedPondId] || emptyForm;
+        return {
+          ...prev,
+          [selectedPondId]: {
+            ...current,
+            feedingTime: requestedSlot,
+            amountKg: '',
+            amountGrams: '',
+          },
+        };
+      });
+      return;
+    }
     const availableSlot = feedingTimes.find((time) => !loggedTimesForPond.includes(time));
     if (availableSlot) {
       setFormState((prev) => {
@@ -1213,7 +1250,7 @@ export default function MyPondPage() {
       await Swal.fire({
         icon: 'success',
         title: editingRecord ? 'Feeding Log Updated!' : 'Feeding Logged Successfully!',
-        text: `${amount.toFixed(2)}kg recorded for ${selectedPond.pond_name} on ${todayDateStr} (${form.feedingTime}). Redirecting to dashboard...`,
+        text: `${amount.toFixed(2)}kg recorded for ${selectedPond.pond_name} on ${todayDateStr} (${form.feedingTime}). Returning to My Tasks...`,
         timer: 1400,
         showConfirmButton: false,
         customClass: {
@@ -1226,8 +1263,9 @@ export default function MyPondPage() {
       Swal.close();
       setEditingRecord(null);
 
-      // Directly redirect to dashboard
-      navigate('/caretaker/dashboard', { replace: true });
+      pendingTaskSlotRef.current = null;
+      setShowFeedingModal(false);
+      navigate('/caretaker/my-tasks', { replace: true });
 
     } catch (error) {
       const backendMessage = error.response?.data?.message || error.response?.data?.error || error.message || 'Unable to save feeding record.';
@@ -1694,6 +1732,39 @@ export default function MyPondPage() {
         </div>
       )}
 
+      {showFeedingModal && (
+        <div
+          className="modal fade show d-block"
+          role="presentation"
+          style={{ backgroundColor: 'rgba(7, 23, 51, 0.72)', backdropFilter: 'blur(5px)', zIndex: 1060 }}
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !submitting) {
+              pendingTaskSlotRef.current = null;
+              setShowFeedingModal(false);
+              navigate('/caretaker/my-tasks');
+            }
+          }}
+        >
+          <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl" role="dialog" aria-modal="true">
+            <div className="modal-content border-0 rounded-4">
+              <div className="modal-header">
+                <div>
+                  <h5 className="modal-title fw-bold">{t('myTasks.feedingModalTitle', 'Complete Feeding Task')}</h5>
+                  <p className="small text-muted mb-0">{t('myTasks.feedingModalSubtitle', 'Enter and save the feeding record for the selected pond and time slot.')}</p>
+                </div>
+                <button
+                  type="button"
+                  className="btn-close"
+                  aria-label={t('myTasks.closeFeedingModal', 'Close feeding task')}
+                  disabled={submitting}
+                  onClick={() => {
+                    pendingTaskSlotRef.current = null;
+                    setShowFeedingModal(false);
+                    navigate('/caretaker/my-tasks');
+                  }}
+                />
+              </div>
+              <div className="modal-body p-2 p-md-3">
       {/* Main Feeding Form Panel Card */}
       <div className="bg-white border rounded-4 p-4 p-md-4.5 mb-4 shadow-2xs" style={{ borderColor: '#E2E8F0' }}>
         <div>
@@ -2309,6 +2380,11 @@ export default function MyPondPage() {
           )}
         </div>
       </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* DUAL-MODE OCR WATER QUALITY MODAL */}
       <WaterQualityOcrModal
