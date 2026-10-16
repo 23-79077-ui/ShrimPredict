@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaCheck, FaCheckCircle, FaClipboardList, FaClock, FaExclamationCircle, FaRedo, FaSpinner, FaWater } from 'react-icons/fa';
+import { FaCheck, FaCheckCircle, FaClipboardList, FaClock, FaExclamationCircle, FaPlay, FaRedo, FaSpinner, FaTools, FaWater } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import api, { safeArray } from '../../services/api';
+import Swal from 'sweetalert2';
 
 const feedingSlots = ['6:00 AM', '9:00 AM', '12:00 PM', '3:00 PM', '6:00 PM'];
 
@@ -32,8 +33,11 @@ export default function MyTasksPage() {
   const [ponds, setPonds] = useState([]);
   const [feedingRecords, setFeedingRecords] = useState([]);
   const [waterChecklist, setWaterChecklist] = useState([]);
+  const [scanActions, setScanActions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [actionLoadError, setActionLoadError] = useState('');
+  const [updatingActionId, setUpdatingActionId] = useState(null);
 
   const today = useMemo(() => getLocalDateString(), []);
 
@@ -46,12 +50,13 @@ export default function MyTasksPage() {
 
     setLoading(true);
     setLoadError('');
-    const [pondsResult, feedsResult, waterResult] = await Promise.allSettled([
+    const [pondsResult, feedsResult, waterResult, actionsResult] = await Promise.allSettled([
       api.get('/caretaker_ponds.php', { params: { user_id: user.id } }),
       api.get('/feeding_records.php', {
         params: { user_id: user.id, recorded_by_name: user.full_name || '' },
       }),
       api.get('/water_quality_records.php', { params: { caretaker_id: user.id } }),
+      api.get('/shrimp_scan_actions.php', { params: { user_id: user.id } }),
     ]);
 
     const errors = [];
@@ -77,6 +82,17 @@ export default function MyTasksPage() {
       errors.push(t('myTasks.waterError', 'Could not load water-quality checklist.'));
     }
 
+    if (actionsResult.status === 'fulfilled' && actionsResult.value.data?.success) {
+      const actions = safeArray(actionsResult.value.data.actions);
+      setScanActions(actions.filter((action) => (
+        action.status !== 'Done' || String(action.scan_date || '') === today
+      )));
+      setActionLoadError('');
+    } else {
+      setScanActions([]);
+      setActionLoadError(t('myTasks.actionError', 'Could not load admin-assigned actions.'));
+    }
+
     if (assignedPonds.length === 0 && user.pond_id) {
       assignedPonds = [{ id: user.pond_id, pond_name: t('myTasks.assignedPond', 'Assigned Pond') }];
     }
@@ -88,13 +104,34 @@ export default function MyTasksPage() {
   useEffect(() => {
     loadTasks();
     const handleUpdate = () => loadTasks();
+    const refreshAssignedActions = async () => {
+      if (!user?.id) return;
+      try {
+        const response = await api.get('/shrimp_scan_actions.php', { params: { user_id: user.id } });
+        if (!response.data?.success) {
+          throw new Error(response.data?.message || t('myTasks.actionError', 'Could not load admin-assigned actions.'));
+        }
+        const actions = safeArray(response.data.actions);
+        setScanActions(actions.filter((action) => (
+          action.status !== 'Done' || String(action.scan_date || '') === today
+        )));
+        setActionLoadError('');
+      } catch (error) {
+        console.error('Unable to refresh caretaker scan actions:', error);
+        setActionLoadError(t('myTasks.actionError', 'Could not load admin-assigned actions.'));
+      }
+    };
+    const actionRefreshInterval = window.setInterval(refreshAssignedActions, 15000);
     window.addEventListener('shrim-feed-updated', handleUpdate);
     window.addEventListener('shrim-water-quality-updated', handleUpdate);
+    window.addEventListener('shrim-notification-updated', handleUpdate);
     return () => {
+      window.clearInterval(actionRefreshInterval);
       window.removeEventListener('shrim-feed-updated', handleUpdate);
       window.removeEventListener('shrim-water-quality-updated', handleUpdate);
+      window.removeEventListener('shrim-notification-updated', handleUpdate);
     };
-  }, [loadTasks]);
+  }, [loadTasks, t, today, user?.id]);
 
   const tasks = useMemo(() => {
     const pondIds = new Set(ponds.map((pond) => String(pond.id)));
@@ -133,12 +170,54 @@ export default function MyTasksPage() {
       }));
     });
 
-    return [...waterTasks, ...feedTasks];
-  }, [feedingRecords, ponds, t, today, waterChecklist]);
+    const adminActionTasks = scanActions.map((action) => ({
+      id: `admin-action-${action.id}`,
+      type: 'admin-action',
+      action,
+      pond: { id: action.pond_name, pond_name: action.pond_name },
+      isComplete: action.status === 'Done',
+      title: t('myTasks.adminActionTitle', 'Complete the admin-assigned action'),
+      detail: action.decision,
+    }));
+
+    return [...adminActionTasks, ...waterTasks, ...feedTasks];
+  }, [feedingRecords, ponds, scanActions, t, today, waterChecklist]);
 
   const completedCount = tasks.filter((task) => task.isComplete).length;
   const allComplete = tasks.length > 0 && completedCount === tasks.length;
   const firstIncompleteIndex = tasks.findIndex((task) => !task.isComplete);
+
+  const updateAdminAction = async (task, status) => {
+    setUpdatingActionId(task.action.id);
+    try {
+      const response = await api.post('/shrimp_scan_actions.php', {
+        action: 'update_status',
+        id: task.action.id,
+        user_id: user.id,
+        status,
+      });
+      if (!response.data?.success) {
+        throw new Error(response.data?.message || t('myTasks.actionUpdateError', 'Unable to update this action.'));
+      }
+      window.dispatchEvent(new Event('shrim-notification-updated'));
+      Swal.fire({
+        icon: 'success',
+        title: status === 'Done'
+          ? t('myTasks.actionDone', 'Action marked done')
+          : t('myTasks.actionInProgress', 'Action marked in progress'),
+        timer: 1500,
+        showConfirmButton: false,
+      });
+    } catch (error) {
+      Swal.fire({
+        icon: 'error',
+        title: t('myTasks.actionUpdateError', 'Unable to update this action.'),
+        text: error?.response?.data?.message || error.message,
+      });
+    } finally {
+      setUpdatingActionId(null);
+    }
+  };
 
   return (
     <main className="container-fluid px-3 px-lg-4 py-3 caretaker-dashboard-hub">
@@ -162,6 +241,12 @@ export default function MyTasksPage() {
         <div className="alert alert-warning d-flex align-items-start gap-2" role="alert">
           <FaExclamationCircle className="mt-1 flex-shrink-0" />
           <div>{loadError} {t('myTasks.refreshHint', 'Some task statuses may be incomplete until the data loads successfully.')}</div>
+        </div>
+      )}
+      {actionLoadError && (
+        <div className="alert alert-warning d-flex align-items-start gap-2" role="alert">
+          <FaExclamationCircle className="mt-1 flex-shrink-0" />
+          <div>{actionLoadError} {t('myTasks.refreshHint', 'Some task statuses may be incomplete until the data loads successfully.')}</div>
         </div>
       )}
 
@@ -190,7 +275,7 @@ export default function MyTasksPage() {
         <div className="text-center text-muted py-5">
           <FaSpinner className="fa-spin me-2" />{t('myTasks.loading', 'Loading your tasks…')}
         </div>
-      ) : ponds.length === 0 ? (
+      ) : ponds.length === 0 && tasks.length === 0 ? (
         <div className="bg-white border rounded-4 text-center p-5">
           <FaWater className="fs-2 mb-3" style={{ color: '#94A3B8' }} />
           <h5 className="fw-bold">{t('myTasks.noPondsTitle', 'No ponds assigned')}</h5>
@@ -217,40 +302,80 @@ export default function MyTasksPage() {
                     }}
                     aria-label={task.isComplete ? t('myTasks.completed', 'Completed') : t('myTasks.notCompleted', 'Not completed')}
                   >
-                    {task.isComplete ? <FaCheck /> : task.type === 'water' ? <FaWater /> : <FaClock />}
+                    {task.isComplete ? <FaCheck /> : task.type === 'admin-action' ? <FaTools /> : task.type === 'water' ? <FaWater /> : <FaClock />}
                   </div>
                   <div className="flex-grow-1">
                     <div className="d-flex flex-wrap align-items-center gap-2 mb-1">
                       <h6 className="fw-bold mb-0">{task.title}</h6>
                       {isNext && <span className="badge rounded-pill" style={{ backgroundColor: '#FFF1ED', color: '#C2410C' }}>{t('myTasks.next', 'NEXT')}</span>}
-                      {task.isComplete && <span className="badge bg-success-subtle text-success">{t('myTasks.done', 'Done')}</span>}
+                      {task.type === 'admin-action' ? (
+                        <span className={`badge ${
+                          task.action.status === 'Done'
+                            ? 'bg-success-subtle text-success'
+                            : task.action.status === 'In Progress'
+                              ? 'bg-primary-subtle text-primary'
+                              : 'bg-warning-subtle text-warning-emphasis'
+                        }`}>
+                          {t(task.action.status)}
+                        </span>
+                      ) : task.isComplete && <span className="badge bg-success-subtle text-success">{t('myTasks.done', 'Done')}</span>}
                     </div>
                     <div className="small fw-semibold mb-1" style={{ color: '#FC563C' }}>
+                      {task.type === 'admin-action' && `${t('myTasks.adminDecision', 'Admin decision')} · `}
                       {task.pond.pond_name || task.pond.name || `${t('myTasks.pond', 'Pond')} #${task.pond.id}`}
                       {task.slot ? ` · ${task.slot}` : ''}
                     </div>
                     <p className="small text-muted mb-0">{task.detail}</p>
                   </div>
-                  <button
-                    type="button"
-                    className={isNext ? 'btn btn-tri-orange btn-sm fw-bold text-nowrap' : 'btn btn-outline-secondary btn-sm fw-semibold text-nowrap'}
-                    onClick={() => {
-                      if (task.type === 'feeding' && !task.isComplete) {
-                        navigate('/caretaker/my-pond', {
-                          state: {
-                            feedingTask: {
-                              pondId: task.pond.id,
-                              slot: task.slot,
+                  {task.type === 'admin-action' ? (
+                    <div className="d-flex flex-column flex-sm-row gap-2 flex-shrink-0">
+                      {task.action.status !== 'In Progress' && !task.isComplete && (
+                        <button
+                          type="button"
+                          className={isNext ? 'btn btn-tri-orange btn-sm fw-bold text-nowrap' : 'btn btn-outline-primary btn-sm fw-semibold text-nowrap'}
+                          disabled={updatingActionId === task.action.id}
+                          onClick={() => updateAdminAction(task, 'In Progress')}
+                        >
+                          {updatingActionId === task.action.id ? <FaSpinner className="fa-spin me-1" /> : <FaPlay className="me-1" />}
+                          {t('myTasks.doingNow', 'Doing now')}
+                        </button>
+                      )}
+                      {!task.isComplete && (
+                        <button
+                          type="button"
+                          className="btn btn-success btn-sm fw-bold text-nowrap"
+                          disabled={updatingActionId === task.action.id}
+                          onClick={() => updateAdminAction(task, 'Done')}
+                        >
+                          {updatingActionId === task.action.id
+                            ? <FaSpinner className="fa-spin me-1" />
+                            : <FaCheckCircle className="me-1" />}
+                          {t('myTasks.markDone', 'Mark done')}
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className={isNext ? 'btn btn-tri-orange btn-sm fw-bold text-nowrap' : 'btn btn-outline-secondary btn-sm fw-semibold text-nowrap'}
+                      onClick={() => {
+                        if (task.type === 'feeding' && !task.isComplete) {
+                          navigate('/caretaker/my-pond', {
+                            state: {
+                              feedingTask: {
+                                pondId: task.pond.id,
+                                slot: task.slot,
+                              },
                             },
-                          },
-                        });
-                        return;
-                      }
-                      navigate(task.type === 'feeding' ? '/caretaker/feeding-history' : task.route);
-                    }}
-                  >
-                    {task.isComplete ? t('myTasks.view', 'View') : t('myTasks.proceed', 'Proceed')}
-                  </button>
+                          });
+                          return;
+                        }
+                        navigate(task.type === 'feeding' ? '/caretaker/feeding-history' : task.route);
+                      }}
+                    >
+                      {task.isComplete ? t('myTasks.view', 'View') : t('myTasks.proceed', 'Proceed')}
+                    </button>
+                  )}
                 </div>
               </article>
             );

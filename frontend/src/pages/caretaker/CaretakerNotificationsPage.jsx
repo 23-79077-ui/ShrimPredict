@@ -17,12 +17,14 @@ import {
   FaSync,
   FaTrashRestore,
   FaInfoCircle,
+  FaPlay,
 } from 'react-icons/fa';
 
 export default function CaretakerNotificationsPage() {
   const { user } = useAuth();
   const { t, isFilipino } = useLanguage();
   const [notifications, setNotifications] = useState([]);
+  const [scanActions, setScanActions] = useState({});
   const [counts, setCounts] = useState({ unread: 0, active: 0, archived: 0, deleted: 0 });
   const [loading, setLoading] = useState(true);
 
@@ -84,6 +86,17 @@ export default function CaretakerNotificationsPage() {
         }
 
         setNotifications(fetched);
+        if (fetched.some((notification) => notification.action_type === 'scan_action')) {
+          try {
+            const actionsResponse = await api.get('/shrimp_scan_actions.php', {
+              params: { user_id: user.id },
+            });
+            const actions = Array.isArray(actionsResponse.data?.actions) ? actionsResponse.data.actions : [];
+            setScanActions(Object.fromEntries(actions.map((action) => [String(action.id), action])));
+          } catch (error) {
+            console.error('Unable to load caretaker scan actions:', error);
+          }
+        }
         if (response.data.counts) {
           setCounts(response.data.counts);
         }
@@ -204,6 +217,34 @@ export default function CaretakerNotificationsPage() {
       } catch (error) {
         Swal.fire({ icon: 'error', title: 'Delete failed', text: 'Unable to delete notification.' });
       }
+    }
+  };
+
+  const handleScanActionStatus = async (notif, status) => {
+    try {
+      const response = await api.post('/shrimp_scan_actions.php', {
+        action: 'update_status',
+        id: notif.target_id,
+        user_id: user?.id,
+        status,
+      });
+      if (!response.data?.success) {
+        throw new Error(response.data?.message || 'Unable to update the action.');
+      }
+      window.dispatchEvent(new Event('shrim-notification-updated'));
+      await loadNotifications();
+      Swal.fire({
+        icon: 'success',
+        title: status === 'Done' ? t('Action marked done') : t('Action marked in progress'),
+        timer: 1500,
+        showConfirmButton: false,
+      });
+    } catch (error) {
+      Swal.fire({
+        icon: 'error',
+        title: t('Action update failed'),
+        text: error?.response?.data?.message || error.message || t('Unable to update this action.'),
+      });
     }
   };
 
@@ -421,6 +462,48 @@ export default function CaretakerNotificationsPage() {
                           })}
                         </span>
                       </div>
+                      {notif.action_type === 'scan_action' && currentTab !== 'deleted' && (
+                        <div className="mt-3 rounded-3 border p-3 bg-white">
+                          <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
+                            <span className="extra-small fw-bold text-secondary">{t('Admin decision')}</span>
+                            {scanActions[String(notif.target_id)]?.status && (
+                              <span className={`badge rounded-pill ${
+                                scanActions[String(notif.target_id)].status === 'Done'
+                                  ? 'bg-success-subtle text-success-emphasis'
+                                  : scanActions[String(notif.target_id)].status === 'In Progress'
+                                    ? 'bg-primary-subtle text-primary-emphasis'
+                                    : 'bg-warning-subtle text-warning-emphasis'
+                              }`}>
+                                {t(scanActions[String(notif.target_id)].status)}
+                              </span>
+                            )}
+                          </div>
+                          <div className="d-flex gap-2 flex-wrap">
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-primary fw-bold"
+                              disabled={
+                                !scanActions[String(notif.target_id)]
+                                || scanActions[String(notif.target_id)].status !== 'Pending'
+                              }
+                              onClick={() => handleScanActionStatus(notif, 'In Progress')}
+                            >
+                              <FaPlay size={10} className="me-1" /> {t('Doing now')}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-success fw-bold"
+                              disabled={
+                                !scanActions[String(notif.target_id)]
+                                || scanActions[String(notif.target_id)].status === 'Done'
+                              }
+                              onClick={() => handleScanActionStatus(notif, 'Done')}
+                            >
+                              <FaCheckCircle size={10} className="me-1" /> {t('Mark done')}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 

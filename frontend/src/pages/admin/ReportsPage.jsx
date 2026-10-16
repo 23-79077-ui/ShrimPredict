@@ -1,9 +1,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import AdminFilterToolbar from '../../components/AdminFilterToolbar';
-import api from '../../services/api';
+import api, { safeArray } from '../../services/api';
 import Swal from 'sweetalert2';
 import { useLanguage } from '../../context/LanguageContext';
+import { useAuth } from '../../context/AuthContext';
 import {
   FaExclamationTriangle,
   FaCheckCircle,
@@ -26,7 +27,11 @@ import {
   FaHashtag,
   FaCalendarAlt,
   FaWrench,
-  FaExclamationCircle
+  FaExclamationCircle,
+  FaEye,
+  FaMicroscope,
+  FaPaperPlane,
+  FaSpinner
 } from 'react-icons/fa';
 
 // Severity Metadata Helper for clear visual distinction
@@ -130,19 +135,52 @@ const getProblemTypeMeta = (type) => {
 // Helper to resolve media URLs to absolute Apache XAMPP server address
 const resolveMediaUrl = (url) => {
   if (!url) return '';
-  if (url.startsWith('blob:') || url.startsWith('data:')) {
+  if (/^(blob:|data:)/i.test(url)) {
     return url;
   }
-  if (url.startsWith('http://') || url.startsWith('https://')) return url;
-  const cleanPath = url.startsWith('/') ? url : `/${url}`;
-  if (cleanPath.startsWith('/shrim_predict_api')) {
-    return cleanPath.replace(/^\/shrim_predict_api/, '');
+
+  let imagePath = String(url).trim();
+  if (/^https?:\/\//i.test(imagePath)) {
+    const parsedUrl = new URL(imagePath);
+    const isLocalHost = ['localhost', '127.0.0.1'].includes(parsedUrl.hostname)
+      || parsedUrl.hostname === window.location.hostname;
+    if (!isLocalHost) return imagePath;
+    imagePath = parsedUrl.pathname;
   }
-  return cleanPath;
+
+  imagePath = imagePath
+    .replace(/^\/+/, '')
+    .replace(/^shrim_predict_api\/backend\//i, '')
+    .replace(/^backend\//i, '');
+  return `${window.location.protocol}//${window.location.hostname}/shrim_predict_api/backend/${imagePath}`;
+};
+
+const formatScanDateTime = (value, isFilipino) => {
+  if (!value) return '—';
+  const normalizedValue = typeof value === 'string'
+    ? value.replace(/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}(?::\d{2})?)$/, '$1T$2')
+    : value;
+  const date = new Date(normalizedValue);
+  if (Number.isNaN(date.getTime())) return String(value);
+
+  const locale = isFilipino ? 'fil-PH' : 'en-US';
+  const dateLabel = date.toLocaleDateString(locale, {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+  const timeLabel = date.toLocaleTimeString(locale, {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+  return `${dateLabel} · ${timeLabel}`;
 };
 
 export default function AdminReportsPage() {
-  const { t } = useLanguage();
+  const { t, isFilipino } = useLanguage();
+  const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const targetId = searchParams.get('id') || searchParams.get('report_id');
   const targetPond = searchParams.get('pond');
@@ -150,9 +188,17 @@ export default function AdminReportsPage() {
   const targetCaretaker = searchParams.get('caretaker');
 
   const [reports, setReports] = useState([]);
+  const [diseaseScans, setDiseaseScans] = useState([]);
+  const [scanActions, setScanActions] = useState([]);
   const [counts, setCounts] = useState({ total: 0, pending: 0, in_progress: 0, done: 0 });
   const [caretakers, setCaretakers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [scanLoading, setScanLoading] = useState(false);
+  const [scanLoadError, setScanLoadError] = useState('');
+  const [selectedScanGroup, setSelectedScanGroup] = useState(null);
+  const [decisionInputs, setDecisionInputs] = useState({});
+  const [actionComposerOpen, setActionComposerOpen] = useState({});
+  const [sendingActionPond, setSendingActionPond] = useState('');
 
   // Filters State
   const [searchQuery, setSearchQuery] = useState('');
@@ -202,16 +248,52 @@ export default function AdminReportsPage() {
     }
   }, [currentTab, severityFilter, caretakerFilter]);
 
+  const loadDiseaseScans = useCallback(async () => {
+    setScanLoading(true);
+    setScanLoadError('');
+    try {
+      const response = await api.get('/disease_reports.php');
+      setDiseaseScans(safeArray(response.data));
+    } catch (error) {
+      console.error('Unable to load disease scans:', error);
+      setScanLoadError(error?.response?.data?.message || t('Unable to load shrimp scans.'));
+    } finally {
+      setScanLoading(false);
+    }
+  }, [t]);
+
+  const loadScanActions = useCallback(async () => {
+    try {
+      const response = await api.get('/shrimp_scan_actions.php', {
+        params: { date: getLocalDateKey(new Date()) },
+      });
+      if (!response.data?.success) {
+        throw new Error(response.data?.message || t('Unable to load caretaker actions.'));
+      }
+      setScanActions(safeArray(response.data.actions));
+    } catch (error) {
+      console.error('Unable to load caretaker scan actions:', error);
+    }
+  }, [t]);
+
   useEffect(() => {
     loadReports();
-    const handleUpdate = () => loadReports();
+    loadDiseaseScans();
+    loadScanActions();
+    const handleUpdate = () => {
+      loadReports();
+      loadDiseaseScans();
+      loadScanActions();
+    };
     window.addEventListener('shrim-notification-updated', handleUpdate);
     window.addEventListener('storage', handleUpdate);
+    const actionRefresh = window.setInterval(loadScanActions, 5000);
     return () => {
       window.removeEventListener('shrim-notification-updated', handleUpdate);
       window.removeEventListener('storage', handleUpdate);
+      window.clearInterval(actionRefresh);
     };
-  }, [loadReports]);
+  }, [loadDiseaseScans, loadReports, loadScanActions]);
 
   // Helper function to check if a report matches deep link parameters
   const checkIsHighlighted = useCallback(
@@ -232,9 +314,72 @@ export default function AdminReportsPage() {
   };
 
   const todayDateKey = getLocalDateKey(new Date());
-  const todayReportCount = reports.filter((report) => (
-    String(report.created_at || '').replace('T', ' ').slice(0, 10) === todayDateKey
-  )).length;
+  const todayScans = diseaseScans.filter((scan) => (
+    String(scan.created_at || '').replace('T', ' ').slice(0, 10) === todayDateKey
+  ));
+  const groupedTodayScans = Object.values(todayScans.reduce((groups, scan) => {
+    const pondName = String(scan.pond_name || '').trim() || t('Unknown Pond');
+    if (!groups[pondName]) {
+      groups[pondName] = { pondName, scans: [] };
+    }
+    groups[pondName].scans.push(scan);
+    return groups;
+  }, {})).map((group) => ({
+    ...group,
+    latestCreatedAt: group.scans[0]?.created_at || '',
+    action: scanActions.find((action) => action.pond_name === group.pondName) || null,
+  })).filter((group) => (
+    !searchQuery.trim()
+    || `${group.pondName} ${group.scans.map((scan) => scan.caretaker_name || '').join(' ')}`
+      .toLowerCase()
+      .includes(searchQuery.trim().toLowerCase())
+  ));
+
+  const handleSendScanAction = async (group) => {
+    const decision = String(decisionInputs[group.pondName] || '').trim();
+    if (!decision) {
+      Swal.fire({ icon: 'warning', title: t('Decision required'), text: t('Enter the action you want the caretaker to take.') });
+      return;
+    }
+
+    setSendingActionPond(group.pondName);
+    try {
+      const response = await api.post('/shrimp_scan_actions.php', {
+        action: 'create',
+        pond_name: group.pondName,
+        scan_date: todayDateKey,
+        decision,
+        admin_name: user?.full_name || 'System Admin',
+      });
+      if (!response.data?.success) {
+        throw new Error(response.data?.message || t('Unable to send action to caretaker.'));
+      }
+      setDecisionInputs((current) => ({ ...current, [group.pondName]: '' }));
+      setActionComposerOpen((current) => ({ ...current, [group.pondName]: false }));
+      await loadScanActions();
+      Swal.fire({
+        icon: 'success',
+        title: t('Action sent'),
+        text: t('The caretaker has been notified.'),
+        timer: 1800,
+        showConfirmButton: false,
+      });
+    } catch (error) {
+      Swal.fire({
+        icon: 'error',
+        title: t('Unable to send action'),
+        text: error?.response?.data?.message || error.message || t('Please try again.'),
+      });
+    } finally {
+      setSendingActionPond('');
+    }
+  };
+
+  const getScanActionStatusStyle = (status) => {
+    if (status === 'Done') return { backgroundColor: '#DCFCE7', color: '#166534' };
+    if (status === 'In Progress') return { backgroundColor: '#DBEAFE', color: '#1D4ED8' };
+    return { backgroundColor: '#FEF3C7', color: '#92400E' };
+  };
 
   // Auto-scroll to highlighted target report card
   useEffect(() => {
@@ -542,24 +687,21 @@ export default function AdminReportsPage() {
         <div className="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom flex-wrap gap-2" style={{ borderColor: '#E2E8F0' }}>
           <div>
             <h5 className="fw-extrabold text-dark mb-0 d-flex align-items-center gap-2">
-              <FaTools style={{ color: '#FC563C' }} /> {t('Farm Maintenance & Issues List')}
+              {todayOnly
+                ? <FaMicroscope style={{ color: '#FC563C' }} />
+                : <FaTools style={{ color: '#FC563C' }} />}
+              {todayOnly ? t('Today’s Shrimp Scans') : t('Farm Maintenance & Issues List')}
             </h5>
             <p className="extra-small text-secondary mb-0 mt-0.5">
-              {t('List of equipment breakdowns, pond repairs, and caretaker notes')}
+              {todayOnly
+                ? t('Daily scan totals by pond. Inspect a pond to review every shrimp image and result.')
+                : t('List of equipment breakdowns, pond repairs, and caretaker notes')}
             </p>
           </div>
           <div className="d-flex align-items-center gap-2 flex-wrap">
             <span className="badge rounded-pill px-3 py-1.5 extra-small border" style={{ backgroundColor: '#F8FAFC', color: '#475569', borderColor: '#E2E8F0' }}>
-              {reports.length} {t('Reports Logged')}
+              {todayOnly ? todayScans.length : reports.length} {t(todayOnly ? 'Scans Logged' : 'Reports Logged')}
             </span>
-            <button
-              type="button"
-              className={`btn btn-sm rounded-pill px-3 py-1.5 extra-small fw-bold ${todayOnly ? 'btn-tri-orange' : 'btn-understated-view'}`}
-              aria-pressed={todayOnly}
-              onClick={() => setTodayOnly((active) => !active)}
-            >
-              {t('Today’s Reports')} ({todayReportCount})
-            </button>
           </div>
         </div>
 
@@ -568,26 +710,36 @@ export default function AdminReportsPage() {
           className="admin-reports-search-box admin-filter-card"
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
-          searchPlaceholder={t('Search maintenance issue, pond, caretaker...')}
+          searchPlaceholder={t(todayOnly ? 'Search pond or caretaker...' : 'Search maintenance issue, pond, caretaker...')}
           showFilters={showFilters}
           onToggleFilters={() => setShowFilters(!showFilters)}
-          onRefresh={loadReports}
-          loading={loading}
+          onRefresh={todayOnly ? loadDiseaseScans : loadReports}
+          loading={todayOnly ? scanLoading : loading}
           tabs={[
             { id: 'all', label: t('All Reports'), count: counts.total },
+            { id: 'today', label: t('Today’s Reports'), count: todayScans.length },
             { id: 'Pending', label: t('Pending Review'), count: counts.pending },
             { id: 'In Progress', label: t('In Progress'), count: counts.in_progress },
             { id: 'Done', label: t('Resolved / Done'), count: counts.done }
           ]}
-          activeTab={currentTab}
-          onTabChange={setCurrentTab}
+          activeTab={todayOnly ? 'today' : currentTab}
+          onTabChange={(tab) => {
+            if (tab === 'today') {
+              setTodayOnly(true);
+              return;
+            }
+            setTodayOnly(false);
+            setCurrentTab(tab);
+          }}
           metaRight={
             <>
-              {t('Farm Guide:')} <strong className="text-dark">{t('Maintenance & Incident Steps')}</strong>
+              {todayOnly
+                ? <strong className="text-dark">{t('Daily Shrimp Scan Summary')}</strong>
+                : <>{t('Farm Guide:')} <strong className="text-dark">{t('Maintenance & Incident Steps')}</strong></>}
             </>
           }
           filterFields={[
-            {
+            ...(!todayOnly ? [{
               label: t('Severity Level'),
               type: 'select',
               value: severityFilter,
@@ -611,7 +763,7 @@ export default function AdminReportsPage() {
                 { value: 'all', label: t('All Caretakers') },
                 ...caretakers.map((c) => ({ value: String(c.id), label: c.full_name }))
               ]
-            }
+            }] : [])
           ]}
           onResetFilters={() => {
             setSearchQuery('');
@@ -622,7 +774,186 @@ export default function AdminReportsPage() {
           }}
         />
 
-        {loading ? (
+        {todayOnly ? (
+          scanLoading ? (
+            <div className="text-center py-5 text-muted">
+              <div className="spinner-border text-primary spinner-border-sm me-2" role="status" />
+              {t('Loading today’s shrimp scans…')}
+            </div>
+          ) : scanLoadError ? (
+            <div className="text-center py-5 admin-empty-state-box rounded-4 border">
+              <FaExclamationTriangle className="text-danger opacity-75 fs-2 mb-2" />
+              <h6 className="fw-bold text-dark">{t('Unable to load shrimp scans.')}</h6>
+              <p className="extra-small text-muted mb-3">{scanLoadError}</p>
+              <button type="button" className="btn btn-sm btn-tri-orange" onClick={loadDiseaseScans}>
+                <FaSync className="me-1" /> {t('Try Again')}
+              </button>
+            </div>
+          ) : groupedTodayScans.length === 0 ? (
+            <div className="text-center py-5 admin-empty-state-box rounded-4 border">
+              <FaMicroscope className="text-muted opacity-50 fs-2 mb-2" />
+              <h6 className="fw-bold text-dark">{t('No shrimp scans found for today.')}</h6>
+              <p className="extra-small text-muted mb-0">
+                {searchQuery.trim()
+                  ? t('No ponds or caretakers match your search.')
+                  : t('No shrimp scans have been recorded today.')}
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                <div className="extra-small text-secondary">
+                  <FaCalendarAlt className="me-1" />
+                  {new Date().toLocaleDateString(isFilipino ? 'fil-PH' : 'en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })}
+                </div>
+                <span className="badge rounded-pill px-3 py-2" style={{ backgroundColor: '#FFF1ED', color: '#C2410C' }}>
+                  {todayScans.length} {t('shrimp scans today')}
+                </span>
+              </div>
+              <div className="row g-3">
+                {groupedTodayScans.map((group) => {
+                  const firstImage = resolveMediaUrl(group.scans.find((scan) => scan.image_path)?.image_path);
+                  const caretakerName = group.scans.find((scan) => scan.caretaker_name)?.caretaker_name
+                    || group.action?.caretaker_name;
+                  const healthyCount = group.scans.filter((scan) => (
+                    String(scan.health_status || scan.disease_name || '').toLowerCase().includes('healthy')
+                  )).length;
+                  const diseaseCount = group.scans.filter((scan) => (
+                    /diseas|wssv|white spot/i.test(String(scan.health_status || scan.disease_name || ''))
+                  )).length;
+
+                  return (
+                    <div className="col-12 col-md-6 col-xl-4" key={group.pondName}>
+                      <div className="h-100 rounded-4 border bg-white overflow-hidden shadow-sm">
+                        <div className="position-relative bg-light" style={{ height: 190 }}>
+                          <div className="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center text-secondary">
+                            <FaImage size={30} className="mb-2" />
+                            <span className="extra-small">{t('Scan image unavailable')}</span>
+                          </div>
+                          {firstImage ? (
+                            <img
+                              src={firstImage}
+                              alt={`${group.pondName} shrimp scan`}
+                              className="w-100 h-100"
+                              style={{ objectFit: 'cover' }}
+                              onError={(event) => { event.currentTarget.style.display = 'none'; }}
+                            />
+                          ) : null}
+                          <span className="position-absolute top-0 end-0 m-3 badge rounded-pill px-3 py-2 shadow-sm" style={{ background: '#FFFFFF', color: '#334155' }}>
+                            {group.scans.length} {t('shrimp scans')}
+                          </span>
+                        </div>
+                        <div className="p-3 p-lg-4">
+                          <div className="d-flex justify-content-between align-items-start gap-2">
+                            <div>
+                              <div className="extra-small text-uppercase fw-bold text-muted mb-1">{t('Pond')}</div>
+                              <h5 className="fw-bold text-dark mb-1">{group.pondName}</h5>
+                            </div>
+                            <FaWater className="text-primary mt-1" />
+                          </div>
+                          <p className="extra-small text-secondary mb-3">
+                            <FaCalendarAlt className="me-1" />
+                            {formatScanDateTime(group.latestCreatedAt, isFilipino)}
+                          </p>
+                          {caretakerName && (
+                            <p className="extra-small text-secondary mb-3">
+                              <FaUserTie className="me-1" /> {t('Caretaker')}: {caretakerName}
+                            </p>
+                          )}
+                          <div className="d-flex flex-wrap gap-2 mb-3">
+                            <span className="badge rounded-pill bg-success-subtle text-success-emphasis px-2 py-1">
+                              {healthyCount} {t('Healthy')}
+                            </span>
+                            <span className="badge rounded-pill bg-danger-subtle text-danger-emphasis px-2 py-1">
+                              {diseaseCount} {t('Disease detected')}
+                            </span>
+                          </div>
+                          {group.action && (
+                            <div className="rounded-3 border p-3 mb-3" style={{ backgroundColor: '#F8FAFC' }}>
+                              <div className="d-flex justify-content-between align-items-center gap-2 mb-2">
+                                <span className="extra-small fw-bold text-secondary">{t('Admin decision')}</span>
+                                <span className="badge rounded-pill px-2 py-1" style={getScanActionStatusStyle(group.action.status)}>
+                                  {t(group.action.status)}
+                                </span>
+                              </div>
+                              <p className="small text-dark mb-1">{group.action.decision}</p>
+                              <div className="extra-small text-muted">
+                                {t('Assigned to')} {group.action.caretaker_name}
+                              </div>
+                            </div>
+                          )}
+                          {actionComposerOpen[group.pondName] && (
+                            <div className="mb-3">
+                              <label className="form-label extra-small fw-bold text-secondary">
+                                {t('Decision or action for caretaker')}
+                              </label>
+                              <textarea
+                                className="form-control form-control-sm mb-2"
+                                rows={3}
+                                maxLength={2000}
+                                value={decisionInputs[group.pondName] || ''}
+                                placeholder={t('Type the action the caretaker should take...')}
+                                onChange={(event) => setDecisionInputs((current) => ({
+                                  ...current,
+                                  [group.pondName]: event.target.value,
+                                }))}
+                              />
+                              <div className="d-flex gap-2">
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-tri-orange flex-grow-1 fw-bold"
+                                  disabled={sendingActionPond === group.pondName}
+                                  onClick={() => handleSendScanAction(group)}
+                                >
+                                  {sendingActionPond === group.pondName
+                                    ? <FaSpinner className="fa-spin me-2" />
+                                    : <FaPaperPlane className="me-2" />}
+                                  {t('Send to caretaker')}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-outline-secondary"
+                                  onClick={() => setActionComposerOpen((current) => ({
+                                    ...current,
+                                    [group.pondName]: false,
+                                  }))}
+                                >
+                                  {t('Cancel')}
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-tri-outline w-100 fw-bold mb-2"
+                            onClick={() => setActionComposerOpen((current) => ({
+                              ...current,
+                              [group.pondName]: !current[group.pondName],
+                            }))}
+                          >
+                            <FaTools className="me-2" /> {t('Perform Action')}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-tri-orange w-100 fw-bold"
+                            onClick={() => setSelectedScanGroup(group)}
+                          >
+                            <FaEye className="me-2" /> {t('Inspect')}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )
+        ) : loading ? (
           <div className="text-center py-5 text-muted">
             <div className="spinner-border text-primary spinner-border-sm me-2" role="status" />
             {t('Loading maintenance reports…')}
@@ -938,6 +1269,122 @@ export default function AdminReportsPage() {
         );
       })()}
     </div>
+
+      {selectedScanGroup && (
+        <div
+          className="modal show d-block"
+          style={{ backgroundColor: 'rgba(15, 23, 42, 0.68)', backdropFilter: 'blur(4px)', zIndex: 1055 }}
+          onClick={() => setSelectedScanGroup(null)}
+        >
+          <div
+            className="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="modal-content rounded-4 border-0 shadow-lg">
+              <div className="modal-header px-4 py-3">
+                <div>
+                  <h5 className="modal-title fw-bold text-dark mb-1">
+                    {selectedScanGroup.pondName} · {t('Shrimp Scan Details')}
+                  </h5>
+                  <div className="small text-secondary">
+                    {selectedScanGroup.scans.length} {t('shrimp scans')} · {formatScanDateTime(selectedScanGroup.latestCreatedAt, isFilipino)}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn-close"
+                  aria-label={t('Close')}
+                  onClick={() => setSelectedScanGroup(null)}
+                />
+              </div>
+              <div className="modal-body p-3 p-lg-4">
+                <div className="row g-3">
+                  {selectedScanGroup.scans.map((scan, index) => {
+                    const imageUrl = resolveMediaUrl(scan.image_path);
+                    const healthStatus = scan.health_status || scan.disease_name || scan.status || t('Unknown');
+                    const normalizedStatus = String(healthStatus).toLowerCase();
+                    const isHealthy = normalizedStatus.includes('healthy');
+                    const isDiseased = normalizedStatus.includes('diseased')
+                      || normalizedStatus.includes('wssv')
+                      || normalizedStatus.includes('white spot')
+                      || normalizedStatus.includes('disease');
+                    const badgeStyle = isHealthy
+                      ? { backgroundColor: '#DCFCE7', color: '#166534' }
+                      : isDiseased
+                        ? { backgroundColor: '#FEE2E2', color: '#991B1B' }
+                        : { backgroundColor: '#FEF3C7', color: '#92400E' };
+                    return (
+                      <div className="col-12 col-md-6 col-xl-4" key={scan.id || `${scan.created_at}-${index}`}>
+                        <article className="h-100 rounded-4 border bg-white overflow-hidden shadow-sm">
+                          <div className="position-relative bg-light" style={{ height: 220 }}>
+                            <div className="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center text-secondary">
+                              <FaImage size={34} className="mb-2" />
+                              <span className="extra-small">{t('Scan image unavailable')}</span>
+                            </div>
+                            {imageUrl ? (
+                              <img
+                                src={imageUrl}
+                                alt={`${t('Shrimp scan')} ${index + 1}`}
+                                className="w-100 h-100"
+                                style={{ objectFit: 'cover', cursor: 'zoom-in' }}
+                                onClick={() => setPreviewImage(imageUrl)}
+                                onError={(event) => { event.currentTarget.style.display = 'none'; }}
+                              />
+                            ) : null}
+                            <span className="position-absolute top-0 start-0 m-3 badge rounded-pill bg-dark bg-opacity-75 text-white px-3 py-2">
+                              {t('Shrimp')} #{index + 1}
+                            </span>
+                          </div>
+                          <div className="p-3">
+                            <div className="d-flex justify-content-between align-items-start gap-2 mb-2">
+                              <h6 className="fw-bold text-dark mb-0">{scan.disease_name || t('Unknown diagnosis')}</h6>
+                              <span className="badge rounded-pill px-2 py-1 flex-shrink-0" style={badgeStyle}>
+                                {t(healthStatus)}
+                              </span>
+                            </div>
+                            {scan.description && (
+                              <p className="small text-secondary mb-3">
+                                {String(scan.description).replace(/\s*\(?\d+(?:\.\d+)?\s*%\s*confidence\)?\.?/gi, '').trim()}
+                              </p>
+                            )}
+                            <dl className="row g-1 mb-0 small">
+                              <dt className="col-5 text-muted">{t('Scan date')}</dt>
+                              <dd className="col-7 text-dark">{formatScanDateTime(scan.created_at, isFilipino)}</dd>
+                              {scan.caretaker_name && (
+                                <>
+                                  <dt className="col-5 text-muted">{t('Caretaker')}</dt>
+                                  <dd className="col-7 text-dark">{scan.caretaker_name}</dd>
+                                </>
+                              )}
+                              {scan.status && scan.health_status && (
+                                <>
+                                  <dt className="col-5 text-muted">{t('Review status')}</dt>
+                                  <dd className="col-7 text-dark">{t(scan.status)}</dd>
+                                </>
+                              )}
+                            </dl>
+                            {scan.recommendation && (
+                              <div className="mt-3 pt-2 border-top">
+                                <div className="extra-small text-uppercase fw-bold text-muted mb-1">{t('Recommended action')}</div>
+                                <p className="small text-dark mb-0">{scan.recommendation}</p>
+                              </div>
+                            )}
+                          </div>
+                        </article>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="modal-footer px-4 py-3">
+                <button type="button" className="btn btn-outline-secondary" onClick={() => setSelectedScanGroup(null)}>
+                  {t('Close')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Full-screen Photo Preview Modal */}
       {previewImage && (
