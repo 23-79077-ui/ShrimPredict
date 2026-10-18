@@ -26,16 +26,21 @@
  }
 
  html {
-   scroll-behavior: smooth;
- }
+  scroll-behavior: smooth;
+  overflow-x: clip;
+  max-width: 100vw;
+}
 
  body {
-   margin: 0;
-   min-width: 320px;
-   min-height: 100vh;
-   background-color: #F8FAFC;
-   color: var(--text);
- }
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: #F8FAFC;
+  color: var(--text);
+  overflow-x: clip;
+  max-width: 100vw;
+  position: relative;
+}
 
  body.light-theme,
  [data-theme="light"] body,
@@ -5957,7 +5962,7 @@
   border: 1px solid rgba(255, 255, 255, 0.16) !important;
   border-radius: 20px !important;
    box-shadow: 0 10px 30px rgba(7, 23, 51, 0.38), 0 2px 8px rgba(7, 23, 51, 0.2) !important;
-   padding: 0.65rem 1.25rem 0.55rem 1.25rem !important;
+   padding: 0.55rem 0.95rem 0.45rem 0.95rem !important;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   font-family: 'Poppins', sans-serif;
   position: relative;
@@ -6001,65 +6006,94 @@
    background: linear-gradient(90deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.18) 30%, rgba(255, 255, 255, 0.18) 70%, rgba(255, 255, 255, 0.04) 100%);
  }
 
- /* Navigation Row (Tier 2) */
- .top-dock-nav-row {
-   display: flex !important;
-   justify-content: space-between !important;
-   align-items: center !important;
-   width: 100% !important;
-   gap: 0.35rem !important;
-   scrollbar-width: none;
-   -ms-overflow-style: none;
- }
+  /* Navigation Row (Tier 2) */
+  .top-dock-nav-row {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100% !important;
+    gap: 0.22rem !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
+  }
 
- .top-dock-nav-row::-webkit-scrollbar {
-   display: none;
- }
+  .top-dock-nav-row::-webkit-scrollbar {
+    display: none;
+  }
 
- /* Dock Pill Navigation Links (Evenly Distributed Edge-to-Edge) */
- .dock-nav-pill {
-  border-radius: 9999px;
-  padding: 0.42rem 0.65rem !important;
-   font-size: 0.81rem !important;
-   font-weight: 600;
-   color: rgba(255, 255, 255, 0.88);
-   text-decoration: none;
-   display: inline-flex;
-   align-items: center;
-   justify-content: center;
-   text-align: center;
-   gap: 0.35rem !important;
-   border: 1px solid transparent;
-   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-   white-space: nowrap !important;
-   font-family: 'Poppins', sans-serif;
-   letter-spacing: -0.01em;
-   flex: 1 1 auto !important;
-}
+  /* Dock Pill Navigation Links (Evenly Distributed Edge-to-Edge) */
+  .dock-nav-pill {
+    border-radius: 9999px;
+    padding: 0.32rem 0.48rem !important;
+    font-size: 0.75rem !important;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.88);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 0.22rem !important;
+    border: 1px solid transparent;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap !important;
+    font-family: 'Poppins', sans-serif;
+    letter-spacing: -0.01em;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    flex-shrink: 0 !important;
+  }
 
- @media (max-width: 1440px) {
-   .top-dock-bar {
-     padding: 0.65rem 1.15rem 0.55rem 1.15rem !important;
-   }
+  @media (max-width: 1440px) {
+    .top-dock-bar {
+      padding: 0.5rem 0.8rem 0.42rem 0.8rem !important;
+    }
 
-   .dock-nav-pill {
-     padding: 0.38rem 0.55rem;
-     font-size: 0.77rem;
-     gap: 0.3rem;
-   }
- }
+    .top-dock-nav-row {
+      gap: 0.18rem !important;
+    }
 
- @media (max-width: 1250px) {
-   .top-dock-bar {
-     padding: 0.55rem 0.95rem 0.5rem 0.95rem !important;
-   }
+    .dock-nav-pill {
+      padding: 0.28rem 0.38rem !important;
+      font-size: 0.71rem !important;
+      gap: 0.18rem !important;
+    }
+  }
 
-   .dock-nav-pill {
-     padding: 0.32rem 0.45rem;
-     font-size: 0.73rem;
-     gap: 0.25rem;
-   }
- }
+  @media (max-width: 1250px) {
+    .top-dock-bar {
+      padding: 0.45rem 0.7rem 0.38rem 0.7rem !important;
+    }
+
+    .top-dock-nav-row {
+      gap: 0.15rem !important;
+    }
+
+    .dock-nav-pill {
+      padding: 0.24rem 0.32rem !important;
+      font-size: 0.68rem !important;
+      gap: 0.15rem !important;
+    }
+  }
+
+  @media (max-width: 1080px) {
+    .top-dock-bar {
+      padding: 0.4rem 0.6rem 0.35rem 0.6rem !important;
+    }
+
+    .top-dock-nav-row {
+      gap: 0.12rem !important;
+    }
+
+    .dock-nav-pill {
+      padding: 0.22rem 0.28rem !important;
+      font-size: 0.65rem !important;
+      gap: 0.12rem !important;
+    }
+  }
 
  .dock-nav-pill:hover {
    color: #FFFFFF;
@@ -6854,7 +6888,8 @@
  .login-page-container {
    min-height: 100vh;
    width: 100%;
-   overflow: hidden;
+   overflow-x: clip;
+   overflow-y: visible;
    position: relative;
    background-color: #E9E4E0;
    background-image:
@@ -6868,6 +6903,7 @@
    .login-page-container {
      height: 100vh;
      max-height: 100vh;
+     overflow: hidden;
    }
 
    .login-split-row {
@@ -9168,7 +9204,7 @@
    through records without moving the rest of the page.
    ========================================================================== */
  .admin-scrollable-table-4rows {
-   max-height: 215px !important;
+   max-height: 290px !important;
    overflow-y: auto !important;
    overflow-x: auto !important;
    border-radius: 12px;
@@ -9190,7 +9226,7 @@
  }
 
  .admin-scrollable-table-4rows-lg {
-   max-height: 225px !important;
+   max-height: 290px !important;
    overflow-y: auto !important;
    overflow-x: auto !important;
    border-radius: 12px;
@@ -9198,23 +9234,82 @@
    scrollbar-width: thin;
  }
 
- /* Ensure table headers are strictly sticky at the top of the container */
+ /* Ensure table uses separate borders so sticky headers never bleed or collapse */
+ .admin-scrollable-table-4rows table,
+ .admin-scrollable-table-4rows-lg table,
+ .admin-scrollable-table-ponds table,
+ .table-responsive table {
+   border-collapse: separate !important;
+   border-spacing: 0 !important;
+ }
+
+ /* THEAD must NOT be sticky - in CSS table formatting models, sticky thead causes double-offset displacement of TH */
  .admin-scrollable-table-4rows thead,
  .admin-scrollable-table-4rows-lg thead,
  .admin-scrollable-table-ponds thead,
- .table-responsive thead {
-   position: sticky !important;
-   top: 0 !important;
-   z-index: 10 !important;
+ .table-responsive thead,
+ .table thead.sticky-top,
+ thead.sticky-top {
+   position: static !important;
+   top: auto !important;
+   z-index: auto !important;
  }
 
+ /* Table headers (TH) are strictly sticky at the top of the container with solid opaque background and crisp borders */
  .admin-scrollable-table-4rows thead th,
  .admin-scrollable-table-4rows-lg thead th,
  .admin-scrollable-table-ponds thead th,
- .table-responsive thead th {
+ .table-responsive thead th,
+ .table thead th,
+ .tri-table thead th,
+ .admin-table thead th,
+ .admin-sticky-thead th,
+ .admin-table-sticky-head th,
+ .table thead.sticky-top th,
+ thead.sticky-top th {
    position: sticky !important;
    top: 0 !important;
-   z-index: 10 !important;
+   z-index: 25 !important;
+   background-color: #E2E8F0 !important;
+   color: #0F172A !important;
+   background-clip: padding-box !important;
+   box-shadow: inset 0 -1.5px 0 #CBD5E1 !important;
+ }
+
+ /* Dark mode overrides for sticky table headers */
+ [data-theme="dark"] .admin-scrollable-table-4rows thead th,
+ [data-theme="dark"] .admin-scrollable-table-4rows-lg thead th,
+ [data-theme="dark"] .admin-scrollable-table-ponds thead th,
+ [data-theme="dark"] .table-responsive thead th,
+ [data-theme="dark"] .table thead th,
+ [data-theme="dark"] .table thead.sticky-top th,
+ [data-bs-theme="dark"] .table thead th,
+ [data-bs-theme="dark"] .table thead.sticky-top th,
+ body.dark-theme .table thead th,
+ body.dark-theme .table thead.sticky-top th,
+ body.dark-theme .table-responsive thead th {
+   background-color: #0B132B !important;
+   color: #CBD5E1 !important;
+   box-shadow: inset 0 -1.5px 0 rgba(255, 255, 255, 0.2) !important;
+ }
+
+ /* Prevent any badge, progress bar or button inside tbody from rendering above the sticky header */
+ .admin-scrollable-table-4rows tbody td,
+ .admin-scrollable-table-4rows-lg tbody td,
+ .admin-scrollable-table-ponds tbody td,
+ .table-responsive tbody td {
+   position: relative;
+   z-index: 1;
+ }
+
+ .admin-scrollable-table-4rows tbody td .badge,
+ .admin-scrollable-table-4rows tbody td .tri-progress-track,
+ .admin-scrollable-table-4rows tbody td .btn,
+ .table-responsive tbody td .badge,
+ .table-responsive tbody td .tri-progress-track,
+ .table-responsive tbody td .btn {
+   position: relative;
+   z-index: 2;
  }
 
  /* Sleek scrollbars for internal table scrolling */
@@ -10283,11 +10378,11 @@ body.dark-theme .minimal-filter-control {
 
 /* Compact Pond Tile Cards */
 .compact-pond-card {
-  background: #FFFFFF !important;
-  border: 1px solid #E2E8F0 !important;
+  background: #F8FAFC !important;
+  border: 1px solid #CBD5E1 !important;
   border-radius: 14px !important;
   padding: 1.1rem 1.15rem !important;
-  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.03) !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05) !important;
   display: flex !important;
   flex-direction: column !important;
   justify-content: space-between !important;
@@ -10298,15 +10393,41 @@ body.dark-theme .minimal-filter-control {
 
 .compact-pond-card:hover {
   transform: translateY(-2px) !important;
-  border-color: #CBD5E1 !important;
-  box-shadow: 0 6px 16px -3px rgba(15, 23, 42, 0.07) !important;
+  border-color: #94A3B8 !important;
+  box-shadow: 0 6px 16px -3px rgba(15, 23, 42, 0.09) !important;
 }
 
 [data-theme="dark"] .compact-pond-card,
 body.dark-theme .compact-pond-card {
-  background: #1E293B !important;
-  border-color: #334155 !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+  background: #253549 !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
+}
+
+[data-theme="dark"] .compact-pond-card:hover,
+body.dark-theme .compact-pond-card:hover {
+  border-color: rgba(255, 255, 255, 0.28) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45) !important;
+}
+
+[data-theme="dark"] .btn-understated-view,
+body.dark-theme .btn-understated-view {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: #F1F5F9 !important;
+}
+
+[data-theme="dark"] .btn-understated-view:hover,
+body.dark-theme .btn-understated-view:hover {
+  background-color: rgba(255, 255, 255, 0.16) !important;
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .btn-understated-feed,
+body.dark-theme .btn-understated-feed {
+  background-color: rgba(252, 86, 60, 0.18) !important;
+  border: 1px solid rgba(252, 86, 60, 0.35) !important;
+  color: #FF8A75 !important;
 }
 
 /* Understated action buttons for pond tiles */
@@ -10453,4 +10574,1160 @@ body.dark-theme .harvest-milestone-circle.upcoming {
   100% {
     box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
   }
+}
+
+/* Enhanced Pond Monitoring Card with Crisp Structural Borders */
+.pond-monitoring-card {
+  border: 1.5px solid #CBD5E1 !important;
+  border-radius: 18px !important;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  cursor: pointer !important;
+}
+
+.pond-monitoring-card:hover {
+  border-color: #94A3B8 !important;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08) !important;
+  transform: translateY(-2px) !important;
+}
+
+[data-theme="dark"] .pond-monitoring-card,
+body.dark-theme .pond-monitoring-card {
+  background-color: #0F172A !important;
+  border-color: #334155 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
+}
+
+[data-theme="dark"] .pond-monitoring-card:hover,
+body.dark-theme .pond-monitoring-card:hover {
+  border-color: #475569 !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45) !important;
+}
+
+/* Caretaker 60/40 Dashboard Split & 3-Item Tasks Scroll Container */
+@media (min-width: 1200px) {
+  .caretaker-col-60 {
+    flex: 0 0 60% !important;
+    max-width: 60% !important;
+    width: 60% !important;
+  }
+  .caretaker-col-40 {
+    flex: 0 0 40% !important;
+    max-width: 40% !important;
+    width: 40% !important;
+  }
+  .caretaker-col-70 {
+    flex: 0 0 70% !important;
+    max-width: 70% !important;
+    width: 70% !important;
+  }
+  .caretaker-col-30 {
+    flex: 0 0 30% !important;
+    max-width: 30% !important;
+    width: 30% !important;
+  }
+}
+
+.caretaker-tasks-scroll-3items {
+  max-height: 320px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  scrollbar-width: thin;
+}
+
+.caretaker-tasks-scroll-3items::-webkit-scrollbar {
+  width: 5px;
+}
+
+.caretaker-tasks-scroll-3items::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.caretaker-tasks-scroll-3items::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.45);
+  border-radius: 9999px;
+}
+
+
+/* ==========================================================================
+   MOBILE M (375px) RESPONSIVE DESIGN SUITE
+   Strictly scoped to <= 576px and <= 768px so Desktop/Laptop is 100% untouched
+   ========================================================================== */
+
+/* Global Root Overflow Barrier */
+#root, .app-shell {
+  max-width: 100vw !important;
+  overflow-x: clip !important;
+  position: relative;
+}
+
+.landing-page-wrapper {
+  max-width: 100vw;
+  position: relative;
+}
+
+@media (max-width: 576px) {
+  /* Landing Header Bar on 375px */
+  .landing-header {
+    padding: 0.45rem 0 !important;
+  }
+
+  .landing-header .container-fluid {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+
+  .landing-brand-logo {
+    height: 32px !important;
+  }
+
+  .landing-brand-title {
+    font-size: 1.12rem !important;
+    letter-spacing: -0.02em !important;
+  }
+
+  .landing-brand-sub {
+    font-size: 0.56rem !important;
+    letter-spacing: 0.04em !important;
+  }
+
+  /* Hero Section Typography & Spatial Scale on 375px (375x523 viewport) */
+  .hero-section-enhanced {
+    padding-top: 1.25rem !important;
+    padding-bottom: 2rem !important;
+  }
+
+  .hero-section-enhanced .container {
+    padding-left: 0.85rem !important;
+    padding-right: 0.85rem !important;
+  }
+
+  .hero-title {
+    font-size: 1.35rem !important;
+    line-height: 1.22 !important;
+    letter-spacing: -0.01em !important;
+    margin-bottom: 0.65rem !important;
+  }
+
+  .hero-subtitle-tag {
+    font-size: 0.98rem !important;
+    line-height: 1.25 !important;
+    margin-top: 0.35rem !important;
+  }
+
+  .hero-copy {
+    font-size: 0.84rem !important;
+    line-height: 1.45 !important;
+    margin-bottom: 1rem !important;
+    max-width: 100% !important;
+  }
+
+  .hero-cta-btn {
+    width: 100% !important;
+    font-size: 0.92rem !important;
+    padding: 0.65rem 1.2rem !important;
+    justify-content: center !important;
+  }
+
+  .hero-showcase-box {
+    min-height: 200px !important;
+    padding: 1.25rem !important;
+    margin-top: 1.25rem !important;
+  }
+
+  .hero-showcase-box img {
+    max-height: 150px !important;
+  }
+
+  /* Mobile Drawer Menu on Landing Page */
+  .landing-mobile-drawer {
+    border-radius: 0 0 1rem 1rem !important;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25) !important;
+  }
+
+  /* General Section Headings & Spacing */
+  section.py-5 {
+    padding-top: 2rem !important;
+    padding-bottom: 2rem !important;
+  }
+
+  .display-6 {
+    font-size: 1.38rem !important;
+    line-height: 1.25 !important;
+  }
+
+  /* Floating Top Dock Tier 1 Header on Mobile (< 576px) */
+  .top-dock-bar {
+    padding-left: 0.65rem !important;
+    padding-right: 0.65rem !important;
+    padding-top: 0.45rem !important;
+    padding-bottom: 0.45rem !important;
+  }
+
+  .top-dock-tier1 {
+    gap: 0.4rem !important;
+  }
+
+  .top-dock-tier1 .brand img {
+    height: 30px !important;
+  }
+
+  .top-dock-tier1 .brand span.fw-extrabold {
+    font-size: 1.05rem !important;
+  }
+
+  .top-dock-tier1 .brand span.small {
+    font-size: 0.54rem !important;
+  }
+
+  /* Mobile Nav Drawer Grid */
+  .mobile-nav-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.5rem !important;
+    width: 100% !important;
+  }
+
+  .mobile-nav-pill-item {
+    font-size: 0.76rem !important;
+    padding: 0.55rem 0.65rem !important;
+    border-radius: 0.75rem !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.45rem !important;
+    justify-content: flex-start !important;
+    text-align: left !important;
+    text-decoration: none !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: #FFFFFF !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  }
+
+  .mobile-nav-pill-item.active {
+    background: #FC563C !important;
+    color: #FFFFFF !important;
+    border-color: #FC563C !important;
+    font-weight: 700 !important;
+  }
+}
+
+/* Ensure landing header follows user on scroll across all devices */
+.landing-header {
+  position: -webkit-sticky !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 1040 !important;
+}
+
+/* ==========================================================================
+   ADMIN ACCOUNT MOBILE VIEW ENHANCEMENTS (Clean, Touch-Friendly, Zero Squish)
+   ========================================================================== */
+@media (max-width: 767.98px) {
+  /* Admin KPI Cards in 2x2 Grid */
+  .shrimp-kpi-card {
+    padding: 0.85rem 0.85rem !important;
+    min-height: 125px !important;
+    border-radius: 14px !important;
+  }
+
+  /* Admin Ponds Overview & Harvest Cards */
+  .compact-pond-card {
+    padding: 0.85rem !important;
+    border-radius: 14px !important;
+  }
+
+  /* Admin Table Horizontal Scroll */
+  .admin-scrollable-table-4rows {
+    max-height: 320px !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .admin-scrollable-table-4rows table {
+    min-width: 680px !important;
+    table-layout: auto !important;
+  }
+
+  /* Harvest Circular Timeline on Mobile */
+  .harvest-circular-timeline {
+    padding: 0.35rem 0.15rem 0.75rem 0.15rem !important;
+  }
+
+  .harvest-milestone-circle {
+    width: 30px !important;
+    height: 30px !important;
+    font-size: 0.72rem !important;
+    margin-bottom: 0.25rem !important;
+    border-width: 2px !important;
+  }
+
+  .harvest-circular-timeline::before,
+  .harvest-timeline-fill {
+    top: 20px !important;
+  }
+
+  /* Top Dock Mobile Enhancements */
+  .top-dock-wrapper {
+    padding: 0.35rem 0.5rem 0.25rem 0.5rem !important;
+  }
+
+  .top-dock-bar {
+    padding: 0.45rem 0.65rem !important;
+    border-radius: 16px !important;
+  }
+}
+
+/* ==========================================================================
+   COMPREHENSIVE DARK MODE CONTRAST ENHANCEMENTS (Light backgrounds & Text)
+   ========================================================================== */
+[data-theme="dark"] .bg-light,
+body.dark-theme .bg-light {
+  background-color: #1E293B !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #F8FAFC !important;
+}
+
+[data-theme="dark"] .bg-white,
+body.dark-theme .bg-white {
+  background-color: #1E293B !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #F8FAFC !important;
+}
+
+[data-theme="dark"] .bg-white .text-dark,
+[data-theme="dark"] .bg-light .text-dark,
+body.dark-theme .bg-white .text-dark,
+body.dark-theme .bg-light .text-dark {
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .badge.bg-light,
+[data-theme="dark"] .badge.bg-white,
+body.dark-theme .badge.bg-light,
+body.dark-theme .badge.bg-white {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .badge.bg-light.text-dark,
+[data-theme="dark"] .badge.bg-white.text-dark,
+body.dark-theme .badge.bg-light.text-dark,
+body.dark-theme .badge.bg-white.text-dark {
+  background-color: rgba(255, 255, 255, 0.14) !important;
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .table-light,
+[data-theme="dark"] .table-light > th,
+[data-theme="dark"] .table-light > td,
+body.dark-theme .table-light,
+body.dark-theme .table-light > th,
+body.dark-theme .table-light > td {
+  background-color: #1E293B !important;
+  color: #CBD5E1 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-theme="dark"] thead.table-light th,
+body.dark-theme thead.table-light th {
+  background-color: #1E293B !important;
+  color: #E2E8F0 !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* ==========================================================================
+   APP-WIDE MOBILE TABLE ENHANCEMENTS (Zero Squish, Touch Scrolling, Easy Manage)
+   ========================================================================== */
+@media (max-width: 767.98px) {
+  /* Scrollable Table Container for ALL tables */
+  .table-responsive,
+  .admin-scrollable-table-4rows {
+    max-height: 360px !important;
+    overflow-x: auto !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    position: relative !important;
+    border-radius: 12px !important;
+    width: 100% !important;
+  }
+
+  /* Force tables to remain wide enough so columns never crush into 30px */
+  .table-responsive > table,
+  .table-responsive > .table,
+  .admin-scrollable-table-4rows table,
+  .admin-scrollable-table-4rows .table,
+  .admin-table,
+  .tri-table {
+    min-width: 720px !important;
+    width: max-content !important;
+    table-layout: auto !important;
+  }
+
+  /* Comfortable cell padding and readable font sizes */
+  .table-responsive th,
+  .table-responsive td,
+  .admin-scrollable-table-4rows th,
+  .admin-scrollable-table-4rows td {
+    padding: 0.65rem 0.8rem !important;
+    vertical-align: middle !important;
+    font-size: 0.82rem !important;
+  }
+
+  /* Touch-friendly table action buttons on mobile */
+  .table-responsive .btn,
+  .table-responsive .btn-sm,
+  .table-responsive .btn-icon,
+  .admin-scrollable-table-4rows .btn,
+  .admin-scrollable-table-4rows .btn-sm,
+  .admin-scrollable-table-4rows .btn-icon {
+    min-height: 32px !important;
+    padding: 0.3rem 0.65rem !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 0.76rem !important;
+  }
+
+  /* Sticky table header on mobile */
+  .admin-scrollable-table-4rows thead th,
+  .table-responsive thead th,
+  .admin-table-sticky-head th {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 5 !important;
+    background-color: #F8FAFC !important;
+  }
+
+  [data-theme="dark"] .admin-scrollable-table-4rows thead th,
+  [data-theme="dark"] .table-responsive thead th,
+  [data-theme="dark"] .admin-table-sticky-head th,
+  body.dark-theme .admin-scrollable-table-4rows thead th,
+  body.dark-theme .table-responsive thead th,
+  body.dark-theme .admin-table-sticky-head th {
+    background-color: #1E293B !important;
+    color: #F8FAFC !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+  }
+
+  /* Mobile Swipe Hint Badge */
+  .mobile-table-swipe-hint {
+    display: block !important;
+    text-align: center;
+    font-size: 0.68rem !important;
+    color: #64748B;
+    padding: 0.25rem 0.5rem;
+    margin-bottom: 0.4rem;
+    font-family: monospace;
+    user-select: none;
+  }
+
+  [data-theme="dark"] .mobile-table-swipe-hint,
+  body.dark-theme .mobile-table-swipe-hint {
+    color: #94A3B8 !important;
+  }
+}
+
+/* ==========================================================================
+   ENHANCED POLISH: Mobile Settings, Chart Range Pills, and Pond Monitoring
+   ========================================================================== */
+
+/* Fix Settings Sidebar Sticky on Mobile */
+@media (min-width: 992px) {
+  .settings-sidebar-sticky {
+    position: sticky !important;
+    top: 155px !important;
+    z-index: 100 !important;
+    align-self: flex-start !important;
+  }
+}
+
+@media (max-width: 991.98px) {
+  .settings-sidebar-sticky {
+    position: static !important;
+    z-index: auto !important;
+    top: auto !important;
+  }
+}
+
+/* Ensure .btn-tri-navy stays signature brand orange and never hovers to dark navy */
+.btn-tri-navy,
+.btn-tri-navy:hover,
+.btn-tri-navy:focus,
+.btn-tri-navy:active,
+.btn-tri-navy.active {
+  background-color: #FC563C !important;
+  border-color: #FC563C !important;
+  color: #FFFFFF !important;
+}
+
+/* Chart Range & Tab Filter Pills (Active vs Inactive) */
+.chart-range-pill-container {
+  background-color: #F1F5F9;
+  border-color: #CBD5E1 !important;
+}
+
+[data-theme="dark"] .chart-range-pill-container,
+body.dark-theme .chart-range-pill-container {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+}
+
+.btn-chart-range-active {
+  background-color: #FC563C !important;
+  border-color: #FC563C !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 2px 8px rgba(252, 86, 60, 0.35) !important;
+}
+
+.btn-chart-range-active:hover,
+.btn-chart-range-active:focus,
+.btn-chart-range-active:active {
+  background-color: #E03E26 !important;
+  border-color: #E03E26 !important;
+  color: #FFFFFF !important;
+}
+
+.btn-chart-range-inactive {
+  background-color: transparent !important;
+  border: 1px solid transparent !important;
+  color: #64748B !important;
+}
+
+.btn-chart-range-inactive:hover {
+  background-color: rgba(15, 23, 42, 0.05) !important;
+  color: #0F172A !important;
+}
+
+[data-theme="dark"] .btn-chart-range-inactive,
+body.dark-theme .btn-chart-range-inactive {
+  color: #CBD5E1 !important;
+}
+
+[data-theme="dark"] .btn-chart-range-inactive:hover,
+body.dark-theme .btn-chart-range-inactive:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: #FFFFFF !important;
+}
+
+/* Dark Mode fix for Bootstrap .btn-light text-muted */
+[data-theme="dark"] .btn-light,
+body.dark-theme .btn-light {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  color: #CBD5E1 !important;
+}
+
+[data-theme="dark"] .btn-light:hover,
+body.dark-theme .btn-light:hover {
+  background-color: rgba(255, 255, 255, 0.16) !important;
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .btn-light.text-muted,
+body.dark-theme .btn-light.text-muted {
+  color: #CBD5E1 !important;
+}
+
+/* Pond Monitoring Dark Mode Caretaker & 4 Metric Cards */
+.pond-monitoring-caretaker-strip {
+  background-color: #F8FAFC !important;
+  border: 1.5px solid #CBD5E1 !important;
+}
+
+[data-theme="dark"] .pond-monitoring-caretaker-strip,
+body.dark-theme .pond-monitoring-caretaker-strip {
+  background-color: #253549 !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important;
+}
+
+[data-theme="dark"] .pond-monitoring-caretaker-strip .text-dark,
+body.dark-theme .pond-monitoring-caretaker-strip .text-dark {
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .pond-monitoring-caretaker-strip .text-muted,
+body.dark-theme .pond-monitoring-caretaker-strip .text-muted {
+  color: #94A3B8 !important;
+}
+
+[data-theme="dark"] .pond-metric-card-doc,
+body.dark-theme .pond-metric-card-doc {
+  background-color: rgba(16, 185, 129, 0.14) !important;
+  border: 1.5px solid rgba(16, 185, 129, 0.4) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+[data-theme="dark"] .pond-metric-card-doc .text-uppercase,
+body.dark-theme .pond-metric-card-doc .text-uppercase {
+  color: #6EE7B7 !important;
+}
+[data-theme="dark"] .pond-metric-card-doc .fw-extrabold,
+body.dark-theme .pond-metric-card-doc .fw-extrabold {
+  color: #10B981 !important;
+}
+
+[data-theme="dark"] .pond-metric-card-weight,
+body.dark-theme .pond-metric-card-weight {
+  background-color: rgba(168, 85, 247, 0.14) !important;
+  border: 1.5px solid rgba(168, 85, 247, 0.4) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+[data-theme="dark"] .pond-metric-card-weight .text-uppercase,
+body.dark-theme .pond-metric-card-weight .text-uppercase {
+  color: #D8B4FE !important;
+}
+[data-theme="dark"] .pond-metric-card-weight .fw-extrabold,
+body.dark-theme .pond-metric-card-weight .fw-extrabold {
+  color: #C084FC !important;
+}
+
+[data-theme="dark"] .pond-metric-card-feeding,
+body.dark-theme .pond-metric-card-feeding {
+  background-color: rgba(249, 115, 22, 0.14) !important;
+  border: 1.5px solid rgba(249, 115, 22, 0.4) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+[data-theme="dark"] .pond-metric-card-feeding .text-uppercase,
+body.dark-theme .pond-metric-card-feeding .text-uppercase {
+  color: #FDBA74 !important;
+}
+[data-theme="dark"] .pond-metric-card-feeding .fw-extrabold,
+body.dark-theme .pond-metric-card-feeding .fw-extrabold {
+  color: #FB923C !important;
+}
+
+[data-theme="dark"] .pond-metric-card-remaining,
+body.dark-theme .pond-metric-card-remaining {
+  background-color: rgba(14, 165, 233, 0.14) !important;
+  border: 1.5px solid rgba(14, 165, 233, 0.4) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+[data-theme="dark"] .pond-metric-card-remaining .text-uppercase,
+body.dark-theme .pond-metric-card-remaining .text-uppercase {
+  color: #7DD3FC !important;
+}
+[data-theme="dark"] .pond-metric-card-remaining .fw-extrabold,
+body.dark-theme .pond-metric-card-remaining .fw-extrabold {
+  color: #38BDF8 !important;
+}
+
+/* ==========================================================================
+   MOBILE VIEW FIXES: Notifications Dropdown, Scan Telemetry Modal, Language Modal
+   ========================================================================== */
+
+/* Notification Dropdown Mobile View */
+@media (max-width: 575.98px) {
+  .notif-dropdown-menu {
+    position: fixed !important;
+    top: 60px !important;
+    left: 12px !important;
+    right: 12px !important;
+    width: auto !important;
+    max-width: calc(100vw - 24px) !important;
+    margin-top: 0 !important;
+    border-radius: 16px !important;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45) !important;
+    z-index: 1060 !important;
+  }
+  .notif-dropdown-menu .overflow-y-auto {
+    max-height: 52vh !important;
+  }
+}
+
+/* Scan Report Modal Mobile Optimization */
+@media (max-width: 575.98px) {
+  .scan-report-modal-dialog {
+    margin: 0.5rem auto !important;
+    max-width: calc(100vw - 16px) !important;
+  }
+  .scan-report-modal-dialog .modal-content {
+    border-radius: 16px !important;
+  }
+  .scan-report-modal-dialog .modal-header-custom {
+    padding: 0.85rem 1rem !important;
+  }
+  .scan-report-modal-dialog .modal-body {
+    padding: 0.85rem 1rem !important;
+    max-height: calc(85vh - 100px) !important;
+    overflow-y: auto !important;
+  }
+  .scan-report-modal-dialog .scan-modal-image-box {
+    min-height: 180px !important;
+    max-height: 220px !important;
+  }
+  .scan-report-modal-dialog .modal-footer {
+    padding: 0.75rem 1rem !important;
+  }
+}
+
+/* Language Switch Confirmation Modal Mobile View */
+@media (max-width: 575.98px) {
+  .shrim-swal-lang-modal {
+    width: calc(100vw - 24px) !important;
+    max-width: calc(100vw - 24px) !important;
+    padding: 1.25rem 1rem 1.15rem !important;
+    border-radius: 1.2rem !important;
+    margin: 0 auto !important;
+  }
+  .shrim-swal-lang-modal .shrim-swal-title {
+    font-size: 1.18rem !important;
+    margin-bottom: 0.2rem !important;
+  }
+  .shrim-lang-transition-card {
+    padding: 0.5rem 0.65rem !important;
+    margin: 0.65rem 0 0.85rem !important;
+    gap: 0.5rem !important;
+  }
+  .shrim-lang-flag-pill {
+    padding: 0.35rem 0.5rem !important;
+    gap: 0.45rem !important;
+  }
+  .shrim-lang-flag-pill svg {
+    width: 26px !important;
+    height: 26px !important;
+  }
+  .shrim-lang-pill-sub {
+    font-size: 0.62rem !important;
+  }
+  .shrim-lang-pill-name {
+    font-size: 0.82rem !important;
+  }
+  .shrim-lang-arrow-badge {
+    width: 26px !important;
+    height: 26px !important;
+  }
+  .shrim-lang-arrow-badge svg {
+    width: 14px !important;
+    height: 14px !important;
+  }
+  .shrim-lang-description {
+    font-size: 0.82rem !important;
+    line-height: 1.45 !important;
+    margin-bottom: 0.65rem !important;
+  }
+  .shrim-lang-feature-box {
+    padding: 0.5rem 0.75rem !important;
+    gap: 0.3rem !important;
+  }
+  .shrim-lang-feature-item {
+    font-size: 0.74rem !important;
+    line-height: 1.35 !important;
+  }
+  .shrim-swal-actions {
+    margin-top: 1rem !important;
+    gap: 0.5rem !important;
+    flex-wrap: wrap !important;
+    width: 100% !important;
+  }
+  .btn-swal-cancel-lang,
+  .btn-swal-confirm-lang {
+    padding: 0.55rem 1.1rem !important;
+    font-size: 0.82rem !important;
+    width: 100% !important;
+    text-align: center !important;
+    justify-content: center !important;
+  }
+}
+
+/* ==========================================================================
+   CARETAKER HUB UNIFIED THEME AND ELEVATION (PRISTINE VISUAL FIDELITY)
+   ========================================================================== */
+.caretaker-tasks-card {
+  background-color: #FFFFFF;
+  border-color: #E2E8F0 !important;
+}
+
+[data-theme="dark"] .caretaker-tasks-card,
+body.dark-theme .caretaker-tasks-card {
+  background-color: #1E293B !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.caretaker-task-article {
+  background-color: #FFFFFF;
+  border-color: #CBD5E1 !important;
+  transition: all 0.2s ease;
+}
+
+[data-theme="dark"] .caretaker-task-article,
+body.dark-theme .caretaker-task-article {
+  background-color: #253549 !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+}
+
+[data-theme="dark"] .caretaker-task-article:hover,
+body.dark-theme .caretaker-task-article:hover {
+  border-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+/* Caretaker Settings Sidebar sticky fix */
+@media (min-width: 992px) {
+  .caretaker-settings-sidebar.settings-sidebar-sticky {
+    position: sticky !important;
+    top: 155px !important;
+    z-index: 100 !important;
+    align-self: flex-start !important;
+  }
+}
+
+@media (max-width: 991.98px) {
+  .caretaker-settings-sidebar.settings-sidebar-sticky {
+    position: static !important;
+    z-index: auto !important;
+    top: auto !important;
+  }
+}
+
+/* ==========================================================================
+   MOBILE VIEW FIDELITY SUITE (Zero Overlap, Zero Clipping, Fluid Responsiveness)
+   ========================================================================== */
+
+/* 1. Header & Top Dock Mobile Fit */
+@media (max-width: 575.98px) {
+  .top-dock-wrapper {
+    padding: 0.25rem 0.35rem !important;
+  }
+  .top-dock-bar {
+    padding: 0.38rem 0.5rem 0.32rem 0.5rem !important;
+    border-radius: 14px !important;
+    max-width: 100vw !important;
+    overflow: hidden !important;
+  }
+  .top-dock-logo-img {
+    width: 32px !important;
+    height: 32px !important;
+  }
+  .top-dock-brand-text span.fw-extrabold {
+    font-size: 0.96rem !important;
+  }
+  .top-dock-utilities {
+    gap: 0.3rem !important;
+  }
+  .top-dock-utilities button,
+  .top-dock-utilities .btn-dock-icon,
+  .top-dock-utilities .lang-toggle-btn {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    padding: 0 !important;
+    font-size: 0.70rem !important;
+  }
+  .top-dock-utilities .btn-dock-icon svg {
+    width: 13px !important;
+    height: 13px !important;
+  }
+  .dock-nav-pill {
+    padding: 0.30rem 0.60rem !important;
+    font-size: 0.78rem !important;
+  }
+  .dock-nav-pill svg {
+    width: 12px !important;
+    height: 12px !important;
+  }
+  .caretaker-chat-head {
+    right: 0.65rem !important;
+    bottom: 0.65rem !important;
+  }
+  .caretaker-chat-button {
+    width: 48px !important;
+    height: 48px !important;
+    font-size: 1.1rem !important;
+  }
+}
+
+/* 2. Caretaker Dashboard Prestock Strip & Cards Mobile Fit */
+@media (max-width: 767.98px) {
+  .caretaker-prestock-strip {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+    overflow-x: hidden !important;
+  }
+  .caretaker-prestock-strip .row {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+  .caretaker-prestock-strip .row > [class*="col-"] {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  .caretaker-scrollable-body {
+    max-height: none !important;
+    overflow-y: visible !important;
+  }
+  .caretaker-tasks-scroll-3items {
+    max-height: none !important;
+    overflow-y: visible !important;
+  }
+  #my-tasks-section {
+    margin-bottom: 6rem !important;
+    padding-bottom: 3.5rem !important;
+  }
+}
+
+@media (max-width: 991.98px) {
+  .caretaker-scrollable-body {
+    max-height: none !important;
+    overflow-y: visible !important;
+  }
+}
+
+.p-3\.5 {
+  padding: 0.875rem !important;
+}
+
+/* 3. Scan Report & History Modal Dialog Mobile Constraints */
+@media (max-width: 575.98px) {
+  .scan-report-modal-dialog {
+    margin: 0.4rem auto !important;
+    max-width: calc(100vw - 12px) !important;
+    width: calc(100vw - 12px) !important;
+  }
+  .scan-report-modal-dialog .modal-content {
+    border-radius: 14px !important;
+    overflow: hidden !important;
+  }
+  .scan-report-modal-dialog .modal-body {
+    padding: 0.75rem !important;
+    max-height: calc(85vh - 90px) !important;
+    overflow-y: auto !important;
+  }
+}
+
+/* 4. Disease Scan Guide Dark Mode Color Correction (Fix Blinding White Card) */
+[data-theme="dark"] .disease-guide-panel,
+[data-bs-theme="dark"] .disease-guide-panel,
+body.dark-theme .disease-guide-panel {
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(252, 86, 60, 0.12), transparent 45%),
+    linear-gradient(145deg, #1E293B 0%, #172A39 100%) !important;
+}
+
+[data-theme="dark"] .disease-guide-step,
+[data-bs-theme="dark"] .disease-guide-step,
+body.dark-theme .disease-guide-step {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  background: rgba(37, 53, 73, 0.85) !important;
+}
+
+[data-theme="dark"] .disease-guide-step.is-active,
+[data-bs-theme="dark"] .disease-guide-step.is-active,
+body.dark-theme .disease-guide-step.is-active {
+  border-color: rgba(252, 86, 60, 0.55) !important;
+  background: linear-gradient(110deg, #253549 0%, rgba(252, 86, 60, 0.15) 100%) !important;
+}
+
+[data-theme="dark"] .disease-guide-step.is-complete,
+[data-bs-theme="dark"] .disease-guide-step.is-complete,
+body.dark-theme .disease-guide-step.is-complete {
+  border-color: rgba(16, 185, 129, 0.4) !important;
+  background: linear-gradient(110deg, #253549 0%, rgba(16, 185, 129, 0.15) 100%) !important;
+}
+
+[data-theme="dark"] .disease-guide-step.is-waiting,
+[data-bs-theme="dark"] .disease-guide-step.is-waiting,
+body.dark-theme .disease-guide-step.is-waiting {
+  color: #94A3B8 !important;
+  background: rgba(25, 38, 54, 0.6) !important;
+}
+
+[data-theme="dark"] .disease-guide-step-marker,
+[data-bs-theme="dark"] .disease-guide-step-marker,
+body.dark-theme .disease-guide-step-marker {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #E2E8F0 !important;
+}
+
+[data-theme="dark"] .disease-guide-step-title,
+[data-bs-theme="dark"] .disease-guide-step-title,
+body.dark-theme .disease-guide-step-title {
+  color: #FC563C !important;
+}
+
+[data-theme="dark"] .disease-guide-step-copy,
+[data-bs-theme="dark"] .disease-guide-step-copy,
+body.dark-theme .disease-guide-step-copy {
+  color: #CBD5E1 !important;
+}
+
+[data-theme="dark"] .disease-guide-tip,
+[data-bs-theme="dark"] .disease-guide-tip,
+body.dark-theme .disease-guide-tip {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #CBD5E1 !important;
+}
+
+[data-theme="dark"] .disease-guide-progress,
+[data-bs-theme="dark"] .disease-guide-progress,
+body.dark-theme .disease-guide-progress {
+  background: rgba(252, 86, 60, 0.18) !important;
+  color: #FF8A75 !important;
+}
+
+[data-theme="dark"] .disease-guide-progress.is-complete,
+[data-bs-theme="dark"] .disease-guide-progress.is-complete,
+body.dark-theme .disease-guide-progress.is-complete {
+  background: rgba(16, 185, 129, 0.2) !important;
+  color: #34D399 !important;
+}
+
+[data-theme="dark"] .disease-guide-footer,
+[data-bs-theme="dark"] .disease-guide-footer,
+body.dark-theme .disease-guide-footer {
+  background: rgba(15, 23, 42, 0.65) !important;
+  color: #CBD5E1 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* 5. Caretaker Hub Headers Badges Dark Theme Contrast & Wrapping */
+.caretaker-dashboard-hub .badge.rounded-pill,
+.caretaker-mypond-hub .badge.rounded-pill,
+.caretaker-diseasescan-hub .badge.rounded-pill,
+.caretaker-reports-hub .badge.rounded-pill,
+.caretaker-notifications-hub .badge.rounded-pill,
+.caretaker-feedinghistory-hub .badge.rounded-pill,
+.caretaker-settings-hub .badge.rounded-pill {
+  max-width: 100% !important;
+  white-space: normal !important;
+}
+
+[data-theme="dark"] .caretaker-dashboard-hub .badge.rounded-pill.bg-white,
+[data-bs-theme="dark"] .caretaker-dashboard-hub .badge.rounded-pill.bg-white,
+body.dark-theme .caretaker-dashboard-hub .badge.rounded-pill.bg-white,
+[data-theme="dark"] .caretaker-mypond-hub .badge.rounded-pill.bg-white,
+[data-bs-theme="dark"] .caretaker-mypond-hub .badge.rounded-pill.bg-white,
+body.dark-theme .caretaker-mypond-hub .badge.rounded-pill.bg-white,
+[data-theme="dark"] .caretaker-diseasescan-hub .badge.rounded-pill.bg-white,
+[data-bs-theme="dark"] .caretaker-diseasescan-hub .badge.rounded-pill.bg-white,
+body.dark-theme .caretaker-diseasescan-hub .badge.rounded-pill.bg-white,
+[data-theme="dark"] .caretaker-reports-hub .badge.rounded-pill.bg-white,
+[data-bs-theme="dark"] .caretaker-reports-hub .badge.rounded-pill.bg-white,
+body.dark-theme .caretaker-reports-hub .badge.rounded-pill.bg-white,
+[data-theme="dark"] .caretaker-notifications-hub .badge.rounded-pill.bg-white,
+[data-bs-theme="dark"] .caretaker-notifications-hub .badge.rounded-pill.bg-white,
+body.dark-theme .caretaker-notifications-hub .badge.rounded-pill.bg-white,
+[data-theme="dark"] .caretaker-feedinghistory-hub .badge.rounded-pill.bg-white,
+[data-bs-theme="dark"] .caretaker-feedinghistory-hub .badge.rounded-pill.bg-white,
+body.dark-theme .caretaker-feedinghistory-hub .badge.rounded-pill.bg-white,
+[data-theme="dark"] .caretaker-settings-hub .badge.rounded-pill.bg-white,
+[data-bs-theme="dark"] .caretaker-settings-hub .badge.rounded-pill.bg-white,
+body.dark-theme .caretaker-settings-hub .badge.rounded-pill.bg-white {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  color: #CBD5E1 !important;
+}
+
+/* ==========================================================================
+   POND CULTURE CYCLE CALENDAR - THEME CONTRAST & RESPONSIVE POLISH
+   ========================================================================== */
+
+/* Dark Mode Scoped Overrides */
+[data-theme="dark"] .pond-cycle-calendar-container,
+[data-bs-theme="dark"] .pond-cycle-calendar-container,
+body.dark-theme .pond-cycle-calendar-container {
+  background-color: #1E293B !important;
+  color: #F1F5F9 !important;
+}
+
+[data-theme="dark"] .pond-cycle-calendar-container .calendar-date-title,
+[data-bs-theme="dark"] .pond-cycle-calendar-container .calendar-date-title,
+body.dark-theme .pond-cycle-calendar-container .calendar-date-title {
+  color: #FFFFFF !important;
+}
+
+[data-theme="dark"] .pond-cycle-calendar-container .calendar-feed-desc,
+[data-bs-theme="dark"] .pond-cycle-calendar-container .calendar-feed-desc,
+body.dark-theme .pond-cycle-calendar-container .calendar-feed-desc {
+  color: #CBD5E1 !important;
+}
+
+[data-theme="dark"] .pond-cycle-calendar-card-growout,
+[data-bs-theme="dark"] .pond-cycle-calendar-card-growout,
+body.dark-theme .pond-cycle-calendar-card-growout {
+  background-color: rgba(59, 130, 246, 0.18) !important;
+  border-color: rgba(96, 165, 250, 0.45) !important;
+}
+
+[data-theme="dark"] .pond-cycle-calendar-card-nursery,
+[data-bs-theme="dark"] .pond-cycle-calendar-card-nursery,
+body.dark-theme .pond-cycle-calendar-card-nursery {
+  background-color: rgba(16, 185, 129, 0.18) !important;
+  border-color: rgba(52, 211, 153, 0.45) !important;
+}
+
+[data-theme="dark"] .pond-cycle-calendar-card-transfer,
+[data-bs-theme="dark"] .pond-cycle-calendar-card-transfer,
+body.dark-theme .pond-cycle-calendar-card-transfer {
+  background-color: rgba(245, 158, 11, 0.18) !important;
+  border-color: rgba(245, 158, 11, 0.45) !important;
+}
+
+[data-theme="dark"] .pond-cycle-calendar-card-upcoming,
+[data-bs-theme="dark"] .pond-cycle-calendar-card-upcoming,
+body.dark-theme .pond-cycle-calendar-card-upcoming {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Light Mode Scoped Overrides */
+[data-theme="light"] .pond-cycle-calendar-container,
+[data-bs-theme="light"] .pond-cycle-calendar-container,
+body.light-theme .pond-cycle-calendar-container {
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
+}
+
+[data-theme="light"] .pond-cycle-calendar-container .calendar-date-title,
+[data-bs-theme="light"] .pond-cycle-calendar-container .calendar-date-title,
+body.light-theme .pond-cycle-calendar-container .calendar-date-title {
+  color: #0F172A !important;
+}
+
+[data-theme="light"] .pond-cycle-calendar-container .calendar-feed-desc,
+[data-bs-theme="light"] .pond-cycle-calendar-container .calendar-feed-desc,
+body.light-theme .pond-cycle-calendar-container .calendar-feed-desc {
+  color: #334155 !important;
+}
+
+[data-theme="light"] .pond-cycle-calendar-card-growout,
+[data-bs-theme="light"] .pond-cycle-calendar-card-growout,
+body.light-theme .pond-cycle-calendar-card-growout {
+  background-color: #EFF6FF !important;
+  border-color: #BFDBFE !important;
+}
+
+[data-theme="light"] .pond-cycle-calendar-card-nursery,
+[data-bs-theme="light"] .pond-cycle-calendar-card-nursery,
+body.light-theme .pond-cycle-calendar-card-nursery {
+  background-color: #F0FDF4 !important;
+  border-color: #BBF7D0 !important;
+}
+
+[data-theme="light"] .pond-cycle-calendar-card-transfer,
+[data-bs-theme="light"] .pond-cycle-calendar-card-transfer,
+body.light-theme .pond-cycle-calendar-card-transfer {
+  background-color: #FFFBEB !important;
+  border-color: #FDE68A !important;
+}
+
+[data-theme="light"] .pond-cycle-calendar-card-upcoming,
+[data-bs-theme="light"] .pond-cycle-calendar-card-upcoming,
+body.light-theme .pond-cycle-calendar-card-upcoming {
+  background-color: #F9FAFB !important;
+  border-color: #E5E7EB !important;
+}
+
+/* Feeding Drawer in FeedingHistoryPage */
+[data-theme="dark"] .feeding-calendar-drawer,
+body.dark-theme .feeding-calendar-drawer {
+  background-color: #0F172A !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-theme="light"] .feeding-calendar-drawer,
+body.light-theme .feeding-calendar-drawer {
+  background-color: #FFFFFF !important;
+  border-bottom: 1px solid #E2E8F0 !important;
 }

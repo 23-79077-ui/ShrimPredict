@@ -102,6 +102,7 @@ export default function DiseaseReportsPage() {
   const [sortBy, setSortBy] = useState('newest'); // 'newest' | 'confidence-desc' | 'name-asc'
   const [loading, setLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState(null); // Detailed modal preview
+  const [failedImages, setFailedImages] = useState({});
   const [activeChartTab, setActiveChartTab] = useState('pathology'); // 'pathology' | 'threat' | 'trend'
 
   const loadReports = useCallback(async () => {
@@ -707,17 +708,20 @@ export default function DiseaseReportsPage() {
           }}
         />
 
-        <div className="table-responsive admin-scrollable-table-4rows-lg rounded-3 border" style={{ maxHeight: '420px', overflowY: 'auto', overflowX: 'hidden', borderColor: '#E2E8F0' }}>
-          <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.80rem', tableLayout: 'fixed', width: '100%' }}>
-            <thead className="sticky-top table-light border-bottom" style={{ borderColor: '#E2E8F0' }}>
+        <div className="d-block d-md-none text-center text-muted extra-small mb-1 font-monospace" style={{ fontSize: '0.68rem' }}>
+          {t('← Swipe table horizontally to see full details →')}
+        </div>
+        <div className="table-responsive admin-scrollable-table-4rows rounded-3 border" style={{ maxHeight: 290, overflowY: 'auto', overflowX: 'auto', WebkitOverflowScrolling: 'touch', borderColor: '#E2E8F0' }}>
+          <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.80rem', minWidth: 720 }}>
+            <thead className="table-light border-bottom" style={{ borderColor: '#E2E8F0' }}>
               <tr className="text-secondary extra-small text-uppercase fw-bold" style={{ letterSpacing: '0.03em' }}>
-                <th className="py-2.5 ps-3" style={{ width: '8%' }}>{t('Scan')}</th>
-                <th className="py-2.5" style={{ width: '10%' }}>{t('Pond')}</th>
-                <th className="py-2.5" style={{ width: '15%' }}>{t('Scan Result')}</th>
-                <th className="py-2.5" style={{ width: '13%' }}>{t('Threat Level')}</th>
-                <th className="py-2.5" style={{ width: '13%' }}>{t('Date & Time')}</th>
-                <th className="py-2.5" style={{ width: '29%' }}>{t('Recommended Action')}</th>
-                <th className="py-2.5 pe-3 text-end" style={{ width: '12%' }}>{t('Actions')}</th>
+                <th className="py-2.5 ps-3" style={{ minWidth: 65 }}>{t('Scan')}</th>
+                <th className="py-2.5" style={{ minWidth: 80 }}>{t('Pond')}</th>
+                <th className="py-2.5" style={{ minWidth: 120 }}>{t('Scan Result')}</th>
+                <th className="py-2.5" style={{ minWidth: 95 }}>{t('Threat Level')}</th>
+                <th className="py-2.5" style={{ minWidth: 105 }}>{t('Date & Time')}</th>
+                <th className="py-2.5" style={{ minWidth: 190 }}>{t('Recommended Action')}</th>
+                <th className="py-2.5 pe-3 text-end" style={{ minWidth: 90 }}>{t('Actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -891,13 +895,13 @@ export default function DiseaseReportsPage() {
           onClick={() => setSelectedReport(null)}
         >
           <div
-            className="modal-dialog modal-dialog-centered modal-xl"
+            className="modal-dialog modal-dialog-centered modal-xl scan-report-modal-dialog"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-content border-0 shadow-2xl rounded-4 overflow-hidden" style={{ borderRadius: 24 }}>
               {/* Header */}
               <div
-                className="d-flex justify-content-between align-items-center p-4 text-white"
+                className="d-flex justify-content-between align-items-center p-3 p-md-4 text-white modal-header-custom"
                 style={{ background: 'linear-gradient(135deg, #172A39 0%, #203A4F 100%)' }}
               >
                 <div className="d-flex align-items-center gap-3">
@@ -934,25 +938,36 @@ export default function DiseaseReportsPage() {
               </div>
 
               {/* Modal Body: Split Presentation */}
-              <div className="modal-body p-4">
-                <div className="row g-4 align-items-center">
+              <div className="modal-body p-3 p-md-4 custom-scrollbar" style={{ maxHeight: 'calc(88vh - 85px)', overflowY: 'auto' }}>
+                <div className="row g-3 g-md-4 align-items-center">
                   {/* Left: High-Res Image Snapshot */}
                   <div className="col-12 col-lg-6">
                     <div
-                      className="rounded-4 overflow-hidden border p-2 text-center d-flex align-items-center justify-content-center"
-                      style={{ background: '#172A39', minHeight: 330, borderColor: 'rgba(252, 86, 60, 0.12)' }}
+                      className="rounded-4 overflow-hidden border p-2 text-center d-flex align-items-center justify-content-center scan-modal-image-box"
+                      style={{ background: '#172A39', minHeight: 280, borderColor: 'rgba(252, 86, 60, 0.12)' }}
                     >
-                      {selectedReport.image_path ? (
+                      {selectedReport.image_path && !failedImages[selectedReport.id] ? (
                         <img
                           src={resolveImageUrl(selectedReport.image_path)}
                           alt={selectedReport.disease_name}
                           className="img-fluid rounded-3"
-                          style={{ maxHeight: '420px', objectFit: 'contain', width: '100%' }}
+                          style={{ maxHeight: '360px', objectFit: 'contain', width: '100%' }}
+                          onError={() => setFailedImages((prev) => ({ ...prev, [selectedReport.id]: true }))}
                         />
                       ) : (
-                        <div className="d-flex flex-column align-items-center justify-content-center py-5 text-muted">
-                          <FaImage size={48} className="mb-2 opacity-50 text-white" />
-                          <span className="text-white text-opacity-75 small">{t('No microscope photo uploaded with this telemetry log')}</span>
+                        <div className="d-flex flex-column align-items-center justify-content-center py-4 text-center px-3">
+                          <div
+                            className="rounded-circle d-flex align-items-center justify-content-center mb-2.5 shadow-sm"
+                            style={{ width: 50, height: 50, backgroundColor: 'rgba(252, 86, 60, 0.15)', color: '#FC563C' }}
+                          >
+                            <FaMicroscope size={22} />
+                          </div>
+                          <strong className="text-white small mb-1">
+                            {selectedReport.disease_name || t('Microscope Telemetry Scan')}
+                          </strong>
+                          <span className="text-white text-opacity-75 extra-small" style={{ maxWidth: 280 }}>
+                            {t('Pathology telemetry recorded without microscope photographic attachment')}
+                          </span>
                         </div>
                       )}
                     </div>

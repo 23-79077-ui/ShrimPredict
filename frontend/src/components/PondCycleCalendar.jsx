@@ -13,6 +13,7 @@ import {
   FaSpinner,
 } from 'react-icons/fa';
 import api, { safeArray } from '../services/api';
+import { getEffectiveTheme } from '../utils/theme';
 
 /**
  * PondCycleCalendar
@@ -41,10 +42,10 @@ function sanitizeNotes(notes, isZeroFeed) {
     .replace(/\(0g\)\s*\(0g\)/gi, '(0g)');
 }
 
-function renderStructuredNotes(notesStr, isZeroFeed) {
+function renderStructuredNotes(notesStr, isZeroFeed, isDark = false) {
   const clean = sanitizeNotes(notesStr, isZeroFeed);
   if (!clean || clean === 'Nominal feed' || clean === 'No feed logged (0g)') {
-    return <span className="text-muted extra-small">{clean}</span>;
+    return <span className="extra-small" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>{clean}</span>;
   }
 
   const parts = clean.split('|').map((p) => p.trim()).filter(Boolean);
@@ -53,26 +54,71 @@ function renderStructuredNotes(notesStr, isZeroFeed) {
       <div className="d-flex flex-column gap-1 extra-small py-1">
         {parts.map((part, idx) => (
           <div key={idx} className="d-flex align-items-center gap-1.5">
-            <span className="rounded-circle bg-secondary bg-opacity-40 flex-shrink-0" style={{ width: 5, height: 5 }}></span>
-            <span className="text-dark fw-medium">{part}</span>
+            <span className="rounded-circle flex-shrink-0" style={{ width: 5, height: 5, backgroundColor: isDark ? '#94A3B8' : '#64748B' }}></span>
+            <span className="fw-medium" style={{ color: isDark ? '#F1F5F9' : '#0F172A' }}>{part}</span>
           </div>
         ))}
       </div>
     );
   }
 
-  return <span className="text-secondary extra-small fw-medium">{clean}</span>;
+  return <span className="extra-small fw-medium" style={{ color: isDark ? '#CBD5E1' : '#475569' }}>{clean}</span>;
 }
 
 export default function PondCycleCalendar({
-  pondId,
-  stockingDate,
+  pond,
+  pondId: propPondId,
+  stockingDate: propStockingDate,
   selectedDate,
-  pondName = 'Pond',
+  pondName: propPondName,
   onSelectDate,
   onClose,
   records: initialRecords = [],
+  isOpen = true,
 }) {
+  if (isOpen === false) return null;
+
+  const pondId = propPondId || pond?.id;
+  const stockingDate = propStockingDate || pond?.stocking_date;
+  const pondName = propPondName || pond?.pond_name || (pond?.id ? `Pond #${pond.id}` : 'Pond');
+
+  const [currentTheme, setCurrentTheme] = useState(() => {
+    if (typeof document !== 'undefined') {
+      const attr = document.documentElement.getAttribute('data-theme');
+      if (attr === 'dark' || attr === 'light') return attr;
+      if (document.body && document.body.classList.contains('dark-theme')) return 'dark';
+    }
+    return getEffectiveTheme();
+  });
+
+  useEffect(() => {
+    const readTheme = () => {
+      const attr = document.documentElement.getAttribute('data-theme');
+      if (attr === 'dark' || attr === 'light') return attr;
+      if (document.body && document.body.classList.contains('dark-theme')) return 'dark';
+      return getEffectiveTheme();
+    };
+
+    const handleThemeChange = (e) => {
+      const t = e?.detail?.theme || readTheme();
+      setCurrentTheme(t);
+    };
+
+    window.addEventListener('shrim-theme-changed', handleThemeChange);
+
+    const observer = new MutationObserver(() => {
+      setCurrentTheme(readTheme());
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] });
+
+    return () => {
+      window.removeEventListener('shrim-theme-changed', handleThemeChange);
+      observer.disconnect();
+    };
+  }, []);
+
+  const isDark = currentTheme === 'dark';
+
   const [internalRecords, setInternalRecords] = useState(initialRecords || []);
   const [loadingRecords, setLoadingRecords] = useState(false);
 
@@ -392,9 +438,18 @@ export default function PondCycleCalendar({
   };
 
   return (
-    <div className="pond-cycle-calendar-container bg-white w-100 p-3 p-md-4 p-xl-5">
+    <div
+      className="pond-cycle-calendar-container w-100 p-3 p-md-4 p-xl-5 transition-all"
+      style={{
+        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+        color: isDark ? '#F1F5F9' : '#0F172A',
+      }}
+    >
       {/* Header bar */}
-      <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 pb-3 border-bottom">
+      <div
+        className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 pb-3 border-bottom"
+        style={{ borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#E2E8F0' }}
+      >
         <div>
           <div className="d-flex align-items-center gap-2">
             <span
@@ -403,7 +458,7 @@ export default function PondCycleCalendar({
             >
               <FaWater className="me-1" /> {pondName}
             </span>
-            <h5 className="fw-extrabold text-dark mb-0 tracking-tight" style={{ fontSize: '1.15rem' }}>
+            <h5 className="fw-extrabold mb-0 tracking-tight" style={{ fontSize: '1.15rem', color: isDark ? '#FFFFFF' : '#0B2C5F' }}>
               Pond Culture Cycle Calendar
               {loadingRecords && (
                 <span className="ms-2 text-primary extra-small fw-normal">
@@ -412,11 +467,11 @@ export default function PondCycleCalendar({
               )}
             </h5>
           </div>
-          <p className="text-muted small mb-0 mt-1" style={{ fontSize: '0.82rem' }}>
+          <p className="small mb-0 mt-1" style={{ fontSize: '0.82rem', color: isDark ? '#CBD5E1' : '#64748B' }}>
             {stockingParsed ? (
               <>
                 Stocked on{' '}
-                <strong>
+                <strong style={{ color: isDark ? '#FFFFFF' : '#0F172A' }}>
                   {stockingParsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                 </strong>{' '}
                 • Days 1–19 Nursery &rarr; Day 20 Transfer &rarr; Days 21–{maxRecordedDoc} Active Grow-out
@@ -430,8 +485,14 @@ export default function PondCycleCalendar({
         {onClose && (
           <button
             type="button"
-            className="btn btn-sm btn-light border rounded-circle d-flex align-items-center justify-content-center"
-            style={{ width: 34, height: 34 }}
+            className="btn btn-sm border rounded-circle d-flex align-items-center justify-content-center transition-all"
+            style={{
+              width: 34,
+              height: 34,
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9',
+              color: isDark ? '#FFFFFF' : '#1E293B',
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : '#E2E8F0',
+            }}
             onClick={onClose}
           >
             <FaTimes />
@@ -440,21 +501,55 @@ export default function PondCycleCalendar({
       </div>
 
       {/* Legend strip */}
-      <div className="d-flex align-items-center gap-2 flex-wrap mb-3 p-2.5 rounded-3 bg-light border small">
-        <span className="fw-bold text-muted extra-small text-uppercase">Cycle Legend:</span>
-        <span className="badge px-2 py-1.5 fw-semibold d-inline-flex align-items-center gap-1" style={{ background: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0' }}>
+      <div
+        className="d-flex align-items-center gap-2 flex-wrap mb-3 p-2.5 rounded-3 small"
+        style={{
+          backgroundColor: isDark ? '#172A39' : '#F8FAFC',
+          border: isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #E2E8F0',
+        }}
+      >
+        <span className="fw-bold extra-small text-uppercase" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>Cycle Legend:</span>
+        <span
+          className="badge px-2 py-1.5 fw-semibold d-inline-flex align-items-center gap-1"
+          style={{
+            background: isDark ? 'rgba(16, 185, 129, 0.18)' : '#ECFDF5',
+            color: isDark ? '#34D399' : '#047857',
+            border: isDark ? '1px solid rgba(52, 211, 153, 0.35)' : '1px solid #A7F3D0',
+          }}
+        >
           <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#10B981', display: 'inline-block' }}></span>
           Days 1–19: Nursery Pond
         </span>
-        <span className="badge px-2 py-1.5 fw-semibold d-inline-flex align-items-center gap-1" style={{ background: '#FEF3C7', color: '#B45309', border: '1px solid #FDE68A' }}>
+        <span
+          className="badge px-2 py-1.5 fw-semibold d-inline-flex align-items-center gap-1"
+          style={{
+            background: isDark ? 'rgba(245, 158, 11, 0.18)' : '#FEF3C7',
+            color: isDark ? '#FBBF24' : '#B45309',
+            border: isDark ? '1px solid rgba(251, 191, 36, 0.35)' : '1px solid #FDE68A',
+          }}
+        >
           <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#F59E0B', display: 'inline-block' }}></span>
           Day 20: Transfer Day to Grow-out
         </span>
-        <span className="badge px-2 py-1.5 fw-semibold d-inline-flex align-items-center gap-1" style={{ background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE' }}>
+        <span
+          className="badge px-2 py-1.5 fw-semibold d-inline-flex align-items-center gap-1"
+          style={{
+            background: isDark ? 'rgba(59, 130, 246, 0.18)' : '#EFF6FF',
+            color: isDark ? '#60A5FA' : '#1D4ED8',
+            border: isDark ? '1px solid rgba(96, 165, 250, 0.35)' : '1px solid #BFDBFE',
+          }}
+        >
           <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#3B82F6', display: 'inline-block' }}></span>
           Days 21–{maxRecordedDoc}: Active Grow-out
         </span>
-        <span className="badge px-2 py-1.5 fw-semibold d-inline-flex align-items-center gap-1" style={{ background: '#F3F4F6', color: '#6B7280', border: '1px dashed #D1D5DB' }}>
+        <span
+          className="badge px-2 py-1.5 fw-semibold d-inline-flex align-items-center gap-1"
+          style={{
+            background: isDark ? 'rgba(255, 255, 255, 0.05)' : '#F3F4F6',
+            color: isDark ? '#94A3B8' : '#6B7280',
+            border: isDark ? '1px dashed rgba(255, 255, 255, 0.2)' : '1px dashed #D1D5DB',
+          }}
+        >
           <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#9CA3AF', display: 'inline-block' }}></span>
           Day {maxRecordedDoc + 1}+: Upcoming (No Records Yet)
         </span>
@@ -463,14 +558,19 @@ export default function PondCycleCalendar({
       {/* Month Navigation */}
       <div className="d-flex justify-content-between align-items-center mb-3">
         <div className="d-flex align-items-center gap-2">
-          <h6 className="fw-bold text-dark mb-0 fs-6">
+          <h6 className="fw-bold mb-0 fs-6" style={{ color: isDark ? '#FFFFFF' : '#0B2C5F' }}>
             {monthNames[month]} {year}
           </h6>
           {stockingParsed && (
             <button
               type="button"
-              className="btn btn-xs btn-outline-primary rounded-pill py-0 px-2"
-              style={{ fontSize: '0.72rem' }}
+              className="btn btn-xs rounded-pill py-0.5 px-2.5 transition-all"
+              style={{
+                fontSize: '0.72rem',
+                backgroundColor: isDark ? 'rgba(59, 130, 246, 0.18)' : '#EFF6FF',
+                color: isDark ? '#60A5FA' : '#1D4ED8',
+                border: isDark ? '1px solid rgba(96, 165, 250, 0.35)' : '1px solid #BFDBFE',
+              }}
               onClick={handleJumpToStocking}
             >
               Stocking Month
@@ -478,8 +578,13 @@ export default function PondCycleCalendar({
           )}
           <button
             type="button"
-            className="btn btn-xs btn-outline-secondary rounded-pill py-0 px-2"
-            style={{ fontSize: '0.72rem' }}
+            className="btn btn-xs rounded-pill py-0.5 px-2.5 transition-all"
+            style={{
+              fontSize: '0.72rem',
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9',
+              color: isDark ? '#CBD5E1' : '#475569',
+              border: isDark ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid #CBD5E1',
+            }}
             onClick={handleJumpToToday}
           >
             Today
@@ -489,7 +594,12 @@ export default function PondCycleCalendar({
         <div className="btn-group btn-group-sm">
           <button
             type="button"
-            className="btn btn-outline-secondary py-1 px-2.5"
+            className="btn py-1 px-2.5 transition-all"
+            style={{
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#FFFFFF',
+              color: isDark ? '#E2E8F0' : '#475569',
+              border: isDark ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid #CBD5E1',
+            }}
             onClick={handlePrevMonth}
             title="Previous Month"
           >
@@ -497,7 +607,12 @@ export default function PondCycleCalendar({
           </button>
           <button
             type="button"
-            className="btn btn-outline-secondary py-1 px-2.5"
+            className="btn py-1 px-2.5 transition-all"
+            style={{
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#FFFFFF',
+              color: isDark ? '#E2E8F0' : '#475569',
+              border: isDark ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid #CBD5E1',
+            }}
             onClick={handleNextMonth}
             title="Next Month"
           >
@@ -508,8 +623,8 @@ export default function PondCycleCalendar({
 
       {/* Weekday Header */}
       <div
-        className="d-grid mb-1 text-center text-muted fw-bold extra-small text-uppercase"
-        style={{ gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}
+        className="d-grid mb-1 text-center fw-bold extra-small text-uppercase"
+        style={{ gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', color: isDark ? '#94A3B8' : '#64748B' }}
       >
         <div className="py-1">Sun</div>
         <div className="py-1">Mon</div>
@@ -534,41 +649,51 @@ export default function PondCycleCalendar({
           const isGrowout = isWithinCycle && cell.doc > 20;
           const hasLogs = Boolean(recordsByDate[cell.dateStr]?.length);
 
-          let bg = '#FAFAFA';
-          let border = '1px solid #E5E7EB';
-          let textColor = cell.isCurrentMonth ? '#1F2937' : '#9CA3AF';
-          let docBadgeBg = '#E5E7EB';
-          let docBadgeText = '#4B5563';
+          let bg = isDark ? '#172A39' : '#FAFAFA';
+          let border = isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E5E7EB';
+          let textColor = cell.isCurrentMonth
+            ? (isDark ? '#F1F5F9' : '#1F2937')
+            : (isDark ? '#64748B' : '#9CA3AF');
+          let docBadgeBg = isDark ? 'rgba(255, 255, 255, 0.08)' : '#E5E7EB';
+          let docBadgeText = isDark ? '#CBD5E1' : '#4B5563';
 
           if (isNursery) {
-            bg = '#F0FDF4';
-            border = '1px solid #BBF7D0';
-            textColor = '#166534';
-            docBadgeBg = '#DCFCE7';
-            docBadgeText = '#15803D';
+            bg = isDark ? 'rgba(16, 185, 129, 0.15)' : '#F0FDF4';
+            border = isDark ? '1px solid rgba(52, 211, 153, 0.35)' : '1px solid #BBF7D0';
+            textColor = isDark ? '#34D399' : '#166534';
+            docBadgeBg = isDark ? 'rgba(16, 185, 129, 0.28)' : '#DCFCE7';
+            docBadgeText = isDark ? '#4ADE80' : '#15803D';
           } else if (isTransferDay) {
-            bg = '#FFFBEB';
-            border = '2px solid #F59E0B';
-            textColor = '#92400E';
-            docBadgeBg = '#FEF3C7';
-            docBadgeText = '#B45309';
+            bg = isDark ? 'rgba(245, 158, 11, 0.2)' : '#FFFBEB';
+            border = isDark ? '2px solid #F59E0B' : '2px solid #F59E0B';
+            textColor = isDark ? '#FBBF24' : '#92400E';
+            docBadgeBg = isDark ? 'rgba(245, 158, 11, 0.35)' : '#FEF3C7';
+            docBadgeText = isDark ? '#FCD34D' : '#B45309';
           } else if (isGrowout) {
-            bg = '#EFF6FF';
-            border = '1px solid #BFDBFE';
-            textColor = '#1E40AF';
-            docBadgeBg = '#DBEAFE';
-            docBadgeText = '#1D4ED8';
+            bg = isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF';
+            border = isDark ? '1px solid rgba(96, 165, 250, 0.35)' : '1px solid #BFDBFE';
+            textColor = isDark ? '#60A5FA' : '#1E40AF';
+            docBadgeBg = isDark ? 'rgba(59, 130, 246, 0.28)' : '#DBEAFE';
+            docBadgeText = isDark ? '#93C5FD' : '#1D4ED8';
           } else if (isFutureDoc) {
-            bg = '#FAFAFA';
-            border = '1px dashed #D1D5DB';
-            textColor = cell.isCurrentMonth ? '#6B7280' : '#9CA3AF';
-            docBadgeBg = '#F3F4F6';
-            docBadgeText = '#6B7280';
+            bg = isDark ? 'rgba(255, 255, 255, 0.03)' : '#FAFAFA';
+            border = isDark ? '1px dashed rgba(255, 255, 255, 0.14)' : '1px dashed #D1D5DB';
+            textColor = cell.isCurrentMonth
+              ? (isDark ? '#94A3B8' : '#6B7280')
+              : (isDark ? '#475569' : '#9CA3AF');
+            docBadgeBg = isDark ? 'rgba(255, 255, 255, 0.05)' : '#F3F4F6';
+            docBadgeText = isDark ? '#94A3B8' : '#6B7280';
           }
 
           if (isSelected) {
             border = '2.5px solid #FC563C';
-            bg = isTransferDay ? '#FEF3C7' : (isNursery ? '#DCFCE7' : (isGrowout ? '#DBEAFE' : '#F3F4F6'));
+            bg = isTransferDay
+              ? (isDark ? 'rgba(245, 158, 11, 0.35)' : '#FEF3C7')
+              : isNursery
+              ? (isDark ? 'rgba(16, 185, 129, 0.3)' : '#DCFCE7')
+              : isGrowout
+              ? (isDark ? 'rgba(59, 130, 246, 0.3)' : '#DBEAFE')
+              : (isDark ? 'rgba(255, 255, 255, 0.12)' : '#F3F4F6');
           }
 
           return (
@@ -583,7 +708,7 @@ export default function PondCycleCalendar({
                 cursor: 'pointer',
                 opacity: cell.isCurrentMonth ? 1 : 0.45,
                 transform: isSelected ? 'scale(1.02)' : 'none',
-                boxShadow: isSelected ? '0 4px 14px rgba(255,122,0,0.25)' : 'none',
+                boxShadow: isSelected ? '0 4px 14px rgba(252, 86, 60, 0.35)' : 'none',
               }}
               title={
                 cell.doc !== null
@@ -599,7 +724,12 @@ export default function PondCycleCalendar({
                 {hasLogs && (
                   <span
                     className="d-inline-flex align-items-center gap-1 px-1.5 py-0.5 rounded-pill"
-                    style={{ backgroundColor: 'rgba(2, 132, 199, 0.12)', color: '#FC563C', fontSize: '0.65rem', fontWeight: 700 }}
+                    style={{
+                      backgroundColor: isDark ? 'rgba(252, 86, 60, 0.2)' : 'rgba(252, 86, 60, 0.12)',
+                      color: isDark ? '#FF8A75' : '#FC563C',
+                      fontSize: '0.65rem',
+                      fontWeight: 700,
+                    }}
                     title="Feeding records logged on this date"
                   >
                     <span className="rounded-circle" style={{ width: 6, height: 6, backgroundColor: '#FC563C' }}></span>
@@ -617,6 +747,7 @@ export default function PondCycleCalendar({
                       fontSize: '0.72rem',
                       backgroundColor: docBadgeBg,
                       color: docBadgeText,
+                      border: isDark ? '1px solid rgba(255, 255, 255, 0.1)' : 'none',
                       lineHeight: 1.1,
                       display: 'inline-block',
                     }}
@@ -627,7 +758,13 @@ export default function PondCycleCalendar({
                     className="extra-small fw-bold mt-1 d-none d-sm-block text-truncate"
                     style={{
                       fontSize: '0.68rem',
-                      color: isTransferDay ? '#B45309' : (isNursery ? '#047857' : (isGrowout ? '#1D4ED8' : '#9CA3AF')),
+                      color: isTransferDay
+                        ? (isDark ? '#FBBF24' : '#B45309')
+                        : isNursery
+                        ? (isDark ? '#34D399' : '#047857')
+                        : isGrowout
+                        ? (isDark ? '#60A5FA' : '#1D4ED8')
+                        : (isDark ? '#94A3B8' : '#9CA3AF'),
                     }}
                   >
                     {isTransferDay ? 'TRANSFER DAY' : isNursery ? 'Nursery Feed' : (isGrowout ? 'Grower Feed' : 'Upcoming')}
@@ -642,34 +779,35 @@ export default function PondCycleCalendar({
       {/* Selected Day Details Card */}
       {selectedInfo && (
         <div
-          className="p-3 rounded-3 border"
+          className={`pond-cycle-calendar-card pond-cycle-calendar-card-${selectedInfo.stageTone} p-3 p-md-3.5 rounded-3 border transition-all mb-2`}
           style={{
             backgroundColor:
               selectedInfo.stageTone === 'transfer'
-                ? '#FFFBEB'
+                ? (isDark ? 'rgba(245, 158, 11, 0.18)' : '#FFFBEB')
                 : selectedInfo.stageTone === 'nursery'
-                ? '#F0FDF4'
+                ? (isDark ? 'rgba(16, 185, 129, 0.18)' : '#F0FDF4')
                 : selectedInfo.stageTone === 'growout'
-                ? '#EFF6FF'
+                ? (isDark ? 'rgba(59, 130, 246, 0.18)' : '#EFF6FF')
                 : selectedInfo.stageTone === 'upcoming'
-                ? '#F9FAFB'
-                : '#E9E4E0',
+                ? (isDark ? 'rgba(255, 255, 255, 0.04)' : '#F9FAFB')
+                : (isDark ? '#172A39' : '#F8FAFC'),
             borderColor:
               selectedInfo.stageTone === 'transfer'
-                ? '#FDE68A'
+                ? (isDark ? 'rgba(245, 158, 11, 0.45)' : '#FDE68A')
                 : selectedInfo.stageTone === 'nursery'
-                ? '#BBF7D0'
+                ? (isDark ? 'rgba(52, 211, 153, 0.45)' : '#BBF7D0')
                 : selectedInfo.stageTone === 'growout'
-                ? '#BFDBFE'
+                ? (isDark ? 'rgba(96, 165, 250, 0.45)' : '#BFDBFE')
                 : selectedInfo.stageTone === 'upcoming'
-                ? '#E5E7EB'
-                : '#E2E8F0',
+                ? (isDark ? 'rgba(255, 255, 255, 0.15)' : '#E5E7EB')
+                : (isDark ? 'rgba(255, 255, 255, 0.12)' : '#CBD5E1'),
+            boxShadow: isDark ? '0 4px 16px rgba(0, 0, 0, 0.3)' : '0 2px 8px rgba(15, 23, 42, 0.04)',
           }}
         >
           <div className="d-flex justify-content-between align-items-start flex-wrap gap-2">
             <div>
-              <div className="d-flex align-items-center gap-2 flex-wrap">
-                <span className="fw-bold text-dark fs-6">
+              <div className="d-flex align-items-center gap-2 flex-wrap mb-1">
+                <span className="calendar-date-title fw-bold fs-6" style={{ color: isDark ? '#FFFFFF' : '#0F172A' }}>
                   {new Date(selectedInfo.dateStr + 'T00:00:00').toLocaleDateString('en-US', {
                     weekday: 'short',
                     month: 'long',
@@ -683,20 +821,21 @@ export default function PondCycleCalendar({
                     style={{
                       backgroundColor:
                         selectedInfo.stageTone === 'transfer'
-                          ? '#FEF3C7'
+                          ? (isDark ? 'rgba(245, 158, 11, 0.28)' : '#FEF3C7')
                           : selectedInfo.stageTone === 'nursery'
-                          ? '#DCFCE7'
+                          ? (isDark ? 'rgba(16, 185, 129, 0.28)' : '#DCFCE7')
                           : selectedInfo.stageTone === 'growout'
-                          ? '#DBEAFE'
-                          : '#F3F4F6',
+                          ? (isDark ? 'rgba(59, 130, 246, 0.28)' : '#DBEAFE')
+                          : (isDark ? 'rgba(255, 255, 255, 0.1)' : '#F3F4F6'),
                       color:
                         selectedInfo.stageTone === 'transfer'
-                          ? '#B45309'
+                          ? (isDark ? '#FCD34D' : '#92400E')
                           : selectedInfo.stageTone === 'nursery'
-                          ? '#15803D'
+                          ? (isDark ? '#4ADE80' : '#14532D')
                           : selectedInfo.stageTone === 'growout'
-                          ? '#1D4ED8'
-                          : '#4B5563',
+                          ? (isDark ? '#93C5FD' : '#1E40AF')
+                          : (isDark ? '#CBD5E1' : '#334155'),
+                      border: isDark ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid rgba(0, 0, 0, 0.06)',
                       fontSize: '0.78rem',
                     }}
                   >
@@ -708,41 +847,44 @@ export default function PondCycleCalendar({
                   style={{
                     backgroundColor:
                       selectedInfo.stageTone === 'transfer'
-                        ? '#F59E0B'
+                        ? '#D97706'
                         : selectedInfo.stageTone === 'nursery'
-                        ? '#10B981'
+                        ? '#059669'
                         : selectedInfo.stageTone === 'growout'
-                        ? '#3B82F6'
-                        : '#6B7280',
-                    color: '#fff',
+                        ? '#2563EB'
+                        : '#4B5563',
+                    color: '#ffffff',
                     fontSize: '0.72rem',
+                    letterSpacing: '0.03em',
                   }}
                 >
                   {selectedInfo.stage}
                 </span>
               </div>
-              <p className="text-muted small mb-0 mt-1" style={{ fontSize: '0.82rem' }}>
+              <p className="calendar-feed-desc small mb-0 mt-1" style={{ fontSize: '0.84rem', color: isDark ? '#CBD5E1' : '#334155' }}>
                 {selectedInfo.feedDesc}
               </p>
             </div>
 
-            <div className="text-end">
-              <span className="extra-small text-muted d-block text-uppercase fw-bold">Required Formulation</span>
+            <div className="text-start text-sm-end mt-2 mt-sm-0">
+              <span className="extra-small d-block text-uppercase fw-bold" style={{ color: isDark ? '#94A3B8' : '#475569', letterSpacing: '0.04em' }}>
+                Required Formulation
+              </span>
               <strong
-                className="fs-6"
+                className="fs-6 fw-bold"
                 style={{
                   color:
                     selectedInfo.feedType === 'Starter'
-                      ? '#047857'
+                      ? (isDark ? '#34D399' : '#047857')
                       : selectedInfo.feedType === 'Grower'
-                      ? '#1D4ED8'
-                      : '#6B7280',
+                      ? (isDark ? '#60A5FA' : '#1D4ED8')
+                      : (isDark ? '#94A3B8' : '#475569'),
                 }}
               >
                 {selectedInfo.stageTone === 'upcoming'
                   ? 'Upcoming (No Records Yet)'
                   : selectedInfo.feedType !== 'None' && selectedInfo.feedType !== 'Upcoming'
-                  ? `Tateh - ${selectedInfo.feedType}`
+                  ? `Tateh – ${selectedInfo.feedType}`
                   : 'No Feed Scheduled'}
               </strong>
             </div>
@@ -750,28 +892,61 @@ export default function PondCycleCalendar({
 
           {/* Detailed Feeding Slots Breakdown on this Date */}
           {selectedInfo.logs && selectedInfo.logs.length > 0 ? (
-            <div className="mt-3 pt-3 border-top">
+            <div className="mt-3 pt-3 border-top" style={{ borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.1)' }}>
               <div className="d-flex justify-content-between align-items-center mb-2.5 flex-wrap gap-2">
-                <div className="extra-small text-muted fw-bold text-uppercase d-flex align-items-center gap-1.5">
-                  <FaClock className="text-primary" size={12} />
+                <div className="extra-small fw-bold text-uppercase d-flex align-items-center gap-1.5" style={{ color: isDark ? '#CBD5E1' : '#334155', letterSpacing: '0.04em' }}>
+                  <FaClock className="text-primary flex-shrink-0" size={12} />
                   <span>Feeding Slots Breakdown ({selectedInfo.logs.length} of 5 slots logged):</span>
                 </div>
-                <div className="badge rounded-pill bg-white text-dark border px-3 py-1.5 shadow-xs fw-bold" style={{ fontSize: '0.78rem' }}>
-                  Total Daily Mass: <span className="text-primary font-mono fw-extrabold">{selectedInfo.totalDayKg.toFixed(2)} kg</span>
-                  <span className="text-muted ms-1 font-mono fw-normal">({Math.round(selectedInfo.totalDayGrams).toLocaleString()} g)</span>
+                <div
+                  className="badge rounded-pill border px-3 py-1.5 shadow-xs fw-bold d-inline-flex align-items-center gap-2"
+                  style={{
+                    backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                    color: isDark ? '#F1F5F9' : '#0F172A',
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.18)' : '#CBD5E1',
+                    fontSize: '0.8rem',
+                  }}
+                >
+                  <span style={{ color: isDark ? '#CBD5E1' : '#475569' }}>Total Daily Mass:</span>
+                  <span className="font-mono fw-extrabold" style={{ color: '#FC563C' }}>{selectedInfo.totalDayKg.toFixed(2)} kg</span>
+                  <span className="font-mono fw-normal" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>({Math.round(selectedInfo.totalDayGrams).toLocaleString()} g)</span>
                 </div>
               </div>
 
-              <div className="table-responsive rounded-3 bg-white shadow-xs admin-scrollable-table-4rows" style={{ overflowX: 'auto', maxWidth: '100%', maxHeight: 290, overflowY: 'auto', border: '1.5px solid #CBD5E1' }}>
-                <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.83rem', minWidth: '1050px', tableLayout: 'auto' }}>
-                  <thead className="table-light sticky-top">
-                    <tr className="text-muted extra-small text-uppercase">
-                      <th className="ps-3 py-2.5" style={{ width: '130px', whiteSpace: 'nowrap' }}>Time Slot</th>
-                      <th className="py-2.5" style={{ width: '160px', whiteSpace: 'nowrap' }}>Mass (Grams / Kg)</th>
-                      <th className="py-2.5" style={{ width: '150px', whiteSpace: 'nowrap' }}>Feed Formulation</th>
-                      <th className="py-2.5" style={{ width: '220px', whiteSpace: 'nowrap' }}>Vitamins &amp; Supplements</th>
-                      <th className="py-2.5" style={{ minWidth: '320px' }}>Notes / Status</th>
-                      <th className="pe-3 py-2.5" style={{ width: '150px', whiteSpace: 'nowrap' }}>Caretaker</th>
+              {/* Mobile scroll hint */}
+              <div className="d-block d-md-none text-end extra-small mb-1.5 fst-italic" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
+                Scroll horizontally to see all columns &rarr;
+              </div>
+
+              <div
+                className="table-responsive rounded-3 shadow-xs custom-scrollbar"
+                style={{
+                  overflowX: 'auto',
+                  maxWidth: '100%',
+                  maxHeight: 290,
+                  overflowY: 'auto',
+                  backgroundColor: isDark ? '#172A39' : '#FFFFFF',
+                  border: isDark ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid #CBD5E1',
+                }}
+              >
+                <table
+                  className="table align-middle mb-0"
+                  style={{
+                    fontSize: '0.83rem',
+                    minWidth: '780px',
+                    tableLayout: 'auto',
+                    backgroundColor: isDark ? '#172A39' : '#FFFFFF',
+                    color: isDark ? '#F1F5F9' : '#0F172A',
+                  }}
+                >
+                  <thead style={{ backgroundColor: isDark ? '#1E293B' : '#F8FAFC' }}>
+                    <tr className="extra-small text-uppercase">
+                      <th className="ps-3 py-2.5" style={{ width: '130px', whiteSpace: 'nowrap', backgroundColor: isDark ? '#1E293B' : '#F8FAFC', color: isDark ? '#94A3B8' : '#64748B', borderBottom: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #E2E8F0' }}>Time Slot</th>
+                      <th className="py-2.5" style={{ width: '160px', whiteSpace: 'nowrap', backgroundColor: isDark ? '#1E293B' : '#F8FAFC', color: isDark ? '#94A3B8' : '#64748B', borderBottom: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #E2E8F0' }}>Mass (Grams / Kg)</th>
+                      <th className="py-2.5" style={{ width: '150px', whiteSpace: 'nowrap', backgroundColor: isDark ? '#1E293B' : '#F8FAFC', color: isDark ? '#94A3B8' : '#64748B', borderBottom: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #E2E8F0' }}>Feed Formulation</th>
+                      <th className="py-2.5" style={{ width: '200px', whiteSpace: 'nowrap', backgroundColor: isDark ? '#1E293B' : '#F8FAFC', color: isDark ? '#94A3B8' : '#64748B', borderBottom: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #E2E8F0' }}>Vitamins &amp; Supplements</th>
+                      <th className="py-2.5" style={{ minWidth: '220px', backgroundColor: isDark ? '#1E293B' : '#F8FAFC', color: isDark ? '#94A3B8' : '#64748B', borderBottom: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #E2E8F0' }}>Notes / Status</th>
+                      <th className="pe-3 py-2.5" style={{ width: '140px', whiteSpace: 'nowrap', backgroundColor: isDark ? '#1E293B' : '#F8FAFC', color: isDark ? '#94A3B8' : '#64748B', borderBottom: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #E2E8F0' }}>Caretaker</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -781,41 +956,81 @@ export default function PondCycleCalendar({
                       const isZeroFeed = kg === 0 && g === 0;
 
                       return (
-                        <tr key={log.id || i}>
-                          <td className="ps-3">
-                            <span className="badge bg-light text-dark border rounded-pill px-2.5 py-1 font-mono fw-bold">
+                        <tr
+                          key={log.id || i}
+                          style={{
+                            borderBottom: isDark ? '1px solid rgba(255, 255, 255, 0.06)' : '1px solid #F1F5F9',
+                            backgroundColor: isDark ? '#172A39' : '#FFFFFF',
+                          }}
+                        >
+                          <td className="ps-3" style={{ backgroundColor: 'transparent' }}>
+                            <span
+                              className="badge border rounded-pill px-2.5 py-1 font-mono fw-bold d-inline-flex align-items-center"
+                              style={{
+                                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9',
+                                color: isDark ? '#FFFFFF' : '#0F172A',
+                                borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : '#E2E8F0',
+                              }}
+                            >
                               <FaClock className="text-primary me-1" size={10} />
                               {log.feeding_time}
                             </span>
                           </td>
-                          <td>
+                          <td style={{ backgroundColor: 'transparent' }}>
                             {isZeroFeed ? (
-                              <span className="badge bg-light text-muted border">0 g (No feed logged)</span>
+                              <span
+                                className="badge border"
+                                style={{
+                                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#F8FAFC',
+                                  color: isDark ? '#94A3B8' : '#64748B',
+                                  borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#E2E8F0',
+                                }}
+                              >
+                                0 g (No feed logged)
+                              </span>
                             ) : (
                               <div>
-                                <strong className="text-dark font-mono">{g.toLocaleString()} g</strong>
-                                <span className="text-primary extra-small font-mono fw-semibold ms-1">({kg.toFixed(2)} kg)</span>
+                                <strong className="font-mono" style={{ color: isDark ? '#FFFFFF' : '#0F172A' }}>{g.toLocaleString()} g</strong>
+                                <span className="extra-small font-mono fw-semibold ms-1" style={{ color: '#FC563C' }}>({kg.toFixed(2)} kg)</span>
                               </div>
                             )}
                           </td>
-                          <td>
-                            <span className="fw-semibold text-dark">{log.feed_type || log.product_code || 'Starter'}</span>
+                          <td style={{ backgroundColor: 'transparent' }}>
+                            <span className="fw-semibold" style={{ color: isDark ? '#F1F5F9' : '#0F172A' }}>
+                              {log.feed_type || log.product_code || 'Starter'}
+                            </span>
                           </td>
-                          <td>
+                          <td style={{ backgroundColor: 'transparent' }}>
                             {log.vitamin_name && log.vitamin_name !== 'None' ? (
-                              <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-2.5 py-1 extra-small fw-bold d-inline-flex align-items-center gap-1">
+                              <span
+                                className="badge rounded-pill px-2.5 py-1 extra-small fw-bold d-inline-flex align-items-center gap-1"
+                                style={{
+                                  backgroundColor: isDark ? 'rgba(16, 185, 129, 0.2)' : '#ECFDF5',
+                                  color: isDark ? '#34D399' : '#047857',
+                                  border: isDark ? '1px solid rgba(52, 211, 153, 0.35)' : '1px solid #A7F3D0',
+                                }}
+                              >
                                 <FaCapsules size={9} />
                                 {log.vitamin_name}
                               </span>
                             ) : (
-                              <span className="text-muted extra-small">None</span>
+                              <span className="extra-small" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>None</span>
                             )}
                           </td>
-                          <td>
-                            {renderStructuredNotes(log.notes, isZeroFeed)}
+                          <td style={{ backgroundColor: 'transparent' }}>
+                            {renderStructuredNotes(log.notes, isZeroFeed, isDark)}
                           </td>
-                          <td className="pe-3">
-                            <span className="badge bg-light text-dark border extra-small">{log.recorded_by_name || log.recorded_by || 'Caretaker'}</span>
+                          <td className="pe-3" style={{ backgroundColor: 'transparent' }}>
+                            <span
+                              className="badge border extra-small"
+                              style={{
+                                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9',
+                                color: isDark ? '#CBD5E1' : '#475569',
+                                borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : '#E2E8F0',
+                              }}
+                            >
+                              {log.recorded_by_name || log.recorded_by || 'Caretaker'}
+                            </span>
                           </td>
                         </tr>
                       );
@@ -825,7 +1040,7 @@ export default function PondCycleCalendar({
               </div>
             </div>
           ) : (
-            <div className="mt-3 pt-2 border-top text-center text-muted extra-small py-2">
+            <div className="mt-3 pt-2 border-top text-center extra-small py-2" style={{ borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#E2E8F0', color: isDark ? '#94A3B8' : '#64748B' }}>
               No feeding records logged for {selectedInfo.dateStr} yet.
             </div>
           )}

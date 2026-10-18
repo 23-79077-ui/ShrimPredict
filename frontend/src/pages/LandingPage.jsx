@@ -163,8 +163,8 @@ export default function LandingPage() {
       if (isManualScroll.current) return;
 
       const sections = ['home', 'problem-solution', 'features', 'how-it-works', 'contact'];
-      const headerEl = document.querySelector('.landing-header');
-      const headerHeight = headerEl ? headerEl.offsetHeight : 80;
+      const headerInner = document.querySelector('.landing-header-inner');
+      const headerHeight = headerInner ? headerInner.offsetHeight : 54;
       const scrollPosition = window.scrollY + headerHeight + 40;
 
       for (const sectionId of sections) {
@@ -187,27 +187,32 @@ export default function LandingPage() {
   const scrollToSection = (id) => {
     setActiveNav(id);
     isManualScroll.current = true;
+    setMobileMenuOpen(false);
 
-    const element = document.getElementById(id);
-    if (element) {
-      if (id === 'home') {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      } else {
-        const headerEl = document.querySelector('.landing-header');
-        const headerHeight = headerEl ? headerEl.offsetHeight : 80;
-        const elementPosition = element.getBoundingClientRect().top;
-        const offsetPosition = elementPosition + window.pageYOffset - (headerHeight + 20);
-
-        window.scrollTo({
-          top: Math.max(0, offsetPosition),
-          behavior: 'smooth',
-        });
-      }
-    }
-
+    // Wait for the mobile drawer to unmount so document layout recalculates accurately
     setTimeout(() => {
-      isManualScroll.current = false;
-    }, 800);
+      const element = document.getElementById(id);
+      if (element) {
+        if (id === 'home') {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+          // Measure actual compact top header bar height (independent of drawer)
+          const headerInner = document.querySelector('.landing-header-inner');
+          const headerHeight = headerInner ? headerInner.offsetHeight : 54;
+          const elementRect = element.getBoundingClientRect();
+          const targetY = elementRect.top + window.pageYOffset - headerHeight;
+
+          window.scrollTo({
+            top: Math.max(0, targetY),
+            behavior: 'smooth',
+          });
+        }
+      }
+
+      setTimeout(() => {
+        isManualScroll.current = false;
+      }, 800);
+    }, 60);
   };
 
   return (
@@ -238,6 +243,7 @@ export default function LandingPage() {
             <img
               src="/shrimp_predict_logo.png"
               alt="ShrimpPredict Official Logo"
+              className="landing-brand-logo"
               style={{
                 height: '38px',
                 width: 'auto',
@@ -247,7 +253,7 @@ export default function LandingPage() {
             />
             <div className="d-flex flex-column justify-content-center flex-shrink-0" style={{ whiteSpace: 'nowrap' }}>
               <span
-                className="fw-extrabold tracking-tight d-block"
+                className="landing-brand-title fw-extrabold tracking-tight d-block"
                 style={{
                   fontSize: '1.25rem',
                   letterSpacing: '-0.02em',
@@ -260,7 +266,7 @@ export default function LandingPage() {
                 Shrimp<span style={{ color: '#FC563C' }}>Predict</span>
               </span>
               <span
-                className="d-block"
+                className="landing-brand-sub d-block"
                 style={{
                   fontSize: '0.62rem',
                   fontWeight: 800,
@@ -317,7 +323,7 @@ export default function LandingPage() {
               <button
                 type="button"
                 onClick={handleResetToAuto}
-                className="btn btn-sm rounded-pill d-inline-flex align-items-center gap-1.5 shadow-xs px-2.5 py-1 flex-shrink-0"
+                className="btn btn-sm rounded-pill d-none d-md-inline-flex align-items-center gap-1.5 shadow-xs px-2.5 py-1 flex-shrink-0"
                 style={{
                   backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1EBE6',
                   border: isDark ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid #D5CEC8',
@@ -384,7 +390,7 @@ export default function LandingPage() {
 
             <button
               onClick={() => navigate('/login')}
-              className="btn btn-sm rounded-pill px-3 py-1.5 fw-bold d-flex align-items-center gap-1.5 shadow-xs flex-shrink-0"
+              className="btn btn-sm rounded-pill px-3 py-1.5 fw-bold d-none d-md-flex align-items-center gap-1.5 shadow-xs flex-shrink-0"
               style={{
                 backgroundColor: '#FC563C',
                 color: '#FFFFFF',
@@ -420,13 +426,79 @@ export default function LandingPage() {
         {/* Mobile / Narrow Screen Dropdown Menu */}
         {mobileMenuOpen && (
           <div
-            className="d-lg-none border-top px-3 py-2.5 shadow-sm"
+            className="d-lg-none border-top px-3 py-3 shadow-lg landing-mobile-drawer"
             style={{
               backgroundColor: isDark ? '#172A39' : '#FFFFFF',
               borderColor: isDark ? 'rgba(110, 117, 117, 0.35)' : 'rgba(110, 117, 117, 0.2)',
             }}
           >
-            <div className="d-flex flex-column gap-1">
+            {/* Repurposed Theme Control: 3-Option Segmented Switcher (Light, Dark, Auto) */}
+            <div
+              className="d-flex align-items-center p-1 rounded-pill mb-2.5 w-100 shadow-xs"
+              style={{
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1EBE6',
+                border: isDark ? '1px solid rgba(255, 255, 255, 0.18)' : '1px solid #D5CEC8',
+                gap: '3px',
+              }}
+            >
+              {/* Option 1: Light */}
+              <button
+                type="button"
+                onClick={() => setManualTheme('light')}
+                className="btn btn-sm rounded-pill flex-fill d-flex align-items-center justify-content-center gap-1.5 py-1.5 fw-bold border-0 transition-all"
+                style={{
+                  backgroundColor: (!isAuto && !isDark) ? '#FC563C' : 'transparent',
+                  color: (!isAuto && !isDark) ? '#FFFFFF' : (isDark ? '#CBD5E1' : '#475569'),
+                  fontSize: '0.78rem',
+                  boxShadow: (!isAuto && !isDark) ? '0 2px 6px rgba(252, 86, 60, 0.35)' : 'none',
+                  transition: 'all 0.2s ease',
+                  cursor: 'pointer',
+                }}
+              >
+                <FaSun size={12} style={{ color: (!isAuto && !isDark) ? '#FFFFFF' : '#F59E0B' }} />
+                <span>{t('common.light', 'Light')}</span>
+              </button>
+
+              {/* Option 2: Dark */}
+              <button
+                type="button"
+                onClick={() => setManualTheme('dark')}
+                className="btn btn-sm rounded-pill flex-fill d-flex align-items-center justify-content-center gap-1.5 py-1.5 fw-bold border-0 transition-all"
+                style={{
+                  backgroundColor: (!isAuto && isDark) ? '#FC563C' : 'transparent',
+                  color: (!isAuto && isDark) ? '#FFFFFF' : (isDark ? '#CBD5E1' : '#475569'),
+                  fontSize: '0.78rem',
+                  boxShadow: (!isAuto && isDark) ? '0 2px 6px rgba(252, 86, 60, 0.35)' : 'none',
+                  transition: 'all 0.2s ease',
+                  cursor: 'pointer',
+                }}
+              >
+                <FaMoon size={11} style={{ color: (!isAuto && isDark) ? '#FFFFFF' : (isDark ? '#93C5FD' : '#172A39') }} />
+                <span>{t('common.dark', 'Dark')}</span>
+              </button>
+
+              {/* Option 3: Auto */}
+              <button
+                type="button"
+                onClick={handleResetToAuto}
+                className="btn btn-sm rounded-pill flex-fill d-flex align-items-center justify-content-center gap-1.5 py-1.5 fw-bold border-0 transition-all"
+                style={{
+                  backgroundColor: isAuto ? '#FC563C' : 'transparent',
+                  color: isAuto ? '#FFFFFF' : (isDark ? '#CBD5E1' : '#475569'),
+                  fontSize: '0.78rem',
+                  boxShadow: isAuto ? '0 2px 6px rgba(252, 86, 60, 0.35)' : 'none',
+                  transition: 'all 0.2s ease',
+                  cursor: 'pointer',
+                }}
+                title={t('common.autoSchedule', 'Auto Day/Night Mode (6 AM–6 PM Light, 6 PM–6 AM Dark)')}
+              >
+                <FaClock size={11} style={{ color: isAuto ? '#FFFFFF' : '#FC563C' }} />
+                <span>{t('common.auto', 'Auto')}</span>
+              </button>
+            </div>
+
+            {/* Mobile Navigation Links */}
+            <div className="d-flex flex-column gap-1 mb-2.5">
               {['home', 'problem-solution', 'features', 'how-it-works', 'contact'].map((id) => (
                 <button
                   key={id}
@@ -436,7 +508,7 @@ export default function LandingPage() {
                   }}
                   className="btn text-start rounded-pill px-3 py-2 fw-bold transition-all"
                   style={{
-                    background: activeNav === id ? '#FC563C' : 'transparent',
+                    background: activeNav === id ? '#FC563C' : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)'),
                     color: activeNav === id ? '#FFFFFF' : (isDark ? '#FFFFFF' : '#172A39'),
                     fontSize: '0.86rem',
                     border: 'none',
@@ -453,6 +525,43 @@ export default function LandingPage() {
                     : t('nav.contact', 'Contact')}
                 </button>
               ))}
+            </div>
+
+            {/* Direct Portal Access (Caretaker & Admin) */}
+            <div className="d-flex gap-2 pt-1">
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  navigate('/login?type=caretaker');
+                }}
+                className="btn flex-fill rounded-pill py-2.5 fw-bold d-flex align-items-center justify-content-center gap-1.5 shadow-xs"
+                style={{
+                  backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#FFFFFF',
+                  color: isDark ? '#FFFFFF' : '#172A39',
+                  border: isDark ? '1px solid rgba(255,255,255,0.2)' : '1px solid #6E7575',
+                  fontSize: '0.84rem',
+                  cursor: 'pointer',
+                }}
+              >
+                <span>{isFilipino ? 'Tagapag-alaga' : 'Caretaker'}</span> <FaArrowRight size={10} style={{ color: '#FC563C' }} />
+              </button>
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  navigate('/login?type=admin');
+                }}
+                className="btn flex-fill rounded-pill py-2.5 fw-bold d-flex align-items-center justify-content-center gap-1.5 shadow-xs"
+                style={{
+                  backgroundColor: '#FC563C',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  fontSize: '0.84rem',
+                  boxShadow: '0 2px 8px rgba(252, 86, 60, 0.35)',
+                  cursor: 'pointer',
+                }}
+              >
+                <span>Admin</span> <FaArrowRight size={10} />
+              </button>
             </div>
           </div>
         )}
@@ -471,17 +580,17 @@ export default function LandingPage() {
               <div className="col-lg-6">
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
                   {/* THESIS TITLE */}
-                  <h1 className="display-5 fw-extrabold text-white mb-3 lh-sm">
+                  <h1 className="hero-title display-5 fw-extrabold text-white mb-2 mb-sm-3 lh-sm">
                     Shrimp<span style={{ color: '#FC563C' }}>Predict</span>:{' '}
                     <span style={{ color: '#E2E8F0' }}>
                       {isFilipino ? 'Sistema ng Pagsubaybay sa Pakain at Pagsusuri ng Sakit ng Sugpo' : 'Shrimp Feed Monitoring and Disease Detection System'}
                     </span>{' '}
-                    <span className="d-block fs-3 fw-bold mt-2" style={{ color: '#E9E4E0' }}>
+                    <span className="hero-subtitle-tag d-block fs-3 fw-bold mt-1.5 mt-sm-2" style={{ color: '#E9E4E0' }}>
                       {isFilipino ? 'Gamit ang Image Processing at AI' : 'Utilizing Image Processing'}
                     </span>
                   </h1>
 
-                  <p className="hero-copy lead mb-4 fw-normal" style={{ maxWidth: '580px', color: '#E9E4E0' }}>
+                  <p className="hero-copy lead mb-3 mb-sm-4 fw-normal" style={{ maxWidth: '580px', color: '#E9E4E0' }}>
                     {isFilipino
                       ? 'Pinapalakas ang mga tagapag-alaga at may-ari ng palaisdaan gamit ang real-time na pagsubaybay sa pakain, awtomatikong pagtataya sa ani, at mabilisang pagsusuri ng White Spot Disease (WSD) gamit ang AI at image processing.'
                       : 'Empowering shrimp caretakers and farm operators with real-time digital feed monitoring, automated harvest yield predictions, and instant AI-powered White Spot Disease (WSD) diagnosis via image processing.'}
@@ -490,7 +599,7 @@ export default function LandingPage() {
                   <div className="d-flex flex-wrap gap-3 mb-2">
                     <button
                       onClick={() => navigate('/login')}
-                      className="btn btn-lg fw-extrabold d-flex align-items-center gap-2 px-4 py-3 shadow rounded-3 border-0"
+                      className="btn btn-lg fw-extrabold d-flex align-items-center gap-2 px-4 py-2.5 py-sm-3 shadow rounded-3 border-0 hero-cta-btn"
                       style={{
                         backgroundColor: '#FC563C',
                         color: '#FFFFFF',
@@ -510,7 +619,7 @@ export default function LandingPage() {
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.6, delay: 0.2 }}
-                  className="position-relative d-flex flex-column align-items-center justify-content-center p-4 p-md-5 rounded-4 shadow-lg"
+                  className="hero-showcase-box position-relative d-flex flex-column align-items-center justify-content-center p-3 p-md-5 rounded-4 shadow-lg"
                   style={{
                     background: 'radial-gradient(circle at center, rgba(252, 86, 60, 0.16) 0%, rgba(23, 42, 57, 0.85) 75%)',
                     border: isDark ? '1px solid rgba(110, 117, 117, 0.4)' : 'none',
@@ -579,7 +688,7 @@ export default function LandingPage() {
                     <motion.div
                       whileHover={{ y: -6 }}
                       transition={{ duration: 0.25 }}
-                      className="card h-100 shadow-sm rounded-4 p-4 position-relative overflow-hidden transition-all"
+                      className="card h-100 shadow-sm rounded-4 p-3 p-sm-4 position-relative overflow-hidden transition-all"
                       style={{
                         backgroundColor: isDark ? '#1B2F3F' : '#FFFFFF',
                         border: isDark ? '1.5px solid rgba(110, 117, 117, 0.4)' : '1.5px solid #6E7575',
@@ -588,19 +697,29 @@ export default function LandingPage() {
                       {/* Top Accent Line */}
                       <div className="position-absolute top-0 start-0 end-0" style={{ height: 4, backgroundColor: '#FC563C' }} />
 
-                      <div className="d-flex align-items-center justify-content-between mb-3.5 border-bottom pb-3" style={{ borderColor: isDark ? 'rgba(110, 117, 117, 0.3)' : '#E9E4E0' }}>
-                        <div className="d-flex align-items-center gap-3">
-                          <div className="p-3 rounded-3 shadow-xs d-inline-flex align-items-center justify-content-center" style={{ backgroundColor: 'rgba(252, 86, 60, 0.15)' }}>
+                      <div
+                        className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3 border-bottom pb-3"
+                        style={{ borderColor: isDark ? 'rgba(110, 117, 117, 0.3)' : '#E9E4E0' }}
+                      >
+                        <div className="d-flex align-items-center gap-2.5 flex-shrink-0">
+                          <div
+                            className="p-2 p-sm-2.5 rounded-3 shadow-xs d-inline-flex align-items-center justify-content-center flex-shrink-0"
+                            style={{ backgroundColor: 'rgba(252, 86, 60, 0.15)' }}
+                          >
                             {item.icon}
                           </div>
-                          <h4 className="fw-bold mb-0 fs-5" style={{ color: isDark ? '#FFFFFF' : '#172A39' }}>{itemTitle}</h4>
+                          <h4 className="fw-bold mb-0 fs-5 text-nowrap" style={{ color: isDark ? '#FFFFFF' : '#172A39' }}>{itemTitle}</h4>
                         </div>
                         <span
-                          className="badge extra-small px-3 py-1.5 rounded-pill fw-bold"
+                          className="badge rounded-pill fw-bold"
                           style={{
                             backgroundColor: isDark ? '#12202C' : '#E9E4E0',
                             color: isDark ? '#E9E4E0' : '#172A39',
                             border: isDark ? '1px solid rgba(110, 117, 117, 0.4)' : '1px solid #6E7575',
+                            fontSize: '0.72rem',
+                            padding: '0.3rem 0.65rem',
+                            whiteSpace: 'nowrap',
+                            maxWidth: '100%',
                           }}
                         >
                           {itemBadge}
@@ -738,7 +857,7 @@ export default function LandingPage() {
               </p>
             </div>
 
-            <div className="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-2.5 justify-content-center align-items-stretch">
+            <div className="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-2 justify-content-center align-items-stretch" style={{ rowGap: '0.65rem' }}>
               {steps.map((s, idx) => {
                 const stepTitles = [
                   t('landing.step1Title'),
@@ -777,9 +896,9 @@ export default function LandingPage() {
                       <div className="position-absolute top-0 start-0 end-0" style={{ height: 3, backgroundColor: '#FC563C' }} />
 
                       <div className="card-body d-flex flex-column p-0">
-                        <div className="d-flex align-items-center justify-content-between w-100 mb-2.5">
+                        <div className="d-flex align-items-center justify-content-between w-100 mb-3" style={{ marginBottom: '14px' }}>
                           <span
-                            className="badge px-2 py-1 rounded-pill tiny fw-bold"
+                            className="badge px-2.5 py-1 rounded-pill tiny fw-bold"
                             style={{
                               backgroundColor: isDark ? '#12202C' : '#E9E4E0',
                               color: isDark ? '#E9E4E0' : '#172A39',
@@ -948,7 +1067,7 @@ export default function LandingPage() {
                 ? 'Palakasin ang mga tagapag-alaga gamit ang mabilisang tala ng pakain at AI computer vision upang maiwasan ang sakit at mapataas ang ani.'
                 : 'Empower caretakers with instant feed logging and computer vision AI to prevent disease outbreaks and maximize harvest yields.'}
             </p>
-            <div className="d-flex justify-content-center gap-3">
+            <div className="d-flex flex-column flex-sm-row justify-content-center gap-3" style={{ gap: '14px' }}>
               <button
                 onClick={() => navigate('/login?type=caretaker')}
                 className="btn btn-lg fw-bold px-4 py-3 rounded-3 shadow border-0"

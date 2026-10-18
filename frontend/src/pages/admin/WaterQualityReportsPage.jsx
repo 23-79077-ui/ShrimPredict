@@ -540,59 +540,54 @@ export default function WaterQualityReportsPage() {
   };
 
   return (
-    <div className="container-fluid px-3 px-xl-4 py-3">
-      {/* 1. HERO HEADER */}
-      <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-        <div>
-          <div className="d-flex align-items-center gap-2 mb-1">
-            <span
-              className="badge rounded-pill fw-bold extra-small px-2.5 py-1 text-uppercase"
-              style={{ backgroundColor: '#E0F2FE', color: '#0284C7', border: '1px solid #BAE6FD' }}
-            >
-              {t('Hydro-Telemetry Suite')}
-            </span>
-            <span className="text-muted extra-small">
-              {summary.total} {t('Tests Verified')} • {summary.uniquePonds} {t('Monitored Ponds')}
-            </span>
-          </div>
-          <h3 className="fw-extrabold mb-1 tracking-tight text-dark" style={{ fontSize: '1.45rem' }}>
+    <div className="pb-5" style={{ fontFamily: "'Poppins', sans-serif" }}>
+      {/* 1. TITLE HEADER ROW */}
+      <div className="d-flex align-items-center justify-content-between flex-wrap gap-2.5 mb-3">
+        <div className="d-flex align-items-center gap-2.5">
+          <h3 className="fw-extrabold mb-0 tracking-tight text-dark" style={{ fontSize: '1.48rem', letterSpacing: '-0.02em' }}>
             {t('Water Quality Reports')}
           </h3>
-          <p className="text-secondary small mb-0" style={{ maxWidth: '780px' }}>
-            {t('Comprehensive telemetry stream and laboratory testing logs for Dissolved Oxygen, Temperature, pH, and Salinity across all ponds.')}
-          </p>
+          <span
+            className="badge rounded-pill d-inline-flex align-items-center gap-1.5 px-2.5 py-1"
+            style={{
+              backgroundColor: '#ECFDF5',
+              color: '#059669',
+              border: '1px solid #A7F3D0',
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              letterSpacing: '0.02em',
+            }}
+          >
+            <span className="pulse-dot-green" />
+            {t('• Telemetry Active')}
+          </span>
         </div>
 
-        {/* Action Buttons */}
+        {/* Action Controls: Log Water Test, Refresh & CSV Export */}
         <div className="d-flex align-items-center gap-2 flex-wrap">
           <button
             type="button"
-            className="btn btn-sm btn-understated-feed shadow-2xs"
-            onClick={loadRecords}
-            title={t('Refresh Data')}
-          >
-            <FaSync size={11} className={loading ? 'fa-spin me-1.5' : 'me-1.5'} />
-            <span>{t('Refresh Data')}</span>
-          </button>
-
-          <button
-            type="button"
-            className="btn btn-sm btn-understated-feed shadow-2xs"
-            onClick={handleExportCSV}
-            title={t('Export CSV')}
-          >
-            <FaFileCsv size={13} className="me-1.5 text-success" />
-            <span>{t('Export CSV')}</span>
-          </button>
-
-          <button
-            type="button"
-            className="btn btn-sm text-white shadow-sm d-inline-flex align-items-center gap-1.5 px-3 py-1.5 rounded-3 fw-bold"
-            style={{ backgroundColor: '#0284C7' }}
+            className="btn btn-sm btn-understated-feed d-inline-flex align-items-center gap-1.5 px-3.5 py-2 shadow-2xs hover-shadow"
             onClick={() => setShowLogModal(true)}
           >
-            <FaPlus size={11} />
-            <span>{t('Log Water Test')}</span>
+            <FaPlus size={11} /> {t('Log Water Test')}
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-sm minimal-filter-control d-inline-flex align-items-center gap-1.5 px-3 py-2 shadow-2xs hover-shadow"
+            onClick={loadRecords}
+            disabled={loading}
+          >
+            <FaSync size={11} className={loading ? 'fa-spin' : ''} /> {t('Refresh')}
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-sm minimal-filter-control d-inline-flex align-items-center gap-1.5 px-3.5 py-2 shadow-2xs hover-shadow"
+            onClick={handleExportCSV}
+          >
+            <FaFileCsv size={12} className="text-secondary" /> {t('Export CSV')}
           </button>
         </div>
       </div>
@@ -927,18 +922,21 @@ export default function WaterQualityReportsPage() {
         />
 
         {/* Scrollable Table matching UI Specification */}
-        <div className="table-responsive admin-scrollable-table-4rows-lg rounded-3 border" style={{ maxHeight: '440px', overflowY: 'auto', borderColor: '#E2E8F0' }}>
-          <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.82rem', width: '100%' }}>
-            <thead className="sticky-top table-light border-bottom" style={{ borderColor: '#E2E8F0' }}>
+        <div className="d-block d-md-none text-center text-muted extra-small mb-1 font-monospace" style={{ fontSize: '0.68rem' }}>
+          {t('← Swipe table horizontally to see full details →')}
+        </div>
+        <div className="table-responsive admin-scrollable-table-4rows rounded-3 border" style={{ maxHeight: 290, overflowY: 'auto', overflowX: 'auto', WebkitOverflowScrolling: 'touch', borderColor: '#E2E8F0' }}>
+          <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.82rem', minWidth: 720 }}>
+            <thead className="table-light border-bottom" style={{ borderColor: '#E2E8F0' }}>
               <tr className="text-secondary extra-small text-uppercase fw-bold" style={{ letterSpacing: '0.03em' }}>
-                <th className="py-2.5 ps-3" style={{ width: '14%' }}>{t('Pond Name')}</th>
-                <th className="py-2.5" style={{ width: '13%' }}>{t('Temperature')}</th>
-                <th className="py-2.5" style={{ width: '12%' }}>{t('pH Level')}</th>
-                <th className="py-2.5" style={{ width: '13%' }}>{t('DO (Dissolved Oxygen)')}</th>
-                <th className="py-2.5" style={{ width: '12%' }}>{t('Salinity')}</th>
-                <th className="py-2.5" style={{ width: '13%' }}>{t('Status')}</th>
-                <th className="py-2.5" style={{ width: '14%' }}>{t('Date Tested')}</th>
-                <th className="py-2.5 pe-3 text-end" style={{ width: '9%' }}>{t('Actions')}</th>
+                <th className="py-2.5 ps-3" style={{ minWidth: 90 }}>{t('Pond Name')}</th>
+                <th className="py-2.5" style={{ minWidth: 85 }}>{t('Temperature')}</th>
+                <th className="py-2.5" style={{ minWidth: 75 }}>{t('pH Level')}</th>
+                <th className="py-2.5" style={{ minWidth: 100 }}>{t('DO (Dissolved Oxygen)')}</th>
+                <th className="py-2.5" style={{ minWidth: 75 }}>{t('Salinity')}</th>
+                <th className="py-2.5" style={{ minWidth: 85 }}>{t('Status')}</th>
+                <th className="py-2.5" style={{ minWidth: 100 }}>{t('Date Tested')}</th>
+                <th className="py-2.5 pe-3 text-end" style={{ minWidth: 75 }}>{t('Actions')}</th>
               </tr>
             </thead>
             <tbody>

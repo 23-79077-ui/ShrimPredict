@@ -1293,11 +1293,11 @@ export default function MyPondPage() {
       {/* 1. TITLE HEADER */}
       <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
         <div>
-          <div className="d-flex align-items-center gap-2">
+          <div className="d-flex align-items-center gap-2 flex-wrap">
             <h3 className="fw-extrabold text-dark mb-0 tracking-tight" style={{ letterSpacing: '-0.02em' }}>
               {isFilipino ? `${selectedPond?.pond_name || t('My Pond')} — Operasyon` : `${selectedPond?.pond_name || 'My Pond'} Operations`}
             </h3>
-            <span className="badge rounded-pill extra-small px-2.5 py-1 fw-bold bg-white border text-secondary d-flex align-items-center gap-1.5 shadow-2xs">
+            <span className="badge rounded-pill extra-small px-2.5 py-1 fw-bold bg-white border text-secondary d-inline-flex align-items-center gap-1.5 shadow-2xs">
               <span className="pulse-dot-green"></span>
               {t('hero.myPondBadge', 'Daily Pond Operations & Feeding')}
             </span>
@@ -1328,7 +1328,7 @@ export default function MyPondPage() {
       </div>
 
       {/* 2. UNIFIED FILTER TOOLBAR */}
-      <div className="unified-filter-toolbar mb-3">
+      <div className="unified-filter-toolbar mb-3 d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center justify-content-between gap-2.5">
         <div className="d-flex align-items-center gap-2 flex-wrap">
           <span className="extra-small fw-bold text-secondary text-uppercase tracking-wider">Date:</span>
           <input
@@ -1336,32 +1336,32 @@ export default function MyPondPage() {
             className="minimal-filter-control fw-semibold"
             value={todayDateStr}
             onChange={(event) => setRecordDate(event.target.value || defaultDateStr)}
-            style={{ width: 140 }}
+            style={{ width: 'auto', minWidth: 130 }}
             title="Filter ponds by date to inspect Nursery vs Grow-out stages"
           />
         </div>
 
-        <div className="d-flex align-items-center gap-1 bg-light p-1 rounded-3 border" style={{ borderColor: '#E2E8F0' }}>
+        <div className="chart-range-pill-container d-flex align-items-center gap-1 p-1 rounded-3 border w-100 w-sm-auto justify-content-between justify-content-sm-start">
           <button
             type="button"
-            className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold border-0 transition-all ${stageFilter === 'all' ? 'bg-white shadow-2xs text-dark' : 'text-muted'}`}
+            className={`btn btn-sm py-1 px-2.5 rounded-2 extra-small fw-bold transition-all flex-grow-1 flex-sm-grow-0 text-center ${stageFilter === 'all' ? 'btn-chart-range-active shadow-xs' : 'btn-chart-range-inactive'}`}
             onClick={() => setStageFilter('all')}
           >
-            All Ponds <span className="badge rounded-pill bg-light text-dark ms-1">{assignedPonds.length}</span>
+            All Ponds <span className="badge rounded-pill ms-1" style={{ backgroundColor: stageFilter === 'all' ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.08)', color: stageFilter === 'all' ? '#FFFFFF' : 'inherit' }}>{assignedPonds.length}</span>
           </button>
           <button
             type="button"
-            className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold border-0 transition-all ${stageFilter === 'nursery' ? 'bg-white shadow-2xs text-dark' : 'text-muted'}`}
+            className={`btn btn-sm py-1 px-2.5 rounded-2 extra-small fw-bold transition-all flex-grow-1 flex-sm-grow-0 text-center ${stageFilter === 'nursery' ? 'btn-chart-range-active shadow-xs' : 'btn-chart-range-inactive'}`}
             onClick={() => setStageFilter('nursery')}
           >
-            Nursery <span className="badge rounded-pill bg-light text-dark ms-1">{nurseryCount}</span>
+            Nursery <span className="badge rounded-pill ms-1" style={{ backgroundColor: stageFilter === 'nursery' ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.08)', color: stageFilter === 'nursery' ? '#FFFFFF' : 'inherit' }}>{nurseryCount}</span>
           </button>
           <button
             type="button"
-            className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold border-0 transition-all ${stageFilter === 'growout' ? 'bg-white shadow-2xs text-dark' : 'text-muted'}`}
+            className={`btn btn-sm py-1 px-2.5 rounded-2 extra-small fw-bold transition-all flex-grow-1 flex-sm-grow-0 text-center ${stageFilter === 'growout' ? 'btn-chart-range-active shadow-xs' : 'btn-chart-range-inactive'}`}
             onClick={() => setStageFilter('growout')}
           >
-            Grow-out <span className="badge rounded-pill bg-light text-dark ms-1">{growoutCount}</span>
+            Grow-out <span className="badge rounded-pill ms-1" style={{ backgroundColor: stageFilter === 'growout' ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.08)', color: stageFilter === 'growout' ? '#FFFFFF' : 'inherit' }}>{growoutCount}</span>
           </button>
         </div>
 
@@ -1492,8 +1492,9 @@ export default function MyPondPage() {
                 <span
                   className="badge rounded-pill px-2.5 py-0.5 fw-bold"
                   style={{
-                    backgroundColor: '#172A39',
-                    color: '#FFFFFF',
+                    backgroundColor: isDark ? 'rgba(252, 86, 60, 0.18)' : '#172A39',
+                    border: isDark ? '1px solid rgba(252, 86, 60, 0.35)' : 'none',
+                    color: isDark ? '#FC563C' : '#FFFFFF',
                     fontSize: '0.72rem',
                   }}
                 >
@@ -1745,7 +1746,7 @@ export default function MyPondPage() {
             }
           }}
         >
-          <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl" role="dialog" aria-modal="true">
+          <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl scan-report-modal-dialog" role="dialog" aria-modal="true">
             <div className="modal-content border-0 rounded-4">
               <div className="modal-header">
                 <div>
@@ -2305,9 +2306,9 @@ export default function MyPondPage() {
                 </div>
               </div>
 
-              <div className="table-responsive rounded-3 bg-white border" style={{ maxHeight: '290px', overflowY: 'auto', borderColor: '#E2E8F0' }}>
+              <div className="table-responsive admin-scrollable-table-4rows rounded-3 bg-white border" style={{ maxHeight: 290, overflowY: 'auto', borderColor: '#E2E8F0' }}>
                 <table className="table table-hover align-middle mb-0">
-                  <thead className="table-light sticky-top" style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+                  <thead className="table-light">
                     <tr>
                       <th className="py-2.5 px-3 text-uppercase extra-small fw-bold text-muted border-0">Time Slot</th>
                       <th className="py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Feed Amount</th>
@@ -2433,11 +2434,11 @@ export default function MyPondPage() {
           tabIndex="-1"
           style={{ backgroundColor: 'rgba(7, 23, 51, 0.85)', backdropFilter: 'blur(8px)', zIndex: 1070 }}
         >
-          <div className="modal-dialog modal-dialog-centered">
+          <div className="modal-dialog modal-dialog-centered scan-report-modal-dialog">
             <div className="modal-content border-0 rounded-4 overflow-hidden bg-white shadow-xl">
               <div
                 className="p-3.5 px-4 text-white d-flex justify-content-between align-items-center"
-                style={{ background: 'linear-gradient(135deg, #172A39 0%, #203A4F 100%)' }}
+                style={{ background: 'linear-gradient(135deg, #FC563C 0%, #E03E26 100%)' }}
               >
                 <div className="d-flex align-items-center gap-2">
                   <FaEye style={{ color: '#FC563C' }} />
@@ -2488,7 +2489,7 @@ export default function MyPondPage() {
           style={{ backgroundColor: 'rgba(7, 23, 51, 0.72)', zIndex: 1060 }}
           tabIndex="-1"
         >
-          <div className="modal-dialog modal-dialog-centered modal-xl">
+          <div className="modal-dialog modal-dialog-centered modal-xl scan-report-modal-dialog">
             <div className="modal-content border-0 rounded-4 overflow-hidden shadow-2xl">
               <PondCycleCalendar
                 pondId={selectedPond?.id}

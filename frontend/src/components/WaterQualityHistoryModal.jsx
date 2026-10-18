@@ -144,75 +144,75 @@ export default function WaterQualityHistoryModal({
       tabIndex="-1"
       style={{ backgroundColor: 'rgba(7, 23, 51, 0.85)', backdropFilter: 'blur(8px)', zIndex: 1065 }}
     >
-      <div className="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable" style={{ width: '96%', maxWidth: '1140px' }}>
+      <div className="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable scan-report-modal-dialog">
         <div className="modal-content border-0 rounded-4 shadow-2xl overflow-hidden bg-white">
           {/* Header */}
           <div
-            className="p-3.5 px-4 text-white d-flex justify-content-between align-items-center flex-wrap gap-2"
+            className="p-3.5 px-4 text-white d-flex justify-content-between align-items-start gap-2 position-relative"
             style={{ background: 'linear-gradient(135deg, #172A39 0%, #FC563C 60%, #0E3D7D 100%)' }}
           >
-            <div className="d-flex align-items-center gap-3">
+            <div className="d-flex align-items-start gap-2.5 gap-sm-3 min-w-0" style={{ paddingRight: '40px' }}>
               <div
-                className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0 shadow-sm"
+                className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0 shadow-sm mt-0.5"
                 style={{
-                  width: 42,
-                  height: 42,
-                  background: 'linear-gradient(135deg, #FC563C 0%, #FC563C 100%)',
+                  width: 38,
+                  height: 38,
+                  background: 'linear-gradient(135deg, #FC563C 0%, #E03E26 100%)',
                   color: '#FFFFFF',
-                  fontSize: '1.2rem',
+                  fontSize: '1.1rem',
                 }}
               >
                 <FaHistory />
               </div>
-              <div>
+              <div className="min-w-0">
                 <div className="d-flex align-items-center gap-2 flex-wrap">
-                  <h5 className="fw-extrabold mb-0 text-white tracking-tight">
+                  <h5 className="fw-extrabold mb-0 text-white tracking-tight" style={{ fontSize: '1.08rem' }}>
                     Water Quality Records &amp; Past Logs
                   </h5>
                   <span className="badge bg-info bg-opacity-25 text-white border border-info border-opacity-50 rounded-pill extra-small">
                     {pondName}
                   </span>
                 </div>
-                <p className="mb-0 text-white text-opacity-70 small">
+                <p className="mb-0 text-white text-opacity-70 small mt-0.5" style={{ fontSize: '0.78rem' }}>
                   Review, edit past paper logsheets, and add missed water quality records.
                 </p>
               </div>
             </div>
 
-            <div className="d-flex align-items-center gap-2">
-              {canEdit && (
-                <button
-                  type="button"
-                  className="btn btn-sm btn-warning fw-bold rounded-pill px-3 py-1.5 shadow-xs d-flex align-items-center gap-1.5 text-dark"
-                  onClick={() => {
-                    onAddRecord(new Date().toISOString().split('T')[0]);
-                  }}
-                >
-                  <FaPlus size={11} /> Backfill / Log Past Date
-                </button>
-              )}
-              <button
-                type="button"
-                className="btn btn-sm btn-outline-light rounded-circle p-1.5 d-flex align-items-center justify-content-center"
-                style={{ width: 32, height: 32 }}
-                onClick={onClose}
-              >
-                <FaTimes size={13} />
-              </button>
-            </div>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-light rounded-circle p-1.5 d-flex align-items-center justify-content-center position-absolute top-0 end-0 m-3"
+              style={{ width: 30, height: 30, zIndex: 10 }}
+              onClick={onClose}
+              aria-label="Close"
+            >
+              <FaTimes size={12} />
+            </button>
           </div>
 
           {/* Action Bar / Search Strip */}
-          <div className="p-3 border-bottom bg-light d-flex align-items-center justify-content-between flex-wrap gap-2">
-            <div className="d-flex align-items-center gap-2 flex-grow-1" style={{ maxWidth: 360 }}>
-              <div className="input-group input-group-sm">
+          <div className="p-3 border-bottom bg-light d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center justify-content-between gap-2.5">
+            {canEdit && (
+              <button
+                type="button"
+                className="btn btn-sm btn-warning fw-bold rounded-pill px-3 py-1.5 shadow-xs d-flex align-items-center justify-content-center gap-1.5 text-dark w-100 w-sm-auto"
+                onClick={() => {
+                  onAddRecord(new Date().toISOString().split('T')[0]);
+                }}
+              >
+                <FaPlus size={11} /> Backfill / Log Past Date
+              </button>
+            )}
+
+            <div className="d-flex align-items-center gap-2 flex-grow-1 w-100" style={{ maxWidth: 420 }}>
+              <div className="input-group input-group-sm w-100">
                 <span className="input-group-text bg-white text-muted border-end-0">
                   <FaSearch size={12} />
                 </span>
                 <input
                   type="text"
                   className="form-control form-control-sm border-start-0 bg-white"
-                  placeholder="Filter by date (YYYY-MM-DD), caretaker, notes..."
+                  placeholder="Filter by date, caretaker..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -228,7 +228,7 @@ export default function WaterQualityHistoryModal({
               </div>
             </div>
 
-            <div className="d-flex align-items-center gap-2">
+            <div className="d-flex align-items-center justify-content-between justify-content-sm-end gap-2 w-100 w-sm-auto">
               <span className="badge bg-secondary bg-opacity-10 text-secondary border px-2.5 py-1 extra-small fw-bold">
                 {records.length} Total Record{records.length === 1 ? '' : 's'}
               </span>
@@ -283,7 +283,7 @@ export default function WaterQualityHistoryModal({
             ) : (
               <div className="table-responsive bg-white rounded-4 border shadow-xs admin-scrollable-table-4rows" style={{ maxHeight: 290, overflowY: 'auto', border: '1.5px solid #CBD5E1' }}>
                 <table className="table table-hover align-middle mb-0">
-                  <thead className="sticky-top shadow-xs" style={{ position: 'sticky', top: 0, zIndex: 10, backgroundColor: '#FC563C', color: '#FFFFFF' }}>
+                  <thead className="shadow-xs" style={{ backgroundColor: '#FC563C', color: '#FFFFFF' }}>
                     <tr className="extra-small text-uppercase tracking-wider">
                       <th className="py-3 px-3">Record Date / Age</th>
                       <th className="py-3 px-2 text-center">DO (mg/L)</th>

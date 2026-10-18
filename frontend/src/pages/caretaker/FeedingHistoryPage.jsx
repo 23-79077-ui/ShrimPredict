@@ -1135,7 +1135,7 @@ export default function FeedingHistoryPage() {
             </span>
             <button
               type="button"
-              className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold border-0 transition-all ${selectedPondFilter === 'all' ? 'bg-white shadow-2xs text-dark' : 'text-muted'}`}
+              className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold transition-all ${selectedPondFilter === 'all' ? 'btn-chart-range-active shadow-xs' : 'btn-chart-range-inactive'}`}
               onClick={() => setSelectedPondFilter('all')}
             >
               All Ponds ({records.length})
@@ -1148,7 +1148,7 @@ export default function FeedingHistoryPage() {
                 <button
                   key={pond.id}
                   type="button"
-                  className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold border-0 transition-all ${isSelected ? 'bg-white shadow-2xs text-dark' : 'text-muted'}`}
+                  className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold transition-all ${isSelected ? 'btn-chart-range-active shadow-xs' : 'btn-chart-range-inactive'}`}
                   onClick={() => setSelectedPondFilter(String(pond.id))}
                 >
                   {pond.pond_name}
@@ -1167,11 +1167,11 @@ export default function FeedingHistoryPage() {
         <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2.5">
           {/* Left: Mode Toggle Buttons & Basin Indicator */}
           <div className="d-flex align-items-center gap-2 flex-wrap">
-            <div className="d-inline-flex p-1 rounded-pill bg-light border shadow-xs">
+            <div className="d-inline-flex p-1 rounded-pill chart-range-pill-container border shadow-xs">
               <button
                 type="button"
                 className={`btn btn-sm rounded-pill px-3 py-1.5 extra-small fw-bold transition-all ${
-                  analyticsTab === 'cumulative' ? 'btn-tri-orange text-white shadow-xs' : 'btn-light text-muted'
+                  analyticsTab === 'cumulative' ? 'btn-chart-range-active text-white shadow-xs' : 'btn-chart-range-inactive'
                 }`}
                 onClick={() => setAnalyticsTab('cumulative')}
               >
@@ -1181,7 +1181,7 @@ export default function FeedingHistoryPage() {
               <button
                 type="button"
                 className={`btn btn-sm rounded-pill px-3 py-1.5 extra-small fw-bold transition-all ${
-                  analyticsTab === 'consumption' ? 'btn-tri-orange text-white shadow-xs' : 'btn-light text-muted'
+                  analyticsTab === 'consumption' ? 'btn-chart-range-active text-white shadow-xs' : 'btn-chart-range-inactive'
                 }`}
                 onClick={() => setAnalyticsTab('consumption')}
               >
@@ -1226,31 +1226,31 @@ export default function FeedingHistoryPage() {
 
             {/* If Cumulative Tab: Timeframe Scope Selector */}
             {analyticsTab === 'cumulative' && (
-              <div className="d-flex align-items-center gap-1 p-1 rounded-pill bg-light border">
+              <div className="d-flex align-items-center gap-1 p-1 rounded-pill chart-range-pill-container border">
                 <button
                   type="button"
-                  className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${chartRange === '7_days' ? 'btn-tri-navy shadow-xs' : 'btn-light text-muted'}`}
+                  className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${chartRange === '7_days' ? 'btn-chart-range-active shadow-xs' : 'btn-chart-range-inactive'}`}
                   onClick={() => setChartRange('7_days')}
                 >
                   7 Days
                 </button>
                 <button
                   type="button"
-                  className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${chartRange === '14_days' ? 'btn-tri-navy shadow-xs' : 'btn-light text-muted'}`}
+                  className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${chartRange === '14_days' ? 'btn-chart-range-active shadow-xs' : 'btn-chart-range-inactive'}`}
                   onClick={() => setChartRange('14_days')}
                 >
                   14 Days
                 </button>
                 <button
                   type="button"
-                  className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${chartRange === '30_days' ? 'btn-tri-navy shadow-xs' : 'btn-light text-muted'}`}
+                  className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${chartRange === '30_days' ? 'btn-chart-range-active shadow-xs' : 'btn-chart-range-inactive'}`}
                   onClick={() => setChartRange('30_days')}
                 >
                   30 Days
                 </button>
                 <button
                   type="button"
-                  className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${chartRange === 'all_cycle' ? 'btn-tri-navy shadow-xs' : 'btn-light text-muted'}`}
+                  className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${chartRange === 'all_cycle' ? 'btn-chart-range-active shadow-xs' : 'btn-chart-range-inactive'}`}
                   onClick={() => setChartRange('all_cycle')}
                 >
                   Full Cycle
@@ -1770,9 +1770,9 @@ export default function FeedingHistoryPage() {
           </div>
         ) : (
           <div
-            className="table-responsive rounded-4 position-relative border"
+            className="table-responsive admin-scrollable-table-4rows rounded-4 position-relative border"
             style={{
-              maxHeight: '290px',
+              maxHeight: 290,
               overflowY: 'auto',
               borderColor: '#E2E8F0',
             }}
@@ -1780,7 +1780,7 @@ export default function FeedingHistoryPage() {
             <table className="table table-hover align-middle mb-0">
               {viewMode === 'daily' ? (
                 <>
-                  <thead className="table-light sticky-top" style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+                  <thead className="table-light">
                     <tr>
                       <th className="ps-3 py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Pond</th>
                       <th className="py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Stage &amp; DOC</th>
@@ -1961,7 +1961,7 @@ export default function FeedingHistoryPage() {
                 </>
               ) : (
                 <>
-                  <thead className="table-light sticky-top" style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+                  <thead className="table-light">
                     <tr>
                       <th className="ps-3 py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Pond</th>
                       <th className="py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Stage &amp; DOC</th>
@@ -2141,7 +2141,7 @@ export default function FeedingHistoryPage() {
             if (e.target === e.currentTarget) setSelectedRecordDetails(null);
           }}
         >
-          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: '490px' }}>
+          <div className="modal-dialog modal-dialog-centered scan-report-modal-dialog" style={{ maxWidth: '490px' }}>
             <div
               className="modal-content border-0 shadow-2xl rounded-4 overflow-hidden position-relative"
               style={{
@@ -2154,7 +2154,7 @@ export default function FeedingHistoryPage() {
               <div
                 className="modal-header text-white border-0 position-relative overflow-hidden d-flex align-items-center"
                 style={{
-                  background: 'linear-gradient(135deg, #172A39 0%, #203A4F 100%)',
+                  background: 'linear-gradient(135deg, #FC563C 0%, #E03E26 100%)',
                   padding: '1.1rem 1.25rem',
                 }}
               >
@@ -2472,13 +2472,14 @@ export default function FeedingHistoryPage() {
       {/* POND CULTURE CYCLE CALENDAR OVERLAY (FULL-WIDTH BELOW TOP HEADER) */}
       {calendarModalPond && (
         <div
-          className="position-fixed start-0 w-100 bg-white shadow-lg"
+          className="position-fixed start-0 w-100 shadow-lg feeding-calendar-drawer"
           style={{
             top: '115px',
             height: 'calc(100vh - 115px)',
             zIndex: 1035,
             overflowY: 'auto',
             overflowX: 'hidden',
+            backgroundColor: 'var(--color-bg-card, #FFFFFF)',
           }}
         >
           <div className="p-3 p-md-4">
@@ -2506,13 +2507,13 @@ export default function FeedingHistoryPage() {
           tabIndex="-1"
           style={{ backgroundColor: 'rgba(7, 23, 51, 0.82)', backdropFilter: 'blur(8px)', zIndex: 1070 }}
         >
-          <div className="modal-dialog modal-dialog-centered">
+          <div className="modal-dialog modal-dialog-centered scan-report-modal-dialog">
             <div className="modal-content border-0 rounded-4 overflow-hidden bg-white shadow-2xl">
               <form onSubmit={handleSaveBackfill}>
                 {/* MODAL HEADER */}
                 <div
                   className="p-3.5 px-4 text-white d-flex justify-content-between align-items-center"
-                  style={{ background: 'linear-gradient(135deg, #172A39 0%, #203A4F 100%)' }}
+                  style={{ background: 'linear-gradient(135deg, #FC563C 0%, #E03E26 100%)' }}
                 >
                   <div className="d-flex align-items-center gap-2.5">
                     <div

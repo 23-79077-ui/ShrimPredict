@@ -23,6 +23,7 @@ import {
   FaSearch,
   FaSeedling,
   FaSync,
+  FaTimes,
   FaTimesCircle,
   FaTrash,
   FaUser,
@@ -553,77 +554,95 @@ export default function PondMonitoringPage() {
   };
 
   return (
-    <div className="container-fluid px-3 px-xl-4 py-3">
-      {/* 1. UNIFIED HERO TITLE HEADER */}
-      <div className="d-flex align-items-center justify-content-between flex-wrap gap-2.5 mb-3.5 pb-2">
-        <div>
-          <div className="d-flex align-items-center gap-2 mb-1">
-            <span
-              className="badge rounded-pill fw-bold extra-small px-2.5 py-1 text-uppercase"
-              style={{ backgroundColor: '#FEE2E2', color: '#DC2626', border: '1px solid #FECACA' }}
-            >
-              {t('Aquaculture Operations')}
-            </span>
-            <span className="text-muted extra-small">
-              {summary.total_ponds} {t('Active Ponds')} • {summary.avg_doc} {t('Avg DOC')}
-            </span>
-            <span className="badge rounded-pill px-2.5 py-0.5 extra-small border" style={{ backgroundColor: '#F8FAFC', color: '#475569', borderColor: '#E2E8F0' }}>
-              {filteredPonds.length} {filteredPonds.length === 1 ? t('Pond') : t('Ponds')}
-            </span>
-          </div>
-          <h3 className="fw-extrabold mb-1 tracking-tight text-dark" style={{ fontSize: '1.45rem' }}>
+    <div className="pb-5" style={{ fontFamily: "'Poppins', sans-serif" }}>
+      {/* 1. TITLE HEADER ROW */}
+      <div className="d-flex align-items-center justify-content-between flex-wrap gap-2.5 mb-3">
+        <div className="d-flex align-items-center gap-2.5">
+          <h3 className="fw-extrabold mb-0 tracking-tight text-dark" style={{ fontSize: '1.48rem', letterSpacing: '-0.02em' }}>
             {t('Pond Reports')}
           </h3>
-          <p className="text-secondary small mb-0" style={{ maxWidth: '820px' }}>
-            {t('Pond Reports Subtitle')}
-          </p>
+          <span
+            className="badge rounded-pill d-inline-flex align-items-center gap-1.5 px-2.5 py-1"
+            style={{
+              backgroundColor: '#ECFDF5',
+              color: '#059669',
+              border: '1px solid #A7F3D0',
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              letterSpacing: '0.02em',
+            }}
+          >
+            <span className="pulse-dot-green" />
+            {t('• Operational')}
+          </span>
         </div>
 
-        {/* Action Controls */}
+        {/* Action Controls: Stock New Pond, Refresh & CSV Export */}
         <div className="d-flex align-items-center gap-2 flex-wrap">
-          <div className="position-relative" style={{ minWidth: '220px' }}>
-            <FaSearch
-              className="position-absolute text-muted"
-              size={12}
-              style={{ left: '12px', top: '50%', transform: 'translateY(-50%)' }}
-            />
-            <input
-              type="text"
-              className="form-control form-control-sm ps-4 pe-3 rounded-pill border shadow-2xs"
-              placeholder={t('Search by pond name, caretaker...')}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ fontSize: '0.82rem', borderColor: '#E2E8F0', height: '32px' }}
-            />
-          </div>
-
           <button
             type="button"
-            className="btn btn-sm btn-understated-feed shadow-2xs"
-            onClick={loadPondData}
-            disabled={loading}
-            title={t('Refresh')}
-          >
-            <FaSync size={11} className={loading ? 'fa-spin me-1.5' : 'me-1.5'} /> {t('Refresh')}
-          </button>
-
-          <button
-            type="button"
-            className="btn btn-sm btn-understated-feed shadow-2xs"
-            onClick={handleExportCSV}
-            title={t('Export CSV')}
-          >
-            <FaFileCsv size={13} className="me-1.5 text-success" /> {t('Export CSV')}
-          </button>
-
-          <button
-            type="button"
-            className="btn btn-sm text-white shadow-sm d-inline-flex align-items-center gap-1.5 px-3 py-1.5 rounded-3 fw-bold"
-            style={{ backgroundColor: '#FC563C' }}
+            className="btn btn-sm btn-understated-feed d-inline-flex align-items-center gap-1.5 px-3.5 py-2 shadow-2xs hover-shadow"
             onClick={openAddPondModal}
           >
             <FaPlus size={11} /> {t('Stock New Pond')}
           </button>
+
+          <button
+            type="button"
+            className="btn btn-sm minimal-filter-control d-inline-flex align-items-center gap-1.5 px-3 py-2 shadow-2xs hover-shadow"
+            onClick={loadPondData}
+            disabled={loading}
+          >
+            <FaSync size={11} className={loading ? 'fa-spin' : ''} /> {t('Refresh')}
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-sm minimal-filter-control d-inline-flex align-items-center gap-1.5 px-3.5 py-2 shadow-2xs hover-shadow"
+            onClick={handleExportCSV}
+          >
+            <FaFileCsv size={12} className="text-secondary" /> {t('Export CSV')}
+          </button>
+        </div>
+      </div>
+
+      {/* 2. SEARCH & SUMMARY BAR */}
+      <div className="admin-filter-card p-3 mb-4">
+        <div className="d-flex align-items-center justify-content-between flex-wrap gap-2.5">
+          <div className="position-relative flex-grow-1" style={{ maxWidth: 460 }}>
+            <FaSearch
+              className="position-absolute text-muted"
+              size={13}
+              style={{ left: '16px', top: '50%', transform: 'translateY(-50%)' }}
+            />
+            <input
+              type="text"
+              className="form-control form-control-sm pe-4 rounded-pill border shadow-none"
+              placeholder={t('Search by pond name, caretaker...')}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{ fontSize: '0.84rem', borderColor: '#E2E8F0', height: '38px', paddingLeft: '40px' }}
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                className="btn btn-link p-0 position-absolute text-muted"
+                style={{ right: '14px', top: '50%', transform: 'translateY(-50%)', textDecoration: 'none' }}
+                onClick={() => setSearchQuery('')}
+              >
+                <FaTimes size={12} />
+              </button>
+            )}
+          </div>
+
+          <div className="d-flex align-items-center gap-2">
+            <span className="text-secondary extra-small fw-medium">
+              {summary.total_ponds} {t('Active Ponds')} • {summary.avg_doc} {t('Avg DOC')}
+            </span>
+            <span className="badge rounded-pill px-2.5 py-1 extra-small border" style={{ backgroundColor: '#F8FAFC', color: '#475569', borderColor: '#E2E8F0', fontWeight: 600 }}>
+              {filteredPonds.length} {filteredPonds.length === 1 ? t('Pond Showing') : t('Ponds Showing')}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -640,18 +659,16 @@ export default function PondMonitoringPage() {
             return (
               <div key={pond.id} className="col-12 col-md-6 col-xl-4">
                 <div
-                  className="bg-white border rounded-4 p-4 shadow-2xs h-100 d-flex flex-column justify-content-between transition-all"
-                  style={{
-                    borderColor: '#E2E8F0',
-                    borderRadius: '18px',
-                    cursor: 'pointer',
-                  }}
+                  className="bg-white rounded-4 p-4 shadow-2xs h-100 d-flex flex-column justify-content-between pond-monitoring-card"
                   onClick={() => setSelectedPond(pond)}
                   title={t('Click to view pond details')}
                 >
                   <div>
                     {/* 1. Pond Name & Status Header */}
-                    <div className="d-flex align-items-center justify-content-between mb-3">
+                    <div
+                      className="d-flex align-items-center justify-content-between pb-3 mb-3 border-bottom"
+                      style={{ borderColor: '#E2E8F0' }}
+                    >
                       <div className="d-flex align-items-center gap-2.5">
                         <div
                           className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
@@ -660,7 +677,7 @@ export default function PondMonitoringPage() {
                             height: 38,
                             backgroundColor: '#EFF6FF',
                             color: '#0284C7',
-                            border: '1px solid #BAE6FD',
+                            border: '1.5px solid #BAE6FD',
                             borderRadius: '10px',
                           }}
                         >
@@ -679,7 +696,7 @@ export default function PondMonitoringPage() {
                         style={{
                           backgroundColor: pond.isActive ? '#ECFDF5' : '#F1F5F9',
                           color: pond.isActive ? '#065F46' : '#475569',
-                          border: pond.isActive ? '1px solid #A7F3D0' : '1px solid #CBD5E1',
+                          border: pond.isActive ? '1.5px solid #86EFAC' : '1.5px solid #CBD5E1',
                           fontSize: '0.74rem',
                         }}
                       >
@@ -697,12 +714,17 @@ export default function PondMonitoringPage() {
 
                     {/* 2. Caretaker */}
                     <div
-                      className="px-3.5 py-2.5 rounded-3 mb-3.5 d-flex align-items-center gap-2.5"
-                      style={{ backgroundColor: '#F8FAFC', border: '1px solid #F1F5F9' }}
+                      className="pond-monitoring-caretaker-strip px-3.5 py-2.5 rounded-3 d-flex align-items-center gap-2.5"
+                      style={{
+                        backgroundColor: '#F8FAFC',
+                        border: '1.5px solid #CBD5E1',
+                        borderRadius: '12px',
+                        marginBottom: '14px',
+                      }}
                     >
                       <div
                         className="rounded-circle text-white d-flex align-items-center justify-content-center fw-bold flex-shrink-0"
-                        style={{ width: 30, height: 30, backgroundColor: '#334155', fontSize: '0.70rem' }}
+                        style={{ width: 30, height: 30, backgroundColor: '#334155', fontSize: '0.70rem', border: '1px solid #1E293B' }}
                       >
                         {(pond.assigned_caretaker_name || 'U').slice(0, 2).toUpperCase()}
                       </div>
@@ -724,16 +746,17 @@ export default function PondMonitoringPage() {
                     </div>
 
                     {/* 3, 4, 5, 6. The 4 Core Metrics: Day of Culture, Shrimp Weight, Feeding Consumption, Remaining Feed */}
-                    <div className="row g-3">
+                    <div className="row gx-3 gy-3" style={{ rowGap: '12px' }}>
                       {/* 3. Day of Culture (DOC) */}
                       <div className="col-6">
                         <div
-                          className="rounded-3 p-3.5 h-100 d-flex flex-column justify-content-between"
+                          className="pond-metric-card pond-metric-card-doc rounded-3 p-3 h-100 d-flex flex-column justify-content-between"
                           style={{
                             backgroundColor: '#F0FDF4',
-                            border: '1px solid #DCFCE7',
+                            border: '1.5px solid #86EFAC',
                             borderRadius: '14px',
                             minHeight: '88px',
+                            boxShadow: '0 1px 3px rgba(16, 185, 129, 0.06)',
                           }}
                         >
                           <div className="d-flex align-items-center justify-content-between mb-2">
@@ -745,7 +768,7 @@ export default function PondMonitoringPage() {
                             </span>
                             <div
                               className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                              style={{ width: 24, height: 24, color: '#059669', backgroundColor: '#DCFCE7' }}
+                              style={{ width: 26, height: 26, color: '#059669', backgroundColor: '#DCFCE7', border: '1.5px solid #86EFAC' }}
                             >
                               <FaCalendarAlt size={11} />
                             </div>
@@ -764,12 +787,13 @@ export default function PondMonitoringPage() {
                       {/* 6. Shrimp Weight in Grams */}
                       <div className="col-6">
                         <div
-                          className="rounded-3 p-3.5 h-100 d-flex flex-column justify-content-between"
+                          className="pond-metric-card pond-metric-card-weight rounded-3 p-3 h-100 d-flex flex-column justify-content-between"
                           style={{
                             backgroundColor: '#FAF5FF',
-                            border: '1px solid #F3E8FF',
+                            border: '1.5px solid #D8B4FE',
                             borderRadius: '14px',
                             minHeight: '88px',
+                            boxShadow: '0 1px 3px rgba(139, 92, 246, 0.06)',
                           }}
                         >
                           <div className="d-flex align-items-center justify-content-between mb-2">
@@ -781,7 +805,7 @@ export default function PondMonitoringPage() {
                             </span>
                             <div
                               className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                              style={{ width: 24, height: 24, color: '#7C3AED', backgroundColor: '#F3E8FF' }}
+                              style={{ width: 26, height: 26, color: '#7C3AED', backgroundColor: '#F3E8FF', border: '1.5px solid #D8B4FE' }}
                             >
                               <FaWeightHanging size={11} />
                             </div>
@@ -800,12 +824,13 @@ export default function PondMonitoringPage() {
                       {/* 4. Feeding Consumption */}
                       <div className="col-6">
                         <div
-                          className="rounded-3 p-3.5 h-100 d-flex flex-column justify-content-between"
+                          className="pond-metric-card pond-metric-card-feeding rounded-3 p-3 h-100 d-flex flex-column justify-content-between"
                           style={{
                             backgroundColor: '#FFF7ED',
-                            border: '1px solid #FFEDD5',
+                            border: '1.5px solid #FDBA74',
                             borderRadius: '14px',
                             minHeight: '88px',
+                            boxShadow: '0 1px 3px rgba(249, 115, 22, 0.06)',
                           }}
                         >
                           <div className="d-flex align-items-center justify-content-between mb-2">
@@ -817,7 +842,7 @@ export default function PondMonitoringPage() {
                             </span>
                             <div
                               className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                              style={{ width: 24, height: 24, color: '#EA580C', backgroundColor: '#FFEDD5' }}
+                              style={{ width: 26, height: 26, color: '#EA580C', backgroundColor: '#FFEDD5', border: '1.5px solid #FDBA74' }}
                             >
                               <FaUtensils size={11} />
                             </div>
@@ -836,12 +861,13 @@ export default function PondMonitoringPage() {
                       {/* 5. Remaining Feed */}
                       <div className="col-6">
                         <div
-                          className="rounded-3 p-3.5 h-100 d-flex flex-column justify-content-between"
+                          className="pond-metric-card pond-metric-card-remaining rounded-3 p-3 h-100 d-flex flex-column justify-content-between"
                           style={{
                             backgroundColor: '#F0F9FF',
-                            border: '1px solid #E0F2FE',
+                            border: '1.5px solid #7DD3FC',
                             borderRadius: '14px',
                             minHeight: '88px',
+                            boxShadow: '0 1px 3px rgba(2, 132, 199, 0.06)',
                           }}
                         >
                           <div className="d-flex align-items-center justify-content-between mb-2">
@@ -853,7 +879,7 @@ export default function PondMonitoringPage() {
                             </span>
                             <div
                               className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                              style={{ width: 24, height: 24, color: '#0284C7', backgroundColor: '#E0F2FE' }}
+                              style={{ width: 26, height: 26, color: '#0284C7', backgroundColor: '#E0F2FE', border: '1.5px solid #7DD3FC' }}
                             >
                               <FaBalanceScale size={11} />
                             </div>
@@ -1401,11 +1427,30 @@ export default function PondMonitoringPage() {
 
       {/* 8. POND CYCLE CALENDAR MODAL */}
       {calendarModalPond && (
-        <PondCycleCalendar
-          pond={calendarModalPond}
-          isOpen={Boolean(calendarModalPond)}
-          onClose={() => setCalendarModalPond(null)}
-        />
+        <div
+          className="modal fade show d-block"
+          style={{ backgroundColor: 'rgba(7, 23, 51, 0.72)', zIndex: 1060 }}
+          tabIndex="-1"
+          role="dialog"
+          onClick={() => setCalendarModalPond(null)}
+        >
+          <div
+            className="modal-dialog modal-dialog-centered modal-xl scan-report-modal-dialog"
+            onClick={(e) => e.stopPropagation()}
+            role="document"
+          >
+            <div className="modal-content border-0 rounded-4 overflow-hidden shadow-2xl">
+              <PondCycleCalendar
+                pond={calendarModalPond}
+                pondId={calendarModalPond.id}
+                stockingDate={calendarModalPond.stocking_date}
+                pondName={calendarModalPond.pond_name || `Pond #${calendarModalPond.id}`}
+                isOpen={Boolean(calendarModalPond)}
+                onClose={() => setCalendarModalPond(null)}
+              />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

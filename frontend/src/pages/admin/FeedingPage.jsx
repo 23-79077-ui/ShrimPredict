@@ -21,9 +21,7 @@ import {
   FaChartLine,
   FaWater,
   FaHistory,
-  FaExclamationTriangle,
   FaCheckCircle,
-  FaInfoCircle,
   FaSearch,
   FaFileDownload,
   FaSortAmountDown,
@@ -1411,68 +1409,6 @@ export default function FeedingPage() {
         </div>
       </div>
 
-      {/* 3. SMART OPERATIONAL INTELLIGENCE & FEEDING ALERTS */}
-      <div className="row g-3 g-md-4 mb-4">
-        <div className="col-12 col-md-4">
-          <div
-            className="bg-white border rounded-4 p-4 h-100 shadow-2xs"
-            style={{ borderLeft: '4px solid #FC563C', borderColor: '#E2E8F0' }}
-          >
-            <div className="d-flex align-items-center gap-2 mb-2">
-              <div
-                className="rounded-circle p-2 d-flex align-items-center justify-content-center"
-                style={{ background: '#FFF7ED', color: '#FC563C' }}
-              >
-                <FaExclamationTriangle size={15} />
-              </div>
-              <h6 className="fw-bold text-dark mb-0">{t('Pond A2 Overfeeding Notice')}</h6>
-            </div>
-            <p className="text-secondary small mb-0" style={{ lineHeight: 1.6, fontSize: '0.82rem' }}>
-              {t('Feed delivered exceeded ration target by 14%. Monitor nocturnal dissolved oxygen levels and ensure paddlewheel aerator timers are active.')}
-            </p>
-          </div>
-        </div>
-
-        <div className="col-12 col-md-4">
-          <div
-            className="bg-white border rounded-4 p-4 h-100 shadow-2xs"
-            style={{ borderLeft: '4px solid #10B981', borderColor: '#E2E8F0' }}
-          >
-            <div className="d-flex align-items-center gap-2 mb-2">
-              <div
-                className="rounded-circle p-2 d-flex align-items-center justify-content-center"
-                style={{ background: '#ECFDF5', color: '#10B981' }}
-              >
-                <FaCheckCircle size={15} />
-              </div>
-              <h6 className="fw-bold text-dark mb-0">{t('Pond A1 Schedule Completed')}</h6>
-            </div>
-            <p className="text-secondary small mb-0" style={{ lineHeight: 1.6, fontSize: '0.82rem' }}>
-              {t('Morning and afternoon feeding cycles for Pond A1 recorded 100% target compliance with zero residue on check trays.')}
-            </p>
-          </div>
-        </div>
-
-        <div className="col-12 col-md-4">
-          <div
-            className="bg-white border rounded-4 p-4 h-100 shadow-2xs"
-            style={{ borderLeft: '4px solid #0284C7', borderColor: '#E2E8F0' }}
-          >
-            <div className="d-flex align-items-center gap-2 mb-2">
-              <div
-                className="rounded-circle p-2 d-flex align-items-center justify-content-center"
-                style={{ background: '#F0F9FF', color: '#0284C7' }}
-              >
-                <FaInfoCircle size={15} />
-              </div>
-              <h6 className="fw-bold text-dark mb-0">{t('Feed Inventory Buffer Alert')}</h6>
-            </div>
-            <p className="text-secondary small mb-0" style={{ lineHeight: 1.6, fontSize: '0.82rem' }}>
-              {t('High-protein Starter #2 warehouse reserve is sufficient for 6 operational days. Automatic reorder request generated for supplier batch.')}
-            </p>
-          </div>
-        </div>
-      </div>
 
       {/* 4. CHARTS ROW: DAILY FEEDING TREND (8 cols) + FEED TYPE BREAKDOWN (4 cols) */}
       <div className="row g-4 mb-4">
@@ -1527,38 +1463,38 @@ export default function FeedingPage() {
                 )}
 
                 {/* Range Buttons */}
-                <div className="d-flex align-items-center gap-1 p-1 rounded-pill bg-light border">
+                <div className="d-flex align-items-center gap-1 p-1 rounded-pill chart-range-pill-container border">
                   <button
                     type="button"
-                    className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${feedingChartRange === '7_days' ? 'btn-tri-navy shadow-xs' : 'btn-light text-muted'}`}
+                    className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${feedingChartRange === '7_days' ? 'btn-chart-range-active shadow-xs' : 'btn-chart-range-inactive'}`}
                     onClick={() => setFeedingChartRange('7_days')}
                   >
                     {t('7 Days')}
                   </button>
                   <button
                     type="button"
-                    className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${feedingChartRange === '14_days' ? 'btn-tri-navy shadow-xs' : 'btn-light text-muted'}`}
+                    className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${feedingChartRange === '14_days' ? 'btn-chart-range-active shadow-xs' : 'btn-chart-range-inactive'}`}
                     onClick={() => setFeedingChartRange('14_days')}
                   >
                     {t('14 Days')}
                   </button>
                   <button
                     type="button"
-                    className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${feedingChartRange === '30_days' ? 'btn-tri-navy shadow-xs' : 'btn-light text-muted'}`}
+                    className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${feedingChartRange === '30_days' ? 'btn-chart-range-active shadow-xs' : 'btn-chart-range-inactive'}`}
                     onClick={() => setFeedingChartRange('30_days')}
                   >
                     {t('30 Days')}
                   </button>
                   <button
                     type="button"
-                    className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${feedingChartRange === 'all_cycle' ? 'btn-tri-navy shadow-xs' : 'btn-light text-muted'}`}
+                    className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${feedingChartRange === 'all_cycle' ? 'btn-chart-range-active shadow-xs' : 'btn-chart-range-inactive'}`}
                     onClick={() => setFeedingChartRange('all_cycle')}
                   >
                     {t('Full Cycle')}
                   </button>
                   <button
                     type="button"
-                    className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${feedingChartRange === 'by_pond' ? 'btn-tri-navy shadow-xs' : 'btn-light text-muted'}`}
+                    className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all ${feedingChartRange === 'by_pond' ? 'btn-chart-range-active shadow-xs' : 'btn-chart-range-inactive'}`}
                     onClick={() => setFeedingChartRange('by_pond')}
                   >
                     {t('By Pond')}
@@ -1858,20 +1794,24 @@ export default function FeedingPage() {
 
         {/* VIEW 1: PER-POND FLEET MATRIX TABLE */}
         {activeTab === 'fleet' && (
-          <div className="table-responsive admin-scrollable-table-4rows rounded-3 border" style={{ maxHeight: '240px', overflowY: 'auto', overflowX: 'hidden', borderColor: '#E2E8F0' }}>
-            <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.80rem', tableLayout: 'fixed', width: '100%' }}>
-              <thead className="table-light border-bottom sticky-top" style={{ borderColor: '#E2E8F0', zIndex: 5 }}>
-                <tr className="extra-small text-uppercase fw-bold text-secondary" style={{ letterSpacing: '0.03em' }}>
-                  <th className="ps-3 py-2.5" style={{ width: '9%' }}>{t('Pond')}</th>
-                  <th className="py-2.5" style={{ width: '13%' }}>{t('Stage & DOC')}</th>
-                  <th className="py-2.5" style={{ width: '14%' }}>{t('Feed Type')}</th>
-                  <th className="py-2.5" style={{ width: '9%' }}>{t('Target')}</th>
-                  <th className="py-2.5" style={{ width: '16%' }}>{t('Given / Progress')}</th>
-                  <th className="py-2.5" style={{ width: '13%' }}>{t('Compliance')}</th>
-                  <th className="py-2.5" style={{ width: '14%' }}>{t('Caretaker')}</th>
-                  <th className="pe-3 py-2.5 text-end" style={{ width: '12%' }}>{t('Actions')}</th>
-                </tr>
-              </thead>
+          <>
+            <div className="d-block d-md-none text-center text-muted extra-small mb-1 font-monospace" style={{ fontSize: '0.68rem' }}>
+              {t('← Swipe table horizontally to see full details →')}
+            </div>
+            <div className="table-responsive admin-scrollable-table-4rows rounded-3 border" style={{ maxHeight: 290, overflowY: 'auto', overflowX: 'auto', WebkitOverflowScrolling: 'touch', borderColor: '#E2E8F0' }}>
+              <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.80rem', minWidth: 750 }}>
+                <thead className="table-light border-bottom" style={{ borderColor: '#E2E8F0' }}>
+                  <tr className="extra-small text-uppercase fw-bold text-secondary" style={{ letterSpacing: '0.03em' }}>
+                    <th className="ps-3 py-2.5" style={{ minWidth: 75 }}>{t('Pond')}</th>
+                    <th className="py-2.5" style={{ minWidth: 95 }}>{t('Stage & DOC')}</th>
+                    <th className="py-2.5" style={{ minWidth: 105 }}>{t('Feed Type')}</th>
+                    <th className="py-2.5" style={{ minWidth: 70 }}>{t('Target')}</th>
+                    <th className="py-2.5" style={{ minWidth: 120 }}>{t('Given / Progress')}</th>
+                    <th className="py-2.5" style={{ minWidth: 95 }}>{t('Compliance')}</th>
+                    <th className="py-2.5" style={{ minWidth: 100 }}>{t('Caretaker')}</th>
+                    <th className="pe-3 py-2.5 text-end" style={{ minWidth: 90 }}>{t('Actions')}</th>
+                  </tr>
+                </thead>
               <tbody>
                 {loading ? (
                   <tr>
@@ -2019,23 +1959,28 @@ export default function FeedingPage() {
               </tbody>
             </table>
           </div>
+          </>
         )}
 
         {/* VIEW 2: GRANULAR FEEDING LOGS STREAM TABLE */}
         {activeTab === 'stream' && (
-          <div className="table-responsive admin-scrollable-table-4rows rounded-3 border" style={{ maxHeight: '240px', overflowY: 'auto', overflowX: 'hidden', borderColor: '#E2E8F0' }}>
-            <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.80rem', tableLayout: 'fixed', width: '100%' }}>
-              <thead className="table-light border-bottom sticky-top" style={{ borderColor: '#E2E8F0', zIndex: 5 }}>
-                <tr className="extra-small text-uppercase fw-bold text-secondary">
-                  <th className="ps-2 py-2.5" style={{ width: '13%' }}>{t('Time & Date')}</th>
-                  <th className="py-2.5" style={{ width: '12%' }}>{t('Pond')}</th>
-                  <th className="py-2.5" style={{ width: '15%' }}>{t('Feed Formulation')}</th>
-                  <th className="py-2.5" style={{ width: '11%' }}>{t('Dispensed Mass')}</th>
-                  <th className="py-2.5" style={{ width: '15%' }}>{t('Vitamins / Additive')}</th>
-                  <th className="py-2.5" style={{ width: '13%' }}>{t('Operator')}</th>
-                  <th className="pe-2 py-2.5" style={{ width: '21%' }}>{t('Remarks & Notes')}</th>
-                </tr>
-              </thead>
+          <>
+            <div className="d-block d-md-none text-center text-muted extra-small mb-1 font-monospace" style={{ fontSize: '0.68rem' }}>
+              {t('← Swipe table horizontally to see full details →')}
+            </div>
+            <div className="table-responsive admin-scrollable-table-4rows rounded-3 border" style={{ maxHeight: 290, overflowY: 'auto', overflowX: 'auto', WebkitOverflowScrolling: 'touch', borderColor: '#E2E8F0' }}>
+              <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.80rem', minWidth: 720 }}>
+                <thead className="table-light border-bottom" style={{ borderColor: '#E2E8F0' }}>
+                  <tr className="extra-small text-uppercase fw-bold text-secondary">
+                    <th className="ps-2 py-2.5" style={{ minWidth: 95 }}>{t('Time & Date')}</th>
+                    <th className="py-2.5" style={{ minWidth: 80 }}>{t('Pond')}</th>
+                    <th className="py-2.5" style={{ minWidth: 115 }}>{t('Feed Formulation')}</th>
+                    <th className="py-2.5" style={{ minWidth: 90 }}>{t('Dispensed Mass')}</th>
+                    <th className="py-2.5" style={{ minWidth: 110 }}>{t('Vitamins / Additive')}</th>
+                    <th className="py-2.5" style={{ minWidth: 95 }}>{t('Operator')}</th>
+                    <th className="pe-2 py-2.5" style={{ minWidth: 135 }}>{t('Remarks & Notes')}</th>
+                  </tr>
+                </thead>
               <tbody>
                 {loading ? (
                   <tr>
@@ -2124,6 +2069,7 @@ export default function FeedingPage() {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
 

@@ -3,7 +3,6 @@ import { Bar, Line } from 'react-chartjs-2';
 import {
   FaCalendarAlt,
   FaChartLine,
-  FaExclamationTriangle,
   FaSeedling,
   FaWeightHanging,
   FaFileCsv,
@@ -269,24 +268,6 @@ export default function HarvestPage() {
         </div>
       </div>
 
-      {/* Operational Disclaimer Alert */}
-      <div
-        className="p-3 mb-4 rounded-4 d-flex align-items-start gap-3 bg-white border shadow-2xs"
-        style={{ borderColor: '#E2E8F0', borderLeft: '4px solid #FC563C' }}
-      >
-        <div className="rounded-circle p-2 flex-shrink-0" style={{ backgroundColor: '#FFF7ED', color: '#FC563C' }}>
-          <FaExclamationTriangle size={15} />
-        </div>
-        <div>
-          <strong className="text-dark" style={{ fontSize: '0.9rem' }}>
-            {data?.method ? t(data.method) : t('Caretaker Historical Feed-to-Harvest Baseline Model')}
-          </strong>
-          <div className="text-secondary extra-small mt-0.5">
-            {t('Historical baseline: caretakers reported that')} {formatKg(feedReferenceKg)} {t('feed per pond usually yields around')} {formatTons(baselineHarvestTons)} {t('harvest.')}
-            {' '}{data?.disclaimer ? t(data.disclaimer) : t('Harvest readiness is an operational estimate and must be confirmed by farm management.')}
-          </div>
-        </div>
-      </div>
 
       {/* 3. UNIFIED HARVEST & FEED ANALYTICS (Toggleable between Estimate and Historical Trend) */}
       <div className="bg-white border rounded-4 p-4 mb-4 shadow-2xs" style={{ borderColor: '#E2E8F0' }}>
@@ -391,11 +372,6 @@ export default function HarvestPage() {
           loading={loading}
           tabs={[{ id: 'all', label: t('All Predictions'), count: predictions.length }]}
           activeTab="all"
-          metaRight={
-            <>
-              {t('Harvest Model:')} <strong>{t('Feed-to-Harvest Baseline Intelligence')}</strong>
-            </>
-          }
           filterFields={[
             {
               label: t('Pond'),
@@ -433,21 +409,25 @@ export default function HarvestPage() {
             <p className="mt-2 mb-0 extra-small fw-semibold">{t('Loading harvest forecast...')}</p>
           </div>
         ) : (
-          <div className="table-responsive admin-scrollable-table-4rows rounded-3 border" style={{ maxHeight: 350, overflowY: 'auto', overflowX: 'hidden', borderColor: '#E2E8F0' }}>
-            <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.80rem', tableLayout: 'fixed', width: '100%' }}>
-              <thead className="table-light border-bottom sticky-top" style={{ borderColor: '#E2E8F0' }}>
-                <tr className="text-secondary extra-small text-uppercase fw-bold" style={{ letterSpacing: '0.03em' }}>
-                  <th className="ps-3 py-2.5" style={{ width: '9%' }}>{t('Pond')}</th>
-                  <th className="py-2.5" style={{ width: '12%' }}>{t('Caretaker')}</th>
-                  <th className="py-2.5" style={{ width: '10%' }}>{t('Feed Used')}</th>
-                  <th className="py-2.5" style={{ width: '9%' }}>{t('ABW')}</th>
-                  <th className="py-2.5" style={{ width: '10%' }}>{t('Target Yield')}</th>
-                  <th className="py-2.5" style={{ width: '12%' }}>{t('Est. Harvest')}</th>
-                  <th className="py-2.5" style={{ width: '15%' }}>{t('Cycle Progress')}</th>
-                  <th className="py-2.5" style={{ width: '10%' }}>{t('Readiness')}</th>
-                  <th className="pe-3 py-2.5 text-end" style={{ width: '13%' }}>{t('Calculated')}</th>
-                </tr>
-              </thead>
+          <>
+            <div className="d-block d-md-none text-center text-muted extra-small mb-1 font-monospace" style={{ fontSize: '0.68rem' }}>
+              {t('← Swipe table horizontally to see full details →')}
+            </div>
+            <div className="table-responsive admin-scrollable-table-4rows rounded-3 border" style={{ maxHeight: 290, overflowY: 'auto', overflowX: 'auto', WebkitOverflowScrolling: 'touch', borderColor: '#E2E8F0' }}>
+              <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.80rem', minWidth: 760 }}>
+                <thead className="table-light border-bottom" style={{ borderColor: '#E2E8F0' }}>
+                  <tr className="text-secondary extra-small text-uppercase fw-bold" style={{ letterSpacing: '0.03em' }}>
+                    <th className="ps-3 py-2.5" style={{ minWidth: 75 }}>{t('Pond')}</th>
+                    <th className="py-2.5" style={{ minWidth: 100 }}>{t('Caretaker')}</th>
+                    <th className="py-2.5" style={{ minWidth: 85 }}>{t('Feed Used')}</th>
+                    <th className="py-2.5" style={{ minWidth: 70 }}>{t('ABW')}</th>
+                    <th className="py-2.5" style={{ minWidth: 95 }}>{t('Target Yield')}</th>
+                    <th className="py-2.5" style={{ minWidth: 95 }}>{t('Est. Harvest')}</th>
+                    <th className="py-2.5" style={{ minWidth: 110 }}>{t('Cycle Progress')}</th>
+                    <th className="py-2.5" style={{ minWidth: 85 }}>{t('Readiness')}</th>
+                    <th className="pe-3 py-2.5 text-end" style={{ minWidth: 95 }}>{t('Calculated')}</th>
+                  </tr>
+                </thead>
               <tbody>
                 {(() => {
                   const filtered = predictions.filter((item) => {
@@ -558,6 +538,7 @@ export default function HarvestPage() {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
     </div>

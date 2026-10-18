@@ -13,7 +13,9 @@ import {
   FaTimes,
   FaShieldAlt,
   FaCog,
-  FaSlidersH
+  FaSlidersH,
+  FaChevronLeft,
+  FaChevronRight
 } from 'react-icons/fa';
 import { getEffectiveTheme, getThemePreference, setManualTheme, resetThemeToAuto } from '../utils/theme';
 import { useLanguage } from '../context/LanguageContext';
@@ -73,7 +75,6 @@ const dockIcons = {
 // Navigation Links for the Floating Top Dock
 const dockLinks = [
   { to: '/caretaker/dashboard', key: 'nav.dashboard', label: 'Dashboard', icon: dockIcons.dashboard },
-  { to: '/caretaker/my-tasks', key: 'nav.myTasks', label: 'My Tasks', icon: <FaCheckDouble size={15} /> },
   { to: '/caretaker/my-pond', key: 'nav.myPond', label: 'My Pond', icon: dockIcons.myPond },
   { to: '/caretaker/disease-scan', key: 'nav.diseaseScan', label: 'Disease Scan', icon: dockIcons.diseaseScan },
   { to: '/caretaker/feeding-history', key: 'nav.feedingHistory', label: 'Feeding History', icon: dockIcons.feedingHistory },
@@ -99,6 +100,65 @@ export default function CaretakerLayout() {
 
   const bellRef = useRef(null);
   const userRef = useRef(null);
+  const navRowRef = useRef(null);
+
+  // Category Dock Horizontal Swipe State
+  const [navScroll, setNavScroll] = useState({
+    scrollLeft: 0,
+    maxScroll: 0,
+    hasOverflow: false,
+    percent: 0,
+    canScrollLeft: false,
+    canScrollRight: false
+  });
+
+  const updateNavScroll = () => {
+    const el = navRowRef.current;
+    if (!el) return;
+    const max = Math.max(0, el.scrollWidth - el.clientWidth);
+    const hasOverflow = max > 10;
+    const current = el.scrollLeft;
+    const percent = max > 0 ? Math.min(100, Math.max(0, Math.round((current / max) * 100))) : 0;
+    setNavScroll({
+      scrollLeft: current,
+      maxScroll: max,
+      hasOverflow,
+      percent,
+      canScrollLeft: current > 6,
+      canScrollRight: current < max - 6
+    });
+  };
+
+  useEffect(() => {
+    updateNavScroll();
+    const el = navRowRef.current;
+    if (el) {
+      el.addEventListener('scroll', updateNavScroll, { passive: true });
+    }
+    window.addEventListener('resize', updateNavScroll);
+    return () => {
+      if (el) el.removeEventListener('scroll', updateNavScroll);
+      window.removeEventListener('resize', updateNavScroll);
+    };
+  }, []);
+
+  useEffect(() => {
+    // When location changes, scroll active dock pill into view if needed
+    const el = navRowRef.current;
+    if (!el) return;
+    const activePill = el.querySelector('.dock-nav-pill.active');
+    if (activePill) {
+      activePill.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+    setTimeout(updateNavScroll, 300);
+  }, [location.pathname]);
+
+  const handleNavScrollNudge = (direction) => {
+    const el = navRowRef.current;
+    if (!el) return;
+    const offset = direction === 'left' ? -150 : 150;
+    el.scrollBy({ left: offset, behavior: 'smooth' });
+  };
 
   // Real-Time System Clock Timer State
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -236,12 +296,12 @@ export default function CaretakerLayout() {
           {/* Tier 1: Brand & Executive Utilities Bar */}
         <div className="top-dock-topbar d-flex align-items-center justify-content-between w-100">
           {/* 1. Brand Logo & Farm Identity */}
-          <div className="d-flex align-items-center gap-2.5 gap-md-3 flex-shrink-0">
-            <NavLink to="/caretaker/dashboard" className="d-flex align-items-center gap-2.5 text-decoration-none">
+          <div className="d-flex align-items-center gap-2 gap-md-3 min-w-0">
+            <NavLink to="/caretaker/dashboard" className="d-flex align-items-center gap-2 text-decoration-none min-w-0">
               <img
                 src="/ob_aquafarm_logo.png"
                 alt="O & B Aquafarm Logo"
-                className="rounded-circle flex-shrink-0 shadow-sm"
+                className="rounded-circle flex-shrink-0 shadow-sm top-dock-logo-img"
                 style={{
                   width: '42px',
                   height: '42px',
@@ -251,11 +311,11 @@ export default function CaretakerLayout() {
                   border: '1.5px solid rgba(252, 86, 60, 0.5)'
                 }}
               />
-              <div>
+              <div className="top-dock-brand-text min-w-0">
                 <span className="fw-extrabold text-white tracking-tight d-block" style={{ fontSize: '1.18rem', letterSpacing: '-0.02em', lineHeight: 1.15 }}>
                   Shrimp<span style={{ color: '#FC563C' }}>Predict</span>
                 </span>
-                <span className="d-block text-white-50" style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.04em', lineHeight: 1, marginTop: 2 }}>
+                <span className="d-none d-sm-block text-white-50" style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.04em', lineHeight: 1, marginTop: 2 }}>
                   O & B AQUAFARM
                 </span>
               </div>
@@ -282,7 +342,7 @@ export default function CaretakerLayout() {
           </div>
 
           {/* 2. Utility Controls Cluster (Clock, Language, Theme, Notifications, User) */}
-          <div className="d-flex align-items-center gap-2 flex-shrink-0">
+          <div className="d-flex align-items-center gap-1.5 gap-sm-2 flex-shrink-0 top-dock-utilities">
             {/* Language Switcher Pill */}
             <LanguageToggle isDark={true} />
 
@@ -307,7 +367,7 @@ export default function CaretakerLayout() {
               <button
                 type="button"
                 onClick={handleResetToAuto}
-                className="btn btn-sm rounded-pill d-inline-flex align-items-center gap-1.5 shadow-xs px-2.5 py-1"
+                className="btn btn-sm rounded-pill d-none d-sm-inline-flex align-items-center gap-1.5 shadow-xs px-2.5 py-1"
                 style={{
                   backgroundColor: 'rgba(255, 255, 255, 0.12)',
                   border: '1px solid rgba(255, 255, 255, 0.25)',
@@ -388,17 +448,29 @@ export default function CaretakerLayout() {
                 <FaBell size={13} style={{ color: '#FFFFFF' }} />
                 {unreadCount > 0 && (
                   <span
-                    className="position-absolute top-0 start-100 translate-middle badge rounded-pill border border-light p-1"
-                    style={{ fontSize: '0.6rem', backgroundColor: '#FC563C', color: '#FFFFFF' }}
+                    className="position-absolute rounded-pill bg-danger text-white d-flex align-items-center justify-content-center"
+                    style={{
+                      top: -2,
+                      right: -2,
+                      minWidth: 15,
+                      height: 15,
+                      padding: '0 3.5px',
+                      fontSize: '0.58rem',
+                      fontWeight: 700,
+                      lineHeight: 1,
+                      border: '1.5px solid #172A39',
+                      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.4)',
+                      pointerEvents: 'none'
+                    }}
                   >
-                    {unreadCount}
+                    {unreadCount > 99 ? '99+' : unreadCount}
                   </span>
                 )}
               </button>
 
               {showNotifMenu && (
                 <div
-                  className="dropdown-menu show border-0 position-absolute end-0 mt-2 p-0 rounded-4 shadow-xl overflow-hidden"
+                  className="dropdown-menu show border-0 position-absolute end-0 mt-2 p-0 rounded-4 shadow-xl overflow-hidden notif-dropdown-menu"
                   style={{
                     width: 'min(340px, calc(100vw - 24px))',
                     maxWidth: 'calc(100vw - 24px)',
@@ -576,7 +648,11 @@ export default function CaretakerLayout() {
         <div className="top-dock-divider d-none d-lg-block" />
 
         {/* Tier 2: Floating Dock Navigation Tabs (Spacious, Dedicated Row) */}
-        <nav className="top-dock-nav-row d-none d-lg-flex align-items-center justify-content-between flex-nowrap overflow-x-auto w-100 py-0.5">
+        <nav
+          ref={navRowRef}
+          onScroll={updateNavScroll}
+          className="top-dock-nav-row d-flex align-items-center justify-content-between flex-nowrap overflow-x-auto w-100 py-0.5"
+        >
           {dockLinks.map((link) => (
             <NavLink
               key={link.to}
@@ -603,19 +679,169 @@ export default function CaretakerLayout() {
           ))}
         </nav>
 
+        {/* Horizontal Swipe Progress Indicator for Header Categories (Visible on Mobile / Overflow) */}
+        {navScroll.hasOverflow && (
+          <div
+            className="dock-swipe-tracker d-flex align-items-center justify-content-between px-2 pt-1 pb-0.5 w-100"
+            style={{
+              fontSize: '0.66rem',
+              color: 'rgba(255, 255, 255, 0.88)',
+              userSelect: 'none',
+              borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+              marginTop: '2px'
+            }}
+          >
+            <button
+              type="button"
+              className="btn btn-link p-0 text-decoration-none d-flex align-items-center gap-1 border-0"
+              style={{
+                color: navScroll.canScrollLeft ? '#FFFFFF' : 'rgba(255, 255, 255, 0.35)',
+                fontSize: '0.66rem',
+                cursor: navScroll.canScrollLeft ? 'pointer' : 'default',
+                transition: 'all 0.2s ease',
+                fontWeight: 600
+              }}
+              onClick={() => handleNavScrollNudge('left')}
+              disabled={!navScroll.canScrollLeft}
+              aria-label="Swipe categories left"
+            >
+              <FaChevronLeft size={8} />
+              <span>{t('common.swipe', 'Swipe')}</span>
+            </button>
+
+            <div className="d-flex align-items-center justify-content-center flex-grow-1 mx-2">
+              <div
+                style={{
+                  width: 90,
+                  height: 4,
+                  backgroundColor: 'rgba(255, 255, 255, 0.18)',
+                  borderRadius: 9999,
+                  position: 'relative',
+                  overflow: 'hidden'
+                }}
+              >
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    bottom: 0,
+                    left: `${(navScroll.percent / 100) * (100 - Math.max(18, Math.min(45, ((navRowRef.current?.clientWidth || 300) / (navRowRef.current?.scrollWidth || 600)) * 100)))}%`,
+                    width: `${Math.max(18, Math.min(45, ((navRowRef.current?.clientWidth || 300) / (navRowRef.current?.scrollWidth || 600)) * 100))}%`,
+                    backgroundColor: '#FC563C',
+                    borderRadius: 9999,
+                    boxShadow: '0 0 6px rgba(252, 86, 60, 0.8)',
+                    transition: 'left 0.08s ease-out'
+                  }}
+                />
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="btn btn-link p-0 text-decoration-none d-flex align-items-center gap-1 border-0"
+              style={{
+                color: navScroll.canScrollRight ? '#FC563C' : 'rgba(255, 255, 255, 0.35)',
+                fontSize: '0.66rem',
+                cursor: navScroll.canScrollRight ? 'pointer' : 'default',
+                transition: 'all 0.2s ease',
+                fontWeight: 600
+              }}
+              onClick={() => handleNavScrollNudge('right')}
+              disabled={!navScroll.canScrollRight}
+              aria-label="Swipe categories right"
+            >
+              <span>{t('common.more', 'More')}</span>
+              <FaChevronRight size={8} />
+            </button>
+          </div>
+        )}
+
         {/* Mobile Dropdown Navigation */}
         {showMobileNav && (
-          <div className="w-100 d-lg-none pt-2.5 pb-1 border-top mt-2">
-            <div className="d-flex flex-wrap gap-1.5">
+          <div className="w-100 d-lg-none pt-2.5 pb-2 border-top mt-2" style={{ borderColor: 'rgba(255, 255, 255, 0.15)' }}>
+            {/* Repurposed Theme Control: 3-Option Segmented Switcher (Light, Dark, Auto) */}
+            <div
+              className="d-flex align-items-center p-1 rounded-pill mb-2.5 w-100 shadow-xs"
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                border: '1px solid rgba(255, 255, 255, 0.18)',
+                gap: '3px',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setManualTheme('light')}
+                className="btn btn-sm rounded-pill flex-fill d-flex align-items-center justify-content-center gap-1.5 py-1.5 fw-bold border-0 transition-all"
+                style={{
+                  backgroundColor: (!isAuto && theme === 'light') ? '#FC563C' : 'transparent',
+                  color: (!isAuto && theme === 'light') ? '#FFFFFF' : '#CBD5E1',
+                  fontSize: '0.78rem',
+                  boxShadow: (!isAuto && theme === 'light') ? '0 2px 6px rgba(252, 86, 60, 0.35)' : 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                <FaSun size={12} style={{ color: (!isAuto && theme === 'light') ? '#FFFFFF' : '#F59E0B' }} />
+                <span>{t('common.light', 'Light')}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setManualTheme('dark')}
+                className="btn btn-sm rounded-pill flex-fill d-flex align-items-center justify-content-center gap-1.5 py-1.5 fw-bold border-0 transition-all"
+                style={{
+                  backgroundColor: (!isAuto && theme === 'dark') ? '#FC563C' : 'transparent',
+                  color: (!isAuto && theme === 'dark') ? '#FFFFFF' : '#CBD5E1',
+                  fontSize: '0.78rem',
+                  boxShadow: (!isAuto && theme === 'dark') ? '0 2px 6px rgba(252, 86, 60, 0.35)' : 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                <FaMoon size={11} style={{ color: (!isAuto && theme === 'dark') ? '#FFFFFF' : '#93C5FD' }} />
+                <span>{t('common.dark', 'Dark')}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleResetToAuto}
+                className="btn btn-sm rounded-pill flex-fill d-flex align-items-center justify-content-center gap-1.5 py-1.5 fw-bold border-0 transition-all"
+                style={{
+                  backgroundColor: isAuto ? '#FC563C' : 'transparent',
+                  color: isAuto ? '#FFFFFF' : '#CBD5E1',
+                  fontSize: '0.78rem',
+                  boxShadow: isAuto ? '0 2px 6px rgba(252, 86, 60, 0.35)' : 'none',
+                  cursor: 'pointer',
+                }}
+                title={t('common.autoSchedule', 'Auto Day/Night Mode (6 AM–6 PM Light, 6 PM–6 AM Dark)')}
+              >
+                <FaClock size={11} style={{ color: isAuto ? '#FFFFFF' : '#FC563C' }} />
+                <span>{t('common.auto', 'Auto')}</span>
+              </button>
+            </div>
+
+            {/* Touch-optimized Mobile Navigation Grid */}
+            <div className="mobile-nav-grid">
               {dockLinks.map((link) => (
                 <NavLink
                   key={link.to}
                   to={link.to}
-                  className={({ isActive }) => `dock-nav-pill ${isActive ? 'active' : ''}`}
+                  className={({ isActive }) => `mobile-nav-pill-item ${isActive ? 'active' : ''}`}
                   onClick={() => setShowMobileNav(false)}
                 >
-                  <span>{link.icon}</span>
-                  <span>{t(link.key, link.label)}</span>
+                  <span className="flex-shrink-0">{link.icon}</span>
+                  <span className="text-truncate">{t(link.key, link.label)}</span>
+                  {link.to === '/caretaker/notifications' && unreadCount > 0 && (
+                    <span
+                      className="badge rounded-pill ms-auto"
+                      style={{
+                        backgroundColor: '#FC563C',
+                        color: '#FFFFFF',
+                        fontSize: '0.62rem',
+                        padding: '0.12rem 0.35rem',
+                      }}
+                    >
+                      {unreadCount}
+                    </span>
+                  )}
                 </NavLink>
               ))}
             </div>

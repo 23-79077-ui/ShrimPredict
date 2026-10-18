@@ -724,9 +724,13 @@ export default function UsersPage() {
           ) : sortedUsers.length === 0 ? (
             <div className="text-center py-5 text-muted">{t('No personnel records found matching filter criteria.')}</div>
           ) : (
-            <div className="table-responsive admin-scrollable-table-4rows rounded-3" style={{ maxHeight: 240, overflowY: 'auto' }}>
-              <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.85rem' }}>
-              <thead className="table-light border-bottom sticky-top" style={{ borderColor: '#E2E8F0', zIndex: 5 }}>
+            <>
+              <div className="d-block d-md-none text-center text-muted extra-small mb-1 font-monospace" style={{ fontSize: '0.68rem' }}>
+                {t('← Swipe table horizontally to see full details →')}
+              </div>
+              <div className="table-responsive admin-scrollable-table-4rows rounded-3" style={{ maxHeight: 290, overflowY: 'auto', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.85rem' }}>
+                <thead className="table-light border-bottom" style={{ borderColor: '#E2E8F0' }}>
                 <tr className="extra-small text-uppercase fw-bold text-secondary">
                   <th className="ps-3 py-3" style={{ minWidth: 220 }}>{t('User Profile')}</th>
                   <th className="py-3" style={{ minWidth: 190 }}>{t('Contact Email')}</th>
@@ -897,6 +901,7 @@ export default function UsersPage() {
               </tbody>
             </table>
           </div>
+          </>
         )}
         </div>
       </div>

@@ -166,7 +166,7 @@ export default function MyTasksPage() {
         isComplete: loggedSlots.has(slot),
         route: '/caretaker/my-pond',
         title: t('myTasks.feedTitle', 'Log the scheduled feeding'),
-        detail: `${t('myTasks.slot', 'Feeding slot')}: ${slot}`,
+        detail: t('myTasks.feedDesc', 'Verify ration and record feed tray consumption.'),
       }));
     });
 
@@ -250,7 +250,7 @@ export default function MyTasksPage() {
         </div>
       )}
 
-      <section className="bg-white border rounded-4 p-3 p-md-4 mb-4 shadow-sm">
+      <section className="caretaker-tasks-card border rounded-4 p-3 p-md-4 mb-4 shadow-sm">
         <div className="d-flex justify-content-between align-items-center mb-2">
           <div>
             <h5 className="fw-bold text-dark mb-1">{t('myTasks.progress', 'Today’s progress')}</h5>
@@ -276,7 +276,7 @@ export default function MyTasksPage() {
           <FaSpinner className="fa-spin me-2" />{t('myTasks.loading', 'Loading your tasks…')}
         </div>
       ) : ponds.length === 0 && tasks.length === 0 ? (
-        <div className="bg-white border rounded-4 text-center p-5">
+        <div className="caretaker-tasks-card border rounded-4 text-center p-5">
           <FaWater className="fs-2 mb-3" style={{ color: '#94A3B8' }} />
           <h5 className="fw-bold">{t('myTasks.noPondsTitle', 'No ponds assigned')}</h5>
           <p className="text-muted mb-0">{t('myTasks.noPonds', 'Ask your farm administrator to assign a pond to your caretaker account.')}</p>
@@ -288,7 +288,7 @@ export default function MyTasksPage() {
             return (
               <article
                 key={task.id}
-                className={`bg-white border rounded-4 p-3 p-md-4 shadow-sm ${isNext ? 'border-2' : ''}`}
+                className={`caretaker-task-article border rounded-4 p-3 p-md-4 shadow-sm ${isNext ? 'border-2' : ''}`}
                 style={isNext ? { borderColor: '#FC563C' } : undefined}
               >
                 <div className="d-flex align-items-start gap-3">
@@ -304,21 +304,23 @@ export default function MyTasksPage() {
                   >
                     {task.isComplete ? <FaCheck /> : task.type === 'admin-action' ? <FaTools /> : task.type === 'water' ? <FaWater /> : <FaClock />}
                   </div>
-                  <div className="flex-grow-1">
-                    <div className="d-flex flex-wrap align-items-center gap-2 mb-1">
-                      <h6 className="fw-bold mb-0">{task.title}</h6>
-                      {isNext && <span className="badge rounded-pill" style={{ backgroundColor: '#FFF1ED', color: '#C2410C' }}>{t('myTasks.next', 'NEXT')}</span>}
-                      {task.type === 'admin-action' ? (
-                        <span className={`badge ${
-                          task.action.status === 'Done'
-                            ? 'bg-success-subtle text-success'
-                            : task.action.status === 'In Progress'
-                              ? 'bg-primary-subtle text-primary'
-                              : 'bg-warning-subtle text-warning-emphasis'
-                        }`}>
-                          {t(task.action.status)}
-                        </span>
-                      ) : task.isComplete && <span className="badge bg-success-subtle text-success">{t('myTasks.done', 'Done')}</span>}
+                  <div className="flex-grow-1 min-w-0">
+                    <div className="d-flex align-items-start justify-content-between gap-2 mb-1">
+                      <h6 className="fw-bold mb-0 text-break" style={{ fontSize: '0.92rem', lineHeight: 1.35 }}>{task.title}</h6>
+                      <div className="d-flex align-items-center gap-1.5 flex-shrink-0">
+                        {isNext && <span className="badge rounded-pill extra-small fw-bold px-2 py-0.5" style={{ backgroundColor: '#FFF1ED', color: '#C2410C' }}>{t('myTasks.next', 'NEXT')}</span>}
+                        {task.type === 'admin-action' ? (
+                          <span className={`badge rounded-pill extra-small fw-bold px-2 py-0.5 ${
+                            task.action.status === 'Done'
+                              ? 'bg-success-subtle text-success'
+                              : task.action.status === 'In Progress'
+                                ? 'bg-primary-subtle text-primary'
+                                : 'bg-warning-subtle text-warning-emphasis'
+                          }`}>
+                            {t(task.action.status)}
+                          </span>
+                        ) : task.isComplete && <span className="badge rounded-pill extra-small fw-bold px-2 py-0.5 bg-success-subtle text-success">{t('myTasks.done', 'Done')}</span>}
+                      </div>
                     </div>
                     <div className="small fw-semibold mb-1" style={{ color: '#FC563C' }}>
                       {task.type === 'admin-action' && `${t('myTasks.adminDecision', 'Admin decision')} · `}

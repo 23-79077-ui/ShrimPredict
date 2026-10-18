@@ -888,7 +888,7 @@ export default function SettingsPage() {
       {/* Main Settings Body */}
       <div className="row g-4 align-items-start">
         {/* Left Navigation Sidebar / Tabs (Fixed/Sticky on Scroll below top dock bar) */}
-        <div className="col-12 col-lg-4 col-xl-3" style={{ position: 'sticky', top: '155px', zIndex: 100, alignSelf: 'flex-start' }}>
+        <div className="col-12 col-lg-4 col-xl-3 settings-sidebar-sticky mb-4 mb-lg-0">
           <div className="settings-menu-card p-3.5 shadow-xs">
             {/* Settings Menu Header + Integrated Search Bar */}
             <div className="px-1 pb-3 mb-2 border-bottom">
@@ -1948,9 +1948,9 @@ export default function SettingsPage() {
                       <p className="small mb-0">{t('Resigned or archived caretaker records will appear here.')}</p>
                     </div>
                   ) : (
-                    <div className="table-responsive admin-scrollable-table-4rows" style={{ maxHeight: 215, overflowY: 'auto' }}>
+                    <div className="table-responsive admin-scrollable-table-4rows" style={{ maxHeight: 290, overflowY: 'auto' }}>
                       <table className="table align-middle mb-0">
-                        <thead className="table-light sticky-top">
+                        <thead className="table-light">
                         <tr>
                           <th style={{ padding: '12px 16px' }}>{t('Name')}</th>
                           <th style={{ padding: '12px 16px' }}>{t('Employee ID')}</th>
@@ -2321,9 +2321,9 @@ export default function SettingsPage() {
                           <small className="fw-bold text-primary text-uppercase extra-small mb-2 d-flex align-items-center gap-1">
                             <FaUtensils /> {t('Preserved Feeding Logs History')}
                           </small>
-                          <div className="table-responsive rounded-3 border" style={{ maxHeight: 240, overflowY: 'auto' }}>
+                          <div className="table-responsive admin-scrollable-table-4rows rounded-3 border" style={{ maxHeight: 290, overflowY: 'auto' }}>
                             <table className="table table-sm align-middle text-start small mb-0">
-                              <thead className="table-light sticky-top">
+                              <thead className="table-light">
                                 <tr>
                                   <th className="ps-3">{t('Time / Session')}</th>
                                   <th>{t('Pond')}</th>
@@ -2366,9 +2366,9 @@ export default function SettingsPage() {
                           <small className="fw-bold text-danger text-uppercase extra-small mb-2 d-flex align-items-center gap-1">
                             <FaBug /> {t('Preserved Disease Risk Scans')}
                           </small>
-                          <div className="table-responsive rounded-3 border" style={{ maxHeight: 240, overflowY: 'auto' }}>
+                          <div className="table-responsive admin-scrollable-table-4rows rounded-3 border" style={{ maxHeight: 290, overflowY: 'auto' }}>
                             <table className="table table-sm align-middle text-start small mb-0">
-                              <thead className="table-light sticky-top">
+                              <thead className="table-light">
                                 <tr>
                                   <th className="ps-3">{t('Pond')}</th>
                                   <th>{t('Disease Detected')}</th>
@@ -2407,7 +2407,7 @@ export default function SettingsPage() {
                           <small className="fw-bold text-info text-uppercase extra-small mb-2 d-flex align-items-center gap-1">
                             <FaWater /> {t('Preserved Water Quality & Pond Conditions')}
                           </small>
-                          <div className="table-responsive rounded-3 border">
+                          <div className="table-responsive admin-scrollable-table-4rows rounded-3 border" style={{ maxHeight: 290, overflowY: 'auto' }}>
                             <table className="table table-sm align-middle text-start small mb-0">
                               <thead className="table-light">
                                 <tr>
@@ -2444,7 +2444,7 @@ export default function SettingsPage() {
                       {selectedArchivedDetails.activity_history.recent_reports?.length > 0 && (
                         <div className="mt-2">
                           <small className="fw-bold text-dark text-uppercase extra-small mb-2 d-block">{t('Submitted Problem Reports History')}</small>
-                          <div className="table-responsive border rounded-3">
+                          <div className="table-responsive admin-scrollable-table-4rows border rounded-3" style={{ maxHeight: 290, overflowY: 'auto' }}>
                             <table className="table table-sm align-middle mb-0">
                               <thead className="table-light">
                                 <tr>

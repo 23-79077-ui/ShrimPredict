@@ -308,22 +308,22 @@ export default function CaretakerNotificationsPage() {
         <div className="d-flex align-items-center gap-1.5 flex-wrap">
           <button
             type="button"
-            className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold border-0 transition-all ${
+            className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold transition-all ${
               currentTab === 'active'
-                ? 'bg-white shadow-2xs text-dark'
-                : 'text-muted'
+                ? 'btn-chart-range-active shadow-xs'
+                : 'btn-chart-range-inactive'
             }`}
             onClick={() => setCurrentTab('active')}
           >
-            Active <span className="badge rounded-pill bg-light text-dark ms-1">{counts.active}</span>
+            Active <span className="badge rounded-pill ms-1" style={{ backgroundColor: currentTab === 'active' ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.08)', color: currentTab === 'active' ? '#FFFFFF' : 'inherit' }}>{counts.active}</span>
           </button>
 
           <button
             type="button"
-            className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold border-0 transition-all ${
+            className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold transition-all ${
               currentTab === 'unread'
-                ? 'bg-white shadow-2xs text-dark'
-                : 'text-muted'
+                ? 'btn-chart-range-active shadow-xs'
+                : 'btn-chart-range-inactive'
             }`}
             onClick={() => setCurrentTab('unread')}
           >
@@ -332,28 +332,28 @@ export default function CaretakerNotificationsPage() {
 
           <button
             type="button"
-            className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold border-0 transition-all ${
+            className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold transition-all ${
               currentTab === 'archived'
-                ? 'bg-white shadow-2xs text-dark'
-                : 'text-muted'
+                ? 'btn-chart-range-active shadow-xs'
+                : 'btn-chart-range-inactive'
             }`}
             onClick={() => setCurrentTab('archived')}
           >
             <FaArchive size={10} className="me-1" /> Archived{' '}
-            <span className="badge rounded-pill bg-secondary bg-opacity-25 text-dark ms-1">{counts.archived}</span>
+            <span className="badge rounded-pill ms-1" style={{ backgroundColor: currentTab === 'archived' ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.08)', color: currentTab === 'archived' ? '#FFFFFF' : 'inherit' }}>{counts.archived}</span>
           </button>
 
           <button
             type="button"
-            className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold border-0 transition-all ${
+            className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold transition-all ${
               currentTab === 'deleted'
-                ? 'bg-white shadow-2xs text-danger'
-                : 'text-muted'
+                ? 'btn-chart-range-active shadow-xs'
+                : 'btn-chart-range-inactive'
             }`}
             onClick={() => setCurrentTab('deleted')}
           >
             <FaTrashAlt size={10} className="me-1" /> Deleted History{' '}
-            <span className="badge rounded-pill bg-dark text-white ms-1">{counts.deleted || 0}</span>
+            <span className="badge rounded-pill ms-1" style={{ backgroundColor: currentTab === 'deleted' ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.08)', color: currentTab === 'deleted' ? '#FFFFFF' : 'inherit' }}>{counts.deleted || 0}</span>
           </button>
         </div>
 

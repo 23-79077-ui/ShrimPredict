@@ -13,9 +13,11 @@ import {
   FaBars,
   FaTimes,
   FaCog,
-  FaSlidersH
+  FaSlidersH,
+  FaChevronLeft,
+  FaChevronRight
 } from 'react-icons/fa';
-import { getEffectiveTheme, getThemePreference, setManualTheme, resetThemeToAuto } from '../utils/theme';
+import { getEffectiveTheme, getThemePreference, setManualTheme, resetThemeToAuto, checkAndUpdateAutoTheme } from '../utils/theme';
 import { useLanguage } from '../context/LanguageContext';
 import LanguageToggle from '../components/LanguageToggle';
 
@@ -92,8 +94,8 @@ const dockIcons = {
 const dockLinks = [
   { to: '/admin/dashboard', key: 'nav.dashboard', label: 'Dashboard', icon: dockIcons.dashboard },
   { to: '/admin/scan-reports', key: 'nav.scanReports', label: 'Scan Reports', icon: dockIcons.diseaseReports },
-  { to: '/admin/feeding', key: 'nav.feeding', label: 'Feeding Logs Reports', icon: dockIcons.feeding },
-  { to: '/admin/water-quality-reports', key: 'nav.waterQualityReports', label: 'Water Quality Reports', icon: dockIcons.waterQuality },
+  { to: '/admin/feeding', key: 'nav.feeding', label: 'Feeding Logs', icon: dockIcons.feeding },
+  { to: '/admin/water-quality-reports', key: 'nav.waterQualityReports', label: 'Water Quality', icon: dockIcons.waterQuality },
   { to: '/admin/harvest', key: 'nav.harvest', label: 'Harvest Forecast', icon: dockIcons.harvest },
   { to: '/admin/pond-reports', key: 'nav.pondReports', label: 'Pond Reports', icon: dockIcons.ponds },
   { to: '/admin/alerts', key: 'nav.alerts', label: 'Alerts', icon: dockIcons.alerts },
@@ -119,6 +121,65 @@ export default function AdminLayout() {
 
   const bellRef = useRef(null);
   const userRef = useRef(null);
+  const navRowRef = useRef(null);
+
+  // Category Dock Horizontal Swipe State
+  const [navScroll, setNavScroll] = useState({
+    scrollLeft: 0,
+    maxScroll: 0,
+    hasOverflow: false,
+    percent: 0,
+    canScrollLeft: false,
+    canScrollRight: false
+  });
+
+  const updateNavScroll = () => {
+    const el = navRowRef.current;
+    if (!el) return;
+    const max = Math.max(0, el.scrollWidth - el.clientWidth);
+    const hasOverflow = max > 10;
+    const current = el.scrollLeft;
+    const percent = max > 0 ? Math.min(100, Math.max(0, Math.round((current / max) * 100))) : 0;
+    setNavScroll({
+      scrollLeft: current,
+      maxScroll: max,
+      hasOverflow,
+      percent,
+      canScrollLeft: current > 6,
+      canScrollRight: current < max - 6
+    });
+  };
+
+  useEffect(() => {
+    updateNavScroll();
+    const el = navRowRef.current;
+    if (el) {
+      el.addEventListener('scroll', updateNavScroll, { passive: true });
+    }
+    window.addEventListener('resize', updateNavScroll);
+    return () => {
+      if (el) el.removeEventListener('scroll', updateNavScroll);
+      window.removeEventListener('resize', updateNavScroll);
+    };
+  }, []);
+
+  useEffect(() => {
+    // When location changes, scroll active dock pill into view if needed
+    const el = navRowRef.current;
+    if (!el) return;
+    const activePill = el.querySelector('.dock-nav-pill.active');
+    if (activePill) {
+      activePill.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+    setTimeout(updateNavScroll, 300);
+  }, [location.pathname]);
+
+  const handleNavScrollNudge = (direction) => {
+    const el = navRowRef.current;
+    if (!el) return;
+    const offset = direction === 'left' ? -150 : 150;
+    el.scrollBy({ left: offset, behavior: 'smooth' });
+  };
 
   // Real-Time System Clock Timer State
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -134,6 +195,7 @@ export default function AdminLayout() {
   };
 
   useEffect(() => {
+    checkAndUpdateAutoTheme();
     const handleThemeEvent = (e) => {
       if (e.detail?.theme) setTheme(e.detail.theme);
       if (e.detail?.preference !== undefined) setThemePreference(e.detail.preference);
@@ -145,6 +207,7 @@ export default function AdminLayout() {
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
+      checkAndUpdateAutoTheme();
     }, 1000);
     return () => clearInterval(timer);
   }, []);
@@ -321,17 +384,17 @@ export default function AdminLayout() {
               </div>
 
               {/* 2. Right: Utility Controls Cluster (Clock, Theme, Notifications, User Profile) */}
-              <div className="d-flex align-items-center gap-2 flex-shrink-0">
+              <div className="d-flex align-items-center gap-1.5 flex-shrink-0">
                 {/* Language Switcher */}
                 <LanguageToggle isDark={true} />
 
                 {/* Real-time Clock Capsule Pill */}
                 <div
-                  className="d-none d-md-flex align-items-center gap-1.5 text-white extra-small px-3 py-1 rounded-pill"
+                  className="d-none d-xl-flex align-items-center gap-1.5 text-white extra-small px-2.5 py-1 rounded-pill"
                   style={{
                     backgroundColor: 'rgba(255, 255, 255, 0.08)',
                     border: '1px solid rgba(255, 255, 255, 0.18)',
-                    fontSize: '0.76rem'
+                    fontSize: '0.74rem'
                   }}
                 >
                   <FaClock size={11} style={{ color: '#38BDF8' }} />
@@ -340,10 +403,33 @@ export default function AdminLayout() {
                   <span className="fw-medium text-white-50">{formattedDate}</span>
                 </div>
 
-                {/* Theme Toggle Button (Round Circle) */}
+                {/* Theme Toggle Pill & Auto Reset */}
+                {!isAuto && (
+                  <button
+                    type="button"
+                    onClick={handleResetToAuto}
+                    className="btn btn-sm rounded-pill d-none d-sm-inline-flex align-items-center gap-1.5 shadow-xs px-2.5 py-0.5"
+                    style={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                      border: '1px solid rgba(255, 255, 255, 0.25)',
+                      color: '#FFFFFF',
+                      fontSize: '0.74rem',
+                      fontWeight: 600,
+                      transition: 'all 0.2s ease',
+                      height: 32,
+                      cursor: 'pointer',
+                    }}
+                    title={t('common.autoSchedule', 'Reset to Auto Schedule: 6 AM–6 PM Light, 6 PM–6 AM Dark')}
+                    aria-label="Reset to Auto Theme Schedule"
+                  >
+                    <FaClock size={11} style={{ color: '#FC563C' }} />
+                    <span>{t('common.auto', 'Auto')}</span>
+                  </button>
+                )}
+
                 <button
                   type="button"
-                  className="btn text-white p-0 d-flex align-items-center justify-content-center rounded-circle"
+                  className="btn text-white p-0 position-relative d-flex align-items-center justify-content-center rounded-circle"
                   style={{
                     width: 32,
                     height: 32,
@@ -353,10 +439,37 @@ export default function AdminLayout() {
                     transition: 'background-color 0.2s ease',
                   }}
                   onClick={handleToggleTheme}
-                  title={`Theme: ${theme === 'dark' ? 'Dark' : 'Light'} • Click to toggle`}
-                  aria-label="Toggle theme"
+                  title={
+                    isAuto
+                      ? `Theme: Auto (${theme === 'dark' ? 'Dark mode 6 PM–6 AM' : 'Light mode 6 AM–6 PM'}) • Click to set ${theme === 'dark' ? 'Light' : 'Dark'} mode`
+                      : `Theme: ${theme === 'dark' ? 'Dark' : 'Light'} (Manual) • Click to switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`
+                  }
+                  aria-label={
+                    isAuto
+                      ? `Theme is Auto. Click to switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode.`
+                      : `Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`
+                  }
                 >
                   {theme === 'dark' ? <FaSun size={12} className="text-warning" /> : <FaMoon size={11} className="text-white" />}
+                  {isAuto && (
+                    <span
+                      className="position-absolute d-flex align-items-center justify-content-center rounded-circle"
+                      style={{
+                        bottom: -2,
+                        right: -2,
+                        width: 13,
+                        height: 13,
+                        backgroundColor: '#FC563C',
+                        color: '#FFFFFF',
+                        fontSize: 7.5,
+                        fontWeight: 700,
+                        boxShadow: '0 0 4px rgba(0,0,0,0.4)',
+                      }}
+                      title="Auto Day/Night Mode (6am–6pm Light, 6pm–6am Dark)"
+                    >
+                      <FaClock size={7} />
+                    </span>
+                  )}
                 </button>
 
                 {/* Notifications Dropdown Bell (Round Circle with Red Badge) */}
@@ -375,24 +488,31 @@ export default function AdminLayout() {
                     title="Pond Incident Notifications"
                   >
                     <FaBell size={12} className="text-white" />
-                    <span
-                      className="position-absolute badge rounded-pill bg-danger"
-                      style={{
-                        top: -5,
-                        right: -5,
-                        fontSize: '0.58rem',
-                        padding: '0.12rem 0.38rem',
-                        fontWeight: 700,
-                        border: '1.5px solid #172A39'
-                      }}
-                    >
-                      {unreadCount > 0 ? unreadCount : 54}
-                    </span>
+                    {unreadCount > 0 && (
+                      <span
+                        className="position-absolute rounded-pill bg-danger text-white d-flex align-items-center justify-content-center"
+                        style={{
+                          top: -2,
+                          right: -2,
+                          minWidth: 15,
+                          height: 15,
+                          padding: '0 3.5px',
+                          fontSize: '0.58rem',
+                          fontWeight: 700,
+                          lineHeight: 1,
+                          border: '1.5px solid #172A39',
+                          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.4)',
+                          pointerEvents: 'none'
+                        }}
+                      >
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </span>
+                    )}
                   </button>
 
                   {showNotifMenu && (
                     <div
-                      className="dropdown-menu show border-0 position-absolute end-0 mt-2 p-0 rounded-4 shadow-xl overflow-hidden"
+                      className="dropdown-menu show border-0 position-absolute end-0 mt-2 p-0 rounded-4 shadow-xl overflow-hidden notif-dropdown-menu"
                       style={{
                         width: '340px',
                         zIndex: 1050,
@@ -484,7 +604,7 @@ export default function AdminLayout() {
                 <div className="position-relative flex-shrink-0" ref={userRef}>
                   <button
                     type="button"
-                    className="btn d-flex align-items-center gap-2 p-1 ps-1.5 pe-3 rounded-pill text-white"
+                    className="btn d-flex align-items-center gap-2 p-1 ps-1.5 pe-1.5 pe-md-3 rounded-pill text-white"
                     style={{
                       backgroundColor: 'rgba(255, 255, 255, 0.08)',
                       border: '1px solid rgba(255, 255, 255, 0.18)'
@@ -502,7 +622,7 @@ export default function AdminLayout() {
                     >
                       {(user?.full_name || 'Admin').slice(0, 2).toUpperCase()}
                     </div>
-                    <div className="d-flex flex-column text-start" style={{ lineHeight: 1.15 }}>
+                    <div className="d-none d-md-flex flex-column text-start" style={{ lineHeight: 1.15 }}>
                       <span className="fw-bold text-white text-nowrap" style={{ fontSize: '0.78rem' }}>
                         {user?.full_name || 'Administrator'}
                       </span>
@@ -516,7 +636,7 @@ export default function AdminLayout() {
                     <div
                       className="dropdown-menu show border-0 position-absolute end-0 mt-2 p-2 rounded-3 shadow-lg"
                       style={{
-                        width: 200,
+                        width: 220,
                         zIndex: 1060,
                         backgroundColor: theme === 'dark' ? '#1E293B' : '#FFFFFF',
                         border: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #E2E8F0'
@@ -526,6 +646,46 @@ export default function AdminLayout() {
                         <div className="fw-bold small text-truncate">{user?.full_name || 'Administrator'}</div>
                         <div className="extra-small text-muted">{user?.email || 'admin@shrimpredict.io'}</div>
                       </div>
+                      {/* Theme Quick Actions in Profile Menu */}
+                      <button
+                        type="button"
+                        className="dropdown-item rounded-2 small py-1.5 fw-semibold d-flex align-items-center justify-content-between"
+                        onClick={handleResetToAuto}
+                        title="Automatic schedule: 6 AM–6 PM Light, 6 PM–6 AM Dark"
+                      >
+                        <span className="d-flex align-items-center gap-2">
+                          <FaClock size={12} style={{ color: '#FC563C' }} />
+                          {t('common.auto', 'Auto Theme')}
+                        </span>
+                        {isAuto ? (
+                          <span className="badge rounded-pill px-2 py-0.5 extra-small" style={{ backgroundColor: '#ECFDF5', color: '#059669', border: '1px solid #A7F3D0' }}>
+                            {t('Active')}
+                          </span>
+                        ) : (
+                          <span className="badge rounded-pill px-2 py-0.5 extra-small bg-light text-secondary border">
+                            {t('Off')}
+                          </span>
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        className="dropdown-item rounded-2 small py-1.5 fw-semibold d-flex align-items-center justify-content-between"
+                        onClick={handleToggleTheme}
+                      >
+                        <span className="d-flex align-items-center gap-2">
+                          {theme === 'dark' ? <FaSun size={12} className="text-warning" /> : <FaMoon size={12} className="text-primary" />}
+                          {theme === 'dark' ? t('common.lightMode', 'Light Mode') : t('common.darkMode', 'Dark Mode')}
+                        </span>
+                        {!isAuto && (
+                          <span className="badge rounded-pill px-2 py-0.5 extra-small" style={{ backgroundColor: '#FFF7ED', color: '#C2410C', border: '1px solid #FDBA74' }}>
+                            Manual
+                          </span>
+                        )}
+                      </button>
+
+                      <div className="dropdown-divider my-1" style={{ borderColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : '#E2E8F0' }} />
+
                       <button
                         type="button"
                         className="dropdown-item rounded-2 small py-1.5 fw-semibold d-flex align-items-center gap-2"
@@ -564,7 +724,11 @@ export default function AdminLayout() {
             <div className="top-dock-divider d-none d-lg-block" />
 
             {/* Tier 2: Floating Dock Navigation Tabs (Spacious, Dedicated Row - Zero Cutoff) */}
-            <nav className="top-dock-nav-row d-none d-lg-flex align-items-center justify-content-between flex-nowrap w-100 py-0.5">
+            <nav
+              ref={navRowRef}
+              onScroll={updateNavScroll}
+              className="top-dock-nav-row d-flex align-items-center justify-content-between flex-nowrap w-100 py-0.5"
+            >
               {dockLinks.map((link) => (
                 <NavLink
                   key={link.to}
@@ -597,36 +761,178 @@ export default function AdminLayout() {
               ))}
             </nav>
 
+            {/* Horizontal Swipe Progress Indicator for Header Categories (Visible on Mobile / Overflow) */}
+            {navScroll.hasOverflow && (
+              <div
+                className="dock-swipe-tracker d-flex align-items-center justify-content-between px-2 pt-1 pb-0.5 w-100"
+                style={{
+                  fontSize: '0.66rem',
+                  color: 'rgba(255, 255, 255, 0.88)',
+                  userSelect: 'none',
+                  borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                  marginTop: '2px'
+                }}
+              >
+                <button
+                  type="button"
+                  className="btn btn-link p-0 text-decoration-none d-flex align-items-center gap-1 border-0"
+                  style={{
+                    color: navScroll.canScrollLeft ? '#FFFFFF' : 'rgba(255, 255, 255, 0.35)',
+                    fontSize: '0.66rem',
+                    cursor: navScroll.canScrollLeft ? 'pointer' : 'default',
+                    transition: 'all 0.2s ease',
+                    fontWeight: 600
+                  }}
+                  onClick={() => handleNavScrollNudge('left')}
+                  disabled={!navScroll.canScrollLeft}
+                  aria-label="Swipe categories left"
+                >
+                  <FaChevronLeft size={8} />
+                  <span>{t('common.swipe', 'Swipe')}</span>
+                </button>
+
+                <div className="d-flex align-items-center justify-content-center flex-grow-1 mx-2">
+                  <div
+                    style={{
+                      width: 90,
+                      height: 4,
+                      backgroundColor: 'rgba(255, 255, 255, 0.18)',
+                      borderRadius: 9999,
+                      position: 'relative',
+                      overflow: 'hidden'
+                    }}
+                  >
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        bottom: 0,
+                        left: `${(navScroll.percent / 100) * (100 - Math.max(18, Math.min(45, ((navRowRef.current?.clientWidth || 300) / (navRowRef.current?.scrollWidth || 600)) * 100)))}%`,
+                        width: `${Math.max(18, Math.min(45, ((navRowRef.current?.clientWidth || 300) / (navRowRef.current?.scrollWidth || 600)) * 100))}%`,
+                        backgroundColor: '#FC563C',
+                        borderRadius: 9999,
+                        boxShadow: '0 0 6px rgba(252, 86, 60, 0.8)',
+                        transition: 'left 0.08s ease-out'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="btn btn-link p-0 text-decoration-none d-flex align-items-center gap-1 border-0"
+                  style={{
+                    color: navScroll.canScrollRight ? '#FC563C' : 'rgba(255, 255, 255, 0.35)',
+                    fontSize: '0.66rem',
+                    cursor: navScroll.canScrollRight ? 'pointer' : 'default',
+                    transition: 'all 0.2s ease',
+                    fontWeight: 600
+                  }}
+                  onClick={() => handleNavScrollNudge('right')}
+                  disabled={!navScroll.canScrollRight}
+                  aria-label="Swipe categories right"
+                >
+                  <span>{t('common.more', 'More')}</span>
+                  <FaChevronRight size={8} />
+                </button>
+              </div>
+            )}
+
             {/* Mobile / Tablet Dropdown Navigation Row */}
             {showMobileNav && (
-              <div className="w-100 d-lg-none pt-2.5 pb-1 border-top mt-2" style={{ borderColor: 'rgba(255, 255, 255, 0.12)' }}>
-                <div className="d-flex flex-wrap gap-1.5">
-                  {dockLinks.map((link) => (
-                    <NavLink
-                      key={link.to}
-                      to={link.to}
-                      className={({ isActive }) => {
-                        const isCurrentActive = isActive ||
-                          (link.to === '/admin/scan-reports' && (location.pathname.startsWith('/admin/scan-reports') || location.pathname.startsWith('/admin/disease-reports'))) ||
-                          (link.to === '/admin/water-quality-reports' && (location.pathname.startsWith('/admin/water-quality-reports') || location.pathname.startsWith('/admin/water-quality'))) ||
-                          (link.to === '/admin/pond-reports' && (location.pathname.startsWith('/admin/pond-reports') || location.pathname.startsWith('/admin/ponds')));
-                        return `dock-nav-pill ${isCurrentActive ? 'active' : ''}`;
-                      }}
-                      onClick={() => setShowMobileNav(false)}
-                      style={{ fontSize: '0.74rem', padding: '0.35rem 0.6rem' }}
-                    >
-                      <span>{link.icon}</span>
-                      <span>{t(link.key, link.label)}</span>
-                      {link.to === '/admin/alerts' && (
-                        <span
-                          className="badge rounded-pill bg-danger text-white ms-1"
-                          style={{ fontSize: '0.6rem', padding: '0.1rem 0.35rem', fontWeight: 700 }}
-                        >
-                          {unreadCount > 0 ? unreadCount : 54}
-                        </span>
-                      )}
-                    </NavLink>
-                  ))}
+              <div className="w-100 d-lg-none pt-2.5 pb-2 border-top mt-2" style={{ borderColor: 'rgba(255, 255, 255, 0.15)' }}>
+                {/* Repurposed Theme Control: 3-Option Segmented Switcher (Light, Dark, Auto) */}
+                <div
+                  className="d-flex align-items-center p-1 rounded-pill mb-2.5 w-100 shadow-xs"
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                    border: '1px solid rgba(255, 255, 255, 0.18)',
+                    gap: '3px',
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setManualTheme('light')}
+                    className="btn btn-sm rounded-pill flex-fill d-flex align-items-center justify-content-center gap-1.5 py-1.5 fw-bold border-0 transition-all"
+                    style={{
+                      backgroundColor: (!isAuto && theme === 'light') ? '#FC563C' : 'transparent',
+                      color: (!isAuto && theme === 'light') ? '#FFFFFF' : '#CBD5E1',
+                      fontSize: '0.78rem',
+                      boxShadow: (!isAuto && theme === 'light') ? '0 2px 6px rgba(252, 86, 60, 0.35)' : 'none',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <FaSun size={12} style={{ color: (!isAuto && theme === 'light') ? '#FFFFFF' : '#F59E0B' }} />
+                    <span>{t('common.light', 'Light')}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setManualTheme('dark')}
+                    className="btn btn-sm rounded-pill flex-fill d-flex align-items-center justify-content-center gap-1.5 py-1.5 fw-bold border-0 transition-all"
+                    style={{
+                      backgroundColor: (!isAuto && theme === 'dark') ? '#FC563C' : 'transparent',
+                      color: (!isAuto && theme === 'dark') ? '#FFFFFF' : '#CBD5E1',
+                      fontSize: '0.78rem',
+                      boxShadow: (!isAuto && theme === 'dark') ? '0 2px 6px rgba(252, 86, 60, 0.35)' : 'none',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <FaMoon size={11} style={{ color: (!isAuto && theme === 'dark') ? '#FFFFFF' : '#93C5FD' }} />
+                    <span>{t('common.dark', 'Dark')}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleResetToAuto}
+                    className="btn btn-sm rounded-pill flex-fill d-flex align-items-center justify-content-center gap-1.5 py-1.5 fw-bold border-0 transition-all"
+                    style={{
+                      backgroundColor: isAuto ? '#FC563C' : 'transparent',
+                      color: isAuto ? '#FFFFFF' : '#CBD5E1',
+                      fontSize: '0.78rem',
+                      boxShadow: isAuto ? '0 2px 6px rgba(252, 86, 60, 0.35)' : 'none',
+                      cursor: 'pointer',
+                    }}
+                    title={t('common.autoSchedule', 'Auto Day/Night Mode (6 AM–6 PM Light, 6 PM–6 AM Dark)')}
+                  >
+                    <FaClock size={11} style={{ color: isAuto ? '#FFFFFF' : '#FC563C' }} />
+                    <span>{t('common.auto', 'Auto')}</span>
+                  </button>
+                </div>
+
+                {/* Touch-optimized 2-Column Mobile Navigation Grid */}
+                <div className="mobile-nav-grid">
+                  {dockLinks.map((link) => {
+                    const isCurrentActive =
+                      (link.to === '/admin/scan-reports' && (location.pathname.startsWith('/admin/scan-reports') || location.pathname.startsWith('/admin/disease-reports'))) ||
+                      (link.to === '/admin/water-quality-reports' && (location.pathname.startsWith('/admin/water-quality-reports') || location.pathname.startsWith('/admin/water-quality'))) ||
+                      (link.to === '/admin/pond-reports' && (location.pathname.startsWith('/admin/pond-reports') || location.pathname.startsWith('/admin/ponds')));
+                    return (
+                      <NavLink
+                        key={link.to}
+                        to={link.to}
+                        className={({ isActive }) => `mobile-nav-pill-item ${(isActive || isCurrentActive) ? 'active' : ''}`}
+                        onClick={() => setShowMobileNav(false)}
+                      >
+                        <span className="flex-shrink-0">{link.icon}</span>
+                        <span className="text-truncate">{t(link.key, link.label)}</span>
+                        {link.to === '/admin/alerts' && (
+                          <span
+                            className="badge rounded-pill ms-auto"
+                            style={{
+                              backgroundColor: '#EF4444',
+                              color: '#FFFFFF',
+                              fontSize: '0.6rem',
+                              padding: '0.12rem 0.35rem',
+                              fontWeight: 700
+                            }}
+                          >
+                            {unreadCount > 0 ? unreadCount : 54}
+                          </span>
+                        )}
+                      </NavLink>
+                    );
+                  })}
                 </div>
               </div>
             )}

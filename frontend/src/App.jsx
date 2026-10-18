@@ -79,7 +79,7 @@ function AppRoutes() {
       <Route path="/caretaker" element={<ProtectedRoute role="caretaker"><CaretakerLayout /></ProtectedRoute>}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<CaretakerDashboard />} />
-        <Route path="my-tasks" element={<MyTasksPage />} />
+        <Route path="my-tasks" element={<Navigate to="/caretaker/dashboard#my-tasks" replace />} />
         <Route path="my-pond" element={<MyPondPage />} />
         <Route path="disease-scan" element={<DiseaseScanPage />} />
         <Route path="feeding-history" element={<FeedingHistoryPage />} />

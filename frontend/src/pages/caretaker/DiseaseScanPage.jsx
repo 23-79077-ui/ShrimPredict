@@ -51,9 +51,16 @@ export default function DiseaseScanPage() {
 
   const [currentTheme, setCurrentTheme] = useState(() => getEffectiveTheme());
   useEffect(() => {
-    const handleThemeChange = () => setCurrentTheme(getEffectiveTheme());
+    const handleThemeChange = (e) => {
+      const t = e?.detail?.theme || document.documentElement.getAttribute('data-theme') || getEffectiveTheme();
+      setCurrentTheme(t);
+    };
+    window.addEventListener('shrim-theme-changed', handleThemeChange);
     window.addEventListener('themeChanged', handleThemeChange);
-    return () => window.removeEventListener('themeChanged', handleThemeChange);
+    return () => {
+      window.removeEventListener('shrim-theme-changed', handleThemeChange);
+      window.removeEventListener('themeChanged', handleThemeChange);
+    };
   }, []);
   const isDark = currentTheme === 'dark';
 
@@ -908,16 +915,26 @@ export default function DiseaseScanPage() {
       {/* 1. TITLE HEADER */}
       <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
         <div>
-          <div className="d-flex align-items-center gap-2">
+          <div className="d-flex align-items-center flex-wrap gap-2 mb-1">
             <h3 className="fw-extrabold text-dark mb-0 tracking-tight" style={{ letterSpacing: '-0.02em' }}>
               {t('hero.diseaseScan', 'Shrimp Disease Scan & Health Check')}
             </h3>
-            <span className="badge rounded-pill extra-small px-2.5 py-1 fw-bold bg-white border text-secondary d-flex align-items-center gap-1.5 shadow-2xs">
-              <span className="pulse-dot-green"></span>
-              {t('hero.diseaseScanBadge', 'Photo Health Scanner')}
+            <span
+              className="badge rounded-pill extra-small px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1.5 shadow-2xs"
+              style={{
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#FFFFFF',
+                border: isDark ? '1px solid rgba(255, 255, 255, 0.16)' : '1px solid #E2E8F0',
+                color: isDark ? '#E2E8F0' : '#475569',
+                maxWidth: '100%',
+                whiteSpace: 'normal',
+                textAlign: 'left'
+              }}
+            >
+              <span className="pulse-dot-green flex-shrink-0"></span>
+              <span>{t('hero.diseaseScanBadge', 'Photo Health Scanner')}</span>
             </span>
           </div>
-          <p className="text-muted mb-0 small mt-0.5">
+          <p className="text-muted mb-0 small mt-0.5" style={{ maxWidth: 700, lineHeight: 1.4 }}>
             {t('hero.diseaseScanSub', 'Check shrimp photos for White Spot Disease (WSSV), discoloration, and general shrimp health.')}
           </p>
         </div>
@@ -940,8 +957,7 @@ export default function DiseaseScanPage() {
 
               {/* Pond Selection Pills */}
               <div
-                className="p-2 rounded-3 mb-3 d-flex align-items-center gap-1.5 flex-wrap bg-light border"
-                style={{ borderColor: '#E2E8F0' }}
+                className="chart-range-pill-container p-2 rounded-3 mb-3 d-flex align-items-center gap-1.5 flex-wrap border"
               >
                 <span className="extra-small fw-bold text-uppercase d-flex align-items-center gap-1 ps-2 text-secondary">
                   <FaWater /> Pond:
@@ -953,8 +969,8 @@ export default function DiseaseScanPage() {
                     <button
                       key={pond.id || pName}
                       type="button"
-                      className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all d-inline-flex align-items-center gap-1.5 border-0 ${
-                        isSelected ? 'bg-dark text-white shadow-2xs' : 'bg-white text-secondary shadow-2xs'
+                      className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all d-inline-flex align-items-center gap-1.5 ${
+                        isSelected ? 'btn-chart-range-active shadow-xs' : 'btn-chart-range-inactive'
                       }`}
                       onClick={() => setSelectedPond(pName)}
                     >
@@ -1206,13 +1222,17 @@ export default function DiseaseScanPage() {
                   {!result && (
                     <div
                       className="disease-guide-panel p-3 p-md-4 rounded-3 flex-grow-1 caretaker-telemetry-cluster"
+                      style={{
+                        backgroundColor: isDark ? '#1E293B' : undefined,
+                        borderColor: isDark ? 'rgba(255, 255, 255, 0.14)' : undefined
+                      }}
                       aria-live="polite"
                     >
                       <div className="d-flex align-items-start justify-content-between gap-2 mb-3">
                         <div>
                           <span className="disease-guide-eyebrow">{t('diseaseScan.guide.eyebrow', 'QUICK GUIDE')}</span>
-                          <h6 className="fw-bold text-dark mt-1 mb-1">{t('diseaseScan.guide.title', 'How to scan for shrimp disease')}</h6>
-                          <p className="extra-small text-muted mb-0">{t('diseaseScan.guide.subtitle', 'Complete these two steps to view the health assessment.')}</p>
+                          <h6 className="fw-bold mt-1 mb-1" style={{ color: isDark ? '#FFFFFF' : '#0B2C5F' }}>{t('diseaseScan.guide.title', 'How to scan for shrimp disease')}</h6>
+                          <p className="extra-small mb-0" style={{ color: isDark ? '#CBD5E1' : '#64748B' }}>{t('diseaseScan.guide.subtitle', 'Complete these two steps to view the health assessment.')}</p>
                         </div>
                         <span className={`disease-guide-progress ${result ? 'is-complete' : ''}`}>
                           {result
@@ -1276,7 +1296,14 @@ export default function DiseaseScanPage() {
                       </div>
 
                       {!image && (
-                        <div className="disease-guide-footer">
+                        <div
+                          className="disease-guide-footer"
+                          style={{
+                            backgroundColor: isDark ? 'rgba(15, 23, 42, 0.65)' : undefined,
+                            color: isDark ? '#CBD5E1' : undefined,
+                            border: isDark ? '1px solid rgba(255, 255, 255, 0.1)' : undefined,
+                          }}
+                        >
                           <FaCamera />
                           <span>{t('diseaseScan.guide.footer', 'Start with either photo option beside this guide. Step 2 will unlock when your image is ready.')}</span>
                         </div>
@@ -1541,9 +1568,9 @@ export default function DiseaseScanPage() {
           </div>
         </div>
 
-        <div className="table-responsive rounded-3 border" style={{ maxHeight: '290px', overflowY: 'auto', borderColor: '#E2E8F0' }}>
+        <div className="table-responsive admin-scrollable-table-4rows rounded-3 border" style={{ maxHeight: 290, overflowY: 'auto', borderColor: '#E2E8F0' }}>
           <table className="table table-hover align-middle mb-0">
-            <thead className="table-light sticky-top" style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+            <thead className="table-light">
               <tr>
                 <th className="ps-3 py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Date &amp; Time</th>
                 <th className="py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Pond</th>
@@ -1605,7 +1632,7 @@ export default function DiseaseScanPage() {
             if (event.target === event.currentTarget && !submittingReport) setBulkReportMode('');
           }}
         >
-          <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl" role="dialog" aria-modal="true">
+          <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl scan-report-modal-dialog" role="dialog" aria-modal="true">
             <div className="modal-content border-0 rounded-4 shadow-lg">
               <div className="modal-header border-bottom px-4 py-3">
                 <div>
@@ -1711,7 +1738,7 @@ export default function DiseaseScanPage() {
             if (event.target === event.currentTarget && !submittingReport) setShowReportModal(false);
           }}
         >
-          <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg" role="dialog" aria-modal="true">
+          <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg scan-report-modal-dialog" role="dialog" aria-modal="true">
             <form className="modal-content border-0 rounded-4 shadow-lg" onSubmit={handleSubmitDiseaseReport}>
               <div className="modal-header border-bottom px-4 py-3">
                 <div>

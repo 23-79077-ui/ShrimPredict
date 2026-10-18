@@ -110,7 +110,7 @@ export default function LoginPage() {
 
   return (
     <div
-      className="login-page-container min-vh-100 d-flex flex-column justify-content-center position-relative py-5"
+      className="login-page-container min-vh-100 d-flex flex-column justify-content-start justify-content-md-center position-relative py-0 py-md-5"
       style={{
         background: isDark
           ? 'linear-gradient(135deg, #0A141D 0%, #172A39 50%, #0F1C26 100%)'
@@ -119,9 +119,104 @@ export default function LoginPage() {
         transition: 'background 0.3s ease, color 0.3s ease',
       }}
     >
-      {/* FLOATING TOP NAVIGATION & THEME BAR */}
+      {/* MOBILE FIXED HEADER (Strictly Mobile View Only < md, continuously follows user while scrolling) */}
+      <header
+        className="d-flex d-md-none align-items-center justify-content-between px-3 py-2 position-fixed top-0 start-0 end-0 shadow-xs w-100"
+        style={{
+          backgroundColor: isDark ? 'rgba(23, 42, 57, 0.96)' : 'rgba(233, 228, 224, 0.96)',
+          borderBottom: isDark ? '1px solid rgba(110, 117, 117, 0.35)' : '1px solid #6E7575',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          zIndex: 1050,
+          minHeight: '52px',
+        }}
+      >
+        {/* Back to Home Button (Compact for Mobile) */}
+        <Link
+          to="/"
+          className="btn btn-sm rounded-pill d-inline-flex align-items-center gap-1.5 fw-bold text-decoration-none shadow-xs px-2.5 py-1"
+          style={{
+            backgroundColor: isDark ? '#172A39' : '#FFFFFF',
+            border: isDark ? '1px solid rgba(233, 228, 224, 0.25)' : '1px solid #6E7575',
+            color: isDark ? '#FFFFFF' : '#172A39',
+            fontSize: '0.78rem',
+            height: 36,
+          }}
+        >
+          <FaArrowLeft size={11} style={{ color: '#FC563C' }} />
+          <span>{t('login.backToHome', 'Back to Home')}</span>
+        </Link>
+
+        {/* Mobile Controls: Language & Theme */}
+        <div className="d-flex align-items-center gap-1.5 flex-shrink-0">
+          <LanguageToggle isDark={isDark} />
+
+          {!isAuto && (
+            <button
+              type="button"
+              onClick={handleResetToAuto}
+              className="btn btn-sm rounded-pill d-inline-flex align-items-center gap-1 shadow-xs px-2 py-1"
+              style={{
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1EBE6',
+                border: isDark ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid #D5CEC8',
+                color: isDark ? '#E2E8F0' : '#475569',
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                height: 36,
+              }}
+              title={t('common.autoSchedule', 'Reset to Auto Schedule: 6 AM–6 PM Light, 6 PM–6 AM Dark')}
+            >
+              <FaClock size={10} style={{ color: '#FC563C' }} />
+              <span>{t('common.auto', 'Auto')}</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            className="btn rounded-pill position-relative d-flex align-items-center justify-content-center p-0 shadow-xs flex-shrink-0"
+            style={{
+              width: 36,
+              height: 36,
+              backgroundColor: isDark ? '#172A39' : '#FFFFFF',
+              border: isDark ? '1px solid rgba(233, 228, 224, 0.25)' : '1px solid #6E7575',
+              cursor: 'pointer',
+            }}
+            onClick={handleToggleTheme}
+            title={
+              isAuto
+                ? `Theme: Auto (${isDark ? 'Dark mode 6 PM–6 AM' : 'Light mode 6 AM–6 PM'}) • Click to set ${isDark ? 'Light' : 'Dark'} mode`
+                : `Theme: ${isDark ? 'Dark' : 'Light'} (Manual) • Click to switch to ${isDark ? 'Light' : 'Dark'} mode`
+            }
+          >
+            {isDark ? <FaSun size={13} className="text-warning" /> : <FaMoon size={12} style={{ color: '#172A39' }} />}
+            {isAuto && (
+              <span
+                className="position-absolute d-flex align-items-center justify-content-center rounded-circle"
+                style={{
+                  bottom: -2,
+                  right: -2,
+                  width: 13,
+                  height: 13,
+                  backgroundColor: '#FC563C',
+                  color: '#FFFFFF',
+                  fontSize: 7.5,
+                  fontWeight: 700,
+                }}
+                title="Auto Day/Night Mode (6am–6pm Light, 6pm–6am Dark)"
+              >
+                <FaClock size={7} />
+              </span>
+            )}
+          </button>
+        </div>
+      </header>
+
+      {/* Spacer to prevent fixed mobile header from obscuring top content on mobile */}
+      <div className="d-block d-md-none" style={{ height: '52px', flexShrink: 0 }} aria-hidden="true" />
+
+      {/* DESKTOP / LAPTOP FLOATING TOP NAVIGATION BAR (Unchanged for Desktop) */}
       <div
-        className="position-fixed top-0 start-0 end-0 p-3 px-lg-4 d-flex justify-content-between align-items-center"
+        className="position-fixed top-0 start-0 end-0 p-3 px-lg-4 d-none d-md-flex justify-content-between align-items-center"
         style={{ zIndex: 1050 }}
       >
         <Link
@@ -208,7 +303,7 @@ export default function LoginPage() {
         </div>
       </div>
 
-      <div className="container-fluid px-3 px-lg-5 my-auto" style={{ maxWidth: '1260px' }}>
+      <div className="container-fluid px-3 px-lg-5 my-0 my-md-auto pt-3 pt-md-0" style={{ maxWidth: '1260px' }}>
         <div className="row g-4 g-lg-5 align-items-center">
           {/* LEFT PANEL: BRANDING & ROLE CAPABILITIES */}
           <div className="col-lg-6 login-left-panel pe-lg-4">

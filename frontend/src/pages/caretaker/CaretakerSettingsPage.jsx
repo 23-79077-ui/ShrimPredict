@@ -37,10 +37,17 @@ import { useSearchParams } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { applyAppTheme, getThemePreference, setManualTheme, resetThemeToAuto } from '../../utils/theme';
+import { applyAppTheme, getThemePreference, setManualTheme, resetThemeToAuto, getEffectiveTheme } from '../../utils/theme';
 
 export default function CaretakerSettingsPage() {
   const { user: authUser, updateUser, logout } = useAuth();
+  const [currentTheme, setCurrentTheme] = useState(() => getEffectiveTheme());
+  useEffect(() => {
+    const handleThemeChange = () => setCurrentTheme(getEffectiveTheme());
+    window.addEventListener('themeChanged', handleThemeChange);
+    return () => window.removeEventListener('themeChanged', handleThemeChange);
+  }, []);
+  const isDark = currentTheme === 'dark';
   const [searchParams] = useSearchParams();
   const fileInputRef = useRef(null);
 
@@ -353,8 +360,8 @@ export default function CaretakerSettingsPage() {
 
       <div className="row g-4 align-items-start">
         {/* LEFT SETTINGS MENU SIDEBAR */}
-        <div className="col-12 col-lg-4 col-xl-3 caretaker-settings-sidebar">
-          <div className="settings-card bg-white p-3 p-md-3.5 rounded-4 border border-slate-200 shadow-sm" style={{ backdropFilter: 'blur(10px)' }}>
+        <div className="col-12 col-lg-4 col-xl-3 settings-sidebar-sticky caretaker-settings-sidebar mb-4 mb-lg-0">
+          <div className="settings-card settings-menu-card p-3 p-md-3.5 rounded-4 shadow-sm" style={{ backdropFilter: 'blur(10px)', backgroundColor: isDark ? '#172A39' : '#FFFFFF', borderColor: isDark ? 'rgba(56, 189, 248, 0.18)' : '#E2E8F0' }}>
             {/* Header + Integrated Search */}
             <div className="px-1 pb-3 mb-2 border-bottom">
               <div className="d-flex align-items-center justify-content-between mb-2">
@@ -369,7 +376,7 @@ export default function CaretakerSettingsPage() {
                   type="text"
                   className="form-control form-control-sm ps-5 pe-4 py-2.5 rounded-3 border-slate-200 shadow-xs"
                   placeholder="Search Settings..."
-                  style={{ fontSize: '0.84rem', backgroundColor: '#E9E4E0' }}
+                  style={{ fontSize: '0.84rem', backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9', color: isDark ? '#FFFFFF' : '#0F172A', borderColor: isDark ? 'rgba(255, 255, 255, 0.14)' : '#CBD5E1' }}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -399,11 +406,11 @@ export default function CaretakerSettingsPage() {
                       key={t.id}
                       onClick={() => setActiveTab(t.id)}
                       className={`settings-nav-item nav-link text-start d-flex align-items-center gap-3 py-2.5 px-3 border-0 rounded-3 transition-all ${
-                        isActive ? 'active shadow-xs' : 'text-dark'
+                        isActive ? 'active shadow-xs' : ''
                       }`}
                       style={{
                         cursor: 'pointer',
-                        backgroundColor: isActive ? '#EFF6FF' : 'transparent',
+                        backgroundColor: isActive ? (isDark ? 'rgba(252, 86, 60, 0.15)' : '#FFF5F3') : 'transparent',
                         borderLeft: isActive ? '3.5px solid #FC563C' : '3.5px solid transparent',
                         transform: isActive ? 'translateX(2px)' : 'none',
                       }}
@@ -413,15 +420,15 @@ export default function CaretakerSettingsPage() {
                         style={{
                           width: 38,
                           height: 38,
-                          backgroundColor: isActive ? '#FC563C' : '#F1F5F9',
-                          color: isActive ? '#FFFFFF' : '#64748B',
-                          boxShadow: isActive ? '0 3px 8px rgba(252, 86, 60, 0.25)' : 'none',
+                          backgroundColor: isActive ? '#FC563C' : (isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9'),
+                          color: isActive ? '#FFFFFF' : (isDark ? '#CBD5E1' : '#64748B'),
+                          boxShadow: isActive ? '0 3px 8px rgba(252, 86, 60, 0.35)' : 'none',
                         }}
                       >
                         <Icon size={16} />
                       </div>
                       <div className="text-truncate flex-grow-1">
-                        <div className="fw-bold lh-1" style={{ color: isActive ? '#FC563C' : '#1E293B', fontSize: '0.88rem' }}>
+                        <div className="fw-bold lh-1" style={{ color: isActive ? '#FC563C' : (isDark ? '#F1F5F9' : '#1E293B'), fontSize: '0.88rem' }}>
                           {t.label}
                         </div>
                       </div>

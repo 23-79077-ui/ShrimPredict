@@ -1316,18 +1316,18 @@ export default function AdminDashboard() {
   return (
     <div className="admin-dashboard-container">
       {/* 1. TITLE HEADER DIRECTLY BELOW NAVBAR */}
-      <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
-        <div className="d-flex align-items-center gap-2.5">
-          <h3 className="fw-extrabold mb-0 tracking-tight text-dark" style={{ fontSize: '1.48rem', letterSpacing: '-0.02em' }}>
+      <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+        <div className="d-flex align-items-center gap-2">
+          <h3 className="fw-extrabold mb-0 tracking-tight text-dark" style={{ fontSize: 'clamp(1.15rem, 4vw, 1.48rem)', letterSpacing: '-0.02em' }}>
             {t('hero.farmOverview', 'Farm Overview & Dashboard')}
           </h3>
           <span
-            className="badge rounded-pill d-inline-flex align-items-center gap-1.5 px-2.5 py-1"
+            className="badge rounded-pill d-inline-flex align-items-center gap-1.5 px-2 py-0.5"
             style={{
               backgroundColor: '#ECFDF5',
               color: '#059669',
               border: '1px solid #A7F3D0',
-              fontSize: '0.72rem',
+              fontSize: '0.68rem',
               fontWeight: 700,
               letterSpacing: '0.02em',
             }}
@@ -1339,12 +1339,12 @@ export default function AdminDashboard() {
 
         <button
           type="button"
-          className="btn btn-sm d-inline-flex align-items-center gap-2 px-3.5 py-2 rounded-3 text-secondary shadow-2xs hover-shadow"
+          className="btn btn-sm d-inline-flex align-items-center gap-1.5 px-3 py-1.5 rounded-3 text-secondary shadow-2xs hover-shadow"
           style={{
             backgroundColor: isDark ? '#1E293B' : '#F1F5F9',
             border: isDark ? '1px solid #334155' : '1px solid #E2E8F0',
             color: isDark ? '#E2E8F0' : '#475569',
-            fontSize: '0.8rem',
+            fontSize: '0.78rem',
             fontWeight: 600,
             transition: 'all 0.15s ease',
           }}
@@ -1358,157 +1358,299 @@ export default function AdminDashboard() {
       </div>
 
       {/* 2. UNIFIED FILTER TOOLBAR ROW IMMEDIATELY FOLLOWING */}
-      <div className="unified-filter-toolbar d-flex align-items-center justify-content-between flex-wrap gap-2.5 mb-4">
-        {/* Search Bar */}
-        <div className="position-relative flex-grow-1" style={{ minWidth: 220, maxWidth: 360 }}>
-          <FaSearch className="position-absolute top-50 translate-middle-y text-secondary" style={{ left: 14, fontSize: '0.8rem' }} />
-          <input
-            type="text"
-            className="form-control form-control-sm ps-5 pe-4 minimal-filter-control"
-            placeholder={t('Search pond or caretaker')}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          {searchQuery && (
-            <button
-              type="button"
-              className="btn btn-link p-0 position-absolute text-muted"
-              style={{ right: 12, top: '50%', transform: 'translateY(-50%)', textDecoration: 'none' }}
-              onClick={() => setSearchQuery('')}
-            >
-              <FaTimes size={12} />
-            </button>
-          )}
-        </div>
+      {(() => {
+        const activeFilterCount = (selectedCaretakerId !== 'all' ? 1 : 0) +
+          (selectedPondFilter !== 'all' ? 1 : 0) +
+          (diseaseFilter !== 'all' ? 1 : 0) +
+          (customDate ? 1 : 0);
+        const hasAnyFilter = activeFilterCount > 0 || !!searchQuery;
 
-        {/* Minimalist White Filter Drop-down Controls Cluster */}
-        <div className="d-flex align-items-center gap-2 flex-wrap">
-          {/* 1. Evaluation Date */}
-          <div className="position-relative">
-            <input
-              type="date"
-              className="form-control form-control-sm minimal-filter-control px-2.5"
-              style={{ minWidth: 145 }}
-              value={customDate}
-              title="Evaluation Date"
-              onChange={(e) => {
-                setCustomDate(e.target.value);
-                setDateFilterType(e.target.value ? 'custom' : 'all');
-              }}
-            />
+        return (
+          <div className="unified-filter-toolbar mb-4">
+            {/* Search Bar & Mobile Controls Row */}
+            <div className="d-flex align-items-center justify-content-between gap-2">
+              <div className="position-relative flex-grow-1" style={{ minWidth: 160, maxWidth: 360 }}>
+                <FaSearch className="position-absolute top-50 translate-middle-y text-secondary" style={{ left: 14, fontSize: '0.8rem' }} />
+                <input
+                  type="text"
+                  className="form-control form-control-sm ps-5 pe-4 minimal-filter-control"
+                  placeholder={t('Search pond or caretaker')}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    className="btn btn-link p-0 position-absolute text-muted"
+                    style={{ right: 12, top: '50%', transform: 'translateY(-50%)', textDecoration: 'none' }}
+                    onClick={() => setSearchQuery('')}
+                  >
+                    <FaTimes size={12} />
+                  </button>
+                )}
+              </div>
+
+              {/* Mobile Filter Toggle & Quick PDF Buttons */}
+              <div className="d-flex d-md-none align-items-center gap-1.5 flex-shrink-0">
+                <button
+                  type="button"
+                  className="btn btn-sm d-inline-flex align-items-center gap-1.5 px-2.5 py-1.5 rounded-3 shadow-2xs"
+                  style={{
+                    backgroundColor: activeFilterCount > 0 ? '#FC563C' : (isDark ? '#1E293B' : '#FFFFFF'),
+                    color: activeFilterCount > 0 ? '#FFFFFF' : (isDark ? '#E2E8F0' : '#475569'),
+                    border: activeFilterCount > 0 ? '1px solid #FC563C' : (isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #CBD5E1'),
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                  }}
+                  onClick={() => setShowFilters(!showFilters)}
+                >
+                  <FaFilter size={10} />
+                  <span>{t('Filters')}</span>
+                  {activeFilterCount > 0 && (
+                    <span className="badge rounded-circle bg-white text-danger p-0 d-inline-flex align-items-center justify-content-center" style={{ width: 16, height: 16, fontSize: '0.62rem', fontWeight: 800 }}>
+                      {activeFilterCount}
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm minimal-filter-control d-inline-flex align-items-center justify-content-center px-2 py-1.5 shadow-2xs"
+                  style={{ fontWeight: 600 }}
+                  onClick={() => setShowExportModal(true)}
+                  title={t('Export PDF')}
+                >
+                  <FaFilePdf size={13} className="text-secondary" />
+                </button>
+              </div>
+
+              {/* Desktop Horizontal Filter Cluster (md+) */}
+              <div className="d-none d-md-flex align-items-center gap-2 flex-wrap">
+                <div className="position-relative">
+                  <input
+                    type="date"
+                    className="form-control form-control-sm minimal-filter-control px-2.5"
+                    style={{ minWidth: 145 }}
+                    value={customDate}
+                    title="Evaluation Date"
+                    onChange={(e) => {
+                      setCustomDate(e.target.value);
+                      setDateFilterType(e.target.value ? 'custom' : 'all');
+                    }}
+                  />
+                </div>
+
+                <div className="position-relative">
+                  <select
+                    className="form-select form-select-sm minimal-filter-control px-2.5"
+                    style={{ minWidth: 140 }}
+                    value={selectedPondFilter}
+                    onChange={(e) => {
+                      setSelectedPondFilter(e.target.value);
+                      setFeedCardPondFilter(e.target.value);
+                    }}
+                  >
+                    <option value="all">{t('Filter by Pond')}</option>
+                    {availableCaretakerPonds.map((name) => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="position-relative">
+                  <select
+                    className="form-select form-select-sm minimal-filter-control px-2.5"
+                    style={{ minWidth: 150 }}
+                    value={diseaseFilter}
+                    onChange={(e) => setDiseaseFilter(e.target.value)}
+                  >
+                    <option value="all">{t('Disease Detection')}</option>
+                    <option value="critical">{t('Critical WSD')}</option>
+                    <option value="moderate">{t('Moderate Risk')}</option>
+                    <option value="safe">{t('Safe / Healthy')}</option>
+                  </select>
+                </div>
+
+                <div className="position-relative">
+                  <select
+                    className="form-select form-select-sm minimal-filter-control px-2.5"
+                    style={{ minWidth: 160 }}
+                    value={selectedCaretakerId}
+                    onChange={(e) => {
+                      setSelectedCaretakerId(e.target.value);
+                      setSelectedPondFilter('all');
+                      setFeedCardPondFilter('all');
+                    }}
+                  >
+                    <option value="all">{t('Assigned Caretaker')}</option>
+                    {caretakers.map((c) => (
+                      <option key={c.id} value={String(c.id)}>{c.full_name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {hasAnyFilter && (
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-link text-muted p-1 extra-small text-decoration-none"
+                    onClick={() => {
+                      setSelectedCaretakerId('all');
+                      setSelectedPondFilter('all');
+                      setFeedCardPondFilter('all');
+                      setPondStatusFilter('all');
+                      setDateFilterType('all');
+                      setCustomDate('');
+                      setDiseaseFilter('all');
+                      setSearchQuery('');
+                    }}
+                    title="Reset all filters"
+                  >
+                    <FaUndo size={11} className="me-1" /> {t('Reset')}
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  className="btn btn-sm minimal-filter-control d-inline-flex align-items-center gap-1.5 px-3 py-1.5 shadow-2xs hover-shadow"
+                  style={{ fontWeight: 600 }}
+                  onClick={() => setShowExportModal(true)}
+                >
+                  <FaFilePdf size={13} className="text-secondary" />
+                  <span>{t('Export PDF')}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Mobile Neat 2-Column Filters Panel (Collapsible) */}
+            {showFilters && (
+              <div
+                className="d-block d-md-none mt-2 p-2.5 rounded-3 border shadow-xs"
+                style={{
+                  backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                  borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0'
+                }}
+              >
+                <div className="row g-2">
+                  <div className="col-6">
+                    <label className="extra-small text-muted fw-bold mb-1 d-block" style={{ fontSize: '0.68rem' }}>{t('Date')}</label>
+                    <input
+                      type="date"
+                      className="form-control form-control-sm minimal-filter-control w-100 px-2"
+                      style={{ fontSize: '0.74rem' }}
+                      value={customDate}
+                      onChange={(e) => {
+                        setCustomDate(e.target.value);
+                        setDateFilterType(e.target.value ? 'custom' : 'all');
+                      }}
+                    />
+                  </div>
+                  <div className="col-6">
+                    <label className="extra-small text-muted fw-bold mb-1 d-block" style={{ fontSize: '0.68rem' }}>{t('Pond')}</label>
+                    <select
+                      className="form-select form-select-sm minimal-filter-control w-100 px-2"
+                      style={{ fontSize: '0.74rem' }}
+                      value={selectedPondFilter}
+                      onChange={(e) => {
+                        setSelectedPondFilter(e.target.value);
+                        setFeedCardPondFilter(e.target.value);
+                      }}
+                    >
+                      <option value="all">{t('All Ponds')}</option>
+                      {availableCaretakerPonds.map((name) => (
+                        <option key={name} value={name}>{name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-6">
+                    <label className="extra-small text-muted fw-bold mb-1 d-block" style={{ fontSize: '0.68rem' }}>{t('Health')}</label>
+                    <select
+                      className="form-select form-select-sm minimal-filter-control w-100 px-2"
+                      style={{ fontSize: '0.74rem' }}
+                      value={diseaseFilter}
+                      onChange={(e) => setDiseaseFilter(e.target.value)}
+                    >
+                      <option value="all">{t('All Scans')}</option>
+                      <option value="critical">{t('Critical WSD')}</option>
+                      <option value="moderate">{t('Moderate')}</option>
+                      <option value="safe">{t('Safe')}</option>
+                    </select>
+                  </div>
+                  <div className="col-6">
+                    <label className="extra-small text-muted fw-bold mb-1 d-block" style={{ fontSize: '0.68rem' }}>{t('Caretaker')}</label>
+                    <select
+                      className="form-select form-select-sm minimal-filter-control w-100 px-2"
+                      style={{ fontSize: '0.74rem' }}
+                      value={selectedCaretakerId}
+                      onChange={(e) => {
+                        setSelectedCaretakerId(e.target.value);
+                        setSelectedPondFilter('all');
+                        setFeedCardPondFilter('all');
+                      }}
+                    >
+                      <option value="all">{t('All Staff')}</option>
+                      {caretakers.map((c) => (
+                        <option key={c.id} value={String(c.id)}>{c.full_name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-12 d-flex justify-content-between align-items-center pt-1.5 border-top mt-1" style={{ borderColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' }}>
+                    {hasAnyFilter ? (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-link text-danger p-0 extra-small text-decoration-none fw-bold"
+                        onClick={() => {
+                          setSelectedCaretakerId('all');
+                          setSelectedPondFilter('all');
+                          setFeedCardPondFilter('all');
+                          setPondStatusFilter('all');
+                          setDateFilterType('all');
+                          setCustomDate('');
+                          setDiseaseFilter('all');
+                          setSearchQuery('');
+                        }}
+                      >
+                        <FaUndo size={10} className="me-1" /> {t('Reset Filters')}
+                      </button>
+                    ) : <span className="extra-small text-muted">{t('All filters clear')}</span>}
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-secondary px-2.5 py-1 extra-small fw-bold"
+                      onClick={() => setShowExportModal(true)}
+                    >
+                      <FaFilePdf size={11} className="me-1 text-danger" /> {t('Export PDF')}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-
-          {/* 2. Filter by Pond */}
-          <div className="position-relative">
-            <select
-              className="form-select form-select-sm minimal-filter-control px-2.5"
-              style={{ minWidth: 140 }}
-              value={selectedPondFilter}
-              onChange={(e) => {
-                setSelectedPondFilter(e.target.value);
-                setFeedCardPondFilter(e.target.value);
-              }}
-            >
-              <option value="all">{t('Filter by Pond')}</option>
-              {availableCaretakerPonds.map((name) => (
-                <option key={name} value={name}>{name}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* 3. Disease Detection */}
-          <div className="position-relative">
-            <select
-              className="form-select form-select-sm minimal-filter-control px-2.5"
-              style={{ minWidth: 150 }}
-              value={diseaseFilter}
-              onChange={(e) => setDiseaseFilter(e.target.value)}
-            >
-              <option value="all">{t('Disease Detection')}</option>
-              <option value="critical">{t('Critical WSD')}</option>
-              <option value="moderate">{t('Moderate Risk')}</option>
-              <option value="safe">{t('Safe / Healthy')}</option>
-            </select>
-          </div>
-
-          {/* 4. Assigned Caretaker */}
-          <div className="position-relative">
-            <select
-              className="form-select form-select-sm minimal-filter-control px-2.5"
-              style={{ minWidth: 160 }}
-              value={selectedCaretakerId}
-              onChange={(e) => {
-                setSelectedCaretakerId(e.target.value);
-                setSelectedPondFilter('all');
-                setFeedCardPondFilter('all');
-              }}
-            >
-              <option value="all">{t('Assigned Caretaker')}</option>
-              {caretakers.map((c) => (
-                <option key={c.id} value={String(c.id)}>{c.full_name}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Reset Filters button when active */}
-          {(selectedCaretakerId !== 'all' || selectedPondFilter !== 'all' || diseaseFilter !== 'all' || customDate || searchQuery) && (
-            <button
-              type="button"
-              className="btn btn-sm btn-link text-muted p-1 extra-small text-decoration-none"
-              onClick={() => {
-                setSelectedCaretakerId('all');
-                setSelectedPondFilter('all');
-                setFeedCardPondFilter('all');
-                setPondStatusFilter('all');
-                setDateFilterType('all');
-                setCustomDate('');
-                setDiseaseFilter('all');
-                setSearchQuery('');
-              }}
-              title="Reset all filters"
-            >
-              <FaUndo size={11} className="me-1" /> {t('Reset')}
-            </button>
-          )}
-
-          {/* 5. Export PDF Button */}
-          <button
-            type="button"
-            className="btn btn-sm minimal-filter-control d-inline-flex align-items-center gap-1.5 px-3 py-1.5 shadow-2xs hover-shadow"
-            style={{ fontWeight: 600 }}
-            onClick={() => setShowExportModal(true)}
-          >
-            <FaFilePdf size={13} className="text-secondary" />
-            <span>{t('Export PDF')}</span>
-          </button>
-        </div>
-      </div>
+        );
+      })()}
 
       {/* 3. FOUR KPI CARDS (Soft shadow backdrops, clean rounded corners, no heavy top gradients) */}
       <div className="row g-3 g-xl-4 mb-4">
         {/* Card 1: MONITORED PONDS */}
-        <div className="col-12 col-sm-6 col-xl-3">
-          <div className="shrimp-kpi-card">
+        <div className="col-6 col-xl-3">
+          <div className="shrimp-kpi-card p-2.5 p-sm-3 p-xl-4">
             <div>
-              <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider text-truncate" style={{ fontSize: '0.68rem' }}>
                   {t('MONITORED PONDS')}
                 </span>
-                <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: 34, height: 34, backgroundColor: '#F1F5F9', color: '#172A39' }}>
-                  <FaWater size={15} />
+                <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: 28, height: 28, backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9', color: isDark ? '#FFFFFF' : '#172A39' }}>
+                  <FaWater size={13} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.2rem', letterSpacing: '-0.03em' }}>
+              <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: 'clamp(1.35rem, 4.5vw, 2.2rem)', letterSpacing: '-0.03em', color: isDark ? '#FFFFFF' : undefined }}>
                 {kpiStats.totalPondsCount || 9}
               </h2>
             </div>
-            <div className="pt-2">
+            <div className="pt-1">
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-secondary small fw-medium">
-                  {kpiStats.healthyPondsCount || 4} of {kpiStats.totalPondsCount || 9} {t('Optimal')}
+                <span className="text-secondary extra-small fw-medium text-truncate" style={{ fontSize: '0.72rem' }}>
+                  {kpiStats.healthyPondsCount || 4} / {kpiStats.totalPondsCount || 9} {t('Optimal')}
                 </span>
-                <span className="badge rounded-pill px-2.5 py-1 extra-small" style={{ backgroundColor: '#F1F5F9', color: '#475569', fontWeight: 600 }}>
-                  {t('Active Fleet')}
+                <span className="badge rounded-pill px-2 py-0.5 extra-small d-none d-sm-inline-block" style={{ backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9', color: isDark ? '#CBD5E1' : '#475569', fontWeight: 600 }}>
+                  {t('Active')}
                 </span>
               </div>
             </div>
@@ -1516,27 +1658,27 @@ export default function AdminDashboard() {
         </div>
 
         {/* Card 2: FIELD CARETAKERS */}
-        <div className="col-12 col-sm-6 col-xl-3">
-          <div className="shrimp-kpi-card">
+        <div className="col-6 col-xl-3">
+          <div className="shrimp-kpi-card p-2.5 p-sm-3 p-xl-4">
             <div>
-              <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">
-                  {t('FIELD CARETAKERS')}
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider text-truncate" style={{ fontSize: '0.68rem' }}>
+                  {t('CARETAKERS')}
                 </span>
-                <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: 34, height: 34, backgroundColor: '#F1F5F9', color: '#172A39' }}>
-                  <FaUserTie size={15} />
+                <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: 28, height: 28, backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9', color: isDark ? '#FFFFFF' : '#172A39' }}>
+                  <FaUserTie size={13} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.2rem', letterSpacing: '-0.03em' }}>
+              <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: 'clamp(1.35rem, 4.5vw, 2.2rem)', letterSpacing: '-0.03em', color: isDark ? '#FFFFFF' : undefined }}>
                 {kpiStats.activeCaretakersCount || 6}
               </h2>
             </div>
-            <div className="pt-2">
+            <div className="pt-1">
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-secondary small fw-medium">
-                  {kpiStats.activeCaretakersCount || 6} {t('Operators Active')}
+                <span className="text-secondary extra-small fw-medium text-truncate" style={{ fontSize: '0.72rem' }}>
+                  {kpiStats.activeCaretakersCount || 6} {t('Active')}
                 </span>
-                <span className="badge rounded-pill px-2.5 py-1 extra-small" style={{ backgroundColor: '#F1F5F9', color: '#475569', fontWeight: 600 }}>
+                <span className="badge rounded-pill px-2 py-0.5 extra-small d-none d-sm-inline-block" style={{ backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9', color: isDark ? '#CBD5E1' : '#475569', fontWeight: 600 }}>
                   {t('Staffed')}
                 </span>
               </div>
@@ -1545,27 +1687,27 @@ export default function AdminDashboard() {
         </div>
 
         {/* Card 3: TOTAL FEED */}
-        <div className="col-12 col-sm-6 col-xl-3">
-          <div className="shrimp-kpi-card">
+        <div className="col-6 col-xl-3">
+          <div className="shrimp-kpi-card p-2.5 p-sm-3 p-xl-4">
             <div>
-              <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider text-truncate" style={{ fontSize: '0.68rem' }}>
                   {t('TOTAL FEED')}
                 </span>
-                <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: 34, height: 34, backgroundColor: '#FFF5F3', color: '#FC563C' }}>
-                  <FaUtensils size={15} />
+                <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: 28, height: 28, backgroundColor: '#FFF5F3', color: '#FC563C' }}>
+                  <FaUtensils size={13} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.2rem', letterSpacing: '-0.03em' }}>
-                {feedCardTotalKg > 0 ? `${feedCardTotalKg.toFixed(2)} kg` : '2,644.70 kg'}
+              <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: 'clamp(1.2rem, 3.8vw, 2.2rem)', letterSpacing: '-0.03em' }}>
+                {feedCardTotalKg > 0 ? `${feedCardTotalKg.toFixed(1)} kg` : '2,644.7 kg'}
               </h2>
             </div>
-            <div className="pt-2">
+            <div className="pt-1">
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-secondary small fw-medium">
-                  {feedCardRunsCount || 291} {t('Dispersal Runs')} • {t('Verified')}
+                <span className="text-secondary extra-small fw-medium text-truncate" style={{ fontSize: '0.72rem' }}>
+                  {feedCardRunsCount || 291} {t('Runs')}
                 </span>
-                <span className="badge rounded-pill px-2.5 py-1 extra-small" style={{ backgroundColor: '#FFF5F3', color: '#FC563C', fontWeight: 600 }}>
+                <span className="badge rounded-pill px-2 py-0.5 extra-small d-none d-sm-inline-block" style={{ backgroundColor: '#FFF5F3', color: '#FC563C', fontWeight: 600 }}>
                   {t('Verified')}
                 </span>
               </div>
@@ -1574,28 +1716,28 @@ export default function AdminDashboard() {
         </div>
 
         {/* Card 4: BIOSECURITY HEALTH */}
-        <div className="col-12 col-sm-6 col-xl-3">
-          <div className="shrimp-kpi-card">
+        <div className="col-6 col-xl-3">
+          <div className="shrimp-kpi-card p-2.5 p-sm-3 p-xl-4">
             <div>
-              <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">
-                  {t('BIOSECURITY HEALTH')}
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider text-truncate" style={{ fontSize: '0.68rem' }}>
+                  {t('BIOSECURITY')}
                 </span>
-                <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: 34, height: 34, backgroundColor: '#FEF2F2', color: '#DC2626' }}>
-                  <FaShieldAlt size={15} />
+                <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: 28, height: 28, backgroundColor: '#FEF2F2', color: '#DC2626' }}>
+                  <FaShieldAlt size={13} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: '#DC2626', fontSize: '2.2rem', letterSpacing: '-0.03em' }}>
+              <h2 className="fw-extrabold mb-1" style={{ color: '#DC2626', fontSize: 'clamp(1.2rem, 3.8vw, 2.2rem)', letterSpacing: '-0.03em' }}>
                 {kpiStats.wsdSuspectedCount > 0 ? `${kpiStats.wsdSuspectedCount} Alerts` : '50 Alerts'}
               </h2>
             </div>
-            <div className="pt-2">
+            <div className="pt-1">
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="small fw-semibold" style={{ color: '#DC2626' }}>
-                  {t('Status: WSD Anomaly Detected')}
+                <span className="extra-small fw-semibold text-truncate" style={{ color: '#DC2626', fontSize: '0.72rem' }}>
+                  {t('WSD Detected')}
                 </span>
-                <span className="badge rounded-pill px-2.5 py-1 extra-small" style={{ backgroundColor: '#FEF2F2', color: '#DC2626', fontWeight: 600 }}>
-                  {t('CNN Alert')}
+                <span className="badge rounded-pill px-2 py-0.5 extra-small d-none d-sm-inline-block" style={{ backgroundColor: '#FEF2F2', color: '#DC2626', fontWeight: 600 }}>
+                  {t('Alert')}
                 </span>
               </div>
             </div>
@@ -1627,13 +1769,13 @@ export default function AdminDashboard() {
                       </div>
 
                       {/* Minimalist Status Filter Tabs */}
-                      <div className="d-flex align-items-center gap-1 p-1 rounded-pill bg-light border flex-wrap" style={{ borderColor: '#E2E8F0' }}>
+                      <div className="d-flex align-items-center gap-1 p-1 rounded-pill border flex-nowrap overflow-x-auto custom-scrollbar" style={{ borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#E2E8F0', backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : '#F8FAFC', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', maxWidth: '100%' }}>
                         <button
                           type="button"
                           className={`btn btn-sm rounded-pill px-2.5 py-0.5 extra-small fw-bold transition-all ${
-                            pondStatusFilter === 'all' ? 'text-white shadow-xs' : 'text-secondary border-0 bg-transparent'
+                            pondStatusFilter === 'all' ? 'text-white shadow-xs' : (isDark ? 'text-white-50 border-0 bg-transparent' : 'text-secondary border-0 bg-transparent')
                           }`}
-                          style={pondStatusFilter === 'all' ? { backgroundColor: '#172A39', borderColor: '#172A39' } : undefined}
+                          style={pondStatusFilter === 'all' ? { backgroundColor: isDark ? '#FC563C' : '#172A39', borderColor: isDark ? '#FC563C' : '#172A39' } : undefined}
                           onClick={() => setPondStatusFilter('all')}
                         >
                           {t('All')} ({totalPondsCount})
@@ -1641,7 +1783,7 @@ export default function AdminDashboard() {
                         <button
                           type="button"
                           className={`btn btn-sm rounded-pill px-2.5 py-0.5 extra-small fw-bold transition-all ${
-                            pondStatusFilter === 'healthy' ? 'btn-success text-white shadow-xs' : 'text-secondary border-0 bg-transparent'
+                            pondStatusFilter === 'healthy' ? 'btn-success text-white shadow-xs' : (isDark ? 'text-white-50 border-0 bg-transparent' : 'text-secondary border-0 bg-transparent')
                           }`}
                           onClick={() => setPondStatusFilter(pondStatusFilter === 'healthy' ? 'all' : 'healthy')}
                         >
@@ -1650,7 +1792,7 @@ export default function AdminDashboard() {
                         <button
                           type="button"
                           className={`btn btn-sm rounded-pill px-2.5 py-0.5 extra-small fw-bold transition-all ${
-                            pondStatusFilter === 'warning' ? 'btn-warning text-white shadow-xs' : 'text-secondary border-0 bg-transparent'
+                            pondStatusFilter === 'warning' ? 'btn-warning text-white shadow-xs' : (isDark ? 'text-white-50 border-0 bg-transparent' : 'text-secondary border-0 bg-transparent')
                           }`}
                           onClick={() => setPondStatusFilter(pondStatusFilter === 'warning' ? 'all' : 'warning')}
                         >
@@ -1659,7 +1801,7 @@ export default function AdminDashboard() {
                         <button
                           type="button"
                           className={`btn btn-sm rounded-pill px-2.5 py-0.5 extra-small fw-bold transition-all ${
-                            pondStatusFilter === 'critical' ? 'btn-danger text-white shadow-xs' : 'text-secondary border-0 bg-transparent'
+                            pondStatusFilter === 'critical' ? 'btn-danger text-white shadow-xs' : (isDark ? 'text-white-50 border-0 bg-transparent' : 'text-secondary border-0 bg-transparent')
                           }`}
                           onClick={() => setPondStatusFilter(pondStatusFilter === 'critical' ? 'all' : 'critical')}
                         >
@@ -1756,20 +1898,20 @@ export default function AdminDashboard() {
                                 </div>
 
                                 {/* Caretaker & Total Feed Info Strip */}
-                                <div className="p-2.5 rounded-3 my-2" style={{ backgroundColor: '#F8FAFC', border: '1px solid #F1F5F9' }}>
+                                <div className="p-2.5 rounded-3 my-2" style={{ backgroundColor: isDark ? 'rgba(15, 23, 42, 0.55)' : '#FFFFFF', border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0' }}>
                                   <div className="d-flex align-items-center justify-content-between mb-1 extra-small">
-                                    <span className="text-secondary d-flex align-items-center gap-1.5" style={{ fontSize: '0.73rem' }}>
+                                    <span className="text-secondary d-flex align-items-center gap-1.5" style={{ fontSize: '0.73rem', color: isDark ? '#94A3B8' : undefined }}>
                                       <FaUserTie size={11} className="text-muted" /> {t('Caretaker')}:
                                     </span>
-                                    <strong className="text-dark fw-bold text-truncate" style={{ fontSize: '0.78rem', maxWidth: 130 }}>
+                                    <strong className="text-dark fw-bold text-truncate" style={{ fontSize: '0.78rem', maxWidth: 130, color: isDark ? '#FFFFFF' : '#172A39' }}>
                                       {caretakerName}
                                     </strong>
                                   </div>
                                   <div className="d-flex align-items-center justify-content-between extra-small">
-                                    <span className="text-secondary d-flex align-items-center gap-1.5" style={{ fontSize: '0.73rem' }}>
+                                    <span className="text-secondary d-flex align-items-center gap-1.5" style={{ fontSize: '0.73rem', color: isDark ? '#94A3B8' : undefined }}>
                                       <FaUtensils size={11} className="text-muted" /> {t('Total Feed')}:
                                     </span>
-                                    <strong className="text-dark fw-bold font-mono" style={{ fontSize: '0.82rem' }}>
+                                    <strong className="text-dark fw-bold font-mono" style={{ fontSize: '0.82rem', color: isDark ? '#FFFFFF' : '#172A39' }}>
                                       {totalFeedKg.toFixed(1)} kg
                                     </strong>
                                   </div>
@@ -1777,7 +1919,7 @@ export default function AdminDashboard() {
                               </div>
 
                               {/* Bottom: Small, Understated View Pond and Feeding Logs Buttons */}
-                              <div className="d-flex align-items-center justify-content-between gap-2 pt-2 border-top" style={{ borderColor: '#F1F5F9' }}>
+                              <div className="d-flex align-items-center justify-content-between gap-2 pt-2 border-top" style={{ borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9' }}>
                                 <button
                                   type="button"
                                   className="btn btn-understated-view d-inline-flex align-items-center gap-1"
@@ -1790,7 +1932,9 @@ export default function AdminDashboard() {
                                   className="btn btn-understated-feed d-inline-flex align-items-center gap-1"
                                   onClick={() => navigate(`/admin/feeding?pond=${encodeURIComponent(p.pond_name || p.name)}`)}
                                 >
-                                  <FaUtensils size={10} /> {t('Feeding Logs Reports')}
+                                  <FaUtensils size={10} />
+                                  <span className="d-none d-sm-inline">{t('Feeding Logs Reports')}</span>
+                                  <span className="d-inline d-sm-none">{t('Feed Logs')}</span>
                                 </button>
                               </div>
                             </div>
@@ -1992,49 +2136,49 @@ export default function AdminDashboard() {
 
                   {/* 4-Box Key Metrics Strip */}
                   <div className="row g-2 mb-3">
-                    <div className="col-3">
-                      <div className="p-2 rounded-3 text-center border bg-light h-100" style={{ borderColor: '#E2E8F0' }}>
+                    <div className="col-6 col-sm-3">
+                      <div className="p-2 rounded-3 text-center border h-100" style={{ borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#E2E8F0', backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : '#F8FAFC' }}>
                         <span className="text-muted extra-small fw-bold d-block" style={{ fontSize: '0.65rem' }}>{t('STAGE')}</span>
-                        <strong className="d-block text-dark fw-extrabold" style={{ fontSize: '0.82rem' }}>
+                        <strong className="d-block text-dark fw-extrabold" style={{ fontSize: '0.82rem', color: isDark ? '#FFFFFF' : '#172A39' }}>
                           {focusedIsNursery ? t('Nursery') : t('Grow-out')}
                         </strong>
-                        <div className="text-secondary" style={{ fontSize: '0.68rem' }}>DOC #{focusedDoc}</div>
+                        <div className="text-secondary" style={{ fontSize: '0.68rem', color: isDark ? '#94A3B8' : undefined }}>DOC #{focusedDoc}</div>
                       </div>
                     </div>
-                    <div className="col-3">
-                      <div className="p-2 rounded-3 text-center border bg-light h-100" style={{ borderColor: '#E2E8F0' }}>
+                    <div className="col-6 col-sm-3">
+                      <div className="p-2 rounded-3 text-center border h-100" style={{ borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#E2E8F0', backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : '#F8FAFC' }}>
                         <span className="text-muted extra-small fw-bold d-block" style={{ fontSize: '0.65rem' }}>{t('EST. YIELD')}</span>
-                        <strong className="d-block text-dark fw-extrabold" style={{ fontSize: '0.82rem' }}>
+                        <strong className="d-block text-dark fw-extrabold" style={{ fontSize: '0.82rem', color: isDark ? '#FFFFFF' : '#172A39' }}>
                           {estHarvestKg.toFixed(0)} kg
                         </strong>
-                        <div className="text-secondary font-mono" style={{ fontSize: '0.68rem' }}>{(estHarvestKg / 1000).toFixed(2)} T</div>
+                        <div className="text-secondary font-mono" style={{ fontSize: '0.68rem', color: isDark ? '#94A3B8' : undefined }}>{(estHarvestKg / 1000).toFixed(2)} T</div>
                       </div>
                     </div>
-                    <div className="col-3">
-                      <div className="p-2 rounded-3 text-center border bg-light h-100" style={{ borderColor: '#E2E8F0' }}>
+                    <div className="col-6 col-sm-3">
+                      <div className="p-2 rounded-3 text-center border h-100" style={{ borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#E2E8F0', backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : '#F8FAFC' }}>
                         <span className="text-muted extra-small fw-bold d-block" style={{ fontSize: '0.65rem' }}>{t('ABW')}</span>
-                        <strong className="d-block text-dark fw-extrabold" style={{ fontSize: '0.82rem' }}>
+                        <strong className="d-block text-dark fw-extrabold" style={{ fontSize: '0.82rem', color: isDark ? '#FFFFFF' : '#172A39' }}>
                           {abwGrams.toFixed(1)} g
                         </strong>
-                        <div className="text-secondary" style={{ fontSize: '0.68rem' }}>{t('Sampling')}</div>
+                        <div className="text-secondary" style={{ fontSize: '0.68rem', color: isDark ? '#94A3B8' : undefined }}>{t('Sampling')}</div>
                       </div>
                     </div>
-                    <div className="col-3">
-                      <div className="p-2 rounded-3 text-center border bg-light h-100" style={{ borderColor: '#E2E8F0' }}>
+                    <div className="col-6 col-sm-3">
+                      <div className="p-2 rounded-3 text-center border h-100" style={{ borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#E2E8F0', backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : '#F8FAFC' }}>
                         <span className="text-muted extra-small fw-bold d-block" style={{ fontSize: '0.65rem' }}>{t('TARGET')}</span>
                         <strong className="d-block fw-extrabold" style={{ color: '#FC563C', fontSize: '0.82rem' }}>
                           {targetHarvestDays}d
                         </strong>
-                        <div className="text-secondary" style={{ fontSize: '0.68rem' }}>DOC 90+</div>
+                        <div className="text-secondary" style={{ fontSize: '0.68rem', color: isDark ? '#94A3B8' : undefined }}>DOC 90+</div>
                       </div>
                     </div>
                   </div>
 
                   {/* 2. Specific Progress Chart with Steps and Status Labels (Brand Navy & Orange) */}
-                  <div className="p-3 rounded-3 mb-2.5" style={{ backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0' }}>
+                  <div className="p-3 rounded-3 mb-3" style={{ backgroundColor: isDark ? '#253549' : '#F8FAFC', border: isDark ? '1px solid rgba(255, 255, 255, 0.14)' : '1px solid #CBD5E1', boxShadow: isDark ? '0 2px 8px rgba(0, 0, 0, 0.25)' : '0 1px 4px rgba(15, 23, 42, 0.04)' }}>
                     <div className="d-flex justify-content-between align-items-center mb-1.5">
-                      <span className="extra-small text-secondary fw-semibold">
-                        {t('Cycle Maturity Progress')}: <strong style={{ color: '#172A39' }}>{focusedDoc} / 90 {t('Days')}</strong>
+                      <span className="extra-small text-secondary fw-semibold" style={{ color: isDark ? '#CBD5E1' : undefined }}>
+                        {t('Cycle Maturity Progress')}: <strong style={{ color: isDark ? '#FFFFFF' : '#172A39' }}>{focusedDoc} / 90 {t('Days')}</strong>
                       </span>
                       <span className="badge rounded-pill extra-small text-white" style={{ backgroundColor: '#FC563C', fontSize: '0.68rem' }}>
                         {cultureProgressPct}% {t('Completed')}
@@ -2042,7 +2186,7 @@ export default function AdminDashboard() {
                     </div>
 
                     {/* Progress Bar Track */}
-                    <div className="rounded-pill overflow-hidden my-2" style={{ height: 8, backgroundColor: '#E2E8F0' }}>
+                    <div className="rounded-pill overflow-hidden my-2" style={{ height: 8, backgroundColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#E2E8F0' }}>
                       <div
                         style={{
                           width: `${cultureProgressPct}%`,
@@ -2055,57 +2199,88 @@ export default function AdminDashboard() {
                     </div>
 
                     {/* Steps & Status Labels List */}
-                    <div className="d-flex flex-column gap-1.5 mt-2.5 pt-2 border-top" style={{ borderColor: '#E2E8F0' }}>
+                    <div className="d-flex flex-column gap-1.5 mt-2.5 pt-2 border-top" style={{ borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#E2E8F0' }}>
                       <div className="d-flex justify-content-between align-items-center extra-small">
-                        <span className="text-secondary d-flex align-items-center gap-1.5">
-                          <FaCheckCircle size={10} style={{ color: '#172A39' }} /> {t('Step 1: PL-15 Acclimatization')}
+                        <span className="text-secondary d-flex align-items-center gap-1.5" style={{ color: isDark ? '#94A3B8' : undefined }}>
+                          <FaCheckCircle size={10} style={{ color: isDark ? '#FC563C' : '#172A39' }} /> {t('Step 1: PL-15 Acclimatization')}
                         </span>
-                        <span className="badge rounded-pill px-2 py-0.5" style={{ backgroundColor: '#ECFDF5', color: '#059669', fontSize: '0.65rem' }}>
+                        <span className="badge rounded-pill px-2 py-0.5" style={{ backgroundColor: isDark ? 'rgba(5, 150, 105, 0.2)' : '#ECFDF5', color: '#10B981', fontSize: '0.65rem', border: isDark ? '1px solid rgba(16, 185, 129, 0.3)' : undefined }}>
                           {t('Completed (Day 1)')}
                         </span>
                       </div>
                       <div className="d-flex justify-content-between align-items-center extra-small">
-                        <span className="text-secondary d-flex align-items-center gap-1.5">
-                          <FaCheckCircle size={10} style={{ color: focusedDoc >= 20 ? '#172A39' : '#FC563C' }} /> {t('Step 2: Nursery Phase Optimization')}
+                        <span className="text-secondary d-flex align-items-center gap-1.5" style={{ color: isDark ? '#94A3B8' : undefined }}>
+                          <FaCheckCircle size={10} style={{ color: focusedDoc >= 20 ? (isDark ? '#FC563C' : '#172A39') : '#FC563C' }} /> {t('Step 2: Nursery Phase Optimization')}
                         </span>
-                        <span className="badge rounded-pill px-2 py-0.5" style={{ backgroundColor: focusedDoc >= 20 ? '#ECFDF5' : '#FFF5F3', color: focusedDoc >= 20 ? '#059669' : '#FC563C', fontSize: '0.65rem' }}>
+                        <span className="badge rounded-pill px-2 py-0.5" style={{ backgroundColor: focusedDoc >= 20 ? (isDark ? 'rgba(5, 150, 105, 0.2)' : '#ECFDF5') : (isDark ? 'rgba(252, 86, 60, 0.2)' : '#FFF5F3'), color: focusedDoc >= 20 ? '#10B981' : '#FC563C', fontSize: '0.65rem', border: isDark ? (focusedDoc >= 20 ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(252, 86, 60, 0.3)') : undefined }}>
                           {focusedDoc >= 20 ? t('Verified (Day 1–19)') : t('Active (Day 1–19)')}
                         </span>
                       </div>
                       <div className="d-flex justify-content-between align-items-center extra-small">
-                        <span className="text-secondary d-flex align-items-center gap-1.5">
+                        <span className="text-secondary d-flex align-items-center gap-1.5" style={{ color: isDark ? '#94A3B8' : undefined }}>
                           <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: focusedDoc >= 20 ? '#FC563C' : '#94A3B8', display: 'inline-block' }} /> {t('Step 3: Grow-out Biomass Gain')}
                         </span>
-                        <span className="badge rounded-pill px-2 py-0.5" style={{ backgroundColor: focusedDoc >= 20 ? '#FFF5F3' : '#F1F5F9', color: focusedDoc >= 20 ? '#FC563C' : '#64748B', fontSize: '0.65rem' }}>
+                        <span className="badge rounded-pill px-2 py-0.5" style={{ backgroundColor: focusedDoc >= 20 ? (isDark ? 'rgba(252, 86, 60, 0.2)' : '#FFF5F3') : (isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9'), color: focusedDoc >= 20 ? '#FC563C' : (isDark ? '#94A3B8' : '#64748B'), fontSize: '0.65rem' }}>
                           {focusedDoc >= 20 ? `${t('In Progress')} (DOC #${focusedDoc})` : t('Upcoming')}
                         </span>
                       </div>
                       <div className="d-flex justify-content-between align-items-center extra-small">
-                        <span className="text-secondary d-flex align-items-center gap-1.5">
+                        <span className="text-secondary d-flex align-items-center gap-1.5" style={{ color: isDark ? '#94A3B8' : undefined }}>
                           <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#94A3B8', display: 'inline-block' }} /> {t('Step 4: Commercial Harvest Target')}
                         </span>
-                        <span className="badge rounded-pill px-2 py-0.5 text-secondary" style={{ backgroundColor: '#F1F5F9', fontSize: '0.65rem' }}>
+                        <span className="badge rounded-pill px-2 py-0.5 text-secondary" style={{ backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9', color: isDark ? '#94A3B8' : undefined, fontSize: '0.65rem' }}>
                           ~{targetHarvestDays}d {t('remaining')}
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Proportional Biomass & Feeding Rate Strip */}
-                  <div className="p-2.5 rounded-3 mb-2 d-flex justify-content-around align-items-center text-center" style={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0' }}>
-                    <div>
-                      <span className="text-muted extra-small d-block" style={{ fontSize: '0.65rem' }}>{t('RUNNING FEED')}</span>
-                      <strong className="d-block text-dark fw-bold" style={{ fontSize: '0.82rem' }}>~{(totalFeedKg / Math.max(1, focusedDoc)).toFixed(1)} kg/d</strong>
+                  {/* Proportional Biomass & Feeding Rate: 3 Distinct Visual Boxes with Gap and Borders */}
+                  <div className="row g-2 mt-3 mb-2.5">
+                    <div className="col-4">
+                      <div
+                        className="p-2.5 rounded-3 text-center h-100 d-flex flex-column justify-content-center"
+                        style={{
+                          backgroundColor: isDark ? '#253549' : '#F8FAFC',
+                          border: isDark ? '1px solid rgba(255, 255, 255, 0.14)' : '1px solid #CBD5E1',
+                          boxShadow: isDark ? '0 2px 6px rgba(0, 0, 0, 0.25)' : '0 1px 3px rgba(15, 23, 42, 0.04)'
+                        }}
+                      >
+                        <span className="text-muted extra-small fw-semibold d-block mb-1" style={{ fontSize: '0.62rem', letterSpacing: '0.02em' }}>{t('RUNNING FEED')}</span>
+                        <strong className="d-block text-dark fw-bold font-mono" style={{ fontSize: '0.82rem', color: isDark ? '#FFFFFF' : '#172A39' }}>
+                          ~{(totalFeedKg / Math.max(1, focusedDoc)).toFixed(1)} <span style={{ fontSize: '0.68rem', fontWeight: 500 }}>kg/d</span>
+                        </strong>
+                      </div>
                     </div>
-                    <div style={{ width: 1, height: 22, backgroundColor: '#E2E8F0' }} />
-                    <div>
-                      <span className="text-muted extra-small d-block" style={{ fontSize: '0.65rem' }}>{t('TARGET HARVEST')}</span>
-                      <strong className="d-block fw-bold" style={{ color: '#FC563C', fontSize: '0.82rem' }}>{estHarvestKg.toFixed(0)} kg</strong>
+                    <div className="col-4">
+                      <div
+                        className="p-2.5 rounded-3 text-center h-100 d-flex flex-column justify-content-center"
+                        style={{
+                          backgroundColor: isDark ? '#253549' : '#F8FAFC',
+                          border: isDark ? '1px solid rgba(252, 86, 60, 0.35)' : '1px solid #FECACA',
+                          boxShadow: isDark ? '0 2px 6px rgba(0, 0, 0, 0.25)' : '0 1px 3px rgba(15, 23, 42, 0.04)'
+                        }}
+                      >
+                        <span className="text-muted extra-small fw-semibold d-block mb-1" style={{ fontSize: '0.62rem', letterSpacing: '0.02em' }}>{t('TARGET HARVEST')}</span>
+                        <strong className="d-block fw-bold font-mono" style={{ color: '#FC563C', fontSize: '0.82rem' }}>
+                          {estHarvestKg.toFixed(0)} <span style={{ fontSize: '0.68rem', fontWeight: 500 }}>kg</span>
+                        </strong>
+                      </div>
                     </div>
-                    <div style={{ width: 1, height: 22, backgroundColor: '#E2E8F0' }} />
-                    <div>
-                      <span className="text-muted extra-small d-block" style={{ fontSize: '0.65rem' }}>{t('EST. SURVIVAL')}</span>
-                      <strong className="d-block text-success fw-bold" style={{ fontSize: '0.82rem' }}>88.5% SR</strong>
+                    <div className="col-4">
+                      <div
+                        className="p-2.5 rounded-3 text-center h-100 d-flex flex-column justify-content-center"
+                        style={{
+                          backgroundColor: isDark ? '#253549' : '#F8FAFC',
+                          border: isDark ? '1px solid rgba(16, 185, 129, 0.35)' : '1px solid #A7F3D0',
+                          boxShadow: isDark ? '0 2px 6px rgba(0, 0, 0, 0.25)' : '0 1px 3px rgba(15, 23, 42, 0.04)'
+                        }}
+                      >
+                        <span className="text-muted extra-small fw-semibold d-block mb-1" style={{ fontSize: '0.62rem', letterSpacing: '0.02em' }}>{t('EST. SURVIVAL')}</span>
+                        <strong className="d-block text-success fw-bold font-mono" style={{ fontSize: '0.82rem' }}>
+                          88.5% <span style={{ fontSize: '0.68rem', fontWeight: 500 }}>SR</span>
+                        </strong>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -2163,27 +2338,33 @@ export default function AdminDashboard() {
               </div>
 
               {/* Segmented Toggle Pills */}
-              <div className="d-flex align-items-center gap-1.5 p-1 rounded-pill bg-light border flex-wrap" style={{ borderColor: 'rgba(252, 86, 60, 0.12)' }}>
+              <div className="d-flex align-items-center gap-1 p-1 rounded-pill bg-light border w-100 w-md-auto" style={{ borderColor: 'rgba(252, 86, 60, 0.12)' }}>
                 <button
                   type="button"
-                  className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all ${dashboardTab === 'chart' ? 'btn-tri-orange text-white shadow-xs' : 'text-muted border-0 bg-transparent'}`}
+                  className={`btn btn-sm rounded-pill flex-fill flex-md-grow-0 px-2 px-md-3 py-1 extra-small fw-bold transition-all ${dashboardTab === 'chart' ? 'btn-tri-orange text-white shadow-xs' : 'text-muted border-0 bg-transparent'}`}
                   onClick={() => setDashboardTab('chart')}
                 >
-                  <FaChartBar className="me-1" /> {t('Daily Feed Monitoring & Trend')}
+                  <FaChartBar className="me-1" />
+                  <span className="d-none d-md-inline">{t('Daily Feed Monitoring & Trend')}</span>
+                  <span className="d-inline d-md-none">{t('Feed Trends')}</span>
                 </button>
                 <button
                   type="button"
-                  className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all ${dashboardTab === 'logs' ? 'btn-tri-orange text-white shadow-xs' : 'text-muted border-0 bg-transparent'}`}
+                  className={`btn btn-sm rounded-pill flex-fill flex-md-grow-0 px-2 px-md-3 py-1 extra-small fw-bold transition-all ${dashboardTab === 'logs' ? 'btn-tri-orange text-white shadow-xs' : 'text-muted border-0 bg-transparent'}`}
                   onClick={() => setDashboardTab('logs')}
                 >
-                  <FaUtensils className="me-1" /> {t('Daily Feed & Supplementation Logs')}
+                  <FaUtensils className="me-1" />
+                  <span className="d-none d-md-inline">{t('Daily Feed & Supplementation Logs')}</span>
+                  <span className="d-inline d-md-none">{t('Feed Logs')}</span>
                 </button>
                 <button
                   type="button"
-                  className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all ${dashboardTab === 'detections' ? 'btn-tri-orange text-white shadow-xs' : 'text-muted border-0 bg-transparent'}`}
+                  className={`btn btn-sm rounded-pill flex-fill flex-md-grow-0 px-2 px-md-3 py-1 extra-small fw-bold transition-all ${dashboardTab === 'detections' ? 'btn-tri-orange text-white shadow-xs' : 'text-muted border-0 bg-transparent'}`}
                   onClick={() => setDashboardTab('detections')}
                 >
-                  <FaShieldAlt className="me-1" /> {t('Recent Detection Activity')}
+                  <FaShieldAlt className="me-1" />
+                  <span className="d-none d-md-inline">{t('Recent Detection Activity')}</span>
+                  <span className="d-inline d-md-none">{t('AI Scans')}</span>
                 </button>
               </div>
             </div>
@@ -2229,7 +2410,7 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* 3 Numerical Metric Cards */}
-                <div className="row g-3 mb-3.5">
+                <div className="row g-3 mb-3 mb-md-4">
                   <div className="col-12 col-md-4">
                     <div
                       className="p-3.5 rounded-3 border bg-white h-100"
@@ -2304,7 +2485,7 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* Main Row: Daily Feed Consumption (Left) + Feed by Pond (Right) */}
-                <div className="row g-3">
+                <div className="row g-3 mt-1 mt-md-0">
                   {/* LEFT COLUMN: Daily Feed Consumption Chart */}
                   <div className="col-12 col-lg-8 col-xl-8 col-xxl-9">
                     <div
@@ -2418,6 +2599,10 @@ export default function AdminDashboard() {
                             </div>
                           )}
 
+                          {/* Mobile Swipe Hint */}
+                          <div className="d-block d-md-none text-center text-muted extra-small mb-1 font-monospace" style={{ fontSize: '0.68rem' }}>
+                            {t('← Swipe horizontally to inspect dates →')}
+                          </div>
                           {/* Grid Board */}
                           <div
                             className="rounded-2 p-2.5 flex-grow-1"
@@ -2425,8 +2610,10 @@ export default function AdminDashboard() {
                               backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(248, 250, 252, 0.65)',
                               border: isDark ? '1px solid rgba(255,255,255,0.05)' : '1px solid #F1F5F9',
                               overflowX: 'auto',
+                              WebkitOverflowScrolling: 'touch',
                             }}
                           >
+                            <div style={{ minWidth: 460 }}>
                             {/* Pond Rows */}
                             {feedHorizontalGridData.rows.length === 0 ? (
                               <div className="text-center py-5 text-muted extra-small">
@@ -2596,6 +2783,7 @@ export default function AdminDashboard() {
                                 ))}
                               </div>
                             </div>
+                            </div>
                           </div>
                         </div>
                       )}
@@ -2614,69 +2802,121 @@ export default function AdminDashboard() {
                     <div
                       className="p-3.5 rounded-3 border h-100 d-flex flex-column justify-content-between"
                       style={{
-                        borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0',
+                        borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#E2E8F0',
                         backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
                       }}
                     >
                       <div>
                         {/* Header */}
                         <div className="d-flex justify-content-between align-items-center mb-3">
-                          <h6 className="fw-extrabold text-dark mb-0" style={{ fontSize: '1.05rem', letterSpacing: '-0.01em' }}>
-                            {t('Feed by Pond')}
-                          </h6>
+                          <div className="d-flex align-items-center gap-2">
+                            <div
+                              className="rounded-circle d-flex align-items-center justify-content-center"
+                              style={{ width: 28, height: 28, backgroundColor: 'rgba(252, 86, 60, 0.12)', color: '#FC563C' }}
+                            >
+                              <FaUtensils size={12} />
+                            </div>
+                            <h6 className="fw-extrabold text-dark mb-0" style={{ fontSize: '1.05rem', letterSpacing: '-0.01em' }}>
+                              {t('Feed by Pond')}
+                            </h6>
+                          </div>
+                          <span
+                            className="badge rounded-pill extra-small fw-semibold px-2.5 py-1"
+                            style={{
+                              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9',
+                              color: isDark ? '#CBD5E1' : '#64748B',
+                              border: isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #E2E8F0'
+                            }}
+                          >
+                            {t('Active Fleet')}
+                          </span>
                         </div>
 
                         {/* Active Primary Pond Card (Matching Pond A1 1,117.0 kg with progress bar) */}
                         <div
-                          className="p-3 rounded-3 border mb-3"
+                          className="p-3.5 rounded-3 border mb-3"
                           style={{
-                            borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0',
-                            backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#FFFFFF',
+                            borderColor: isDark ? 'rgba(255, 255, 255, 0.14)' : '#CBD5E1',
+                            backgroundColor: isDark ? '#253549' : '#F8FAFC',
+                            boxShadow: isDark ? '0 4px 12px rgba(0, 0, 0, 0.25)' : '0 2px 6px rgba(15, 23, 42, 0.04)',
                           }}
                         >
-                          <div className="d-flex justify-content-between align-items-center mb-1">
-                            <span className="fw-bold" style={{ fontSize: '0.92rem', color: isDark ? '#F1F5F9' : '#1E293B' }}>
+                          <div className="d-flex justify-content-between align-items-center mb-2">
+                            <span className="fw-extrabold" style={{ fontSize: '0.96rem', color: isDark ? '#FFFFFF' : '#0F172A' }}>
                               {feedByPondSummary.topActivePond.pondName}
                             </span>
-                          </div>
-                          <div
-                            className="fw-extrabold text-dark mb-2.5"
-                            style={{ fontSize: '1.65rem', lineHeight: 1.15, letterSpacing: '-0.02em' }}
-                          >
-                            {feedByPondSummary.topActivePond.totalPondKg > 0
-                              ? `${feedByPondSummary.topActivePond.totalPondKg.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg`
-                              : '1,117.0 kg'}
+                            <span
+                              className="badge rounded-pill extra-small fw-bold px-2.5 py-0.5"
+                              style={{
+                                backgroundColor: isDark ? 'rgba(16, 185, 129, 0.2)' : '#ECFDF5',
+                                color: '#10B981',
+                                border: isDark ? '1px solid rgba(16, 185, 129, 0.35)' : '1px solid #A7F3D0',
+                                fontSize: '0.68rem'
+                              }}
+                            >
+                              ● {t('Top Feeder')}
+                            </span>
                           </div>
 
-                          {/* Coral-orange progress bar */}
-                          <div
-                            className="w-100 rounded-pill overflow-hidden"
-                            style={{
-                              height: 8,
-                              backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#F1F5F9',
-                            }}
-                          >
-                            <div
-                              className="h-100 rounded-pill"
-                              style={{
-                                width: `${
-                                  feedByPondSummary.topActivePond.totalPondKg > 0 && totalFilteredFeedKg > 0
-                                    ? Math.min(100, Math.max(20, Math.round((feedByPondSummary.topActivePond.totalPondKg / totalFilteredFeedKg) * 100)))
-                                    : 68
-                                }%`,
-                                backgroundColor: '#FC563C',
-                                transition: 'width 0.4s ease',
-                              }}
-                            />
+                          <div className="d-flex align-items-baseline gap-2 mb-2">
+                            <span
+                              className="fw-extrabold font-mono"
+                              style={{ fontSize: '1.75rem', lineHeight: 1.1, color: isDark ? '#FFFFFF' : '#0F172A', letterSpacing: '-0.02em' }}
+                            >
+                              {feedByPondSummary.topActivePond.totalPondKg > 0
+                                ? feedByPondSummary.topActivePond.totalPondKg.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+                                : '1,117.0'}
+                            </span>
+                            <span className="fw-bold" style={{ fontSize: '0.88rem', color: '#FC563C' }}>
+                              kg {t('fed')}
+                            </span>
                           </div>
+
+                          {/* Progress section with label & percentage */}
+                          {(() => {
+                            const pct = feedByPondSummary.topActivePond.totalPondKg > 0 && totalFilteredFeedKg > 0
+                              ? Math.min(100, Math.max(15, Math.round((feedByPondSummary.topActivePond.totalPondKg / totalFilteredFeedKg) * 100)))
+                              : 68;
+                            return (
+                              <div className="mt-2.5 pt-2 border-top" style={{ borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#E2E8F0' }}>
+                                <div className="d-flex justify-content-between align-items-center mb-1.5 extra-small">
+                                  <span className="fw-semibold" style={{ color: isDark ? '#CBD5E1' : '#64748B', fontSize: '0.74rem' }}>
+                                    {t('Share of Total Feed')}:
+                                  </span>
+                                  <strong className="font-mono fw-bold" style={{ color: '#FC563C', fontSize: '0.80rem' }}>
+                                    {pct}%
+                                  </strong>
+                                </div>
+                                <div
+                                  className="w-100 rounded-pill overflow-hidden"
+                                  style={{
+                                    height: 8,
+                                    backgroundColor: isDark ? 'rgba(15, 23, 42, 0.65)' : '#E2E8F0',
+                                    border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : 'none'
+                                  }}
+                                >
+                                  <div
+                                    className="h-100 rounded-pill"
+                                    style={{
+                                      width: `${pct}%`,
+                                      background: 'linear-gradient(90deg, #FC563C 0%, #FF8A75 100%)',
+                                      boxShadow: '0 0 8px rgba(252, 86, 60, 0.5)',
+                                      transition: 'width 0.4s ease',
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
 
                         {/* Idle Ponds Section (Matching "8 Idle Ponds 0.0 kg v") */}
                         <div
-                          className="p-3 rounded-3 border"
+                          className="p-3.5 rounded-3 border"
                           style={{
-                            borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0',
-                            backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#FFFFFF',
+                            borderColor: isDark ? 'rgba(255, 255, 255, 0.14)' : '#CBD5E1',
+                            backgroundColor: isDark ? '#253549' : '#F8FAFC',
+                            boxShadow: isDark ? '0 4px 12px rgba(0, 0, 0, 0.25)' : '0 2px 6px rgba(15, 23, 42, 0.04)',
                           }}
                         >
                           <div
@@ -2684,15 +2924,16 @@ export default function AdminDashboard() {
                             onClick={() => setIsIdlePondsOpen(!isIdlePondsOpen)}
                             style={{ cursor: 'pointer' }}
                           >
-                            <span className="fw-bold text-dark" style={{ fontSize: '0.88rem' }}>
-                              {feedByPondSummary.idlePonds.length > 0 ? `${feedByPondSummary.idlePonds.length} Idle Ponds` : '8 Idle Ponds'}
+                            <span className="fw-bold" style={{ fontSize: '0.90rem', color: isDark ? '#F1F5F9' : '#0F172A' }}>
+                              {feedByPondSummary.idlePonds.length > 0 ? `${feedByPondSummary.idlePonds.length} ${t('Idle Ponds')}` : `8 ${t('Idle Ponds')}`}
                             </span>
                             <div className="d-flex align-items-center gap-1.5">
                               <span
-                                className="badge rounded-pill extra-small fw-bold px-2 py-0.5"
+                                className="badge rounded-pill extra-small fw-bold px-2.5 py-1 font-mono"
                                 style={{
-                                  backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#F1F5F9',
-                                  color: isDark ? '#94A3B8' : '#64748B',
+                                  backgroundColor: isDark ? 'rgba(15, 23, 42, 0.6)' : '#FFFFFF',
+                                  color: isDark ? '#CBD5E1' : '#64748B',
+                                  border: isDark ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid #CBD5E1',
                                   fontSize: '0.72rem',
                                 }}
                               >
@@ -2706,30 +2947,44 @@ export default function AdminDashboard() {
                             </div>
                           </div>
 
-                          {/* Idle Pond Tags / Names */}
-                          <div className="mt-2.5">
-                            <p
-                              className="mb-0 text-muted extra-small"
-                              style={{ fontSize: '0.80rem', letterSpacing: '0.02em', lineHeight: 1.5 }}
-                            >
-                              {feedByPondSummary.idlePondNames.join(', ')}
-                            </p>
+                          {/* Subtitle */}
+                          <div className="extra-small mt-2 mb-2" style={{ color: isDark ? '#94A3B8' : '#64748B', fontSize: '0.73rem' }}>
+                            {t('Standby ponds with zero feed logs:')}
+                          </div>
+
+                          {/* Idle Pond Tags / Names as clean readable pill badges */}
+                          <div className="d-flex flex-wrap gap-1.5">
+                            {(feedByPondSummary.idlePondNames.length > 0 ? feedByPondSummary.idlePondNames : ['A2', 'A3', 'C1']).map((name) => (
+                              <span
+                                key={name}
+                                className="badge rounded-pill px-2.5 py-1 extra-small fw-semibold"
+                                style={{
+                                  backgroundColor: isDark ? 'rgba(15, 23, 42, 0.6)' : '#FFFFFF',
+                                  border: isDark ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid #CBD5E1',
+                                  color: isDark ? '#F1F5F9' : '#1E293B',
+                                  fontSize: '0.74rem'
+                                }}
+                              >
+                                {name.toLowerCase().startsWith('pond') ? name : `Pond ${name}`}
+                              </span>
+                            ))}
                           </div>
 
                           {/* Expanded details if user clicks chevron */}
                           {isIdlePondsOpen && (
-                            <div className="mt-2.5 pt-2.5 border-top" style={{ borderColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' }}>
-                              <div className="extra-small text-muted mb-1.5 fw-semibold">
+                            <div className="mt-2.5 pt-2.5 border-top" style={{ borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#E2E8F0' }}>
+                              <div className="extra-small mb-1.5 fw-semibold" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
                                 {t('Ponds with zero feed logged in this window:')}
                               </div>
                               <div className="d-flex flex-wrap gap-1">
                                 {feedByPondSummary.idlePonds.map((p) => (
                                   <span
                                     key={p.pondId}
-                                    className="badge rounded-pill border extra-small px-2 py-0.5 text-muted"
+                                    className="badge rounded-pill border extra-small px-2 py-0.5"
                                     style={{
-                                      backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
-                                      borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0',
+                                      backgroundColor: isDark ? 'rgba(15, 23, 42, 0.55)' : '#FFFFFF',
+                                      borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#E2E8F0',
+                                      color: isDark ? '#CBD5E1' : '#64748B',
                                     }}
                                   >
                                     {p.pondName}
@@ -2741,13 +2996,19 @@ export default function AdminDashboard() {
                         </div>
                       </div>
 
-                      <div className="mt-3 text-end">
+                      <div className="mt-3 pt-2.5 border-top d-flex justify-content-end" style={{ borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#E2E8F0' }}>
                         <Link
                           to="/admin/feeding"
-                          className="extra-small fw-bold text-decoration-none d-inline-flex align-items-center gap-1"
-                          style={{ color: '#FC563C' }}
+                          className="btn btn-sm extra-small fw-bold d-inline-flex align-items-center gap-1.5 px-3 py-1.5 rounded-pill transition-all"
+                          style={{
+                            backgroundColor: 'rgba(252, 86, 60, 0.12)',
+                            color: '#FC563C',
+                            border: '1px solid rgba(252, 86, 60, 0.25)',
+                            textDecoration: 'none'
+                          }}
                         >
-                          {t('Manage Feeder Profiles')} <FaChevronRight size={9} />
+                          <span>{t('Manage Feeder Profiles')}</span>
+                          <FaChevronRight size={9} />
                         </Link>
                       </div>
                     </div>
@@ -2773,9 +3034,12 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div className="table-responsive admin-scrollable-table-4rows" style={{ maxHeight: 215, overflowY: 'auto' }}>
-              <table className="table tri-table table-hover align-middle mb-0" style={{ fontSize: '0.80rem', tableLayout: 'fixed', width: '100%' }}>
-                <thead className="sticky-top border-bottom admin-table-sticky-head">
+            <div className="d-block d-md-none text-center text-muted extra-small mb-1 font-monospace" style={{ fontSize: '0.68rem' }}>
+              {t('← Swipe table horizontally to see full details →')}
+            </div>
+            <div className="table-responsive admin-scrollable-table-4rows" style={{ maxHeight: 290, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <table className="table tri-table table-hover align-middle mb-0" style={{ fontSize: '0.80rem', minWidth: 680, width: '100%' }}>
+                <thead className="border-bottom admin-table-sticky-head">
                   <tr className="text-muted extra-small text-uppercase fw-extrabold" style={{ letterSpacing: '0.03em' }}>
                     <th className="py-2.5 ps-3" style={{ width: '14%' }}>{t('Operator')}</th>
                     <th className="py-2.5" style={{ width: '12%' }}>{t('Pond')}</th>
@@ -2801,7 +3065,7 @@ export default function AdminDashboard() {
                     return (
                       <tr key={r.id} className="align-middle">
                         <td className="ps-3 py-2">
-                          <span className="badge rounded-pill fw-bold px-2 py-1 text-dark bg-light border text-truncate d-inline-block" style={{ maxWidth: '100%', fontSize: '0.74rem' }}>
+                          <span className="badge rounded-pill fw-bold px-2 py-1 border text-truncate d-inline-block" style={{ maxWidth: '100%', fontSize: '0.74rem', backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9', color: isDark ? '#FFFFFF' : '#172A39', borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#E2E8F0' }}>
                             {r.recorded_by_name || r.recorded_by || t('Caretaker')}
                           </span>
                         </td>

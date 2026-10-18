@@ -122,9 +122,16 @@ export default function ReportsPage() {
 
   const [currentTheme, setCurrentTheme] = useState(() => getEffectiveTheme());
   useEffect(() => {
-    const handleThemeChange = () => setCurrentTheme(getEffectiveTheme());
+    const handleThemeChange = (e) => {
+      const t = e?.detail?.theme || document.documentElement.getAttribute('data-theme') || getEffectiveTheme();
+      setCurrentTheme(t);
+    };
+    window.addEventListener('shrim-theme-changed', handleThemeChange);
     window.addEventListener('themeChanged', handleThemeChange);
-    return () => window.removeEventListener('themeChanged', handleThemeChange);
+    return () => {
+      window.removeEventListener('shrim-theme-changed', handleThemeChange);
+      window.removeEventListener('themeChanged', handleThemeChange);
+    };
   }, []);
   const isDark = currentTheme === 'dark';
 
@@ -502,16 +509,26 @@ export default function ReportsPage() {
       {/* 1. TITLE HEADER */}
       <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
         <div>
-          <div className="d-flex align-items-center gap-2">
+          <div className="d-flex align-items-center flex-wrap gap-2 mb-1">
             <h3 className="fw-extrabold text-dark mb-0 tracking-tight" style={{ letterSpacing: '-0.02em' }}>
               {t('hero.caretakerReports', 'Pond Issue & Incident Reports')}
             </h3>
-            <span className="badge rounded-pill extra-small px-2.5 py-1 fw-bold bg-white border text-secondary d-flex align-items-center gap-1.5 shadow-2xs">
-              <span className="pulse-dot-green"></span>
-              {t('hero.caretakerReportsBadge', 'Incident & Maintenance Dispatch')}
+            <span
+              className="badge rounded-pill extra-small px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1.5 shadow-2xs"
+              style={{
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#FFFFFF',
+                border: isDark ? '1px solid rgba(255, 255, 255, 0.16)' : '1px solid #E2E8F0',
+                color: isDark ? '#E2E8F0' : '#475569',
+                maxWidth: '100%',
+                whiteSpace: 'normal',
+                textAlign: 'left'
+              }}
+            >
+              <span className="pulse-dot-green flex-shrink-0"></span>
+              <span>{t('hero.caretakerReportsBadge', 'Incident & Maintenance Dispatch')}</span>
             </span>
           </div>
-          <p className="text-muted mb-0 small mt-0.5">
+          <p className="text-muted mb-0 small mt-0.5" style={{ maxWidth: 700, lineHeight: 1.4 }}>
             {t('hero.caretakerReportsSub', 'Log field abnormalities, machinery downtime, and biological anomalies with photo/video evidence.')}
           </p>
         </div>
@@ -529,10 +546,10 @@ export default function ReportsPage() {
             <span>{t('Sync')}</span>
           </button>
 
-          <div className="d-flex align-items-center gap-1 bg-light p-1 rounded-3 border" style={{ borderColor: '#E2E8F0' }}>
+          <div className="chart-range-pill-container d-flex align-items-center gap-1 p-1 rounded-3 border">
             <button
               type="button"
-              className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold border-0 transition-all d-flex align-items-center gap-1.5 ${activeTab === 'submit' ? 'bg-white shadow-2xs text-dark' : 'text-muted'}`}
+              className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold transition-all d-flex align-items-center gap-1.5 ${activeTab === 'submit' ? 'btn-chart-range-active shadow-xs' : 'btn-chart-range-inactive'}`}
               onClick={() => setActiveTab('submit')}
             >
               <FaPaperPlane size={11} />
@@ -540,13 +557,13 @@ export default function ReportsPage() {
             </button>
             <button
               type="button"
-              className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold border-0 transition-all d-flex align-items-center gap-1.5 ${activeTab === 'history' ? 'bg-white shadow-2xs text-dark' : 'text-muted'}`}
+              className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold transition-all d-flex align-items-center gap-1.5 ${activeTab === 'history' ? 'btn-chart-range-active shadow-xs' : 'btn-chart-range-inactive'}`}
               onClick={() => setActiveTab('history')}
             >
               <FaHistory size={11} />
               <span>History</span>
               {myReports.length > 0 && (
-                <span className="badge rounded-pill bg-secondary bg-opacity-10 text-secondary ms-1">
+                <span className="badge rounded-pill ms-1" style={{ backgroundColor: activeTab === 'history' ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.08)', color: activeTab === 'history' ? '#FFFFFF' : 'inherit' }}>
                   {myReports.length}
                 </span>
               )}
@@ -737,9 +754,28 @@ export default function ReportsPage() {
               <div className="col-12 col-md-6">
                 <div className="tri-media-uploadzone h-100 d-flex flex-column justify-content-between">
                   <div>
-                    <label className="extra-small fw-bold text-dark mb-1.5 d-flex align-items-center gap-1.5">
-                      <FaCamera style={{ color: '#FC563C' }} /> Attach Photo Evidence <span className="badge badge-tri-navy rounded-pill extra-small">JPEG / PNG</span>
-                    </label>
+                    <div className="d-flex align-items-center justify-content-between gap-2 mb-2 flex-wrap">
+                      <div className="d-inline-flex align-items-center gap-2">
+                        <div
+                          className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                          style={{
+                            width: 28,
+                            height: 28,
+                            backgroundColor: isDark ? 'rgba(252, 86, 60, 0.2)' : 'rgba(252, 86, 60, 0.1)',
+                            color: '#FC563C',
+                          }}
+                        >
+                          <FaCamera size={13} />
+                        </div>
+                        <span className="fw-bold extra-small" style={{ color: isDark ? '#FFFFFF' : '#0F172A' }}>
+                          Attach Photo Evidence
+                        </span>
+                      </div>
+                      <div className="d-inline-flex align-items-center gap-1.5 flex-shrink-0">
+                        <span className="badge badge-tri-navy rounded-pill extra-small">JPEG / PNG</span>
+                        <span className="text-muted extra-small">(optional)</span>
+                      </div>
+                    </div>
                     <input
                       type="file"
                       className="form-control form-control-sm"
@@ -779,12 +815,28 @@ export default function ReportsPage() {
               <div className="col-12 col-md-6">
                 <div className="tri-media-uploadzone h-100 d-flex flex-column justify-content-between">
                   <div>
-                    <label className="extra-small fw-bold text-dark mb-1.5 d-flex align-items-center justify-content-between">
-                      <span className="d-flex align-items-center gap-1.5">
-                        <FaVideo style={{ color: '#FC563C' }} /> Attach Video Evidence <span className="badge badge-tri-orange rounded-pill extra-small">MP4 / MOV</span>
-                      </span>
-                      <span className="text-muted extra-small">(optional)</span>
-                    </label>
+                    <div className="d-flex align-items-center justify-content-between gap-2 mb-2 flex-wrap">
+                      <div className="d-inline-flex align-items-center gap-2">
+                        <div
+                          className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                          style={{
+                            width: 28,
+                            height: 28,
+                            backgroundColor: isDark ? 'rgba(252, 86, 60, 0.2)' : 'rgba(252, 86, 60, 0.1)',
+                            color: '#FC563C',
+                          }}
+                        >
+                          <FaVideo size={13} />
+                        </div>
+                        <span className="fw-bold extra-small" style={{ color: isDark ? '#FFFFFF' : '#0F172A' }}>
+                          Attach Video Evidence
+                        </span>
+                      </div>
+                      <div className="d-inline-flex align-items-center gap-1.5 flex-shrink-0">
+                        <span className="badge badge-tri-orange rounded-pill extra-small">MP4 / MOV</span>
+                        <span className="text-muted extra-small">(optional)</span>
+                      </div>
+                    </div>
                     <input
                       type="file"
                       className="form-control form-control-sm"
@@ -823,26 +875,38 @@ export default function ReportsPage() {
 
             {/* SUBMIT ACTION STRIP */}
             <div
-              className="d-flex align-items-center justify-content-between p-3 rounded-4 flex-wrap gap-2 caretaker-submit-strip"
-              style={{ background: isDark ? '#172A39' : '#FFFFFF', border: isDark ? '1px solid rgba(56, 189, 248, 0.2)' : '1.5px solid #CBD5E1' }}
+              className="d-flex align-items-center justify-content-between p-3 rounded-4 flex-wrap gap-3 caretaker-submit-strip"
+              style={{
+                background: isDark ? '#253549' : '#FFFFFF',
+                border: isDark ? '1px solid rgba(255, 255, 255, 0.12)' : '1.5px solid #CBD5E1',
+                boxShadow: isDark ? '0 2px 8px rgba(0,0,0,0.25)' : '0 1px 4px rgba(15,23,42,0.04)'
+              }}
             >
-              <div className="d-flex align-items-center gap-2">
+              <div className="d-flex align-items-center gap-2.5">
                 <div
-                  className="rounded-circle d-flex align-items-center justify-content-center"
-                  style={{ width: 32, height: 32, background: 'rgba(252, 86, 60, 0.08)', color: '#FC563C' }}
+                  className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                  style={{
+                    width: 36,
+                    height: 36,
+                    background: isDark ? 'rgba(252, 86, 60, 0.2)' : 'rgba(252, 86, 60, 0.1)',
+                    color: '#FC563C'
+                  }}
                 >
-                  <FaUserCheck size={14} />
+                  <FaUserCheck size={15} />
                 </div>
                 <div>
-                  <span className="extra-small text-muted d-block">Report Originator:</span>
-                  <strong className="text-dark small">{user?.full_name || 'Caretaker'} (Verified)</strong>
+                  <span className="extra-small text-muted d-block" style={{ fontSize: '0.72rem' }}>Report Originator:</span>
+                  <strong className="small" style={{ color: isDark ? '#FFFFFF' : '#0F172A', fontSize: '0.86rem' }}>
+                    {user?.full_name || 'Caretaker'} (Verified)
+                  </strong>
                 </div>
               </div>
 
-              <div className="d-flex align-items-center gap-2">
+              <div className="d-flex align-items-center gap-2 w-100 w-sm-auto justify-content-end flex-wrap flex-sm-nowrap">
                 <button
                   type="button"
-                  className="btn btn-sm btn-tri-outline px-3.5 py-2 extra-small fw-bold"
+                  className="btn btn-sm btn-outline-secondary px-3.5 py-2 extra-small fw-bold rounded-pill text-nowrap flex-fill flex-sm-grow-0"
+                  style={{ minHeight: 40 }}
                   onClick={() => {
                     setForm({
                       pondId: ponds[0]?.id ? String(ponds[0].id) : '',
@@ -863,7 +927,12 @@ export default function ReportsPage() {
                 <button
                   type="submit"
                   onClick={handleSubmit}
-                  className="btn btn-tri-orange px-4 py-2 fw-bold shadow-sm hover-lift d-inline-flex align-items-center gap-2"
+                  className="btn btn-tri-orange px-4 py-2 fw-bold shadow-sm hover-lift d-inline-flex align-items-center justify-content-center gap-2 rounded-pill text-nowrap flex-fill flex-sm-grow-0"
+                  style={{
+                    minHeight: 40,
+                    whiteSpace: 'nowrap',
+                    borderRadius: '9999px',
+                  }}
                   disabled={submitting || uploadingImage || uploadingVideo}
                 >
                   {submitting ? (
@@ -923,42 +992,66 @@ export default function ReportsPage() {
           {/* FILTER PILLS STRIP */}
           <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
             {/* Status Filter Pills */}
-            <div className="d-flex align-items-center gap-1 bg-light p-1 rounded-3 border" style={{ borderColor: '#E2E8F0' }}>
-              <span className="extra-small fw-bold text-uppercase tracking-wider px-2 text-muted" style={{ fontSize: '0.7rem' }}>
+            <div
+              className="d-flex align-items-center gap-1.5 p-1.5 rounded-3 border w-100 overflow-x-auto flex-nowrap custom-scrollbar"
+              style={{
+                backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
+                borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#E2E8F0',
+                maxWidth: '100%',
+                WebkitOverflowScrolling: 'touch',
+              }}
+            >
+              <span className="extra-small fw-bold text-uppercase tracking-wider px-2 text-nowrap flex-shrink-0" style={{ fontSize: '0.7rem', color: isDark ? '#94A3B8' : '#64748B' }}>
                 Status:
               </span>
               <button
                 type="button"
-                className={`btn btn-sm py-1 px-2.5 rounded-2 extra-small fw-bold border-0 transition-all ${
-                  historyStatusFilter === 'all' ? 'bg-white shadow-2xs text-dark' : 'text-muted'
-                }`}
+                className="btn btn-sm py-1.5 px-3 rounded-2 extra-small fw-bold border-0 transition-all text-nowrap flex-shrink-0"
+                style={{
+                  backgroundColor: historyStatusFilter === 'all' ? '#FC563C' : 'transparent',
+                  color: historyStatusFilter === 'all' ? '#FFFFFF' : (isDark ? '#CBD5E1' : '#64748B'),
+                  boxShadow: historyStatusFilter === 'all' ? '0 2px 6px rgba(252, 86, 60, 0.35)' : 'none',
+                  whiteSpace: 'nowrap',
+                }}
                 onClick={() => setHistoryStatusFilter('all')}
               >
                 All ({myReports.length})
               </button>
               <button
                 type="button"
-                className={`btn btn-sm py-1 px-2.5 rounded-2 extra-small fw-bold border-0 transition-all ${
-                  historyStatusFilter === 'Pending' ? 'bg-white shadow-2xs text-dark' : 'text-muted'
-                }`}
+                className="btn btn-sm py-1.5 px-3 rounded-2 extra-small fw-bold border-0 transition-all text-nowrap flex-shrink-0"
+                style={{
+                  backgroundColor: historyStatusFilter === 'Pending' ? '#FC563C' : 'transparent',
+                  color: historyStatusFilter === 'Pending' ? '#FFFFFF' : (isDark ? '#CBD5E1' : '#64748B'),
+                  boxShadow: historyStatusFilter === 'Pending' ? '0 2px 6px rgba(252, 86, 60, 0.35)' : 'none',
+                  whiteSpace: 'nowrap',
+                }}
                 onClick={() => setHistoryStatusFilter('Pending')}
               >
                 Pending ({pendingReports})
               </button>
               <button
                 type="button"
-                className={`btn btn-sm py-1 px-2.5 rounded-2 extra-small fw-bold border-0 transition-all ${
-                  historyStatusFilter === 'In Progress' ? 'bg-white shadow-2xs text-dark' : 'text-muted'
-                }`}
+                className="btn btn-sm py-1.5 px-3 rounded-2 extra-small fw-bold border-0 transition-all text-nowrap flex-shrink-0"
+                style={{
+                  backgroundColor: historyStatusFilter === 'In Progress' ? '#FC563C' : 'transparent',
+                  color: historyStatusFilter === 'In Progress' ? '#FFFFFF' : (isDark ? '#CBD5E1' : '#64748B'),
+                  boxShadow: historyStatusFilter === 'In Progress' ? '0 2px 6px rgba(252, 86, 60, 0.35)' : 'none',
+                  whiteSpace: 'nowrap',
+                }}
                 onClick={() => setHistoryStatusFilter('In Progress')}
               >
                 In Progress ({inProgressReports})
               </button>
               <button
                 type="button"
-                className={`btn btn-sm py-1 px-2.5 rounded-2 extra-small fw-bold border-0 transition-all ${
-                  historyStatusFilter === 'Done' ? 'bg-white shadow-2xs text-dark' : 'text-muted'
-                }`}
+                className="btn btn-sm py-1.5 px-3 rounded-2 extra-small fw-bold border-0 transition-all text-nowrap flex-shrink-0"
+                style={{
+                  backgroundColor: historyStatusFilter === 'Done' ? '#FC563C' : 'transparent',
+                  color: historyStatusFilter === 'Done' ? '#FFFFFF' : (isDark ? '#CBD5E1' : '#64748B'),
+                  boxShadow: historyStatusFilter === 'Done' ? '0 2px 6px rgba(252, 86, 60, 0.35)' : 'none',
+                  whiteSpace: 'nowrap',
+                }}
                 onClick={() => setHistoryStatusFilter('Done')}
               >
                 Resolved ({doneReports})
@@ -1055,7 +1148,11 @@ export default function ReportsPage() {
                     key={report.id}
                     id={`caretaker-report-${report.id}`}
                     className={`tri-incident-card p-4 rounded-4 mb-3 ${isTargetHighlighted ? 'highlighted' : ''}`}
-                    style={{ backgroundColor: '#FFFFFF', border: '1px solid rgba(252, 86, 60, 0.1)', boxShadow: '0 1px 4px rgba(252, 86, 60, 0.04)' }}
+                    style={{
+                      backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                      border: isDark ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid #E2E8F0',
+                      boxShadow: isDark ? '0 2px 10px rgba(0, 0, 0, 0.3)' : '0 1px 4px rgba(15, 23, 42, 0.04)'
+                    }}
                   >
                     {/* CARD HEADER */}
                     <div className="d-flex justify-content-between align-items-start gap-2 mb-3 flex-wrap">
@@ -1072,7 +1169,7 @@ export default function ReportsPage() {
                                   : sev === 'High'
                                   ? 'rgba(225, 29, 72, 0.12)'
                                   : sev === 'Medium'
-                                  ? '#E9E4E0'
+                                  ? (isDark ? 'rgba(252, 86, 60, 0.18)' : '#FFF1ED')
                                   : 'rgba(16, 185, 129, 0.12)',
                               color:
                                 sev === 'Critical'
@@ -1080,7 +1177,7 @@ export default function ReportsPage() {
                                   : sev === 'High'
                                   ? '#E11D48'
                                   : sev === 'Medium'
-                                  ? '#FC563C'
+                                  ? (isDark ? '#FF8A75' : '#C2410C')
                                   : '#059669',
                               border: `1px solid ${
                                 sev === 'Critical'
@@ -1088,7 +1185,7 @@ export default function ReportsPage() {
                                   : sev === 'High'
                                   ? 'rgba(225, 29, 72, 0.3)'
                                   : sev === 'Medium'
-                                  ? 'rgba(252, 86, 60, 0.28)'
+                                  ? 'rgba(252, 86, 60, 0.3)'
                                   : 'rgba(16, 185, 129, 0.3)'
                               }`,
                             }}
@@ -1097,14 +1194,25 @@ export default function ReportsPage() {
                           </span>
 
                           {/* Problem Type Badge */}
-                          <span className="badge badge-tri-navy rounded-pill px-2.5 py-1 extra-small">
+                          <span
+                            className="badge rounded-pill px-2.5 py-1 extra-small"
+                            style={{
+                              backgroundColor: isDark ? 'rgba(56, 189, 248, 0.15)' : '#E0F2FE',
+                              color: isDark ? '#38BDF8' : '#0369A1',
+                              border: isDark ? '1px solid rgba(56, 189, 248, 0.3)' : '1px solid #BAE6FD'
+                            }}
+                          >
                             {report.problem_type}
                           </span>
 
                           {/* Pond Basin Badge */}
                           <span
-                            className="badge bg-white rounded-pill px-2.5 py-1 extra-small fw-bold"
-                            style={{ border: '1px solid rgba(252, 86, 60, 0.15)', color: '#FC563C' }}
+                            className="badge rounded-pill px-2.5 py-1 extra-small fw-bold"
+                            style={{
+                              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#F8FAFC',
+                              border: isDark ? '1px solid rgba(255, 255, 255, 0.18)' : '1px solid #E2E8F0',
+                              color: isDark ? '#CBD5E1' : '#475569'
+                            }}
                           >
                             <FaWater size={10} className="me-1 text-primary" />
                             {report.pond_name || `Pond #${report.pond_id}`}
@@ -1116,7 +1224,7 @@ export default function ReportsPage() {
                         </div>
 
                         {/* Specific Issue Title */}
-                        <h6 className="fw-extrabold mb-0 text-dark mt-1" style={{ fontSize: '1.1rem', color: '#FC563C' }}>
+                        <h6 className="fw-extrabold mb-0 mt-1" style={{ fontSize: '1.1rem', color: isDark ? '#FFFFFF' : '#0F172A' }}>
                           {report.specific_issue}
                         </h6>
                       </div>
@@ -1126,13 +1234,13 @@ export default function ReportsPage() {
                         className="badge rounded-pill fw-bold px-3 py-1.5 extra-small d-inline-flex align-items-center gap-1.5"
                         style={{
                           backgroundColor: isDone
-                            ? '#ECFDF5'
+                            ? (isDark ? 'rgba(16, 185, 129, 0.18)' : '#ECFDF5')
                             : isInProgress
-                            ? 'rgba(252, 86, 60, 0.08)'
-                            : '#E9E4E0',
-                          color: isDone ? '#047857' : isInProgress ? '#FC563C' : '#FC563C',
+                            ? (isDark ? 'rgba(252, 86, 60, 0.18)' : 'rgba(252, 86, 60, 0.08)')
+                            : (isDark ? 'rgba(252, 86, 60, 0.14)' : '#FFF1ED'),
+                          color: isDone ? (isDark ? '#34D399' : '#047857') : isInProgress ? '#FC563C' : (isDark ? '#FF8A75' : '#C2410C'),
                           border: `1px solid ${
-                            isDone ? '#A7F3D0' : isInProgress ? 'rgba(252, 86, 60, 0.2)' : 'rgba(252, 86, 60, 0.28)'
+                            isDone ? 'rgba(16, 185, 129, 0.4)' : isInProgress ? 'rgba(252, 86, 60, 0.35)' : 'rgba(252, 86, 60, 0.3)'
                           }`,
                         }}
                       >
@@ -1153,8 +1261,14 @@ export default function ReportsPage() {
                     </div>
 
                     {/* Description Text Box */}
-                    <div className="p-3.5 rounded-3 mb-3" style={{ backgroundColor: isDark ? '#172A39' : '#F8FAFC', border: isDark ? '1px solid rgba(56, 189, 248, 0.2)' : '1.5px solid #CBD5E1' }}>
-                      <p className="text-dark mb-0 fw-medium" style={{ lineHeight: 1.6, fontSize: '0.9rem' }}>
+                    <div
+                      className="p-3 rounded-3 mb-3"
+                      style={{
+                        backgroundColor: isDark ? 'rgba(15, 23, 42, 0.55)' : '#F8FAFC',
+                        border: isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1.5px solid #E2E8F0'
+                      }}
+                    >
+                      <p className="mb-0 fw-medium" style={{ color: isDark ? '#F1F5F9' : '#1E293B', lineHeight: 1.6, fontSize: '0.9rem' }}>
                         {report.description}
                       </p>
                     </div>
@@ -1207,33 +1321,33 @@ export default function ReportsPage() {
                       <div
                         className="rounded-3 p-3 mb-3 extra-small"
                         style={{
-                          background: isDone ? '#ECFDF5' : '#F1F5F9',
-                          border: `1px solid ${isDone ? '#A7F3D0' : '#CBD5E1'}`,
+                          background: isDone ? (isDark ? 'rgba(16, 185, 129, 0.15)' : '#ECFDF5') : (isDark ? '#172A39' : '#F1F5F9'),
+                          border: `1px solid ${isDone ? (isDark ? 'rgba(16, 185, 129, 0.35)' : '#A7F3D0') : (isDark ? 'rgba(255, 255, 255, 0.12)' : '#CBD5E1')}`,
                           borderLeft: `4px solid ${isDone ? '#10B981' : '#FC563C'}`,
                         }}
                       >
-                        <div className="d-flex align-items-center gap-1.5 mb-1 fw-bold" style={{ color: isDone ? '#047857' : '#FC563C' }}>
+                        <div className="d-flex align-items-center gap-1.5 mb-1 fw-bold" style={{ color: isDone ? (isDark ? '#34D399' : '#047857') : '#FC563C' }}>
                           <FaCheckCircle /> <span>Management Resolution Note:</span>
                         </div>
-                        <p className="mb-0 text-dark fw-medium" style={{ fontSize: '0.84rem' }}>
+                        <p className="mb-0 fw-medium" style={{ color: isDark ? '#F1F5F9' : '#0F172A', fontSize: '0.84rem' }}>
                           {report.admin_notes}
                         </p>
                         {report.resolved_by && (
                           <span className="text-muted extra-small d-block mt-1">
-                            Actioned by: <strong>{report.resolved_by}</strong>
+                            Actioned by: <strong style={{ color: isDark ? '#FFFFFF' : '#0F172A' }}>{report.resolved_by}</strong>
                           </span>
                         )}
                       </div>
                     )}
 
                     {/* Card Footer: Timestamp & Caretaker */}
-                    <div className="d-flex align-items-center justify-content-between pt-3 mt-3 border-top extra-small text-muted" style={{ borderColor: 'rgba(252, 86, 60, 0.08)' }}>
-                      <div className="d-flex align-items-center gap-2">
-                        <span>Pond: <strong className="text-dark">{report.pond_name || `Pond #${report.pond_id}`}</strong></span>
+                    <div className="d-flex align-items-center justify-content-between pt-3 mt-3 border-top extra-small flex-wrap gap-2" style={{ borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(252, 86, 60, 0.08)', color: isDark ? '#94A3B8' : '#64748B' }}>
+                      <div className="d-flex align-items-center gap-2 flex-wrap">
+                        <span>Pond: <strong style={{ color: isDark ? '#FFFFFF' : '#0F172A' }}>{report.pond_name || `Pond #${report.pond_id}`}</strong></span>
                         <span>•</span>
-                        <span>Submitted by: <strong className="text-dark">{report.caretaker_name || user?.full_name || 'Caretaker'}</strong></span>
+                        <span>Submitted by: <strong style={{ color: isDark ? '#FFFFFF' : '#0F172A' }}>{report.caretaker_name || user?.full_name || 'Caretaker'}</strong></span>
                       </div>
-                      <div className="font-mono text-secondary fw-semibold">
+                      <div className="font-mono fw-semibold" style={{ color: isDark ? '#CBD5E1' : '#64748B' }}>
                         {new Date(report.created_at || Date.now()).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
                       </div>
                     </div>
@@ -1253,7 +1367,7 @@ export default function ReportsPage() {
           onClick={() => setPreviewMediaUrl(null)}
           tabIndex="-1"
         >
-          <div className="modal-dialog modal-dialog-centered modal-lg">
+          <div className="modal-dialog modal-dialog-centered modal-lg scan-report-modal-dialog">
             <div className="modal-content bg-transparent border-0 position-relative p-2 text-center">
               <button
                 type="button"

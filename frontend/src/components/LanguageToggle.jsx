@@ -57,7 +57,7 @@ export default function LanguageToggle({ className = '', style = {}, variant = '
     <button
       type="button"
       onClick={() => confirmAndToggleLanguage()}
-      className={`btn btn-sm rounded-pill d-inline-flex align-items-center gap-1.5 shadow-xs px-2.5 py-1 ${className}`}
+      className={`btn btn-sm rounded-pill d-inline-flex align-items-center gap-1.5 shadow-xs px-2.5 py-1 lang-toggle-btn ${className}`}
       style={{
         backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#FFFFFF',
         border: isDark ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid rgba(11, 44, 95, 0.18)',
