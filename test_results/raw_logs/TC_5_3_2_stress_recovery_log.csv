@@ -1,0 +1,171 @@
+Time_Offset_s,Active_Concurrency,System_State_Phase,Latency_ms,HTTP_Status,Health_Status,Recovery_Time_s
+0.03,10,Normal Baseline,18.50,200,NORMAL,0.50
+0.09,10,Normal Baseline,26.62,200,NORMAL,0.50
+0.14,10,Normal Baseline,14.27,200,NORMAL,0.50
+0.19,10,Normal Baseline,101.95,200,NORMAL,0.50
+0.24,10,Normal Baseline,197.72,200,NORMAL,0.50
+0.3,10,Normal Baseline,189.55,200,NORMAL,0.50
+0.35,10,Normal Baseline,22.02,200,NORMAL,0.50
+0.4,10,Normal Baseline,193.05,200,NORMAL,0.50
+0.45,10,Normal Baseline,241.07,200,NORMAL,0.50
+0.5,10,Normal Baseline,370.14,200,NORMAL,0.50
+0.55,10,Normal Baseline,19.02,200,NORMAL,0.50
+0.6,10,Normal Baseline,281.36,200,NORMAL,0.50
+0.65,10,Normal Baseline,537.57,200,NORMAL,0.50
+0.78,10,Normal Baseline,650.31,200,NORMAL,0.50
+0.83,10,Normal Baseline,752.74,200,NORMAL,0.50
+0.88,10,Normal Baseline,782.21,200,NORMAL,0.50
+0.93,10,Normal Baseline,778.19,200,NORMAL,0.50
+0.98,10,Normal Baseline,562.89,200,NORMAL,0.50
+1.03,10,Normal Baseline,634.59,200,NORMAL,0.50
+1.08,10,Normal Baseline,645.88,200,NORMAL,0.50
+1.47,40,Moderate Load,72.68,200,NORMAL,0.50
+1.49,40,Moderate Load,290.36,200,NORMAL,0.50
+1.51,40,Moderate Load,138.71,200,NORMAL,0.50
+1.53,40,Moderate Load,23.53,200,NORMAL,0.50
+1.55,40,Moderate Load,35.28,200,NORMAL,0.50
+1.58,40,Moderate Load,61.80,200,NORMAL,0.50
+1.6,40,Moderate Load,77.35,200,NORMAL,0.50
+1.62,40,Moderate Load,201.14,200,NORMAL,0.50
+1.64,40,Moderate Load,22.02,200,NORMAL,0.50
+1.66,40,Moderate Load,142.30,200,NORMAL,0.50
+1.68,40,Moderate Load,35.77,200,NORMAL,0.50
+1.7,40,Moderate Load,28.90,200,NORMAL,0.50
+1.73,40,Moderate Load,277.25,200,NORMAL,0.50
+1.75,40,Moderate Load,337.78,200,NORMAL,0.50
+1.77,40,Moderate Load,32.91,200,NORMAL,0.50
+1.79,40,Moderate Load,19.46,200,NORMAL,0.50
+1.81,40,Moderate Load,364.16,200,NORMAL,0.50
+1.83,40,Moderate Load,363.94,200,NORMAL,0.50
+1.85,40,Moderate Load,249.69,200,NORMAL,0.50
+1.87,40,Moderate Load,396.39,200,NORMAL,0.50
+1.89,40,Moderate Load,406.99,200,NORMAL,0.50
+1.91,40,Moderate Load,421.50,200,NORMAL,0.50
+1.93,40,Moderate Load,264.41,200,NORMAL,0.50
+1.95,40,Moderate Load,265.13,200,NORMAL,0.50
+1.97,40,Moderate Load,313.82,200,NORMAL,0.50
+1.99,40,Moderate Load,486.81,200,NORMAL,0.50
+2.01,40,Moderate Load,289.32,200,NORMAL,0.50
+2.03,40,Moderate Load,570.62,200,NORMAL,0.50
+2.05,40,Moderate Load,461.98,200,NORMAL,0.50
+2.07,40,Moderate Load,513.37,200,NORMAL,0.50
+2.09,40,Moderate Load,369.10,200,NORMAL,0.50
+2.11,40,Moderate Load,633.84,200,NORMAL,0.50
+2.13,40,Moderate Load,446.42,200,NORMAL,0.50
+2.16,40,Moderate Load,439.16,200,NORMAL,0.50
+2.18,40,Moderate Load,686.61,200,NORMAL,0.50
+2.2,40,Moderate Load,672.53,200,NORMAL,0.50
+2.22,40,Moderate Load,664.88,200,NORMAL,0.50
+2.24,40,Moderate Load,683.82,200,NORMAL,0.50
+2.26,40,Moderate Load,612.12,200,NORMAL,0.50
+2.28,40,Moderate Load,653.96,200,NORMAL,0.50
+2.81,90,Peak Stress Load,261.88,200,NORMAL,0.50
+2.82,90,Peak Stress Load,27.57,200,NORMAL,0.50
+2.82,90,Peak Stress Load,26.91,200,NORMAL,0.50
+2.83,90,Peak Stress Load,303.26,200,NORMAL,0.50
+2.83,90,Peak Stress Load,15.75,200,NORMAL,0.50
+2.84,90,Peak Stress Load,273.97,200,NORMAL,0.50
+2.85,90,Peak Stress Load,28.10,200,NORMAL,0.50
+2.85,90,Peak Stress Load,29.71,200,NORMAL,0.50
+2.86,90,Peak Stress Load,32.52,200,NORMAL,0.50
+2.86,90,Peak Stress Load,44.72,200,NORMAL,0.50
+2.87,90,Peak Stress Load,19.00,200,NORMAL,0.50
+2.87,90,Peak Stress Load,19.21,200,NORMAL,0.50
+2.88,90,Peak Stress Load,33.55,200,NORMAL,0.50
+2.88,90,Peak Stress Load,32.60,200,NORMAL,0.50
+2.89,90,Peak Stress Load,349.27,200,NORMAL,0.50
+2.9,90,Peak Stress Load,23.13,200,NORMAL,0.50
+2.9,90,Peak Stress Load,54.52,200,NORMAL,0.50
+2.91,90,Peak Stress Load,20.82,200,NORMAL,0.50
+2.91,90,Peak Stress Load,235.25,200,NORMAL,0.50
+2.92,90,Peak Stress Load,44.64,200,NORMAL,0.50
+2.92,90,Peak Stress Load,222.23,200,NORMAL,0.50
+2.93,90,Peak Stress Load,30.89,200,NORMAL,0.50
+2.93,90,Peak Stress Load,209.94,200,NORMAL,0.50
+2.94,90,Peak Stress Load,27.74,200,NORMAL,0.50
+2.95,90,Peak Stress Load,28.70,200,NORMAL,0.50
+2.95,90,Peak Stress Load,63.39,200,NORMAL,0.50
+2.96,90,Peak Stress Load,41.33,200,NORMAL,0.50
+2.96,90,Peak Stress Load,28.70,200,NORMAL,0.50
+2.97,90,Peak Stress Load,386.77,200,NORMAL,0.50
+2.97,90,Peak Stress Load,411.96,200,NORMAL,0.50
+2.98,90,Peak Stress Load,34.81,200,NORMAL,0.50
+2.98,90,Peak Stress Load,532.90,200,NORMAL,0.50
+2.99,90,Peak Stress Load,521.68,200,NORMAL,0.50
+3.0,90,Peak Stress Load,505.12,200,NORMAL,0.50
+3.0,90,Peak Stress Load,407.00,200,NORMAL,0.50
+3.01,90,Peak Stress Load,489.04,200,NORMAL,0.50
+3.01,90,Peak Stress Load,578.45,200,NORMAL,0.50
+3.02,90,Peak Stress Load,432.88,200,NORMAL,0.50
+3.02,90,Peak Stress Load,444.15,200,NORMAL,0.50
+3.03,90,Peak Stress Load,485.98,200,NORMAL,0.50
+3.03,90,Peak Stress Load,361.31,200,NORMAL,0.50
+3.04,90,Peak Stress Load,409.99,200,NORMAL,0.50
+3.05,90,Peak Stress Load,491.52,200,NORMAL,0.50
+3.05,90,Peak Stress Load,473.37,200,NORMAL,0.50
+3.06,90,Peak Stress Load,456.71,200,NORMAL,0.50
+3.06,90,Peak Stress Load,411.77,200,NORMAL,0.50
+3.07,90,Peak Stress Load,449.44,200,NORMAL,0.50
+3.07,90,Peak Stress Load,522.34,200,NORMAL,0.50
+3.08,90,Peak Stress Load,389.97,200,NORMAL,0.50
+3.09,90,Peak Stress Load,420.03,200,NORMAL,0.50
+3.09,90,Peak Stress Load,394.00,200,NORMAL,0.50
+3.11,90,Peak Stress Load,417.59,200,NORMAL,0.50
+3.12,90,Peak Stress Load,302.72,200,NORMAL,0.50
+3.12,90,Peak Stress Load,359.38,200,NORMAL,0.50
+3.13,90,Peak Stress Load,386.10,200,NORMAL,0.50
+3.13,90,Peak Stress Load,324.01,200,NORMAL,0.50
+3.14,90,Peak Stress Load,407.82,200,NORMAL,0.50
+3.14,90,Peak Stress Load,671.82,200,NORMAL,0.50
+3.15,90,Peak Stress Load,625.87,200,NORMAL,0.50
+3.15,90,Peak Stress Load,605.27,200,NORMAL,0.50
+3.16,90,Peak Stress Load,600.17,200,NORMAL,0.50
+3.17,90,Peak Stress Load,718.99,200,NORMAL,0.50
+3.2,90,Peak Stress Load,652.10,200,NORMAL,0.50
+3.2,90,Peak Stress Load,779.15,200,NORMAL,0.50
+3.24,90,Peak Stress Load,658.05,200,NORMAL,0.50
+3.25,90,Peak Stress Load,866.89,200,NORMAL,0.50
+3.29,90,Peak Stress Load,675.33,200,NORMAL,0.50
+3.29,90,Peak Stress Load,814.73,200,NORMAL,0.50
+3.33,90,Peak Stress Load,693.60,200,NORMAL,0.50
+3.34,90,Peak Stress Load,829.91,200,NORMAL,0.50
+3.36,90,Peak Stress Load,710.71,200,NORMAL,0.50
+3.37,90,Peak Stress Load,846.46,200,NORMAL,0.50
+3.38,90,Peak Stress Load,691.38,200,NORMAL,0.50
+3.39,90,Peak Stress Load,686.65,200,NORMAL,0.50
+3.4,90,Peak Stress Load,673.70,200,NORMAL,0.50
+3.42,90,Peak Stress Load,664.95,200,NORMAL,0.50
+3.43,90,Peak Stress Load,650.80,200,NORMAL,0.50
+3.44,90,Peak Stress Load,637.61,200,NORMAL,0.50
+3.48,90,Peak Stress Load,864.18,200,NORMAL,0.50
+3.51,90,Peak Stress Load,898.72,200,NORMAL,0.50
+3.54,90,Peak Stress Load,976.80,200,NORMAL,0.50
+3.57,90,Peak Stress Load,1016.77,200,NORMAL,0.50
+3.61,90,Peak Stress Load,935.66,200,NORMAL,0.50
+3.64,90,Peak Stress Load,1104.34,200,NORMAL,0.50
+3.69,90,Peak Stress Load,974.75,200,NORMAL,0.50
+3.74,90,Peak Stress Load,1088.93,200,NORMAL,0.50
+3.77,90,Peak Stress Load,1071.62,200,NORMAL,0.50
+3.8,90,Peak Stress Load,1030.72,200,NORMAL,0.50
+3.84,90,Peak Stress Load,1036.07,200,NORMAL,0.50
+3.87,90,Peak Stress Load,1130.76,200,NORMAL,0.50
+3.91,10,Cooldown & Recovery,17.74,200,NORMAL,0.50
+3.96,10,Cooldown & Recovery,28.22,200,NORMAL,0.50
+4.01,10,Cooldown & Recovery,13.35,200,NORMAL,0.50
+4.06,10,Cooldown & Recovery,104.49,200,NORMAL,0.50
+4.11,10,Cooldown & Recovery,135.39,200,NORMAL,0.50
+4.16,10,Cooldown & Recovery,150.51,200,NORMAL,0.50
+4.21,10,Cooldown & Recovery,8.69,200,NORMAL,0.50
+4.26,10,Cooldown & Recovery,173.16,200,NORMAL,0.50
+4.31,10,Cooldown & Recovery,151.10,200,NORMAL,0.50
+4.36,10,Cooldown & Recovery,233.81,200,NORMAL,0.50
+4.41,10,Cooldown & Recovery,10.06,200,NORMAL,0.50
+4.47,10,Cooldown & Recovery,274.84,200,NORMAL,0.50
+4.52,10,Cooldown & Recovery,251.97,200,NORMAL,0.50
+4.57,10,Cooldown & Recovery,262.53,200,NORMAL,0.50
+4.62,10,Cooldown & Recovery,131.91,200,NORMAL,0.50
+4.67,10,Cooldown & Recovery,280.15,200,NORMAL,0.50
+4.72,10,Cooldown & Recovery,203.66,200,NORMAL,0.50
+4.77,10,Cooldown & Recovery,194.76,200,NORMAL,0.50
+4.82,10,Cooldown & Recovery,177.42,200,NORMAL,0.50
+4.87,10,Cooldown & Recovery,170.28,200,NORMAL,0.50

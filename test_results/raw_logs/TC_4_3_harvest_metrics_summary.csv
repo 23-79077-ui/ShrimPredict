@@ -1,0 +1,4 @@
+Test_Case_ID,Metric_Name,Calculated_Value,Unit,Interpretation
+TC-4.3.1,Mean Absolute Error (MAE),27.33,Kilograms (kg),Average absolute yield prediction deviation
+TC-4.3.2,Root Mean Square Error (RMSE),34.18,Kilograms (kg),Yield error penalized for large variations
+TC-4.3.3,Coefficient of Determination (R2),0.9813,Dimensionless (0-1),Goodness-of-fit of harvest regression model

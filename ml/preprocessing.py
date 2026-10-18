@@ -21,10 +21,12 @@ Solves Preprocessing Inconsistencies & Distortion:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Tuple, Union, Optional
+from typing import TYPE_CHECKING, Tuple, Union
 import numpy as np
 from PIL import Image
-import tensorflow as tf
+
+if TYPE_CHECKING:
+    import tensorflow as tf
 
 TARGET_SIZE = (224, 224)
 NEUTRAL_PAD_COLOR = (128, 128, 128)
@@ -127,6 +129,8 @@ def tf_load_and_letterbox(
     TensorFlow graph-compatible aspect-preserving letterbox loader for tf.data pipelines.
     Guarantees parity with letterbox_pil_image.
     """
+    import tensorflow as tf
+
     raw = tf.io.read_file(image_path)
     img = tf.io.decode_image(raw, channels=3, expand_animations=False)
     img = tf.cast(img, tf.float32)

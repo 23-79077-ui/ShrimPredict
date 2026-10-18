@@ -1,0 +1,3 @@
+Viewport_Configuration,Target_Route,Render_Latency_ms,Evaluation_Status,Timestamp
+Desktop (1920x1080),/caretaker/dashboard,313.11,PASSED,2026-10-19 00:34:43
+Mobile (375x812),/caretaker/disease-scan,315.13,PASSED,2026-10-19 00:34:43

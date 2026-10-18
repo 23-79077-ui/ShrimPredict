@@ -1,0 +1,6 @@
+Step_ID,Module,Action,Request_Payload,Response_Status,DB_Record_Verified,Latency_ms,Status,Timestamp
+STEP-1,Diagnostics,GET /health Handshake,None,HTTP 200,Service Online & Models Ready,15.52,PASSED,2026-10-19 00:33:36
+STEP-2,Feed Monitoring,POST /feeding_records.php,"{""pond_id"": 1, ""amount_kg"": 5.0, ""feed_type"": ""Tateh - Grower"", ""product_code"": ""Grower"", ""feeding_time"": ""6:00 AM"", ""tray_monitoring_status"": ""All Trays Empty (Normal Consumption)"", ""user_id"": 7, ""recorded_by_name"": ""Rc Javier"", ""notes"": ""Integration Test Automated Feeding Submission""}",HTTP 201,Recorded ID #1132 (5.00 kg / 5000.00 g),116.41,PASSED,2026-10-19 00:33:36
+STEP-3,Pond Telemetry,GET /ponds.php?id=1,id=1,HTTP 200,"Pond Total: 2768.70 kg, Today: 0.00 kg",74.49,PASSED,2026-10-19 00:33:36
+STEP-4,Harvest Forecast,GET /harvest_predictions.php,selected_pond_id=1,HTTP 200,"Ratio: 0.7333333333 (Target: 11,000 kg / 15,000 kg)",154.67,PASSED,2026-10-19 00:33:36
+STEP-5,Diagnostic Pipeline,POST /disease_scan.php,Image Multi-Part Upload,HTTP 200,Report ID #193 (WSSV) -> Notif #353,9082.67,PASSED,2026-10-19 00:33:36

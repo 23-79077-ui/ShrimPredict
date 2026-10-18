@@ -1,0 +1,5 @@
+Test_Case_ID,Metric_Name,Formula,Formula_Values,Result_Decimal,Result_Percentage
+TC-4.2.2,Accuracy,(TP + TN) / (TP + TN + FP + FN),(24 + 25) / 50,0.9800,98.00%
+TC-4.2.3,Precision,TP / (TP + FP),24 / (24 + 0),1.0000,100.00%
+TC-4.2.4,Recall,TP / (TP + FN),24 / (24 + 1),0.9600,96.00%
+TC-4.2.5,F1-Score,2 * (Precision * Recall) / (Precision + Recall),2 * (1.0000 * 0.9600) / (1.0000 + 0.9600),0.9796,97.96%

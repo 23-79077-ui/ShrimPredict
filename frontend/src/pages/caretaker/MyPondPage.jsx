@@ -206,6 +206,16 @@ export default function MyPondPage() {
     navigate(location.pathname, { replace: true, state: null });
   }, [assignedPonds, defaultDateStr, location.pathname, location.state, navigate]);
 
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    if (searchParams.get('openFeed') === '1' && assignedPonds.length > 0) {
+      if (!selectedPondId && assignedPonds[0]?.id) {
+        setSelectedPondId(String(assignedPonds[0].id));
+      }
+      setShowFeedingModal(true);
+    }
+  }, [location.search, assignedPonds, selectedPondId]);
+
   // Water Quality Inspection Protocol States
   const [waterQualityStatus, setWaterQualityStatus] = useState({}); // { [pondId]: { is_verified, record } }
   const [loadingWaterQuality, setLoadingWaterQuality] = useState(false);
