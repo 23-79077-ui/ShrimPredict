@@ -1,0 +1,11 @@
+Workflow_Scenario,Route_Path,Observed_Clicks,Acceptance_Standard,HTTP_Status,Status,Timestamp
+Dashboard to Disease Scan Journey,/caretaker/dashboard -> /caretaker/disease-scan,3,<= 3 Clicks,200,PASSED,2026-10-19 00:34:56
+Route Audit: Landing Page,/,1 Click,HTTP 200 OK,200,PASSED,2026-10-19 00:34:56
+Route Audit: Authentication Hub,/login,1 Click,HTTP 200 OK,200,PASSED,2026-10-19 00:34:56
+Route Audit: Caretaker Operations Dashboard,/caretaker/dashboard,1 Click,HTTP 200 OK,200,PASSED,2026-10-19 00:34:56
+Route Audit: Pond Management & Daily Log,/caretaker/my-pond,1 Click,HTTP 200 OK,200,PASSED,2026-10-19 00:34:56
+Route Audit: Optical Diagnostics Hub,/caretaker/disease-scan,1 Click,HTTP 200 OK,200,PASSED,2026-10-19 00:34:56
+Route Audit: Historical Feed Intake Records,/caretaker/feeding-history,1 Click,HTTP 200 OK,200,PASSED,2026-10-19 00:34:56
+Route Audit: Diagnostic & Water Quality Reports,/caretaker/reports,1 Click,HTTP 200 OK,200,PASSED,2026-10-19 00:34:56
+Route Audit: Executive Management Overview,/admin/dashboard,1 Click,HTTP 200 OK,200,PASSED,2026-10-19 00:34:56
+Route Audit: Harvest Forecasting Dashboard,/admin/harvest,1 Click,HTTP 200 OK,200,PASSED,2026-10-19 00:34:56

@@ -1,0 +1,51 @@
+Image_Filename,Actual_Status,Predicted_Status,Confidence_Score,Matrix_Class_TP_TN_FP_FN,Inference_Time_ms
+3252.jpg,Healthy / Non-WSD,Healthy / Non-WSD,51.21%,TN,5538.33
+2529.jpg,Healthy / Non-WSD,Healthy / Non-WSD,0.00%,TN,3585.82
+2283.jpg,Healthy / Non-WSD,Healthy / Non-WSD,97.70%,TN,5303.86
+3429.jpg,WSD Infected,WSD Infected,99.96%,TP,5297.79
+3219.jpg,Healthy / Non-WSD,Healthy / Non-WSD,54.94%,TN,5338.99
+1875.jpg,Healthy / Non-WSD,Healthy / Non-WSD,55.09%,TN,5235.71
+3402.jpg,WSD Infected,WSD Infected,65.25%,TP,5294.92
+3031.jpg,Healthy / Non-WSD,Healthy / Non-WSD,76.40%,TN,5220.51
+2922.jpg,Healthy / Non-WSD,Healthy / Non-WSD,64.04%,TN,5323.08
+2765.jpg,Healthy / Non-WSD,Healthy / Non-WSD,60.95%,TN,5329.26
+3635.jpg,WSD Infected,WSD Infected,99.99%,TP,5269.56
+3595.jpg,WSD Infected,WSD Infected,51.17%,TP,5189.72
+2796.jpg,Healthy / Non-WSD,Healthy / Non-WSD,84.70%,TN,5301.48
+3525.jpg,WSD Infected,WSD Infected,99.95%,TP,5253.15
+2294.jpg,Healthy / Non-WSD,Healthy / Non-WSD,90.46%,TN,5290.43
+3673.jpg,WSD Infected,WSD Infected,57.69%,TP,5293.59
+3522.jpg,WSD Infected,WSD Infected,56.16%,TP,5310.45
+1956.jpg,Healthy / Non-WSD,Healthy / Non-WSD,0.00%,TN,3626.82
+3521.jpg,WSD Infected,WSD Infected,99.28%,TP,5376.63
+3346.jpg,WSD Infected,WSD Infected,100.00%,TP,5285.96
+3541.jpg,WSD Infected,WSD Infected,63.42%,TP,6658.34
+3355.jpg,WSD Infected,WSD Infected,99.86%,TP,5223.05
+3578.jpg,WSD Infected,WSD Infected,100.00%,TP,5194.91
+3438.jpg,WSD Infected,WSD Infected,99.96%,TP,5283.42
+3507.jpg,WSD Infected,WSD Infected,51.09%,TP,5354.52
+2203.jpg,Healthy / Non-WSD,Healthy / Non-WSD,64.88%,TN,5218.05
+2290.jpg,Healthy / Non-WSD,Healthy / Non-WSD,78.85%,TN,5267.84
+2881.jpg,Healthy / Non-WSD,Healthy / Non-WSD,0.00%,TN,3655.00
+3404.jpg,WSD Infected,Healthy / Non-WSD,99.63%,FN,5301.11
+2691.jpg,Healthy / Non-WSD,Healthy / Non-WSD,50.81%,TN,5216.33
+2791.jpg,Healthy / Non-WSD,Healthy / Non-WSD,85.20%,TN,5215.12
+3428.jpg,WSD Infected,WSD Infected,53.45%,TP,5294.90
+2658.jpg,Healthy / Non-WSD,Healthy / Non-WSD,62.13%,TN,5265.96
+2835.jpg,Healthy / Non-WSD,Healthy / Non-WSD,58.98%,TN,5334.93
+3373.jpg,WSD Infected,WSD Infected,59.53%,TP,5191.79
+3652.jpg,WSD Infected,WSD Infected,100.00%,TP,5536.01
+3383.jpg,WSD Infected,WSD Infected,63.14%,TP,5261.81
+3040.jpg,Healthy / Non-WSD,Healthy / Non-WSD,72.96%,TN,5386.18
+3005.jpg,Healthy / Non-WSD,Healthy / Non-WSD,51.57%,TN,5348.16
+3329.jpg,WSD Infected,WSD Infected,58.46%,TP,5187.39
+3554.jpg,WSD Infected,WSD Infected,55.10%,TP,5222.86
+3074.jpg,Healthy / Non-WSD,Healthy / Non-WSD,68.48%,TN,5246.20
+2935.jpg,Healthy / Non-WSD,Healthy / Non-WSD,53.20%,TN,5292.96
+3653.jpg,WSD Infected,WSD Infected,99.98%,TP,5282.98
+3651.jpg,WSD Infected,WSD Infected,100.00%,TP,5344.39
+3378.jpg,WSD Infected,WSD Infected,99.99%,TP,5243.52
+2102.jpg,Healthy / Non-WSD,Healthy / Non-WSD,65.64%,TN,5184.74
+3417.jpg,WSD Infected,WSD Infected,87.39%,TP,5179.82
+3003.jpg,Healthy / Non-WSD,Healthy / Non-WSD,75.39%,TN,5252.80
+3193.jpg,Healthy / Non-WSD,Healthy / Non-WSD,95.34%,TN,5261.38

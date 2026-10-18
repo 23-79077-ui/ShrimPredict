@@ -1107,7 +1107,7 @@ export default function DiseaseScanPage() {
 
                 <button
                   type="button"
-                  className={`btn btn-sm px-4 py-2 fw-bold extra-small flex-shrink-0 shadow-2xs rounded-3 text-white ${scanReady ? 'disease-step-button-active' : ''}`}
+                  className={`caretaker-scan-submit-btn btn btn-sm px-4 py-2 fw-bold extra-small flex-shrink-0 shadow-2xs rounded-3 text-white ${scanReady ? 'disease-step-button-active' : ''}`}
                   style={{ minWidth: 130, backgroundColor: '#FC563C' }}
                   onClick={() => handleScan(false)}
                   disabled={!scanReady}
