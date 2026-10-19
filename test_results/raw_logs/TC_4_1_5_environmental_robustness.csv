@@ -1,0 +1,13 @@
+Condition_Scenario,Base_Image,Tensor_Shape,Min_Pixel_Val,Max_Pixel_Val,Mean_Pixel_Val,Processing_Time_ms,Integrity_Status,Timestamp
+Baseline (Clean Natural Capture),test_healthy_shrimp.jpg,"(1, 224, 224, 3)",0.0,250.0,141.34,13.31,VALID,2026-10-19 22:39:16
+Baseline (Clean Natural Capture),test_wssv_shrimp.jpg,"(1, 224, 224, 3)",0.0,255.0,172.33,10.83,VALID,2026-10-19 22:39:16
+Low-Light Dawn/Dusk (0.4x Lum),test_healthy_shrimp.jpg,"(1, 224, 224, 3)",0.0,128.0,89.91,11.72,VALID,2026-10-19 22:39:16
+Low-Light Dawn/Dusk (0.4x Lum),test_wssv_shrimp.jpg,"(1, 224, 224, 3)",0.0,128.0,88.00,7.44,VALID,2026-10-19 22:39:16
+Pond Surface Glare (1.8x Lum),test_healthy_shrimp.jpg,"(1, 224, 224, 3)",0.0,255.0,176.45,11.58,VALID,2026-10-19 22:39:16
+Pond Surface Glare (1.8x Lum),test_wssv_shrimp.jpg,"(1, 224, 224, 3)",0.0,255.0,191.37,9.16,VALID,2026-10-19 22:39:16
+Pond Water Turbidity (Amber Silt),test_healthy_shrimp.jpg,"(1, 224, 224, 3)",0.0,253.0,140.56,10.54,VALID,2026-10-19 22:39:16
+Pond Water Turbidity (Amber Silt),test_wssv_shrimp.jpg,"(1, 224, 224, 3)",0.0,255.0,176.70,7.18,VALID,2026-10-19 22:39:16
+Motion Blur (5x5 Ripple Kernel),test_healthy_shrimp.jpg,"(1, 224, 224, 3)",0.0,237.0,141.33,10.60,VALID,2026-10-19 22:39:16
+Motion Blur (5x5 Ripple Kernel),test_wssv_shrimp.jpg,"(1, 224, 224, 3)",0.0,255.0,172.35,7.67,VALID,2026-10-19 22:39:16
+Harsh Tropical Sun (1.6x Contrast),test_healthy_shrimp.jpg,"(1, 224, 224, 3)",0.0,255.0,140.86,10.33,VALID,2026-10-19 22:39:16
+Harsh Tropical Sun (1.6x Contrast),test_wssv_shrimp.jpg,"(1, 224, 224, 3)",0.0,255.0,166.52,8.57,VALID,2026-10-19 22:39:16

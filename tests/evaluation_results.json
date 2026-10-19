@@ -1,0 +1,117 @@
+{
+  "system": "ShrimPredict",
+  "generated_at": "2026-10-19T21:49:10+08:00",
+  "domains": {
+    "image_processing": [
+      {
+        "input_resolution": "224x224",
+        "batch_size": 1,
+        "warmup_images": 1,
+        "images_processed": 2,
+        "mean_processing_ms_per_image": 35.768300000199815,
+        "preprocessing_fps": 27.957716749032343,
+        "peak_traced_python_heap_mb": 1.7625102996826172,
+        "peak_sampled_process_rss_mb": null,
+        "rss_measurement": "psutil not installed; see traced Python heap"
+      },
+      {
+        "input_resolution": "224x224",
+        "batch_size": 4,
+        "warmup_images": 2,
+        "images_processed": 2,
+        "mean_processing_ms_per_image": 33.687300000110554,
+        "preprocessing_fps": 29.684777349230075,
+        "peak_traced_python_heap_mb": 2.304452896118164,
+        "peak_sampled_process_rss_mb": null,
+        "rss_measurement": "psutil not installed; see traced Python heap"
+      },
+      {
+        "input_resolution": "224x224",
+        "batch_size": 8,
+        "warmup_images": 2,
+        "images_processed": 2,
+        "mean_processing_ms_per_image": 33.7534999998752,
+        "preprocessing_fps": 29.626557246024777,
+        "peak_traced_python_heap_mb": 2.304391860961914,
+        "peak_sampled_process_rss_mb": null,
+        "rss_measurement": "psutil not installed; see traced Python heap"
+      },
+      {
+        "input_resolution": "640x480",
+        "batch_size": 1,
+        "warmup_images": 1,
+        "images_processed": 2,
+        "mean_processing_ms_per_image": 51.383200000145735,
+        "preprocessing_fps": 19.461613912663356,
+        "peak_traced_python_heap_mb": 1.7620716094970703,
+        "peak_sampled_process_rss_mb": null,
+        "rss_measurement": "psutil not installed; see traced Python heap"
+      },
+      {
+        "input_resolution": "640x480",
+        "batch_size": 4,
+        "warmup_images": 2,
+        "images_processed": 2,
+        "mean_processing_ms_per_image": 63.02030000006198,
+        "preprocessing_fps": 15.867902882071595,
+        "peak_traced_python_heap_mb": 2.304452896118164,
+        "peak_sampled_process_rss_mb": null,
+        "rss_measurement": "psutil not installed; see traced Python heap"
+      },
+      {
+        "input_resolution": "640x480",
+        "batch_size": 8,
+        "warmup_images": 2,
+        "images_processed": 2,
+        "mean_processing_ms_per_image": 54.909200000111014,
+        "preprocessing_fps": 18.21188434721282,
+        "peak_traced_python_heap_mb": 2.304452896118164,
+        "peak_sampled_process_rss_mb": null,
+        "rss_measurement": "psutil not installed; see traced Python heap"
+      },
+      {
+        "input_resolution": "1280x720",
+        "batch_size": 1,
+        "warmup_images": 1,
+        "images_processed": 2,
+        "mean_processing_ms_per_image": 112.84099999966202,
+        "preprocessing_fps": 8.862027100105415,
+        "peak_traced_python_heap_mb": 1.7621288299560547,
+        "peak_sampled_process_rss_mb": null,
+        "rss_measurement": "psutil not installed; see traced Python heap"
+      },
+      {
+        "input_resolution": "1280x720",
+        "batch_size": 4,
+        "warmup_images": 2,
+        "images_processed": 2,
+        "mean_processing_ms_per_image": 91.00474999968355,
+        "preprocessing_fps": 10.988437416766457,
+        "peak_traced_python_heap_mb": 2.3045101165771484,
+        "peak_sampled_process_rss_mb": null,
+        "rss_measurement": "psutil not installed; see traced Python heap"
+      },
+      {
+        "input_resolution": "1280x720",
+        "batch_size": 8,
+        "warmup_images": 2,
+        "images_processed": 2,
+        "mean_processing_ms_per_image": 84.41880000009405,
+        "preprocessing_fps": 11.845702615991769,
+        "peak_traced_python_heap_mb": 2.3045101165771484,
+        "peak_sampled_process_rss_mb": null,
+        "rss_measurement": "psutil not installed; see traced Python heap"
+      }
+    ]
+  },
+  "skipped_domains": {},
+  "failed_domains": {},
+  "methodology": {
+    "disease_detection": "Binary WSSV vs non-WSSV scoring against the supplied labeled split. Inference runs through the live Flask endpoint; HTTP/model failures are reported and excluded from classification metrics, with coverage reported.",
+    "image_processing": "Measures the project's letterbox preprocessing helper, including source image decode/resize and 224x224 preprocessing. FPS is preprocessing FPS, not model-inference FPS. tracemalloc is Python-heap allocation; optional psutil RSS is sampled after each batch."
+  },
+  "image_sample_paths": [
+    "ml/test_healthy_shrimp.jpg",
+    "ml/test_wssv_shrimp.jpg"
+  ]
+}

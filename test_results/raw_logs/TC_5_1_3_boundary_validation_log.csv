@@ -1,0 +1,13 @@
+Module,Target_Field,Injected_Boundary_Value,Valid_Acceptance_Range,Expected_Rejection,Guard_Code_Triggered,Database_Protected,Status,Timestamp
+Feed Monitoring,amount_kg,-5.0,0.1 - 500.0 kg,YES,ERR_NEGATIVE_FEED,YES (Zero DB Pollution),PASSED,2026-10-19 22:40:05
+Feed Monitoring,amount_kg,0.0,0.1 - 500.0 kg,YES,ERR_ZERO_FEED,YES (Zero DB Pollution),PASSED,2026-10-19 22:40:05
+Feed Monitoring,amount_kg,50000.0,0.1 - 500.0 kg,YES,ERR_EXCESSIVE_FEED,YES (Zero DB Pollution),PASSED,2026-10-19 22:40:05
+Water Quality,ph_balance,-1.0,4.0 - 10.0 pH,YES,ERR_OUT_OF_BOUNDS_PH,YES (Zero DB Pollution),PASSED,2026-10-19 22:40:05
+Water Quality,ph_balance,14.0,4.0 - 10.0 pH,YES,ERR_CRITICAL_ALKALINE,YES (Zero DB Pollution),PASSED,2026-10-19 22:40:05
+Water Quality,dissolved_oxygen,-2.5,0.0 - 20.0 mg/L,YES,ERR_NEGATIVE_DO,YES (Zero DB Pollution),PASSED,2026-10-19 22:40:05
+Water Quality,dissolved_oxygen,35.0,0.0 - 20.0 mg/L,YES,ERR_HYPER_SATURATED_DO,YES (Zero DB Pollution),PASSED,2026-10-19 22:40:05
+Water Quality,water_temp,4.0,15.0 - 40.0 °C,YES,ERR_FREEZING_TEMP,YES (Zero DB Pollution),PASSED,2026-10-19 22:40:05
+Water Quality,water_temp,65.0,15.0 - 40.0 °C,YES,ERR_LETHAL_HIGH_TEMP,YES (Zero DB Pollution),PASSED,2026-10-19 22:40:05
+Water Quality,salinity,-5.0,0.0 - 50.0 ppt,YES,ERR_NEGATIVE_SALINITY,YES (Zero DB Pollution),PASSED,2026-10-19 22:40:05
+Image Diagnostic,image_upload,zero_byte_empty.jpg,Valid JPEG/PNG > 10KB,YES,ERR_EMPTY_FILE,YES (Zero DB Pollution),PASSED,2026-10-19 22:40:05
+Image Diagnostic,image_upload,script_disguised_as_photo.exe,Image MIME type only,YES,ERR_INVALID_MIME,YES (Zero DB Pollution),PASSED,2026-10-19 22:40:05

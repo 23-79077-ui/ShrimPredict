@@ -367,12 +367,27 @@ def run_tc_5_3_2_stress_and_recovery():
 
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser(description="ShrimPredict Objective 5.3 Load & Stress Evaluator")
+    parser.add_argument(
+        "--tc",
+        type=str,
+        default="all",
+        help="Specify Test Case ID to run individually (e.g. TC-5.3.1, TC-5.3.2, or 'all')"
+    )
+    args = parser.parse_args()
+    tc = args.tc.strip().upper()
+
     print_suite_header()
-    load_res = run_tc_5_3_1_concurrent_load()
-    stress_res = run_tc_5_3_2_stress_and_recovery()
+    run_all = (tc == "ALL")
+
+    if run_all or "5.3.1" in tc or "LOAD" in tc:
+        run_tc_5_3_1_concurrent_load()
+    if run_all or "5.3.2" in tc or "STRESS" in tc or "RECOVERY" in tc:
+        run_tc_5_3_2_stress_and_recovery()
     
     print("\n" + "=" * 82)
-    print("  OBJECTIVE 5.3 CONCURRENT LOAD & STRESS EVALUATIONS COMPLETED.")
+    print(f"  OBJECTIVE 5.3 [{tc}] EVALUATIONS COMPLETED.")
     print(f"  JMeter Plan (.jmx): {ROOT_DIR / 'tests' / 'ShrimPredict_LoadTest.jmx'}")
     print(f"  JTL Raw Logs (.jtl): {RAW_LOGS_DIR / 'TC_5_3_1_load_test_results.jtl'}")
     print(f"  Charts (300 DPI):   {CHARTS_DIR}")

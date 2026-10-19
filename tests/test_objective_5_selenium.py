@@ -488,3 +488,59 @@ def test_tc_5_2_2_navigation_workflow_efficiency(browser):
             writer.writerow(row)
 
     print(f"\n[TC-5.2.2 PASSED] Navigation efficiency verified (Clicks: {click_count} <= 3). Audit: {audit_csv}")
+
+
+def main():
+    import argparse
+    parser = argparse.ArgumentParser(description="ShrimPredict Objective 5 UI & Selenium Functional Evaluator")
+    parser.add_argument(
+        "--tc",
+        type=str,
+        default="all",
+        help="Specify Test Case ID to run (e.g. TC-5.1.1, TC-5.1.2, TC-5.2.1, TC-5.2.2, or 'all')"
+    )
+    args = parser.parse_args()
+    tc = args.tc.strip().upper()
+    run_all = (tc == "ALL")
+
+    print("=" * 82)
+    print("  ShrimPredict: Software Quality, Functional Integration, and UI Evaluation")
+    print(f"  TARGET TEST CASE: {tc}")
+    print("=" * 82)
+
+    if run_all or "5.1.1" in tc or "INTEGRATION" in tc:
+        print("\n--- [RUNNING TC-5.1.1: End-to-End Pipeline Integration] ---")
+        test_tc_5_1_1_end_to_end_pipeline_integration()
+
+    need_browser = run_all or any(k in tc for k in ["5.1.2", "5.2.1", "5.2.2", "UI", "NAV"])
+    if need_browser:
+        options = webdriver.ChromeOptions()
+        options.add_argument("--start-maximized")
+        options.add_argument("--disable-infobars")
+        options.add_argument("--disable-extensions")
+        options.add_argument("--disable-notifications")
+        options.add_argument("--use-fake-ui-for-media-stream")
+        options.add_argument("--use-fake-device-for-media-stream")
+        driver = webdriver.Chrome(options=options)
+        driver.implicitly_wait(10)
+        try:
+            if run_all or "5.1.2" in tc or "CORE" in tc:
+                print("\n--- [RUNNING TC-5.1.2: Web Interface Core Functional Features] ---")
+                test_tc_5_1_2_web_interface_core_features(driver)
+            if run_all or "5.2.1" in tc or "VIEWPORT" in tc or "USABILITY" in tc:
+                print("\n--- [RUNNING TC-5.2.1: Multi-Viewport Responsive Layout] ---")
+                test_tc_5_2_1_web_ui_usability_and_viewports(driver)
+            if run_all or "5.2.2" in tc or "NAV" in tc or "CLICK" in tc:
+                print("\n--- [RUNNING TC-5.2.2: Navigation & Workflow Efficiency] ---")
+                test_tc_5_2_2_navigation_workflow_efficiency(driver)
+        finally:
+            driver.quit()
+
+    print("\n" + "=" * 82)
+    print(f"  TEST CASE [{tc}] EXECUTION COMPLETED.")
+    print("=" * 82)
+
+
+if __name__ == "__main__":
+    main()
+

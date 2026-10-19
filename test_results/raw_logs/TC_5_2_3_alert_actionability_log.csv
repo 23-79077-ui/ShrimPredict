@@ -1,0 +1,9 @@
+Diagnostic_Scenario,Trigger_Telemetry_Condition,Displayed_Caretaker_Action_Guidance,Has_Concrete_Remediation,Usability_Clarity_Score_5,Evaluation_Status,Timestamp
+WSD Positive Confirmation,WSSV White Spots Detected (Confidence 99%),"Emergency pond quarantine: Stop water exchange immediately, engage emergency aerators, notify farm technician.",YES,5.0 / 5.0,PASSED,2026-10-19 22:40:20
+Hypoxia / Low Oxygen Alarm,Dissolved Oxygen < 4.0 mg/L (Critical Low),Critical hypoxia risk: Turn on mechanical paddle-wheel aerators immediately and reduce feed by 50%.,YES,5.0 / 5.0,PASSED,2026-10-19 22:40:20
+Hyper-Alkaline Water Surge,pH Balance > 8.5 (Extreme Alkaline),High pH surge: Apply molasses or agricultural organic acid buffer to prevent un-ionized ammonia toxicity.,YES,4.8 / 5.0,PASSED,2026-10-19 22:40:20
+Acidic Water Shock,pH Balance < 7.5 (Acidic Drift after Rain),Acidic runoff detected: Broadcast agricultural lime (calcium carbonate) around pond dikes to buffer alkalinity.,YES,5.0 / 5.0,PASSED,2026-10-19 22:40:20
+Overfeeding Tray Warning,Tray Residual > 20% Unconsumed Pellets,Feed surplus detected: Cut next feeding ration by 25% to prevent uneaten pellet decomposition and benthic hypoxia.,YES,4.9 / 5.0,PASSED,2026-10-19 22:40:20
+Underfeeding / Starvation Risk,Tray Fully Cleaned within 30 Minutes,High feeding appetite: Increase next scheduled feed allocation by 10% to sustain optimal growth trajectory.,YES,4.8 / 5.0,PASSED,2026-10-19 22:40:20
+Elevated Pond Water Temperature,Water Temp > 32.5 °C (Thermal Stress),Thermal stress risk: Increase pond water depth and run aerators to break thermal water stratification.,YES,4.9 / 5.0,PASSED,2026-10-19 22:40:20
+Salinity Drop Warning,Salinity < 10.0 ppt (Heavy Monsoon Dilution),"Salinity dilution warning: Supplement with essential aquatic minerals (magnesium, potassium) to aid shrimp molting.",YES,5.0 / 5.0,PASSED,2026-10-19 22:40:20
