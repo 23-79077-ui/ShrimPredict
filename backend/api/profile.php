@@ -193,8 +193,29 @@ if ($method === 'POST') {
         }
 
         $newHash = password_hash($newPassword, PASSWORD_BCRYPT);
-        $updatePass = $conn->prepare("UPDATE users SET password_hash = :hash WHERE id = :id");
-        $updatePass->execute([':hash' => $newHash, ':id' => $userId]);
+        
+        $historyList = [];
+        if (!empty($userRow['password_history_json'])) {
+            $historyList = json_decode($userRow['password_history_json'], true) ?: [];
+        }
+        if (!empty($storedHash)) {
+            $historyList[] = [
+                'hash' => $storedHash,
+                'changed_at' => date('Y-m-d H:i:s')
+            ];
+            if (count($historyList) > 5) {
+                $historyList = array_slice($historyList, -5);
+            }
+        }
+        $historyJson = json_encode($historyList);
+
+        $updatePass = $conn->prepare("UPDATE users SET password_hash = :hash, previous_password_hash = :prev, password_changed_at = NOW(), password_history_json = :hist WHERE id = :id");
+        $updatePass->execute([
+            ':hash' => $newHash,
+            ':prev' => $storedHash,
+            ':hist' => $historyJson,
+            ':id' => $userId
+        ]);
 
         echo json_encode([
             'success' => true,

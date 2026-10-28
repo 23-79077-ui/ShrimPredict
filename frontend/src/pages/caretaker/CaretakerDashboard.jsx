@@ -767,7 +767,7 @@ export default function CaretakerDashboard() {
                       Water Quality Check (Before Adding Shrimp)
                     </h6>
                     <span
-                      className="d-inline-flex align-items-center gap-1.5 px-2.5 py-0.5 rounded-pill"
+                      className="d-inline-flex align-items-center gap-1.5 px-2.5 py-0.5 rounded-pill text-nowrap"
                       style={{
                         background: isDark
                           ? (waterQualityChecklist.is_all_completed ? 'rgba(16, 185, 129, 0.18)' : 'rgba(244, 63, 94, 0.18)')
@@ -780,10 +780,11 @@ export default function CaretakerDashboard() {
                           : (waterQualityChecklist.is_all_completed ? '#16A34A' : '#E11D48'),
                         fontSize: '0.72rem',
                         fontWeight: 700,
+                        whiteSpace: 'nowrap',
                       }}
                     >
                       <span
-                        className="rounded-circle"
+                        className="rounded-circle flex-shrink-0"
                         style={{
                           width: 6,
                           height: 6,
@@ -804,7 +805,7 @@ export default function CaretakerDashboard() {
               <div className="d-flex align-items-center gap-2 ms-md-auto flex-shrink-0 w-100 w-md-auto mt-2 mt-md-0">
                 <button
                   type="button"
-                  className="btn btn-sm btn-tri-orange px-3.5 py-2 shadow-xs fw-bold w-100 w-md-auto justify-content-center"
+                  className="btn btn-sm btn-tri-orange px-3.5 py-2 shadow-xs fw-bold w-100 w-md-auto justify-content-center text-nowrap"
                   style={{ fontSize: '0.82rem' }}
                   onClick={() => {
                     const firstUnverified = waterQualityChecklist.checklist?.find((p) => !p.is_verified_today);

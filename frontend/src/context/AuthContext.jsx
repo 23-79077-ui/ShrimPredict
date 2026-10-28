@@ -36,7 +36,12 @@ export function AuthProvider({ children }) {
     } catch (error) {
       if (error.response) {
         const message = error.response.data?.message || 'Login failed';
-        throw new Error(message);
+        const customErr = new Error(message);
+        customErr.response = error.response;
+        customErr.is_old_password = Boolean(error.response.data?.is_old_password);
+        customErr.password_changed_at = error.response.data?.password_changed_at || null;
+        customErr.formatted_changed_at = error.response.data?.formatted_changed_at || null;
+        throw customErr;
       }
       throw new Error('Network error: could not reach the API server. Make sure XAMPP Apache is running and the backend is available at http://localhost/shrim_predict_api/backend/api.');
     }

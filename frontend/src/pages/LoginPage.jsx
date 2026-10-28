@@ -11,6 +11,7 @@ import {
 } from '../utils/theme';
 import { useLanguage } from '../context/LanguageContext';
 import LanguageToggle from '../components/LanguageToggle';
+import ForgotPasswordModal from '../components/ForgotPasswordModal';
 import Swal from 'sweetalert2';
 import {
   FaArrowLeft,
@@ -65,6 +66,8 @@ export default function LoginPage() {
   );
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
 
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -78,6 +81,25 @@ export default function LoginPage() {
       setEmail('cj@gmail.com');
       setPassword('cj12345');
     }
+  };
+
+  const handleForgotPasswordSuccess = (userEmail, newPass, userRole) => {
+    if (userRole === 'admin') {
+      setActiveTab('admin');
+    } else if (userRole === 'caretaker') {
+      setActiveTab('caretaker');
+    }
+    setEmail(userEmail);
+    setPassword(newPass);
+
+    Swal.fire({
+      icon: 'success',
+      title: t('forgotPass.successTitle', 'Password Reset Complete!'),
+      text: isFilipino
+        ? 'Na-update na ang iyong mga kredensyal sa login form. I-click ang Mag-login upang makapasok.'
+        : 'Your credentials have been updated in the login form. Click Sign In to enter your portal.',
+      confirmButtonColor: '#FC563C',
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -98,6 +120,43 @@ export default function LoginPage() {
         showConfirmButton: false,
       });
     } catch (error) {
+      if (error.is_old_password || error.response?.data?.is_old_password) {
+        const respData = error.response?.data || error;
+        const changedDate = respData.formatted_changed_at || (respData.password_changed_at ? new Date(respData.password_changed_at).toLocaleString() : 'recently');
+        
+        Swal.fire({
+          icon: 'warning',
+          title: t('login.oldPasswordTitle', 'Old Password Detected'),
+          html: `
+            <div style="text-align: left; font-size: 0.88rem; line-height: 1.5; color: ${isDark ? '#E2E8F0' : '#334155'};">
+              <p style="margin-bottom: 8px;">${isFilipino ? 'Lumang password ang iyong inilagay para sa account na ito.' : 'You entered a password that was previously used for this account.'}</p>
+              <div style="background: ${isDark ? 'rgba(252, 86, 60, 0.15)' : '#FFF5F2'}; border-left: 3.5px solid #FC563C; padding: 10px 12px; border-radius: 6px; margin: 10px 0;">
+                <strong style="color: #FC563C;">Notice:</strong> ${isFilipino ? 'Binago ang password na ito noong' : 'This password was changed on'} <strong>${changedDate}</strong>.
+              </div>
+              <p style="margin-bottom: 0;">${isFilipino ? 'Mangyaring gamitin ang iyong bagong password, o i-click ang <strong>I-reset ang Password</strong> kung nakalimutan ito.' : 'Please enter your new password, or click <strong>Reset Password</strong> if you forgot it.'}</p>
+            </div>
+          `,
+          background: isDark ? '#172A39' : '#FFFFFF',
+          color: isDark ? '#FFFFFF' : '#172A39',
+          showCancelButton: true,
+          confirmButtonText: t('login.resetPasswordBtn', 'Reset Password'),
+          cancelButtonText: t('login.tryNewPasswordBtn', 'Try Current Password'),
+          confirmButtonColor: '#FC563C',
+          cancelButtonColor: '#64748B',
+          customClass: {
+            popup: 'rounded-4 shadow-lg',
+          }
+        }).then((res) => {
+          if (res.isConfirmed) {
+            setForgotPasswordEmail(email);
+            setIsForgotPasswordOpen(true);
+          } else {
+            setPassword('');
+          }
+        });
+        return;
+      }
+
       Swal.fire({
         icon: 'error',
         title: t('login.authFailed', 'Authentication Failed'),
@@ -563,11 +622,24 @@ export default function LoginPage() {
                     </div>
                   </div>
 
-                  {/* Password Field */}
+                  {/* Password Field with Forgot Password Link */}
                   <div className="mb-3">
-                    <label className="form-label extra-small fw-semibold mb-1" style={{ color: isDark ? '#FFFFFF' : '#172A39', fontWeight: 600 }}>
-                      {t('login.password', 'Password')}
-                    </label>
+                    <div className="d-flex align-items-center justify-content-between mb-1">
+                      <label className="form-label extra-small fw-semibold mb-0" style={{ color: isDark ? '#FFFFFF' : '#172A39', fontWeight: 600 }}>
+                        {t('login.password', 'Password')}
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setForgotPasswordEmail(email);
+                          setIsForgotPasswordOpen(true);
+                        }}
+                        className="btn btn-link p-0 text-decoration-none extra-small fw-semibold transition-all"
+                        style={{ color: '#FC563C', fontSize: '0.78rem' }}
+                      >
+                        {t('login.forgotPassword', 'Forgot password?')}
+                      </button>
+                    </div>
                     <div className="input-group">
                       <span
                         className="input-group-text border-end-0 rounded-start-3"
@@ -655,6 +727,16 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
+
+      {/* FORGOT PASSWORD MODAL */}
+      <ForgotPasswordModal
+        isOpen={isForgotPasswordOpen}
+        onClose={() => setIsForgotPasswordOpen(false)}
+        initialEmail={forgotPasswordEmail || email}
+        initialRole={activeTab}
+        onSuccess={handleForgotPasswordSuccess}
+        isDark={isDark}
+      />
     </div>
   );
 }

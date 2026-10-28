@@ -94,44 +94,82 @@ if ($isBcryptHash && password_verify($password, $storedHash)) {
     exit;
 }
 
-// Known default credentials self-healing protection
-$userEmail = strtolower($user['email'] ?? '');
-$knownValidPasswords = [
-    'cj@gmail.com' => ['cj12345', 'admin123', 'caretaker123'],
-    'rc@gmail.com' => ['rc12345', 'admin123'],
-    're@gmail.com' => ['re12345', 'admin123'],
-    'admin@shrimpredict.com' => ['admin123'],
-    'cristel@gmail.com' => ['password123', 'admin123', 'cristel12345']
-];
-
-if (isset($knownValidPasswords[$userEmail]) && in_array($password, $knownValidPasswords[$userEmail], true)) {
-    $newHash = password_hash($password, PASSWORD_BCRYPT);
-    $update = $conn->prepare('UPDATE users SET password_hash = :password_hash WHERE id = :id');
-    $update->execute([
-        ':password_hash' => $newHash,
-        ':id' => $user['id'],
-    ]);
-    $sendLoginSuccess($user);
-    exit;
-}
-
-// Repair the original demo seed hash, which did not match the documented password.
-if ($storedHash === $brokenDemoHash && $password === 'admin123') {
-    $newHash = password_hash($password, PASSWORD_BCRYPT);
-    $update = $conn->prepare('UPDATE users SET password_hash = :password_hash WHERE id = :id');
-    $update->execute([
-        ':password_hash' => $newHash,
-        ':id' => $user['id'],
-    ]);
-
-    $sendLoginSuccess($user);
-    exit;
-}
-
 // Legacy fallback: some old DBs might store plaintext in password_hash.
 if (is_string($storedHash) && hash_equals($storedHash, $password)) {
     $sendLoginSuccess($user);
     exit;
+}
+
+// Old Password Safety Net: Detect if user entered an old/previous password
+$isPreviousPassword = false;
+$changedAt = $user['password_changed_at'] ?? null;
+
+if (!empty($user['previous_password_hash']) && password_verify($password, $user['previous_password_hash'])) {
+    $isPreviousPassword = true;
+}
+
+if (!$isPreviousPassword && !empty($user['password_history_json'])) {
+    $history = json_decode($user['password_history_json'], true) ?: [];
+    foreach ($history as $histItem) {
+        if (!empty($histItem['hash']) && password_verify($password, $histItem['hash'])) {
+            $isPreviousPassword = true;
+            if (!empty($histItem['changed_at'])) {
+                $changedAt = $histItem['changed_at'];
+            }
+            break;
+        }
+    }
+}
+
+if ($isPreviousPassword) {
+    http_response_code(401);
+    $timeFormatted = !empty($changedAt) ? date('F j, Y \a\t g:i A', strtotime($changedAt)) : 'recently';
+    echo json_encode([
+        'success' => false,
+        'is_old_password' => true,
+        'email' => $user['email'],
+        'role' => $user['role'],
+        'password_changed_at' => $changedAt,
+        'formatted_changed_at' => $timeFormatted,
+        'message' => "You entered an old password. Your password was changed on {$timeFormatted}. Please use your new password, or reset it if you forgot."
+    ]);
+    exit;
+}
+
+// Known default credentials self-healing protection (Only for unmigrated accounts that never changed password)
+if (empty($user['password_changed_at'])) {
+    $userEmail = strtolower($user['email'] ?? '');
+    $knownValidPasswords = [
+        'cj@gmail.com' => ['cj12345', 'admin123', 'caretaker123'],
+        'rc@gmail.com' => ['rc12345', 'admin123'],
+        're@gmail.com' => ['re12345', 'admin123'],
+        'admin@shrimpredict.com' => ['admin123'],
+        'cristel@gmail.com' => ['password123', 'admin123', 'cristel12345']
+    ];
+
+    if (isset($knownValidPasswords[$userEmail]) && in_array($password, $knownValidPasswords[$userEmail], true)) {
+        $newHash = password_hash($password, PASSWORD_BCRYPT);
+        $update = $conn->prepare('UPDATE users SET password_hash = :password_hash WHERE id = :id');
+        $update->execute([
+            ':password_hash' => $newHash,
+            ':id' => $user['id'],
+        ]);
+        $sendLoginSuccess($user);
+        exit;
+    }
+
+    // Repair the original demo seed hash, which did not match the documented password.
+    if ($storedHash === $brokenDemoHash && $password === 'admin123') {
+        $newHash = password_hash($password, PASSWORD_BCRYPT);
+        $update = $conn->prepare('UPDATE users SET password_hash = :password_hash WHERE id = :id');
+        $update->execute([
+            ':password_hash' => $newHash,
+            ':id' => $user['id'],
+        ]);
+
+        $sendLoginSuccess($user);
+        exit;
+    }
 }
 
 http_response_code(401);
