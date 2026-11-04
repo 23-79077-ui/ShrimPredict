@@ -66,6 +66,7 @@ export default function DiseaseScanPage() {
 
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
   const autoScanTriggeredRef = useRef(false);
   const handleScanRef = useRef(null);
   const [image, setImage] = useState(null);
@@ -235,6 +236,7 @@ export default function DiseaseScanPage() {
       setResult(null);
       setAdditionalScanEnabled(false);
       setShowAdditionalPrompt(false);
+    event.target.value = '';
       autoScanTriggeredRef.current = true;
 
       canvas.toBlob(
@@ -304,6 +306,7 @@ export default function DiseaseScanPage() {
     setResult(null);
     setAdditionalScanEnabled(false);
     setShowAdditionalPrompt(false);
+    event.target.value = '';
   };
 
   const handleDroppedImage = useCallback(async (file) => {
@@ -315,6 +318,7 @@ export default function DiseaseScanPage() {
     setResult(null);
     setAdditionalScanEnabled(false);
     setShowAdditionalPrompt(false);
+    event.target.value = '';
   }, []);
 
   const handleDrop = useCallback(async (event) => {
@@ -352,6 +356,7 @@ export default function DiseaseScanPage() {
     setResult(null);
     setAdditionalScanEnabled(false);
     setShowAdditionalPrompt(false);
+    event.target.value = '';
     setPreviewCount(null);
     autoScanTriggeredRef.current = false;
   };
@@ -517,6 +522,7 @@ export default function DiseaseScanPage() {
     if (result?.prediction || result?.disease_name) {
       setAdditionalScanEnabled(true);
       setShowAdditionalPrompt(false);
+    event.target.value = '';
       return;
     }
 
@@ -1097,13 +1103,34 @@ export default function DiseaseScanPage() {
                 )}
               </div>
 
+              {/* Gallery / File Picker input for Upload Image (NO capture attribute: allows choosing from photo gallery on mobile) */}
               <input
                 ref={fileInputRef}
                 type="file"
                 className="d-none"
                 accept="image/*"
-                capture="environment"
                 onChange={handleImageUpload}
+              />
+
+              {/* Direct Camera input fallback for Capture Photo when live WebRTC video stream is not active */}
+              <input
+                ref={cameraInputRef}
+                type="file"
+                className="d-none"
+                accept="image/*"
+                capture="environment"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  autoScanTriggeredRef.current = true;
+                  setImageFile(file);
+                  setImage(URL.createObjectURL(file));
+                  setImageSource('Captured photo');
+                  setResult(null);
+                  setAdditionalScanEnabled(false);
+                  setShowAdditionalPrompt(false);
+                  e.target.value = '';
+                }}
               />
 
               {/* ACTION BUTTONS TOOLBAR */}
@@ -1112,8 +1139,14 @@ export default function DiseaseScanPage() {
                   <button
                     type="button"
                     className="btn btn-sm btn-understated-view px-3 py-2 fw-bold extra-small flex-grow-1 shadow-2xs"
-                    onClick={captureImage}
-                    disabled={!streaming || scanning}
+                    onClick={() => {
+                      if (streaming) {
+                        captureImage();
+                      } else {
+                        cameraInputRef.current?.click();
+                      }
+                    }}
+                    disabled={scanning}
                   >
                     <FaCamera /> {t('diseaseScan.action.capturePhoto', 'Capture Photo')}
                   </button>
