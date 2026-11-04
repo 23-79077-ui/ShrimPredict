@@ -66,6 +66,8 @@ export default function DiseaseScanPage() {
 
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
+  const autoScanTriggeredRef = useRef(false);
+  const handleScanRef = useRef(null);
   const [image, setImage] = useState(null);
   const [imageFile, setImageFile] = useState(null);
   const [imageSource, setImageSource] = useState('');
@@ -112,6 +114,7 @@ export default function DiseaseScanPage() {
       });
 
       const isCooked = Boolean(response?.data?.is_cooked === true || response?.data?.is_cooked === 1 || response?.data?.is_cooked === '1' || response?.data?.is_cooked === 'true');
+      const isCrayfish = Boolean(response?.data?.is_crayfish === true || response?.data?.is_crayfish === 1);
       const detected = [response?.data?.shrimp_detected, response?.data?.valid_shrimp_present]
         .some((value) => value === true || value === 1 || value === '1' || value === 'true')
         || response?.data?.status === 'success'
@@ -122,9 +125,18 @@ export default function DiseaseScanPage() {
         count,
         detected,
         is_cooked: isCooked,
+        is_crayfish: isCrayfish,
         status: isCooked ? 'Unavailable to scan: Cooked Shrimp' : (detected ? 'Ready for Scan' : 'No shrimp detected'),
         message: response?.data?.message || 'Preview result unavailable.',
       });
+
+      // Automatic analysis once shrimp target is confirmed
+      if (detected && !isCooked && !isCrayfish && autoScanTriggeredRef.current) {
+        autoScanTriggeredRef.current = false;
+        setTimeout(() => {
+          handleScanRef.current?.(false, file);
+        }, 350);
+      }
     } catch (error) {
       setPreviewCount({
         count: 0,
@@ -212,18 +224,28 @@ export default function DiseaseScanPage() {
 
     const doCapture = () => {
       const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      canvas.width = video.videoWidth || 1280;
+      canvas.height = video.videoHeight || 720;
       const ctx = canvas.getContext('2d');
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      const dataUrl = canvas.toDataURL('image/png');
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
       setImage(dataUrl);
-      setImageFile(null);
       setImageSource('Captured photo');
       setResult(null);
       setAdditionalScanEnabled(false);
       setShowAdditionalPrompt(false);
+      autoScanTriggeredRef.current = true;
+
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) return;
+          const capturedFile = new File([blob], `captured-shrimp-${Date.now()}.jpg`, { type: 'image/jpeg' });
+          setImageFile(capturedFile);
+        },
+        'image/jpeg',
+        0.95
+      );
     };
 
     const track = video.srcObject?.getVideoTracks()[0];
@@ -275,6 +297,7 @@ export default function DiseaseScanPage() {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    autoScanTriggeredRef.current = true;
     setImageFile(file);
     setImage(URL.createObjectURL(file));
     setImageSource('Uploaded image');
@@ -285,13 +308,14 @@ export default function DiseaseScanPage() {
 
   const handleDroppedImage = useCallback(async (file) => {
     if (!file) return;
+    autoScanTriggeredRef.current = true;
     setImageFile(file);
     setImage(URL.createObjectURL(file));
     setImageSource('Dropped image');
     setResult(null);
     setAdditionalScanEnabled(false);
     setShowAdditionalPrompt(false);
-  }, [refreshShrimpPreview]);
+  }, []);
 
   const handleDrop = useCallback(async (event) => {
     event.preventDefault();
@@ -329,6 +353,7 @@ export default function DiseaseScanPage() {
     setAdditionalScanEnabled(false);
     setShowAdditionalPrompt(false);
     setPreviewCount(null);
+    autoScanTriggeredRef.current = false;
   };
 
   const dataUrlToFile = async (dataUrl) => {
@@ -337,8 +362,9 @@ export default function DiseaseScanPage() {
     return new File([blob], `caretaker-wssv-scan-${Date.now()}.png`, { type: blob.type || 'image/png' });
   };
 
-  const handleScan = async (enableAdditional = false) => {
-    if (!image) {
+  const handleScan = async (enableAdditional = false, fileOverride = null) => {
+    const fileToScan = fileOverride || imageFile || (image ? await dataUrlToFile(image) : null);
+    if (!fileToScan && !image) {
       Swal.fire({ icon: 'warning', title: 'No shrimp image selected' });
       return;
     }
@@ -371,7 +397,7 @@ export default function DiseaseScanPage() {
       formData.append('caretaker_name', user?.full_name || 'Caretaker');
       formData.append('pond_name', selectedPond || user?.assigned_ponds?.[0]?.pond_name || 'Assigned Pond');
       formData.append('enable_additional', enableAdditional ? 'true' : 'false');
-      formData.append('image', imageFile || await dataUrlToFile(image));
+      formData.append('image', fileToScan);
 
       const response = await api.post('/disease_scan.php', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -485,6 +511,7 @@ export default function DiseaseScanPage() {
       setScanning(false);
     }
   };
+  handleScanRef.current = handleScan;
 
   const handleAdditionalDetection = () => {
     if (result?.prediction || result?.disease_name) {
@@ -1021,25 +1048,31 @@ export default function DiseaseScanPage() {
                       style={{ background: 'linear-gradient(0deg, rgba(7, 23, 51, 0.9) 0%, transparent 100%)' }}
                     >
                       <span className="small fw-semibold">
-                        {previewLoading ? 'Inspecting shrimp geometry…' : (previewCount?.is_crayfish ? 'Crayfish Detected' : (previewCount?.is_cooked ? 'Cooked shrimp detected' : 'Detected Shrimp Target'))}
+                        {scanning ? 'Analyzing shrimp health...' : previewLoading ? 'Inspecting shrimp geometry...' : (previewCount?.is_crayfish ? 'Crayfish Detected' : (previewCount?.is_cooked ? 'Cooked shrimp detected' : 'Detected Shrimp Target'))}
                       </span>
                       <span
                         className="badge rounded-pill extra-small fw-bold px-2.5 py-1"
                         style={{
-                          backgroundColor: (previewCount?.is_crayfish || previewCount?.is_cooked)
+                          backgroundColor: scanning
+                            ? '#EFF6FF'
+                            : (previewCount?.is_crayfish || previewCount?.is_cooked)
                             ? '#FEF2F2'
                             : (previewCount?.detected ? '#F0FDF4' : '#E9E4E0'),
-                          color: (previewCount?.is_crayfish || previewCount?.is_cooked)
+                          color: scanning
+                            ? '#2563EB'
+                            : (previewCount?.is_crayfish || previewCount?.is_cooked)
                             ? '#DC2626'
                             : (previewCount?.detected ? '#16A34A' : '#FC563C'),
                           border: `1px solid ${
-                            (previewCount?.is_crayfish || previewCount?.is_cooked)
+                            scanning
+                              ? '#93C5FD'
+                              : (previewCount?.is_crayfish || previewCount?.is_cooked)
                               ? '#FCA5A5'
                               : (previewCount?.detected ? '#BBF7D0' : '#6E7575')
                           }`,
                         }}
                       >
-                        {previewLoading ? 'Checking…' : (previewCount?.is_crayfish ? 'Invalid: Crayfish Detected' : (previewCount?.is_cooked ? 'Unavailable to scan: Cooked Shrimp' : (previewCount?.status || 'No shrimp detected')))}
+                        {scanning ? 'Auto-Analyzing...' : previewLoading ? 'Checking...' : (previewCount?.is_crayfish ? 'Invalid: Crayfish Detected' : (previewCount?.is_cooked ? 'Unavailable to scan: Cooked Shrimp' : (previewCount?.status || 'No shrimp detected')))}
                       </span>
                     </div>
                   </div>

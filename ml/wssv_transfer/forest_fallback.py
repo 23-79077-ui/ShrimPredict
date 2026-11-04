@@ -152,7 +152,7 @@ def _recommendation(disease_name: str) -> str:
 
 
 def _result_from_probability(wssv_probability: float, threshold: float, metrics: dict | None, model_type: str, visual_evidence: dict | None = None) -> dict:
-    review_threshold = max(0.38, threshold - 0.22)
+    review_threshold = max(0.52, threshold - 0.05)
 
     if wssv_probability >= threshold:
         disease_name = "White Spot Syndrome Virus (WSSV)"
@@ -226,8 +226,8 @@ def predict_with_forest(image_path: Path, model_path: Path = FOREST_MODEL_PATH) 
     image_size = int(model.get("imageSize", 96))
     grid_size = int(model.get("gridSize", 6))
 
-    positive_threshold = float(model.get("threshold", 0.62))
-    review_threshold = float(model.get("reviewLowerThreshold", max(0.38, positive_threshold - 0.22)))
+    positive_threshold = float(model.get("threshold", 0.59))
+    review_threshold = max(0.52, positive_threshold - 0.05)
 
     features = _features(image_path, image_size, grid_size)
 
@@ -244,27 +244,42 @@ def predict_with_forest(image_path: Path, model_path: Path = FOREST_MODEL_PATH) 
     if uniform_bright_ratio > 0.30 and punctate_spot_ratio < 0.010:
         wssv_probability = min(base_prob, 0.10)
 
-    # 1b. Product/plated/background-heavy photos are not reliable diagnostic close-ups.
-    elif diagnostic_domain_ratio < 0.30 and shrimp_pigment_ratio < 0.30:
-        wssv_probability = max(min(base_prob, review_threshold + 0.08), review_threshold)
+    # 1b. Product/plated/background-heavy photos with minimal shrimp pigment are not reliable diagnostic close-ups.
+    elif diagnostic_domain_ratio < 0.30 and shrimp_pigment_ratio < 0.25 and uniform_bright_ratio > 0.40:
+        wssv_probability = max(min(base_prob, review_threshold + 0.05), review_threshold)
 
     # 2. Weak visual evidence -> Healthy unless the trained model strongly disagrees.
-    elif punctate_spot_ratio < 0.018 and broad_shell_spot_ratio < 0.050 and spot_contrast_std < 0.055:
+    elif punctate_spot_ratio < 0.020 and broad_shell_spot_ratio < 0.050 and spot_contrast_std < 0.055:
         wssv_probability = min(base_prob, 0.20)
 
-    # 3. True WSSV white spot lesions on carapace -> White Spot Syndrome Virus (WSSV)
-    elif punctate_spot_ratio >= 0.06 and spot_contrast_std >= 0.08 and diagnostic_domain_ratio >= 0.30:
-        wssv_probability = max(base_prob, 0.82)
+    # 3. Dense true WSSV white spot lesions supported by the 520-tree model
+    elif punctate_spot_ratio >= 0.08 and spot_contrast_std >= 0.08 and base_prob >= positive_threshold:
+        wssv_probability = max(base_prob, 0.85)
 
-    # 3b. Broad pale WSSV lesions on darker/blue shell.
-    elif broad_shell_spot_ratio >= 0.055 and spot_contrast_std >= 0.052 and diagnostic_domain_ratio >= 0.30:
-        wssv_probability = max(base_prob, 0.78)
+    # 3b. Broad distinct white spot lesions on shell WITHOUT flash glare:
+    # Extensive pale white lesions on cuticle (broad_shell_spot_ratio >= 0.055, spot_contrast_std >= 0.052)
+    # where there is NO blown-out camera flash glare (uniform_bright_ratio < 0.015).
+    # This detects pathological WSSV lesions while protecting healthy shrimp with camera flash.
+    elif (
+        broad_shell_spot_ratio >= 0.055
+        and spot_contrast_std >= 0.052
+        and diagnostic_domain_ratio >= 0.30
+        and uniform_bright_ratio < 0.015
+    ):
+        wssv_probability = max(base_prob, 0.88)
 
-    # 4. Suspicious but not dense enough for automatic high-risk confirmation.
-    elif (punctate_spot_ratio >= 0.045 or broad_shell_spot_ratio >= 0.075) and spot_contrast_std >= 0.060:
+    # 4. Specular reflections / flash highlights on glossy cuticle:
+    # Curved translucent cuticles naturally reflect camera flash/light (uniform_bright_ratio >= 0.015).
+    # When base_prob from the 520 trained decision trees indicates Healthy (< positive_threshold),
+    # respect the trained random forest.
+    elif base_prob < positive_threshold:
+        wssv_probability = base_prob
+
+    # 5. Suspicious punctate spots near the decision boundary
+    elif punctate_spot_ratio >= 0.055 and spot_contrast_std >= 0.065:
         wssv_probability = max(base_prob, review_threshold)
 
-    # 5. Standard baseline
+    # 6. Standard baseline from 520 trees
     else:
         wssv_probability = base_prob
 

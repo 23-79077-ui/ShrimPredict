@@ -136,7 +136,13 @@ def validate_image_content(image_path: Path) -> dict:
     category = "Shrimp"
     shrimp_confidence = 0.82
 
-    if node_category:
+    has_specimen_features = (
+        features["edge_density"] >= 0.018
+        or features["shrimp_pigment_ratio"] >= 0.08
+        or (features["contrast"] >= 25 and features["saturation"] >= 0.15)
+    )
+
+    if node_category and not (node_category in ("Human", "Screenshot") and has_specimen_features):
         category = node_category
         shrimp_confidence = 0.0
     elif (
@@ -150,7 +156,7 @@ def validate_image_content(image_path: Path) -> dict:
     elif features["document_ratio"] > 0.58 and features["shrimp_pigment_ratio"] < 0.16:
         category = "Document" if features["dark_text_ratio"] > 0.015 or features["edge_density"] > 0.018 else "Background"
         shrimp_confidence = 0.0
-    elif features["human_skin_ratio"] > 0.48 and features["shrimp_pigment_ratio"] < 0.24:
+    elif features["human_skin_ratio"] > 0.65 and not has_specimen_features:
         category = "Human"
         shrimp_confidence = 0.0
     elif features["cooked_food_ratio"] > 0.42 and features["dark_gill_ratio"] < 0.10:
