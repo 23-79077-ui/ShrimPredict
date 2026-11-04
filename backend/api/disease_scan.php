@@ -82,15 +82,37 @@ if (!isset($_FILES['image']) || !is_uploaded_file($_FILES['image']['tmp_name']))
 }
 
 $previewResult = callShrimpCountApi($_FILES['image']['tmp_name']);
-$previewShrimpDetected = $previewResult['shrimp_detected'] ?? $previewResult['valid_shrimp_present'] ?? null;
-$hasExplicitPreviewNoShrimp = array_key_exists('shrimp_detected', $previewResult) && $previewResult['shrimp_detected'] === false
-    || array_key_exists('valid_shrimp_present', $previewResult) && $previewResult['valid_shrimp_present'] === false;
+$previewPresenceState = $previewResult['presence_state'] ?? '';
+$previewShrimpDetected = (bool)($previewResult['shrimp_detected'] ?? false);
+$previewIsCooked = !empty($previewResult['is_cooked']);
 
-if ($hasExplicitPreviewNoShrimp) {
+if ($previewPresenceState === 'uncertain' || ($previewResult['status'] ?? '') === 'uncertain') {
     http_response_code(400);
     echo json_encode([
         'success' => false,
-        'message' => 'No shrimp detected. Please upload a clear image containing a shrimp.',
+        'message' => 'Unable to Identify Shrimp. Please Retake or Upload a Clearer Image.',
+        'presence_state' => 'uncertain',
+        'preview' => $previewResult,
+    ]);
+    exit;
+}
+
+if ($previewIsCooked || ($previewResult['status'] ?? '') === 'cooked_shrimp') {
+    http_response_code(400);
+    echo json_encode([
+        'success' => false,
+        'message' => 'Shrimp was detected, but it appears to be cooked. Please upload raw uncooked shrimp for diagnosis.',
+        'is_cooked' => true,
+        'preview' => $previewResult,
+    ]);
+    exit;
+}
+
+if (!$previewShrimpDetected) {
+    http_response_code(400);
+    echo json_encode([
+        'success' => false,
+        'message' => $previewResult['message'] ?? 'No shrimp detected. Please upload a clear image containing a shrimp.',
         'preview' => $previewResult,
     ]);
     exit;

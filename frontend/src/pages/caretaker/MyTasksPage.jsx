@@ -282,7 +282,7 @@ export default function MyTasksPage() {
           <p className="text-muted mb-0">{t('myTasks.noPonds', 'Ask your farm administrator to assign a pond to your caretaker account.')}</p>
         </div>
       ) : (
-        <div className="d-flex flex-column gap-3">
+        <div className="d-flex flex-column gap-3 mb-4 pb-3">
           {tasks.map((task, index) => {
             const isNext = index === firstIncompleteIndex;
             return (

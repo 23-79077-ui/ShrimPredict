@@ -1416,9 +1416,9 @@ export default function CaretakerDashboard() {
             </div>
           </div>
 
-          {/* Tasks Scrollable List (Exactly 3 items visible, remaining scrollable) */}
+          {/* Tasks Scrollable List */}
           <div
-            className="p-3 p-md-3.5 flex-grow-1 caretaker-tasks-scroll-3items"
+            className="p-3 p-md-4 flex-grow-1 caretaker-tasks-scroll-3items"
           >
             {loading && tasks.length === 0 ? (
               <div className="text-center text-muted py-5">
@@ -1432,13 +1432,13 @@ export default function CaretakerDashboard() {
                 <p className="text-muted extra-small mb-0">{t('myTasks.noPonds', 'Ask your farm administrator to assign a pond to your caretaker account.')}</p>
               </div>
             ) : (
-              <div className="d-flex flex-column gap-2.5 pb-3">
+              <div className="d-flex flex-column gap-3 pb-2 caretaker-tasks-list">
                 {tasks.map((task, index) => {
                   const isNext = index === firstIncompleteTaskIndex;
                   return (
                     <article
                       key={task.id}
-                      className={`rounded-3 p-3 transition-all ${isNext ? 'border-2' : ''}`}
+                      className={`rounded-4 p-3 p-md-3.5 transition-all shadow-xs ${isNext ? 'border-2' : ''}`}
                       style={{
                         backgroundColor: isDark ? '#253549' : '#FFFFFF',
                         border: isNext
@@ -1541,7 +1541,7 @@ export default function CaretakerDashboard() {
                         </div>
 
                         {/* Dedicated Action Button Row */}
-                        <div className="d-flex justify-content-end align-items-center gap-2 pt-1">
+                        <div className="d-flex justify-content-end align-items-center gap-2 pt-2.5 border-top mt-2" style={{ borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(226, 232, 240, 0.8)' }}>
                           {task.type === 'admin-action' ? (
                             <div className="d-flex gap-1.5 flex-wrap w-100 justify-content-end">
                               {task.action.status !== 'In Progress' && !task.isComplete && (
@@ -1602,6 +1602,32 @@ export default function CaretakerDashboard() {
                 })}
               </div>
             )}
+          </div>
+
+          {/* My Tasks Clean Bottom Status Strip */}
+          <div
+            className="px-3.5 py-2.5 border-top d-flex align-items-center justify-content-between extra-small text-muted mt-auto"
+            style={{
+              borderColor: isDark ? '#334155' : '#E2E8F0',
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : '#F8FAFC'
+            }}
+          >
+            <span className="fw-semibold">
+              {allTasksComplete
+                ? t('myTasks.allDoneStatus', '✓ All daily tasks completed')
+                : `${tasks.length - completedTasksCount} ${t('myTasks.pendingCount', 'pending operational tasks')}`}
+            </span>
+            <span
+              className="badge rounded-pill fw-bold extra-small"
+              style={{
+                backgroundColor: allTasksComplete ? '#DCFCE7' : (isDark ? 'rgba(252, 86, 60, 0.15)' : '#FFF1ED'),
+                color: allTasksComplete ? '#15803D' : '#FC563C',
+                border: allTasksComplete ? '1px solid #86EFAC' : '1px solid #FECDD3',
+                fontSize: '0.68rem'
+              }}
+            >
+              {allTasksComplete ? t('myTasks.statusComplete', 'Complete') : t('myTasks.statusActive', 'Active Today')}
+            </span>
           </div>
         </div>
       </div>

@@ -77,6 +77,7 @@ if ($rawResponse === false || $httpCode >= 400) {
     echo json_encode([
         'success' => false,
         'shrimp_detected' => false,
+        'presence_state' => 'no_shrimp',
         'shrimp_count' => 0,
         'valid_shrimp_present' => false,
         'message' => $decoded['message'] ?? ($curlError ?: 'Shrimp preview detection is unavailable. Verify your ngrok URL in config.php and restart Flask API.'),
@@ -87,20 +88,27 @@ if ($rawResponse === false || $httpCode >= 400) {
 $decoded = json_decode($rawResponse, true);
 if (!$decoded || !is_array($decoded)) {
     http_response_code(502);
-    echo json_encode(['success' => false, 'shrimp_detected' => false, 'shrimp_count' => 0, 'valid_shrimp_present' => false, 'message' => 'Invalid response from the shrimp preview API.']);
+    echo json_encode(['success' => false, 'shrimp_detected' => false, 'presence_state' => 'no_shrimp', 'shrimp_count' => 0, 'valid_shrimp_present' => false, 'message' => 'Invalid response from the shrimp preview API.']);
     exit;
 }
 
-$shrimpDetected = (bool)($decoded['shrimp_detected'] ?? $decoded['valid_shrimp_present'] ?? false);
+$shrimpDetected = (bool)($decoded['shrimp_detected'] ?? false);
+$presenceState = $decoded['presence_state'] ?? ($shrimpDetected ? 'shrimp_detected' : 'no_shrimp');
+$isCooked = (bool)($decoded['is_cooked'] ?? false);
 $shrimpCount = isset($decoded['shrimp_count']) ? (int)$decoded['shrimp_count'] : ($shrimpDetected ? 1 : 0);
 
 echo json_encode([
     'success' => true,
-    'status' => $shrimpDetected && !($decoded['is_cooked'] ?? false) ? 'success' : (($decoded['is_cooked'] ?? false) ? 'cooked_shrimp' : 'no_shrimp'),
+    'status' => $decoded['status'] ?? ($shrimpDetected && !$isCooked ? 'success' : ($isCooked ? 'cooked_shrimp' : ($presenceState === 'uncertain' ? 'uncertain' : 'no_shrimp'))),
+    'presence_state' => $presenceState,
     'shrimp_detected' => $shrimpDetected,
     'shrimp_count' => max(0, $shrimpDetected ? max(1, $shrimpCount) : $shrimpCount),
-    'valid_shrimp_present' => (bool)($decoded['valid_shrimp_present'] ?? $shrimpDetected),
-    'is_cooked' => (bool)($decoded['is_cooked'] ?? false),
-    'message' => $decoded['message'] ?? ($shrimpDetected ? 'Shrimp detected.' : 'No shrimp detected.'),
+    'valid_shrimp_present' => (bool)($decoded['valid_shrimp_present'] ?? ($shrimpDetected && !$isCooked)),
+    'is_cooked' => $isCooked,
+    'predicted_class' => $decoded['predicted_class'] ?? ($shrimpDetected ? 'Shrimp' : ($presenceState === 'uncertain' ? 'Uncertain' : 'No Shrimp')),
+    'display_status' => $decoded['display_status'] ?? ($shrimpDetected ? 'Ready for Scan' : ($presenceState === 'uncertain' ? 'Unable to Identify Shrimp. Please Retake or Upload a Clearer Image.' : 'No Shrimp Detected')),
+    'message' => $decoded['message'] ?? ($shrimpDetected ? 'Shrimp successfully detected.' : ($presenceState === 'uncertain' ? 'Unable to Identify Shrimp. Please Retake or Upload a Clearer Image.' : 'No shrimp detected.')),
     'confidence' => (float)($decoded['confidence'] ?? 0.0),
+    'probability_shrimp' => (float)($decoded['probability_shrimp'] ?? 0.0),
+    'content_category' => $decoded['content_category'] ?? ($shrimpDetected ? 'Shrimp' : 'Non-Shrimp'),
 ]);

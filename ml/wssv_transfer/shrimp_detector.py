@@ -1,9 +1,14 @@
+"""Shrimp detector and counter for ShrimPredict.
+
+Uses the trained Machine Learning Shrimp Presence Classifier (Stage 1) to determine
+whether a real shrimp is present in an image, count the shrimp, and reject non-shrimp objects.
+"""
+
 from __future__ import annotations
 
 import json
 import sys
 from pathlib import Path
-
 import cv2
 import numpy as np
 
@@ -13,141 +18,117 @@ except ImportError:
     from .content_validator import validate_image_content
 
 
-def detect_cooked_shrimp_in_bbox(image: np.ndarray, bbox: tuple[int, int, int, int], threshold: float = 0.55) -> bool:
-    """Return True only when a detected shrimp crop contains a high percentage of
-    strongly saturated orange/red pixels. This avoids flagging white-spot shrimp.
-    """
+def _count_contours(image: np.ndarray) -> int:
+    """Estimate number of distinct shrimp specimens in confirmed shrimp image."""
     if image is None or image.size == 0 or image.ndim != 3:
-        return False
+        return 1
+    h, w = image.shape[:2]
+    img_small = cv2.resize(image, (320, 320), interpolation=cv2.INTER_AREA)
 
-    x, y, w, h = bbox
-    if w <= 0 or h <= 0:
-        return False
+    hsv = cv2.cvtColor(img_small, cv2.COLOR_BGR2HSV)
+    skin_mask = cv2.inRange(hsv, np.array([0, 30, 60], dtype=np.uint8), np.array([25, 190, 255], dtype=np.uint8))
+    non_skin = cv2.bitwise_not(skin_mask)
 
-    roi = image[y:y + h, x:x + w]
-    if roi.size == 0:
-        return False
+    gray = cv2.cvtColor(img_small, cv2.COLOR_BGR2GRAY)
+    edges = cv2.Canny(gray, 40, 130)
+    specimen_edges = cv2.bitwise_and(edges, edges, mask=non_skin)
 
-    hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
-    orange_mask_1 = cv2.inRange(hsv, np.array([5, 150, 110], dtype=np.uint8), np.array([35, 255, 255], dtype=np.uint8))
-    orange_mask_2 = cv2.inRange(hsv, np.array([0, 150, 110], dtype=np.uint8), np.array([12, 255, 255], dtype=np.uint8))
-    orange_mask_3 = cv2.inRange(hsv, np.array([160, 150, 110], dtype=np.uint8), np.array([180, 255, 255], dtype=np.uint8))
-    orange_mask = cv2.bitwise_or(cv2.bitwise_or(orange_mask_1, orange_mask_2), orange_mask_3)
-    orange_ratio = float(np.count_nonzero(orange_mask) / max(1, orange_mask.size))
-    return orange_ratio >= threshold
+    kernel = np.ones((3, 3), np.uint8)
+    dilated = cv2.dilate(specimen_edges, kernel, iterations=1)
+    contours, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    min_area = (320 * 320) * 0.015
+    valid_specs = [c for c in contours if cv2.contourArea(c) > min_area]
+    return max(1, len(valid_specs))
 
 
 def count_shrimp_in_image(image_path: Path) -> dict:
-    """Count shrimp for preview, using the same content detector as the main scan."""
-    detector_result = validate_image_content(image_path)
-    if not detector_result.get("shrimp_detected", False):
+    """Validate presence and count shrimp in preview image."""
+    validator_result = validate_image_content(image_path)
+    state = validator_result.get("presence_state", "no_shrimp")
+
+    if state == "no_shrimp":
         return {
+            "success": True,
             "shrimp_detected": False,
-            "shrimp_count": 0,
             "valid_shrimp_present": False,
-            "status": "No shrimp detected",
-            "message": detector_result.get("message", "No shrimp detected."),
-            "confidence": 0.0,
+            "shrimp_count": 0,
+            "presence_state": "no_shrimp",
+            "status": "no_shrimp",
+            "display_status": "No Shrimp Detected",
+            "predicted_class": "No Shrimp",
+            "confidence": validator_result.get("confidence", 0.0),
+            "probability_shrimp": validator_result.get("probability_shrimp", 0.0),
+            "message": validator_result.get("message", "No shrimp detected."),
+            "is_cooked": False,
+            "content_category": validator_result.get("content_category", "Non-Shrimp"),
         }
 
-    if not image_path.exists():
-        raise FileNotFoundError(f"Image not found: {image_path}")
-
-    image = cv2.imread(str(image_path), cv2.IMREAD_COLOR)
-    if image is None:
+    if state == "uncertain":
         return {
+            "success": True,
             "shrimp_detected": False,
-            "shrimp_count": 0,
             "valid_shrimp_present": False,
-            "status": "No shrimp detected",
-            "message": "The selected image could not be decoded.",
-            "confidence": 0.0,
+            "shrimp_count": 0,
+            "presence_state": "uncertain",
+            "status": "uncertain",
+            "display_status": "Unable to Identify Shrimp. Please Retake or Upload a Clearer Image.",
+            "predicted_class": "Uncertain",
+            "confidence": validator_result.get("confidence", 0.0),
+            "probability_shrimp": validator_result.get("probability_shrimp", 0.0),
+            "message": "Unable to Identify Shrimp. Please Retake or Upload a Clearer Image.",
+            "is_cooked": False,
+            "content_category": "Uncertain",
         }
 
-    height, width = image.shape[:2]
-    if height == 0 or width == 0:
+    # State is shrimp_detected
+    is_cooked = bool(validator_result.get("is_cooked", False))
+    image = cv2.imread(str(image_path))
+    shrimp_count = _count_contours(image) if image is not None else 1
+
+    if is_cooked:
         return {
-            "shrimp_detected": False,
-            "shrimp_count": 0,
+            "success": True,
+            "shrimp_detected": True,
             "valid_shrimp_present": False,
-            "status": "No shrimp detected",
-            "message": "The selected image is invalid.",
-            "confidence": 0.0,
+            "shrimp_count": shrimp_count,
+            "presence_state": "cooked_shrimp",
+            "status": "cooked_shrimp",
+            "display_status": "Unavailable to scan: Cooked Shrimp",
+            "predicted_class": "Cooked Shrimp",
+            "confidence": validator_result.get("confidence", 0.0),
+            "probability_shrimp": validator_result.get("probability_shrimp", 0.0),
+            "message": "Shrimp was detected, but it appears to be cooked. Please upload raw uncooked shrimp for diagnosis.",
+            "is_cooked": True,
+            "content_category": "Cooked Shrimp",
         }
-
-    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    lower = np.array([0, 20, 20], dtype=np.uint8)
-    upper = np.array([180, 255, 255], dtype=np.uint8)
-    mask = cv2.inRange(hsv, lower, upper)
-
-    kernel = np.ones((3, 3), np.uint8)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
-
-    if cv2.countNonZero(mask) < max(150, int((height * width) * 0.002)):
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        gray = cv2.GaussianBlur(gray, (5, 5), 0)
-        _, threshold = cv2.threshold(gray, 25, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        mask = cv2.morphologyEx(threshold, cv2.MORPH_OPEN, kernel)
-
-    num_labels, _, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
-    shrimp_count = 0
-    is_cooked = False
-    min_area = max(350, int((height * width) * 0.0008))
-
-    for idx in range(1, num_labels):
-        x, y, w, h, area = stats[idx]
-        if area < min_area:
-            continue
-        if w < 10 or h < 10:
-            continue
-        aspect = w / max(h, 1)
-        if 0.2 <= aspect <= 4.5:
-            shrimp_count += 1
-            if detect_cooked_shrimp_in_bbox(image, (x, y, w, h), threshold=0.55):
-                is_cooked = True
-
-    # The main detector has already confirmed shrimp content. Contours can
-    # under-count a shrimp overlapping a hand, so never report zero here.
-    shrimp_count = max(1, shrimp_count)
-    confidence = min(99.0, max(55.0, shrimp_count * 18.0))
-
-    status = "cooked_shrimp" if is_cooked else "success"
-    message = "Shrimp was detected, but it appears to be cooked." if is_cooked else f"Detected {shrimp_count} shrimp in the preview image."
 
     return {
+        "success": True,
         "shrimp_detected": True,
-        "shrimp_count": shrimp_count,
         "valid_shrimp_present": True,
-        "is_cooked": is_cooked,
-        "status": status,
-        "message": message,
-        "confidence": round(float(confidence), 2),
+        "shrimp_count": shrimp_count,
+        "presence_state": "shrimp_detected",
+        "status": "success",
+        "display_status": "Ready for Scan",
+        "predicted_class": "Shrimp",
+        "confidence": validator_result.get("confidence", 0.0),
+        "probability_shrimp": validator_result.get("probability_shrimp", 0.0),
+        "message": "Shrimp successfully detected.",
+        "is_cooked": False,
+        "content_category": "Shrimp",
     }
 
 
 def detect_shrimp(image_path: Path) -> dict:
     """Backward-compatible shrimp detector wrapper used by Flask."""
-    result = validate_image_content(image_path)
-    result["shrimp_count"] = 1 if result.get("shrimp_detected", False) else 0
-    result["valid_shrimp_present"] = bool(result.get("shrimp_detected", False))
-    if result.get("shrimp_detected", False):
-        image = cv2.imread(str(image_path), cv2.IMREAD_COLOR)
-        if image is not None:
-            hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-            orange_mask_1 = cv2.inRange(hsv, np.array([5, 80, 90], dtype=np.uint8), np.array([35, 255, 255], dtype=np.uint8))
-            orange_mask_2 = cv2.inRange(hsv, np.array([0, 80, 90], dtype=np.uint8), np.array([12, 255, 255], dtype=np.uint8))
-            orange_mask_3 = cv2.inRange(hsv, np.array([160, 80, 90], dtype=np.uint8), np.array([180, 255, 255], dtype=np.uint8))
-            orange_mask = cv2.bitwise_or(cv2.bitwise_or(orange_mask_1, orange_mask_2), orange_mask_3)
-            orange_ratio = float(np.count_nonzero(orange_mask) / max(1, orange_mask.size))
-            result["is_cooked"] = orange_ratio >= 0.55
-            if result["is_cooked"]:
-                result["message"] = "Shrimp was detected, but it appears to be cooked."
-    return result
+    return count_shrimp_in_image(image_path)
 
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
-        print(json.dumps(detect_shrimp(Path(sys.argv[1])), indent=2))
+        test_path = Path(sys.argv[1])
+        res = count_shrimp_in_image(test_path)
+        print(json.dumps(res, indent=2))
     else:
         print("Usage: python shrimp_detector.py <image_path>")
