@@ -1,19 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import AdminFilterToolbar from '../../components/AdminFilterToolbar';
-import { Bar, Doughnut, Line } from 'react-chartjs-2';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  ArcElement,
-  Tooltip,
-  Legend,
-  Filler,
-} from 'chart.js';
 import {
   FaWater,
   FaThermometerHalf,
@@ -33,23 +20,14 @@ import {
   FaClock,
   FaUserCheck,
   FaMicrochip,
-  FaLayerGroup
+  FaLayerGroup,
+  FaAward,
+  FaFlask,
+  FaTint
 } from 'react-icons/fa';
 import api, { safeArray } from '../../services/api';
 import Swal from 'sweetalert2';
 import { useLanguage } from '../../context/LanguageContext';
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  ArcElement,
-  Tooltip,
-  Legend,
-  Filler
-);
 
 const resolveImageUrl = (url) => {
   if (!url) return '';
@@ -104,7 +82,7 @@ export default function WaterQualityReportsPage() {
   // Modals state
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [showLogModal, setShowLogModal] = useState(false);
-  const [activeChartTab, setActiveChartTab] = useState('status'); // 'status' | 'averages' | 'trend'
+  const [chartPondFilter, setChartPondFilter] = useState('all');
 
   // New Record Form State
   const [formPondId, setFormPondId] = useState('');
@@ -280,91 +258,207 @@ export default function WaterQualityReportsPage() {
     };
   }, [records]);
 
-  // Chart 1: Status Distribution Doughnut Chart
-  const statusDoughnutData = useMemo(() => ({
-    labels: [t('Safe'), t('Critical')],
-    datasets: [{
-      data: [summary.safeCount || 0, summary.criticalCount || 0],
-      backgroundColor: ['#10B981', '#EF4444'],
-      borderWidth: 2,
-      borderColor: 'rgba(255, 255, 255, 0.2)',
-      hoverOffset: 6
-    }],
-  }), [summary, t]);
+  // Chart records filtered by chartPondFilter
+  const chartRecords = useMemo(() => {
+    if (chartPondFilter === 'all') return records;
+    return records.filter((r) => String(r.pond_name || '').toLowerCase() === chartPondFilter.toLowerCase());
+  }, [records, chartPondFilter]);
 
-  // Chart 2: Telemetry Parameters Comparison
-  const parameterComparisonData = useMemo(() => {
-    const pondsMap = {};
-    records.slice(0, 15).forEach((r) => {
-      const p = r.pond_name || 'Pond';
-      if (!pondsMap[p]) {
-        pondsMap[p] = {
-          temp: parseFloat(r.temperature || 0),
-          ph: parseFloat(r.ph_level || 0),
-          do: parseFloat(r.dissolved_oxygen || 0),
-          sal: parseFloat(r.salinity || 0),
-        };
+  const chartSummary = useMemo(() => {
+    const total = chartRecords.length;
+    let normalCount = 0;
+    let warningCount = 0;
+    let criticalCount = 0;
+
+    chartRecords.forEach((r) => {
+      const s = String(r.status || 'Safe').toLowerCase();
+      if (s === 'critical' || s === 'danger') criticalCount++;
+      else if (s === 'warning' || s === 'suboptimal') warningCount++;
+      else normalCount++;
+    });
+
+    return {
+      total,
+      normalCount,
+      warningCount,
+      criticalCount,
+    };
+  }, [chartRecords]);
+
+  // Parameter-by-parameter analysis (DO, Temp, pH Level, Salinity) & Overall Water Quality Score
+  const parameterAnalysis = useMemo(() => {
+    const total = chartRecords.length;
+
+    let doNormal = 0, doWarning = 0, doCritical = 0, doSum = 0, doCount = 0;
+    let tempNormal = 0, tempWarning = 0, tempCritical = 0, tempSum = 0, tempCount = 0;
+    let phNormal = 0, phWarning = 0, phCritical = 0, phSum = 0, phCount = 0;
+    let salNormal = 0, salWarning = 0, salCritical = 0, salSum = 0, salCount = 0;
+
+    chartRecords.forEach((r) => {
+      // 1. DO (Dissolved Oxygen) - Safe >= 5.0, Warning 4.0-4.99, Critical < 4.0
+      if (r.dissolved_oxygen !== undefined && r.dissolved_oxygen !== null && r.dissolved_oxygen !== '') {
+        const v = parseFloat(r.dissolved_oxygen);
+        if (!isNaN(v)) {
+          doSum += v;
+          doCount++;
+          if (v < 4.0) doCritical++;
+          else if (v < 5.0) doWarning++;
+          else doNormal++;
+        }
+      }
+
+      // 2. Temperature (°C) - Safe 26.0-32.0, Warning 24.0-25.9 or 32.1-33.9, Critical <24 or >=34
+      if (r.temperature !== undefined && r.temperature !== null && r.temperature !== '') {
+        const v = parseFloat(r.temperature);
+        if (!isNaN(v)) {
+          tempSum += v;
+          tempCount++;
+          if (v < 24.0 || v >= 34.0) tempCritical++;
+          else if (v < 26.0 || v >= 32.5) tempWarning++;
+          else tempNormal++;
+        }
+      }
+
+      // 3. pH Level - Safe 7.5-8.5, Warning 7.0-7.49 or 8.51-8.8, Critical <7.0 or >8.8
+      if (r.ph_level !== undefined && r.ph_level !== null && r.ph_level !== '') {
+        const v = parseFloat(r.ph_level);
+        if (!isNaN(v)) {
+          phSum += v;
+          phCount++;
+          if (v < 7.0 || v > 8.8) phCritical++;
+          else if (v < 7.5 || v > 8.5) phWarning++;
+          else phNormal++;
+        }
+      }
+
+      // 4. Salinity (ppt) - Safe 15.0-28.0, Warning 10.0-14.9 or 28.1-32.0, Critical <10.0 or >32.0
+      if (r.salinity !== undefined && r.salinity !== null && r.salinity !== '') {
+        const v = parseFloat(r.salinity);
+        if (!isNaN(v)) {
+          salSum += v;
+          salCount++;
+          if (v < 10.0 || v > 32.0) salCritical++;
+          else if (v < 15.0 || v > 28.0) salWarning++;
+          else salNormal++;
+        }
       }
     });
 
-    const labels = Object.keys(pondsMap);
+    const formatSummaryText = (tot, norm, warn, crit) => {
+      if (tot === 0) return t('No test records');
+      const parts = [];
+      if (norm > 0) parts.push(`${norm} ${t('Normal')}`);
+      if (warn > 0) parts.push(`${warn} ${t('Warning')}`);
+      if (crit > 0) parts.push(`${crit} ${t('Critical')}`);
+      const breakdown = parts.length > 0 ? parts.join(', ') : `${norm} ${t('Normal')}`;
+      return `${tot} ${tot === 1 ? t('Test') : t('Tests')} (${breakdown})`;
+    };
+
+    // Overall Water Quality Score (0 - 100%)
+    const totalParamsEvaluated = doCount + tempCount + phCount + salCount;
+    let score = 100;
+    if (totalParamsEvaluated > 0) {
+      const totalPoints =
+        (doNormal + tempNormal + phNormal + salNormal) * 100 +
+        (doWarning + tempWarning + phWarning + salWarning) * 60 +
+        (doCritical + tempCritical + phCritical + salCritical) * 0;
+      score = Math.round(totalPoints / totalParamsEvaluated);
+    } else if (total > 0) {
+      const totalPoints = chartSummary.normalCount * 100 + chartSummary.warningCount * 60;
+      score = Math.round(totalPoints / total);
+    }
+
+    let ratingText = t('EXCELLENT');
+    let ratingColor = '#10B981';
+    let gradientColors = ['#06B6D4', '#10B981'];
+
+    if (score < 60) {
+      ratingText = t('CRITICAL');
+      ratingColor = '#EF4444';
+      gradientColors = ['#F87171', '#EF4444'];
+    } else if (score < 75) {
+      ratingText = t('FAIR');
+      ratingColor = '#F59E0B';
+      gradientColors = ['#FBBF24', '#F59E0B'];
+    } else if (score < 90) {
+      ratingText = t('GOOD');
+      ratingColor = '#0EA5E9';
+      gradientColors = ['#38BDF8', '#0EA5E9'];
+    }
+
     return {
-      labels: labels.length > 0 ? labels : ['Pond A1', 'Pond A2', 'Pond A3', 'Pond B1', 'Pond B2'],
-      datasets: [
+      score,
+      ratingText,
+      ratingColor,
+      gradientColors,
+      parameters: [
         {
-          label: 'DO (mg/L)',
-          data: labels.length > 0 ? labels.map((l) => pondsMap[l].do) : [6.5, 6.2, 4.8, 5.4, 6.9],
-          backgroundColor: '#38BDF8',
-          borderRadius: 6,
+          id: 'do',
+          title: 'DO',
+          fullName: 'Dissolved Oxygen',
+          unit: 'mg/L',
+          target: '≥ 5.0 mg/L',
+          avg: doCount > 0 ? (doSum / doCount).toFixed(2) : '6.20',
+          total: doCount,
+          normal: doNormal,
+          warning: doWarning,
+          critical: doCritical,
+          summaryText: formatSummaryText(doCount, doNormal, doWarning, doCritical),
+          Icon: FaWind,
+          iconBg: '#E0F2FE',
+          iconColor: '#0284C7',
         },
         {
-          label: 'Temp (°C)',
-          data: labels.length > 0 ? labels.map((l) => pondsMap[l].temp) : [28.5, 28.8, 33.2, 31.0, 30.0],
-          backgroundColor: '#FC563C',
-          borderRadius: 6,
+          id: 'temp',
+          title: 'Temp',
+          fullName: 'Temperature',
+          unit: '°C',
+          target: '26.0 – 32.0 °C',
+          avg: tempCount > 0 ? (tempSum / tempCount).toFixed(1) : '28.5',
+          total: tempCount,
+          normal: tempNormal,
+          warning: tempWarning,
+          critical: tempCritical,
+          summaryText: formatSummaryText(tempCount, tempNormal, tempWarning, tempCritical),
+          Icon: FaThermometerHalf,
+          iconBg: '#FEE2E2',
+          iconColor: '#FC563C',
         },
         {
-          label: 'pH Level',
-          data: labels.length > 0 ? labels.map((l) => pondsMap[l].ph) : [7.8, 7.6, 7.1, 7.4, 7.9],
-          backgroundColor: '#10B981',
-          borderRadius: 6,
+          id: 'ph',
+          title: 'pH Level',
+          fullName: 'pH Level',
+          unit: 'pH',
+          target: '7.5 – 8.5',
+          avg: phCount > 0 ? (phSum / phCount).toFixed(2) : '7.80',
+          total: phCount,
+          normal: phNormal,
+          warning: phWarning,
+          critical: phCritical,
+          summaryText: formatSummaryText(phCount, phNormal, phWarning, phCritical),
+          Icon: FaFlask,
+          iconBg: '#DCFCE7',
+          iconColor: '#16A34A',
         },
         {
-          label: 'Salinity (ppt)',
-          data: labels.length > 0 ? labels.map((l) => pondsMap[l].sal) : [20.0, 17.5, 24.0, 22.5, 18.5],
-          backgroundColor: '#8B5CF6',
-          borderRadius: 6,
-        }
+          id: 'salinity',
+          title: 'Salinity',
+          fullName: 'Salinity',
+          unit: 'ppt',
+          target: '15.0 – 28.0 ppt',
+          avg: salCount > 0 ? (salSum / salCount).toFixed(1) : '18.0',
+          total: salCount,
+          normal: salNormal,
+          warning: salWarning,
+          critical: salCritical,
+          summaryText: formatSummaryText(salCount, salNormal, salWarning, salCritical),
+          Icon: FaTint,
+          iconBg: '#EDE9FE',
+          iconColor: '#7C3AED',
+        },
       ]
     };
-  }, [records]);
-
-  // Chart 3: 7-Day Testing Activity Trend Line Chart
-  const trendLineData = useMemo(() => {
-    const counts = {};
-    records.forEach((r) => {
-      const d = r.record_date || 'Recent';
-      counts[d] = (counts[d] || 0) + 1;
-    });
-
-    const sortedDates = Object.keys(counts).sort().slice(-7);
-    return {
-      labels: sortedDates.length > 0 ? sortedDates : ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Day 7'],
-      datasets: [{
-        label: t('Water Quality Tests Logged'),
-        data: sortedDates.length > 0 ? sortedDates.map((k) => counts[k]) : [2, 4, 3, 5, 4, 6, 8],
-        borderColor: '#0284C7',
-        backgroundColor: 'rgba(2, 132, 199, 0.15)',
-        tension: 0.35,
-        fill: true,
-        pointBackgroundColor: '#0284C7',
-        pointBorderColor: '#FFFFFF',
-        pointBorderWidth: 2,
-        pointRadius: 4,
-        pointHoverRadius: 6,
-      }]
-    };
-  }, [records, t]);
+  }, [chartRecords, chartSummary, t]);
 
   // Handle Export CSV
   const handleExportCSV = () => {
@@ -474,9 +568,9 @@ export default function WaterQualityReportsPage() {
       const phVal = parseFloat(formPh || 0);
       const salVal = parseFloat(formSalinity || 0);
       const isSafe = (doVal >= 5.0 && doVal <= 10.0) &&
-                     (tempVal >= 26.0 && tempVal <= 32.0) &&
-                     (phVal >= 7.5 && phVal <= 8.5) &&
-                     (salVal >= 15.0 && salVal <= 28.0);
+        (tempVal >= 26.0 && tempVal <= 32.0) &&
+        (phVal >= 7.5 && phVal <= 8.5) &&
+        (salVal >= 15.0 && salVal <= 28.0);
       formData.append('status', isSafe ? 'Safe' : 'Critical');
       formData.append('capture_mode', 'manual');
       formData.append('record_date', formDate);
@@ -563,16 +657,8 @@ export default function WaterQualityReportsPage() {
           </span>
         </div>
 
-        {/* Action Controls: Log Water Test, Refresh & CSV Export */}
+        {/* Action Controls: Refresh & CSV Export */}
         <div className="d-flex align-items-center gap-2 flex-wrap">
-          <button
-            type="button"
-            className="btn btn-sm btn-understated-feed d-inline-flex align-items-center gap-1.5 px-3.5 py-2 shadow-2xs hover-shadow"
-            onClick={() => setShowLogModal(true)}
-          >
-            <FaPlus size={11} /> {t('Log Water Test')}
-          </button>
-
           <button
             type="button"
             className="btn btn-sm minimal-filter-control d-inline-flex align-items-center gap-1.5 px-3 py-2 shadow-2xs hover-shadow"
@@ -694,158 +780,374 @@ export default function WaterQualityReportsPage() {
         </div>
       </div>
 
-      {/* 3. VISUAL ANALYTICS CONTAINER (Multi-View Tabs) */}
+      {/* 3. WATER QUALITY STATUS BREAKDOWN & PARAMETERS (With Pond Selector) */}
       <div className="bg-white border rounded-4 p-4 mb-4 shadow-2xs" style={{ borderColor: '#E2E8F0' }}>
         <div className="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom flex-wrap gap-2" style={{ borderColor: '#E2E8F0' }}>
-          <div>
-            <h5 className="fw-extrabold mb-1 tracking-tight text-dark" style={{ fontSize: '1.08rem' }}>
-              {activeChartTab === 'status' && t('Water Quality Status Breakdown')}
-              {activeChartTab === 'averages' && t('Pond Telemetry Parameters (DO, Temp, pH, Salinity)')}
-              {activeChartTab === 'trend' && t('Daily Water Quality Testing Cadence')}
-            </h5>
-            <p className="text-secondary mb-0 small" style={{ fontSize: '0.82rem' }}>
-              {activeChartTab === 'status' && t('Proportion of tested samples in Normal, Warning, and Critical thresholds.')}
-              {activeChartTab === 'averages' && t('Direct parameter comparison across recently tested farm aquaculture ponds.')}
-              {activeChartTab === 'trend' && t('Volume of laboratory and handheld water quality readings logged over time.')}
-            </p>
+          <div className="d-flex align-items-center gap-2.5">
+            <div
+              className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0 shadow-2xs"
+              style={{
+                width: 34,
+                height: 34,
+                background: 'linear-gradient(135deg, #E0F2FE 0%, #BAE6FD 100%)',
+                color: '#0284C7',
+                border: '1px solid #BAE6FD'
+              }}
+            >
+              <FaWater size={15} />
+            </div>
+            <div>
+              <h5 className="fw-extrabold mb-0 tracking-tight text-dark" style={{ fontSize: '1.12rem' }}>
+                {t('Water Quality Status Breakdown')}
+              </h5>
+            </div>
           </div>
 
-          {/* Toggle Tabs */}
-          <div className="d-inline-flex p-1 rounded-pill bg-light border" style={{ borderColor: '#E2E8F0' }}>
-            <button
-              type="button"
-              className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all ${
-                activeChartTab === 'status' ? 'bg-white text-dark shadow-2xs border' : 'btn-link text-secondary text-decoration-none'
-              }`}
-              style={{ fontSize: '0.78rem', borderColor: activeChartTab === 'status' ? '#E2E8F0' : 'transparent' }}
-              onClick={() => setActiveChartTab('status')}
+          {/* Pond Selector & Telemetry Tag */}
+          <div className="d-flex align-items-center gap-2.5">
+            <span
+              className="badge rounded-pill px-2.5 py-1 extra-small fw-bold d-none d-md-inline-flex align-items-center gap-1.5"
+              style={{ backgroundColor: '#F0FDF4', color: '#16A34A', border: '1px solid #BBF7D0', fontSize: '0.72rem' }}
             >
-              <FaVial size={11} className="me-1.5" />
-              {t('Status Split')}
-            </button>
-            <button
-              type="button"
-              className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all ${
-                activeChartTab === 'averages' ? 'bg-white text-dark shadow-2xs border' : 'btn-link text-secondary text-decoration-none'
-              }`}
-              style={{ fontSize: '0.78rem', borderColor: activeChartTab === 'averages' ? '#E2E8F0' : 'transparent' }}
-              onClick={() => setActiveChartTab('averages')}
-            >
-              <FaThermometerHalf size={11} className="me-1.5" />
-              {t('4 Parameters')}
-            </button>
-            <button
-              type="button"
-              className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all ${
-                activeChartTab === 'trend' ? 'bg-white text-dark shadow-2xs border' : 'btn-link text-secondary text-decoration-none'
-              }`}
-              style={{ fontSize: '0.78rem', borderColor: activeChartTab === 'trend' ? '#E2E8F0' : 'transparent' }}
-              onClick={() => setActiveChartTab('trend')}
-            >
-              <FaCalendarAlt size={11} className="me-1.5" />
-              {t('Daily Cadence')}
-            </button>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#16A34A' }}></span>
+              Telemetry Live
+            </span>
+            <div className="d-flex align-items-center gap-1.5 bg-light px-2.5 py-1 rounded-pill border" style={{ borderColor: '#CBD5E1' }}>
+              <span className="extra-small text-muted fw-bold">{t('Pond:')}</span>
+              <select
+                className="form-select form-select-sm border-0 bg-transparent p-0 extra-small fw-extrabold text-dark"
+                style={{ fontSize: '0.78rem', minWidth: 130, boxShadow: 'none', cursor: 'pointer' }}
+                value={chartPondFilter}
+                onChange={(e) => setChartPondFilter(e.target.value)}
+              >
+                <option value="all">{t('All Ponds (Fleet)')}</option>
+                {pondOptions.map((pName) => (
+                  <option key={pName} value={pName}>{pName}</option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 
-        {/* Tab 1: Status Donut */}
-        {activeChartTab === 'status' && (
-          <div className="row align-items-center g-4">
-            <div className="col-12 col-md-5 d-flex justify-content-center">
-              <div style={{ width: '220px', height: '220px', position: 'relative' }}>
-                <Doughnut
-                  data={statusDoughnutData}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    cutout: '74%',
-                  }}
-                />
-                <div
-                  className="position-absolute top-50 start-50 translate-middle text-center"
-                  style={{ pointerEvents: 'none' }}
+        {/* Combined Section: Status Breakdown & 4 Parameters */}
+        <div className="row g-4 align-items-stretch">
+          {/* Left: Overall Water Quality Score Card */}
+          <div className="col-12 col-xl-4 col-lg-5">
+            <div
+              className="p-3.5 rounded-4 border bg-white h-100 d-flex flex-column justify-content-between"
+              style={{
+                borderColor: '#E2E8F0',
+                background: 'linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%)',
+                boxShadow: '0 2px 10px rgba(0, 0, 0, 0.03)'
+              }}
+            >
+              {/* Header */}
+              <div className="text-center mb-1">
+                <span
+                  className="extra-small fw-extrabold text-uppercase text-secondary"
+                  style={{ fontSize: '0.75rem', letterSpacing: '0.08em' }}
                 >
-                  <span className="d-block fw-extrabold text-dark" style={{ fontSize: '1.4rem', lineHeight: 1 }}>
-                    {summary.total}
+                  {t('OVERALL WATER QUALITY SCORE')}
+                </span>
+              </div>
+
+              {/* Semicircular Radial Gauge */}
+              <div className="position-relative d-flex justify-content-center align-items-center my-auto py-1">
+                <svg viewBox="0 0 240 135" style={{ width: '100%', maxWidth: 240, height: 'auto', display: 'block' }}>
+                  <defs>
+                    <linearGradient id="scoreGaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor={parameterAnalysis.gradientColors[0]} />
+                      <stop offset="60%" stopColor={parameterAnalysis.gradientColors[1]} />
+                      <stop offset="100%" stopColor={parameterAnalysis.gradientColors[1]} />
+                    </linearGradient>
+                    <filter id="gaugeGlow" x="-20%" y="-20%" width="140%" height="140%">
+                      <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor={parameterAnalysis.ratingColor} floodOpacity="0.25" />
+                    </filter>
+                  </defs>
+                  {/* Background track */}
+                  <path
+                    d="M 32,122 A 88,88 0 0,1 208,122"
+                    fill="none"
+                    stroke="#EEF2F6"
+                    strokeWidth="16"
+                    strokeLinecap="round"
+                  />
+                  {/* Active foreground arc */}
+                  <path
+                    d="M 32,122 A 88,88 0 0,1 208,122"
+                    fill="none"
+                    stroke="url(#scoreGaugeGrad)"
+                    strokeWidth="16"
+                    strokeLinecap="round"
+                    strokeDasharray="276.46"
+                    strokeDashoffset={276.46 * (1 - Math.max(0, Math.min(100, parameterAnalysis.score)) / 100)}
+                    filter="url(#gaugeGlow)"
+                    style={{ transition: 'stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1)' }}
+                  />
+                </svg>
+
+                {/* Gauge Inner Content */}
+                <div
+                  className="position-absolute d-flex flex-column align-items-center justify-content-center text-center"
+                  style={{ top: '26px', left: 0, right: 0, pointerEvents: 'none' }}
+                >
+                  <div
+                    className="rounded-circle d-flex align-items-center justify-content-center mb-1 shadow-2xs"
+                    style={{
+                      width: 30,
+                      height: 30,
+                      background: 'linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)',
+                      color: '#D97706',
+                      border: '1.5px solid #FCD34D',
+                      boxShadow: '0 2px 6px rgba(217, 119, 6, 0.25)'
+                    }}
+                  >
+                    <FaAward size={15} />
+                  </div>
+                  <span className="fw-extrabold text-dark lh-1" style={{ fontSize: '2.25rem', letterSpacing: '-0.03em' }}>
+                    {parameterAnalysis.score}%
                   </span>
-                  <span className="extra-small text-muted">{t('Total Tests')}</span>
+                  <span
+                    className="fw-extrabold text-uppercase mt-1"
+                    style={{ fontSize: '0.86rem', letterSpacing: '0.06em', color: parameterAnalysis.ratingColor }}
+                  >
+                    {parameterAnalysis.ratingText}
+                  </span>
+                  <span className="extra-small text-muted text-uppercase fw-bold" style={{ fontSize: '0.64rem', letterSpacing: '0.12em' }}>
+                    {t('OVERALL QUALITY')}
+                  </span>
+                </div>
+              </div>
+
+              {/* Total Tests & Category Pills */}
+              <div className="mt-2 pt-2 border-top" style={{ borderColor: '#E2E8F0' }}>
+                <div className="text-center py-1 rounded-pill border bg-white mb-2 shadow-2xs" style={{ borderColor: '#E2E8F0' }}>
+                  <span className="extra-small fw-extrabold text-dark tracking-wide" style={{ fontSize: '0.76rem' }}>
+                    {t('TOTAL TESTS')}: <span className="text-primary">{chartSummary.total}</span>
+                  </span>
+                </div>
+
+                <div className="d-flex align-items-center justify-content-between gap-1.5">
+                  {/* Normal */}
+                  <div
+                    className="flex-fill rounded-pill py-1 px-1.5 border d-flex align-items-center justify-content-center gap-1.5 shadow-2xs"
+                    style={{ backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' }}
+                  >
+                    <span
+                      className="badge rounded-circle p-0 d-flex align-items-center justify-content-center text-white fw-bold"
+                      style={{ width: 19, height: 19, backgroundColor: '#10B981', fontSize: '0.70rem' }}
+                    >
+                      {chartSummary.normalCount}
+                    </span>
+                    <span className="extra-small fw-bold text-success" style={{ fontSize: '0.70rem' }}>
+                      {t('Normal')}
+                    </span>
+                  </div>
+
+                  {/* Warning */}
+                  <div
+                    className="flex-fill rounded-pill py-1 px-1.5 border d-flex align-items-center justify-content-center gap-1.5 shadow-2xs"
+                    style={{ backgroundColor: '#FFFBEB', borderColor: '#FDE68A' }}
+                  >
+                    <span
+                      className="badge rounded-circle p-0 d-flex align-items-center justify-content-center text-white fw-bold"
+                      style={{ width: 19, height: 19, backgroundColor: '#F59E0B', fontSize: '0.70rem' }}
+                    >
+                      {chartSummary.warningCount}
+                    </span>
+                    <span className="extra-small fw-bold" style={{ color: '#D97706', fontSize: '0.70rem' }}>
+                      {t('Warning')}
+                    </span>
+                  </div>
+
+                  {/* Critical */}
+                  <div
+                    className="flex-fill rounded-pill py-1 px-1.5 border d-flex align-items-center justify-content-center gap-1.5 shadow-2xs"
+                    style={{ backgroundColor: '#FEF2F2', borderColor: '#FECACA' }}
+                  >
+                    <span
+                      className="badge rounded-circle p-0 d-flex align-items-center justify-content-center text-white fw-bold"
+                      style={{ width: 19, height: 19, backgroundColor: '#EF4444', fontSize: '0.70rem' }}
+                    >
+                      {chartSummary.criticalCount}
+                    </span>
+                    <span className="extra-small fw-bold text-danger" style={{ fontSize: '0.70rem' }}>
+                      {t('Critical')}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
-            <div className="col-12 col-md-7">
-              <div className="d-flex flex-column gap-2.5">
-                <div className="p-2.5 rounded-3 border d-flex justify-content-between align-items-center bg-light">
-                  <div className="d-flex align-items-center gap-2">
-                    <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#10B981' }}></span>
-                    <span className="small fw-bold text-dark">{t('Normal (Standard Safe Thresholds)')}</span>
+          </div>
+
+          {/* Right: 4 Parameters Grid */}
+          <div className="col-12 col-xl-8 col-lg-7">
+            <div className="row g-3 h-100">
+              {parameterAnalysis.parameters.map((param) => {
+                const ParamIcon = param.Icon;
+                return (
+                  <div key={param.id} className="col-12 col-sm-6">
+                    <div
+                      className="p-3.5 rounded-4 border bg-white h-100 d-flex flex-column justify-content-between transition-all"
+                      style={{
+                        borderColor: '#E2E8F0',
+                        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.03)',
+                        transition: 'all 0.2s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.boxShadow = '0 8px 20px rgba(0, 0, 0, 0.06)';
+                        e.currentTarget.style.borderColor = '#CBD5E1';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.03)';
+                        e.currentTarget.style.borderColor = '#E2E8F0';
+                      }}
+                    >
+                      {/* Top: Icon, Title, Target & Avg badge */}
+                      <div className="d-flex align-items-center justify-content-between mb-2.5">
+                        <div className="d-flex align-items-center gap-2.5">
+                          <div
+                            className="rounded-3 d-flex align-items-center justify-content-center shadow-2xs flex-shrink-0"
+                            style={{
+                              width: 38,
+                              height: 38,
+                              backgroundColor: param.iconBg,
+                              color: param.iconColor,
+                              border: '1px solid rgba(0,0,0,0.05)',
+                              borderRadius: 12
+                            }}
+                          >
+                            <ParamIcon size={18} />
+                          </div>
+                          <div>
+                            <div className="d-flex align-items-baseline gap-1.5">
+                              <span className="fw-extrabold text-dark" style={{ fontSize: '1.02rem', letterSpacing: '-0.01em' }}>
+                                {param.title}
+                              </span>
+                              <span className="extra-small text-muted fw-bold">
+                                ({param.unit})
+                              </span>
+                            </div>
+                            <div className="extra-small text-muted fw-medium" style={{ fontSize: '0.72rem' }}>
+                              Target: <span className="fw-bold text-dark">{param.target}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-end">
+                          <span
+                            className="badge rounded-pill px-2.5 py-1 extra-small fw-bold border bg-light text-dark shadow-2xs"
+                            style={{ borderColor: '#E2E8F0', fontSize: '0.74rem' }}
+                          >
+                            Avg: <span className="fw-extrabold text-primary">{param.avg}</span>
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Middle: Segmented Progress Bar with Numbers Inside */}
+                      <div className="my-2.5">
+                        <div
+                          className="w-100 rounded-pill overflow-hidden d-flex"
+                          style={{
+                            height: '28px',
+                            backgroundColor: '#EEF2F6',
+                            boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.06)',
+                            padding: '2.5px',
+                            gap: '2px'
+                          }}
+                        >
+                          {param.total > 0 ? (
+                            <>
+                              {param.normal > 0 && (
+                                <div
+                                  className="h-100 rounded-pill d-flex align-items-center justify-content-center text-white fw-bold extra-small"
+                                  style={{
+                                    width: `${(param.normal / param.total) * 100}%`,
+                                    background: 'linear-gradient(180deg, #10B981 0%, #059669 100%)',
+                                    boxShadow: '0 1px 3px rgba(16, 185, 129, 0.35)',
+                                    fontSize: '0.82rem',
+                                    minWidth: 26,
+                                    transition: 'width 0.4s ease'
+                                  }}
+                                  title={`${param.normal} ${t('Normal')}`}
+                                >
+                                  {param.normal}
+                                </div>
+                              )}
+                              {param.warning > 0 && (
+                                <div
+                                  className="h-100 rounded-pill d-flex align-items-center justify-content-center text-white fw-bold extra-small"
+                                  style={{
+                                    width: `${(param.warning / param.total) * 100}%`,
+                                    background: 'linear-gradient(180deg, #F59E0B 0%, #D97706 100%)',
+                                    boxShadow: '0 1px 3px rgba(245, 158, 11, 0.35)',
+                                    fontSize: '0.82rem',
+                                    minWidth: 26,
+                                    transition: 'width 0.4s ease'
+                                  }}
+                                  title={`${param.warning} ${t('Warning')}`}
+                                >
+                                  {param.warning}
+                                </div>
+                              )}
+                              {param.critical > 0 && (
+                                <div
+                                  className="h-100 rounded-pill d-flex align-items-center justify-content-center text-white fw-bold extra-small"
+                                  style={{
+                                    width: `${(param.critical / param.total) * 100}%`,
+                                    background: 'linear-gradient(180deg, #EF4444 0%, #DC2626 100%)',
+                                    boxShadow: '0 1px 3px rgba(239, 68, 68, 0.35)',
+                                    fontSize: '0.82rem',
+                                    minWidth: 26,
+                                    transition: 'width 0.4s ease'
+                                  }}
+                                  title={`${param.critical} ${t('Critical')}`}
+                                >
+                                  {param.critical}
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <div className="w-100 h-100 d-flex align-items-center justify-content-center extra-small text-muted fw-bold">
+                              {t('No readings')}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Bottom: Summary caption & status tag */}
+                      <div className="d-flex align-items-center justify-content-between mt-1">
+                        <span className="extra-small text-muted fw-semibold" style={{ fontSize: '0.76rem' }}>
+                          {param.summaryText}
+                        </span>
+                        <span
+                          className="badge rounded-pill extra-small px-2.5 py-0.5 fw-bold d-inline-flex align-items-center gap-1.5"
+                          style={{
+                            backgroundColor: param.critical > 0 ? '#FEF2F2' : param.warning > 0 ? '#FFFBEB' : '#ECFDF5',
+                            color: param.critical > 0 ? '#DC2626' : param.warning > 0 ? '#D97706' : '#059669',
+                            border: `1px solid ${param.critical > 0 ? '#FECACA' : param.warning > 0 ? '#FDE68A' : '#A7F3D0'}`,
+                            fontSize: '0.70rem'
+                          }}
+                        >
+                          <span
+                            style={{
+                              width: 6,
+                              height: 6,
+                              borderRadius: '50%',
+                              backgroundColor: param.critical > 0 ? '#EF4444' : param.warning > 0 ? '#F59E0B' : '#10B981'
+                            }}
+                          ></span>
+                          {param.critical > 0 ? t('Action Needed') : param.warning > 0 ? t('Watch List') : t('Optimal')}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <span className="badge rounded-pill bg-white text-success border px-2.5 py-1 fw-bold">
-                    {summary.normalCount} {t('tests')}
-                  </span>
-                </div>
-                <div className="p-2.5 rounded-3 border d-flex justify-content-between align-items-center bg-light">
-                  <div className="d-flex align-items-center gap-2">
-                    <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#F59E0B' }}></span>
-                    <span className="small fw-bold text-dark">{t('Warning (Suboptimal / Borderline)')}</span>
-                  </div>
-                  <span className="badge rounded-pill bg-white text-warning border px-2.5 py-1 fw-bold">
-                    {summary.warningCount} {t('tests')}
-                  </span>
-                </div>
-                <div className="p-2.5 rounded-3 border d-flex justify-content-between align-items-center bg-light">
-                  <div className="d-flex align-items-center gap-2">
-                    <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#EF4444' }}></span>
-                    <span className="small fw-bold text-dark">{t('Critical (Requires Immediate Action)')}</span>
-                  </div>
-                  <span className="badge rounded-pill bg-white text-danger border px-2.5 py-1 fw-bold">
-                    {summary.criticalCount} {t('tests')}
-                  </span>
-                </div>
-              </div>
+                );
+              })}
             </div>
           </div>
-        )}
-
-        {/* Tab 2: 4 Parameters Bar Chart */}
-        {activeChartTab === 'averages' && (
-          <div style={{ height: '240px' }}>
-            <Bar
-              data={parameterComparisonData}
-              options={{
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                  legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11, family: "'Poppins', sans-serif" } } }
-                },
-                scales: {
-                  y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
-                  x: { grid: { display: false } },
-                }
-              }}
-            />
-          </div>
-        )}
-
-        {/* Tab 3: Daily Cadence Line Chart */}
-        {activeChartTab === 'trend' && (
-          <div style={{ height: '240px' }}>
-            <Line
-              data={trendLineData}
-              options={{
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                  legend: { display: false }
-                },
-                scales: {
-                  y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: 'rgba(0,0,0,0.05)' } },
-                  x: { grid: { display: false } }
-                }
-              }}
-            />
-          </div>
-        )}
+        </div>
       </div>
 
       {/* 4. WATER QUALITY REPORTS TABLE SECTION */}

@@ -123,6 +123,9 @@ export default function AdminDashboard() {
 
   // Feed Chart Display Type: 'by_pond' (Y-Axis Pond Names, X-Axis Date, hover kg) | 'wave_trend' (Inspo Dual Bar + Wave)
   const [feedChartDisplayType, setFeedChartDisplayType] = useState('by_pond');
+  const [byPondVisualType, setByPondVisualType] = useState('chart'); // 'chart' | 'table'
+  const [selectedThreatPond, setSelectedThreatPond] = useState('all');
+  const [hoveredThreatIndex, setHoveredThreatIndex] = useState(null);
   const [hoveredPondCell, setHoveredPondCell] = useState(null);
   const [isIdlePondsOpen, setIsIdlePondsOpen] = useState(false);
 
@@ -538,18 +541,18 @@ export default function AdminDashboard() {
 
   // Color palette for dates and ponds (Navy & Orange brand theme with harmonized complementary tones)
   const feedColorPalette = [
-    '#FC563C', // Deep Navy
-    '#FC563C', // Sky Blue
-    '#06B6D4', // Vibrant Cyan
-    '#0D9488', // Teal
+    '#FC563C', // Primary Coral
+    '#0284C7', // Sky Blue
     '#10B981', // Emerald Green
-    '#84CC16', // Lime Green
-    '#EAB308', // Amber / Gold
-    '#F97316', // Warm Orange
-    '#FC563C', // Vibrant Coral / Primary Orange
+    '#F59E0B', // Amber Gold
     '#8B5CF6', // Purple
-    '#EC4899', // Pink
+    '#172A39', // Deep Navy
+    '#0D9488', // Teal
+    '#EC4899', // Rose Pink
     '#6366F1', // Indigo
+    '#F97316', // Bright Orange
+    '#14B8A6', // Bright Teal
+    '#64748B', // Slate
   ];
 
   // Dynamic vibrant gradients for the horizontal bar graph matching user uploaded layout:
@@ -606,7 +609,13 @@ export default function AdminDashboard() {
       });
     }
 
-    const rows = pondList.map((p) => {
+    const sortedPondList = [...pondList].sort((a, b) => {
+      const nameA = (a.pond_name || a.name || `Pond #${a.id}`).trim();
+      const nameB = (b.pond_name || b.name || `Pond #${b.id}`).trim();
+      return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
+    });
+
+    const rows = sortedPondList.map((p) => {
       const pId = String(p.id);
       const pName = (p.pond_name || p.name || `Pond #${p.id}`).trim();
       const cleanPName = pName.toLowerCase();
@@ -1114,23 +1123,23 @@ export default function AdminDashboard() {
             usePointStyle: true,
             pointStyle: 'rectRounded',
             font: { size: 10.5, weight: '700', family: "'Poppins', sans-serif" },
-            color: '#FC563C',
+            color: isDark ? '#CBD5E1' : '#475569',
             padding: 10,
           },
         },
         tooltip: {
           enabled: true,
-          backgroundColor: '#FC563C',
-          titleColor: '#FFFFFF',
-          bodyColor: '#6E7575',
+          backgroundColor: '#0F172A',
+          titleColor: '#94A3B8',
+          bodyColor: '#FFFFFF',
           footerColor: '#FC563C',
-          titleFont: { size: 12, weight: '700', family: "'Poppins', sans-serif" },
-          bodyFont: { size: 12, weight: '600', family: "'Poppins', sans-serif" },
-          footerFont: { size: 11, weight: '700', family: "'Poppins', sans-serif" },
-          borderColor: 'rgba(252, 86, 60, 0.35)',
-          borderWidth: 1.5,
+          titleFont: { size: 11, weight: '600', family: "'Poppins', sans-serif" },
+          bodyFont: { size: 12.5, weight: '700', family: "'Poppins', sans-serif" },
+          footerFont: { size: 11.5, weight: '700', family: "'Poppins', sans-serif" },
+          borderColor: 'rgba(255, 255, 255, 0.12)',
+          borderWidth: 1,
           padding: 12,
-          cornerRadius: 10,
+          cornerRadius: 8,
           callbacks: {
             label: (context) => {
               const labelName = context.dataset.label || '';
@@ -1143,7 +1152,7 @@ export default function AdminDashboard() {
                 const val = isHorizontal ? curr.parsed.x : curr.parsed.y;
                 return acc + (val || 0);
               }, 0);
-              return `Total: ${sum.toFixed(2)} kg`;
+              return `Total: ${sum.toFixed(1)} kg`;
             },
           },
         },
@@ -1226,7 +1235,7 @@ export default function AdminDashboard() {
           if (item.id) next.add(String(item.id));
           try {
             localStorage.setItem('shrim_isolated_ponds_v3', JSON.stringify(Array.from(next)));
-          } catch {}
+          } catch { }
           return next;
         });
 
@@ -1266,7 +1275,7 @@ export default function AdminDashboard() {
           }
           try {
             localStorage.setItem('shrim_isolated_ponds_v3', JSON.stringify(Array.from(next)));
-          } catch {}
+          } catch { }
           return next;
         });
 
@@ -1312,6 +1321,72 @@ export default function AdminDashboard() {
       return item.risk === diseaseFilter;
     });
   }, [filteredDiseaseReports, allDiseaseReports, diseaseFilter, selectedCaretakerId, selectedPondFilter, searchQuery, dateFilterType]);
+
+  // Pond Health & Risk Breakdown Summary (with Pond Picker)
+  const threatSummary = useMemo(() => {
+    const sourceReports = allDiseaseReports.length > 0 ? allDiseaseReports : filteredDiseaseReports;
+    const list = selectedThreatPond === 'all'
+      ? sourceReports
+      : sourceReports.filter((r) => (r.pond_name || '').toLowerCase() === selectedThreatPond.toLowerCase());
+
+    let low = 0, medium = 0, high = 0;
+    list.forEach((r) => {
+      const rl = (r.risk_level || '').toLowerCase();
+      const dn = (r.disease_name || '').toLowerCase();
+      if (['high', 'critical'].includes(rl) || dn.includes('wsd') || dn.includes('white spot')) high++;
+      else if (['medium', 'moderate', 'warning'].includes(rl)) medium++;
+      else low++;
+    });
+
+    return { total: list.length, low, medium, high };
+  }, [allDiseaseReports, filteredDiseaseReports, selectedThreatPond]);
+
+  const activeThreatItem = useMemo(() => {
+    const total = threatSummary.total || 0;
+    if (hoveredThreatIndex === 0) {
+      const pct = total > 0 ? Math.round((threatSummary.low / total) * 100) : 0;
+      return { count: threatSummary.low, label: t('Safe & Healthy'), pct, color: '#10B981' };
+    }
+    if (hoveredThreatIndex === 1) {
+      const pct = total > 0 ? Math.round((threatSummary.medium / total) * 100) : 0;
+      return { count: threatSummary.medium, label: t('Moderate Risk'), pct, color: '#64748B' };
+    }
+    if (hoveredThreatIndex === 2) {
+      const pct = total > 0 ? Math.round((threatSummary.high / total) * 100) : 0;
+      return { count: threatSummary.high, label: t('Critical Risk'), pct, color: '#FC563C' };
+    }
+    return null;
+  }, [hoveredThreatIndex, threatSummary, t]);
+
+  const threatDoughnutData = useMemo(() => ({
+    labels: [t('Safe & Healthy'), t('Moderate Risk'), t('Critical Risk')],
+    datasets: [{
+      data: [threatSummary.low || 0, threatSummary.medium || 0, threatSummary.high || 0],
+      backgroundColor: ['#10B981', '#6E7575', '#FC563C'],
+      borderWidth: 2,
+      borderColor: isDark ? 'rgba(30, 41, 59, 0.8)' : '#FFFFFF',
+      hoverOffset: 8,
+    }],
+  }), [threatSummary, isDark, t]);
+
+  const threatDoughnutOptions = useMemo(() => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    onHover: (event, activeElements) => {
+      if (activeElements && activeElements.length > 0) {
+        setHoveredThreatIndex(activeElements[0].index);
+      } else {
+        setHoveredThreatIndex(null);
+      }
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        enabled: false,
+      }
+    },
+    cutout: '72%',
+  }), []);
 
   return (
     <div className="admin-dashboard-container">
@@ -1772,9 +1847,8 @@ export default function AdminDashboard() {
                       <div className="d-flex align-items-center gap-1 p-1 rounded-pill border flex-nowrap overflow-x-auto custom-scrollbar" style={{ borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#E2E8F0', backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : '#F8FAFC', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', maxWidth: '100%' }}>
                         <button
                           type="button"
-                          className={`btn btn-sm rounded-pill px-2.5 py-0.5 extra-small fw-bold transition-all ${
-                            pondStatusFilter === 'all' ? 'text-white shadow-xs' : (isDark ? 'text-white-50 border-0 bg-transparent' : 'text-secondary border-0 bg-transparent')
-                          }`}
+                          className={`btn btn-sm rounded-pill px-2.5 py-0.5 extra-small fw-bold transition-all ${pondStatusFilter === 'all' ? 'text-white shadow-xs' : (isDark ? 'text-white-50 border-0 bg-transparent' : 'text-secondary border-0 bg-transparent')
+                            }`}
                           style={pondStatusFilter === 'all' ? { backgroundColor: isDark ? '#FC563C' : '#172A39', borderColor: isDark ? '#FC563C' : '#172A39' } : undefined}
                           onClick={() => setPondStatusFilter('all')}
                         >
@@ -1782,27 +1856,24 @@ export default function AdminDashboard() {
                         </button>
                         <button
                           type="button"
-                          className={`btn btn-sm rounded-pill px-2.5 py-0.5 extra-small fw-bold transition-all ${
-                            pondStatusFilter === 'healthy' ? 'btn-success text-white shadow-xs' : (isDark ? 'text-white-50 border-0 bg-transparent' : 'text-secondary border-0 bg-transparent')
-                          }`}
+                          className={`btn btn-sm rounded-pill px-2.5 py-0.5 extra-small fw-bold transition-all ${pondStatusFilter === 'healthy' ? 'btn-success text-white shadow-xs' : (isDark ? 'text-white-50 border-0 bg-transparent' : 'text-secondary border-0 bg-transparent')
+                            }`}
                           onClick={() => setPondStatusFilter(pondStatusFilter === 'healthy' ? 'all' : 'healthy')}
                         >
                           ● {t('Healthy')} ({healthyCount})
                         </button>
                         <button
                           type="button"
-                          className={`btn btn-sm rounded-pill px-2.5 py-0.5 extra-small fw-bold transition-all ${
-                            pondStatusFilter === 'warning' ? 'btn-warning text-white shadow-xs' : (isDark ? 'text-white-50 border-0 bg-transparent' : 'text-secondary border-0 bg-transparent')
-                          }`}
+                          className={`btn btn-sm rounded-pill px-2.5 py-0.5 extra-small fw-bold transition-all ${pondStatusFilter === 'warning' ? 'btn-warning text-white shadow-xs' : (isDark ? 'text-white-50 border-0 bg-transparent' : 'text-secondary border-0 bg-transparent')
+                            }`}
                           onClick={() => setPondStatusFilter(pondStatusFilter === 'warning' ? 'all' : 'warning')}
                         >
                           ● {t('Warning')} ({warningCount})
                         </button>
                         <button
                           type="button"
-                          className={`btn btn-sm rounded-pill px-2.5 py-0.5 extra-small fw-bold transition-all ${
-                            pondStatusFilter === 'critical' ? 'btn-danger text-white shadow-xs' : (isDark ? 'text-white-50 border-0 bg-transparent' : 'text-secondary border-0 bg-transparent')
-                          }`}
+                          className={`btn btn-sm rounded-pill px-2.5 py-0.5 extra-small fw-bold transition-all ${pondStatusFilter === 'critical' ? 'btn-danger text-white shadow-xs' : (isDark ? 'text-white-50 border-0 bg-transparent' : 'text-secondary border-0 bg-transparent')
+                            }`}
                           onClick={() => setPondStatusFilter(pondStatusFilter === 'critical' ? 'all' : 'critical')}
                         >
                           ● {t('Critical')} ({criticalCount})
@@ -2333,7 +2404,7 @@ export default function AdminDashboard() {
                 <span className="text-muted extra-small d-none d-sm-inline">
                   {dashboardTab === 'chart' && t('Daily feed consumption trends across ponds')}
                   {dashboardTab === 'logs' && t('Detailed time-slot feed entries and additives')}
-                  {dashboardTab === 'detections' && t('AI vision scans and pond health alerts')}
+                  {dashboardTab === 'detections' && t('Overview of safe, moderate, and critical disease risks across monitored ponds.')}
                 </span>
               </div>
 
@@ -2363,8 +2434,8 @@ export default function AdminDashboard() {
                   onClick={() => setDashboardTab('detections')}
                 >
                   <FaShieldAlt className="me-1" />
-                  <span className="d-none d-md-inline">{t('Recent Detection Activity')}</span>
-                  <span className="d-inline d-md-none">{t('AI Scans')}</span>
+                  <span className="d-none d-md-inline">{t('Pond Health & Threat Status')}</span>
+                  <span className="d-inline d-md-none">{t('Health Status')}</span>
                 </button>
               </div>
             </div>
@@ -2496,12 +2567,52 @@ export default function AdminDashboard() {
                         minHeight: 380,
                       }}
                     >
-                      {/* Card Header with Title, Legend & View Mode Toggles */}
+                      {/* Card Header with Title, Sub-view Toggle & View Mode Toggles */}
                       <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-                        <div>
+                        <div className="d-flex align-items-center gap-2 flex-wrap">
                           <h6 className="fw-extrabold text-dark mb-0" style={{ fontSize: '1.05rem', letterSpacing: '-0.01em' }}>
                             {t('Daily Feed Consumption')}
                           </h6>
+
+                          {/* Sub-view toggle when in By Pond mode */}
+                          {feedChartDisplayType === 'by_pond' && (
+                            <div className="d-inline-flex p-0.5 rounded-pill bg-light border ms-1" style={{ borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E2E8F0' }}>
+                              <button
+                                type="button"
+                                className={`btn btn-xs rounded-pill px-2.5 py-0.5 extra-small fw-bold transition-all ${byPondVisualType === 'chart'
+                                  ? 'shadow-2xs border'
+                                  : 'text-muted border-0 bg-transparent'
+                                  }`}
+                                style={{
+                                  fontSize: '0.70rem',
+                                  borderColor: byPondVisualType === 'chart' ? (isDark ? 'rgba(255,255,255,0.15)' : '#E2E8F0') : 'transparent',
+                                  backgroundColor: byPondVisualType === 'chart' ? (isDark ? '#334155' : '#FFFFFF') : 'transparent',
+                                  color: byPondVisualType === 'chart' ? (isDark ? '#FFFFFF' : '#0F172A') : undefined,
+                                }}
+                                onClick={() => setByPondVisualType('chart')}
+                              >
+                                <FaChartBar size={10} className="me-1" style={{ color: '#FC563C' }} />
+                                {t('Bar Graph')}
+                              </button>
+                              <button
+                                type="button"
+                                className={`btn btn-xs rounded-pill px-2.5 py-0.5 extra-small fw-bold transition-all ${byPondVisualType === 'table'
+                                  ? 'shadow-2xs border'
+                                  : 'text-muted border-0 bg-transparent'
+                                  }`}
+                                style={{
+                                  fontSize: '0.70rem',
+                                  borderColor: byPondVisualType === 'table' ? (isDark ? 'rgba(255,255,255,0.15)' : '#E2E8F0') : 'transparent',
+                                  backgroundColor: byPondVisualType === 'table' ? (isDark ? '#334155' : '#FFFFFF') : 'transparent',
+                                  color: byPondVisualType === 'table' ? (isDark ? '#FFFFFF' : '#0F172A') : undefined,
+                                }}
+                                onClick={() => setByPondVisualType('table')}
+                              >
+                                <span className="me-1">📋</span>
+                                {t('Visual Table')}
+                              </button>
+                            </div>
+                          )}
                         </div>
 
                         <div className="d-flex align-items-center gap-3 flex-wrap">
@@ -2521,27 +2632,25 @@ export default function AdminDashboard() {
                           <div className="d-flex align-items-center p-0.5 rounded-pill bg-light border" style={{ borderColor: '#E2E8F0' }}>
                             <button
                               type="button"
-                              className={`btn btn-xs rounded-pill px-2.5 py-0.5 extra-small fw-bold transition-all ${
-                                feedChartDisplayType === 'by_pond'
-                                  ? 'text-white shadow-2xs'
-                                  : 'text-muted border-0 bg-transparent'
-                              }`}
+                              className={`btn btn-xs rounded-pill px-2.5 py-0.5 extra-small fw-bold transition-all ${feedChartDisplayType === 'by_pond'
+                                ? 'text-white shadow-2xs'
+                                : 'text-muted border-0 bg-transparent'
+                                }`}
                               style={{
                                 backgroundColor: feedChartDisplayType === 'by_pond' ? '#FC563C' : 'transparent',
                                 fontSize: '0.72rem',
                               }}
                               onClick={() => setFeedChartDisplayType('by_pond')}
-                              title="Y-axis displays Pond Names, X-axis displays Date, hover shows kg"
+                              title="Pond feed consumption partitioned across dates"
                             >
-                              {t('By Pond (Y-Axis)')}
+                              {t('By Pond')}
                             </button>
                             <button
                               type="button"
-                              className={`btn btn-xs rounded-pill px-2.5 py-0.5 extra-small fw-bold transition-all ${
-                                feedChartDisplayType === 'wave_trend'
-                                  ? 'text-white shadow-2xs'
-                                  : 'text-muted border-0 bg-transparent'
-                              }`}
+                              className={`btn btn-xs rounded-pill px-2.5 py-0.5 extra-small fw-bold transition-all ${feedChartDisplayType === 'wave_trend'
+                                ? 'text-white shadow-2xs'
+                                : 'text-muted border-0 bg-transparent'
+                                }`}
                               style={{
                                 backgroundColor: feedChartDisplayType === 'wave_trend' ? '#172A39' : 'transparent',
                                 fontSize: '0.72rem',
@@ -2555,236 +2664,200 @@ export default function AdminDashboard() {
                         </div>
                       </div>
 
-                      {/* VIEW 1: Y-AXIS POND NAMES, X-AXIS DATE, HOVER TOOLTIP SHOWS KG */}
+                      {/* VIEW 1: BY POND */}
                       {feedChartDisplayType === 'by_pond' && (
-                        <div className="position-relative feed-pond-matrix-view flex-grow-1 d-flex flex-column justify-content-between" style={{ minHeight: 290 }}>
-                          {/* Floating Tooltip matching inspiration black capsule */}
-                          {hoveredPondCell && (
+                        <div className="position-relative flex-grow-1 d-flex flex-column justify-content-between" style={{ minHeight: 330 }}>
+                          {byPondVisualType === 'chart' ? (
+                            /* Sub-View A: True Horizontal Bar Graph (Y-Axis = Ponds, X-Axis = Feed kg) */
                             <div
-                              className="position-absolute shadow-lg transition-all pe-none"
+                              className="position-relative flex-grow-1 d-flex flex-column justify-content-center p-1"
                               style={{
-                                left: `${hoveredPondCell.xPct}%`,
-                                top: `${Math.max(10, hoveredPondCell.yPx - 52)}px`,
-                                transform: 'translateX(-50%)',
-                                zIndex: 100,
-                                backgroundColor: '#0F172A',
-                                color: '#FFFFFF',
-                                borderRadius: '7px',
-                                padding: '6px 12px',
-                                fontSize: '0.80rem',
-                                fontWeight: 700,
-                                whiteSpace: 'nowrap',
-                                boxShadow: '0 6px 18px rgba(0,0,0,0.35)',
-                                pointerEvents: 'none',
+                                minHeight: Math.max(300, (feedHorizontalGridData.rows.length || 5) * 44 + 65),
                               }}
                             >
-                              <div>{hoveredPondCell.dateLabel}: {hoveredPondCell.amount.toFixed(1)} kg</div>
-                              <div className="extra-small opacity-75 fw-normal" style={{ fontSize: '0.70rem' }}>
-                                {hoveredPondCell.pondName} {hoveredPondCell.cycles > 0 ? `• ${hoveredPondCell.cycles} Runs` : ''}
-                              </div>
-                              {/* Downward triangle pointer */}
-                              <div
-                                style={{
-                                  position: 'absolute',
-                                  bottom: -5,
-                                  left: '50%',
-                                  transform: 'translateX(-50%)',
-                                  width: 0,
-                                  height: 0,
-                                  borderLeft: '5px solid transparent',
-                                  borderRight: '5px solid transparent',
-                                  borderTop: '5px solid #0F172A',
-                                }}
-                              />
+                              <Bar data={feedChart} options={feedChartOptions} />
                             </div>
-                          )}
-
-                          {/* Mobile Swipe Hint */}
-                          <div className="d-block d-md-none text-center text-muted extra-small mb-1 font-monospace" style={{ fontSize: '0.68rem' }}>
-                            {t('← Swipe horizontally to inspect dates →')}
-                          </div>
-                          {/* Grid Board */}
-                          <div
-                            className="rounded-2 p-2.5 flex-grow-1"
-                            style={{
-                              backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(248, 250, 252, 0.65)',
-                              border: isDark ? '1px solid rgba(255,255,255,0.05)' : '1px solid #F1F5F9',
-                              overflowX: 'auto',
-                              WebkitOverflowScrolling: 'touch',
-                            }}
-                          >
-                            <div style={{ minWidth: 460 }}>
-                            {/* Pond Rows */}
-                            {feedHorizontalGridData.rows.length === 0 ? (
-                              <div className="text-center py-5 text-muted extra-small">
-                                {t('No feeding records available for current filter')}
-                              </div>
-                            ) : (
-                              feedHorizontalGridData.rows.map((row, rIdx) => {
-                                const rowMinHeight = feedHorizontalGridData.rows.length <= 4 ? 48 : 40;
-                                const barContainerHeight = feedHorizontalGridData.rows.length <= 4 ? 44 : 38;
-
-                                return (
-                                  <div
-                                    key={row.pondId}
-                                    className="d-flex align-items-center py-1 border-bottom"
+                          ) : (
+                            /* Sub-View B: Modern Executive Visual Matrix Table */
+                            <div
+                              className="rounded-3 border overflow-hidden flex-grow-1 d-flex flex-column shadow-2xs"
+                              style={{
+                                borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0',
+                                backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                              }}
+                            >
+                              <div
+                                className="table-responsive flex-grow-1"
+                                style={{
+                                  WebkitOverflowScrolling: 'touch',
+                                  maxHeight: '330px',
+                                  overflowY: 'auto'
+                                }}
+                              >
+                                <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.82rem' }}>
+                                  <thead
+                                    className="sticky-top shadow-2xs"
                                     style={{
-                                      borderColor: isDark ? 'rgba(255,255,255,0.05)' : '#F1F5F9',
-                                      minHeight: rowMinHeight,
+                                      backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
+                                      zIndex: 2,
                                     }}
                                   >
-                                    {/* Y-Axis: Pond Name */}
-                                    <div
-                                      className="pe-3 flex-shrink-0 d-flex flex-column justify-content-center"
-                                      style={{ width: 105 }}
-                                    >
-                                      <span
-                                        className="fw-bold text-truncate"
-                                        style={{
-                                          fontSize: '0.84rem',
-                                          color: isDark ? '#F1F5F9' : '#1E293B',
-                                        }}
-                                        title={row.pondName}
-                                      >
-                                        {row.pondName}
-                                      </span>
-                                      <span
-                                        className="extra-small text-muted text-truncate"
-                                        style={{ fontSize: '0.70rem' }}
-                                      >
-                                        {row.totalPondKg > 0 ? `${row.totalPondKg.toFixed(1)} kg` : t('0.0 kg')}
-                                      </span>
-                                    </div>
-
-                                    {/* X-Axis Columns: Date Cells with Vertical Bars */}
-                                    <div className="flex-grow-1 d-flex align-items-end h-100 position-relative" style={{ height: barContainerHeight }}>
-                                      {row.values.map((val, cIdx) => {
-                                        const maxKg = Math.max(feedHorizontalGridData.maxCellFeedKg || 50, 20);
-                                        const heightPct = val.amount > 0 ? Math.max(20, Math.min(100, Math.round((val.amount / maxKg) * 100))) : 0;
-                                        const cycleHeightPct = val.cycles > 0 ? Math.max(16, Math.min(100, Math.round((val.cycles / 5) * 100))) : 0;
-                                        const isHovered = hoveredPondCell && hoveredPondCell.rowIdx === rIdx && hoveredPondCell.colIdx === cIdx;
-
-                                        return (
-                                          <div
-                                            key={val.key || cIdx}
-                                            className="flex-grow-1 d-flex align-items-end justify-content-center h-100 position-relative border-start"
+                                    <tr style={{ borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0' }}>
+                                      <th className="py-2.5 px-3 fw-bold text-uppercase extra-small text-muted" style={{ minWidth: 140 }}>
+                                        {t('Pond')}
+                                      </th>
+                                      {feedHorizontalGridData.columns.map((col) => (
+                                        <th key={col.key} className="py-2.5 px-2 text-center fw-bold extra-small text-muted" style={{ minWidth: 88 }}>
+                                          <div className="text-truncate">{col.label}</div>
+                                          <span
+                                            className="badge rounded-pill extra-small fw-semibold px-1.5 py-0.5 text-secondary"
                                             style={{
-                                              borderColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(226, 232, 240, 0.6)',
-                                              cursor: 'pointer',
-                                              padding: '0 4px',
-                                              transition: 'background-color 0.15s ease',
-                                              backgroundColor: isHovered ? (isDark ? 'rgba(255,255,255,0.05)' : 'rgba(252, 86, 60, 0.06)') : 'transparent',
+                                              fontSize: '0.64rem',
+                                              backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#EEF2F6',
+                                              border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #E2E8F0'
                                             }}
-                                            onMouseEnter={(e) => {
-                                              const rect = e.currentTarget.getBoundingClientRect();
-                                              const container = e.currentTarget.closest('.feed-pond-matrix-view');
-                                              const parentRect = container ? container.getBoundingClientRect() : rect;
-                                              const xPct = ((rect.left + rect.width / 2 - parentRect.left) / parentRect.width) * 100;
-                                              const yPx = rect.top - parentRect.top;
-                                              setHoveredPondCell({
-                                                pondName: row.pondName,
-                                                dateLabel: val.label,
-                                                amount: val.amount,
-                                                cycles: val.cycles || 0,
-                                                rowIdx: rIdx,
-                                                colIdx: cIdx,
-                                                xPct,
-                                                yPx,
-                                              });
-                                            }}
-                                            onMouseLeave={() => setHoveredPondCell(null)}
                                           >
-                                            {val.amount > 0 ? (
-                                              <div className="d-flex align-items-end gap-1 h-100 pb-0.5">
-                                                {/* Orange Feed Mass Bar */}
-                                                <div
-                                                  style={{
-                                                    width: 14,
-                                                    height: `${heightPct}%`,
-                                                    minHeight: 6,
-                                                    background: 'linear-gradient(180deg, #FC563C 0%, #FF7654 100%)',
-                                                    borderRadius: '4px 4px 0 0',
-                                                    boxShadow: isHovered ? '0 0 8px rgba(252, 86, 60, 0.6)' : 'none',
-                                                    filter: isHovered ? 'brightness(1.15)' : 'none',
-                                                    transition: 'all 0.2s ease',
-                                                  }}
-                                                />
-                                                {/* Navy Cycles Bar */}
-                                                {val.cycles > 0 && (
-                                                  <div
-                                                    style={{
-                                                      width: 8,
-                                                      height: `${cycleHeightPct}%`,
-                                                      minHeight: 5,
-                                                      background: '#172A39',
-                                                      borderRadius: '3px 3px 0 0',
-                                                      filter: isHovered ? 'brightness(1.2)' : 'none',
-                                                      transition: 'all 0.2s ease',
-                                                    }}
-                                                  />
-                                                )}
-                                              </div>
-                                            ) : (
-                                              /* Faint zero indicator tick */
-                                              <div
-                                                className="mb-1.5"
+                                            {col.key.length > 5 ? col.key.slice(5) : col.key}
+                                          </span>
+                                        </th>
+                                      ))}
+                                      <th className="py-2.5 px-3 text-end fw-bold text-uppercase extra-small text-muted" style={{ minWidth: 120 }}>
+                                        {t('Total Dispensed')}
+                                      </th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {feedHorizontalGridData.rows.length === 0 ? (
+                                      <tr>
+                                        <td colSpan={feedHorizontalGridData.columns.length + 2} className="text-center py-4 text-muted extra-small">
+                                          {t('No feeding records available for current filter')}
+                                        </td>
+                                      </tr>
+                                    ) : (
+                                      feedHorizontalGridData.rows.map((row) => (
+                                        <tr key={row.pondId} style={{ borderColor: isDark ? 'rgba(255,255,255,0.05)' : '#F1F5F9' }}>
+                                          <td className="py-2.5 px-3">
+                                            <div className="d-flex align-items-center gap-2">
+                                              <span
                                                 style={{
-                                                  width: 12,
-                                                  height: 2,
-                                                  backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#CBD5E1',
-                                                  borderRadius: 1,
+                                                  width: 8,
+                                                  height: 8,
+                                                  borderRadius: '50%',
+                                                  backgroundColor: row.totalPondKg > 0 ? '#10B981' : '#94A3B8',
+                                                  boxShadow: row.totalPondKg > 0 ? '0 0 6px rgba(16, 185, 129, 0.4)' : 'none'
                                                 }}
                                               />
-                                            )}
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-                                  </div>
-                                );
-                              })
-                            )}
-
-                            {/* X-Axis: Dates Row at the Bottom */}
-                            <div className="d-flex align-items-center pt-2 mt-1">
-                              <div style={{ width: 105 }} className="pe-3 flex-shrink-0 text-end">
-                                <span
-                                  className="extra-small fw-bold text-uppercase tracking-wider"
-                                  style={{ color: '#FC563C', fontSize: '0.68rem' }}
-                                >
-                                  {t('Date')} →
-                                </span>
-                              </div>
-                              <div className="flex-grow-1 d-flex align-items-center">
-                                {feedHorizontalGridData.columns.map((col, idx) => (
-                                  <div
-                                    key={col.key || idx}
-                                    className="flex-grow-1 text-center d-flex flex-column align-items-center"
-                                  >
-                                    <div
+                                              <div>
+                                                <div className="fw-bold text-dark" style={{ fontSize: '0.86rem' }}>
+                                                  {row.pondName}
+                                                </div>
+                                                <div className="extra-small text-muted" style={{ fontSize: '0.68rem' }}>
+                                                  {row.caretaker}
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </td>
+                                          {row.values.map((v, cIdx) => (
+                                            <td key={cIdx} className="py-2 px-2 text-center">
+                                              {v.amount > 0 ? (
+                                                <div
+                                                  className="d-inline-flex flex-column align-items-center justify-content-center px-2 py-1 rounded-2 shadow-2xs border transition-all"
+                                                  style={{
+                                                    backgroundColor: isDark ? 'rgba(252, 86, 60, 0.14)' : '#FFF5F3',
+                                                    borderColor: isDark ? 'rgba(252, 86, 60, 0.35)' : '#FFD9D2',
+                                                    minWidth: 64,
+                                                  }}
+                                                  title={`${row.pondName} • ${v.label}: ${v.amount.toFixed(1)} kg (${v.cycles} runs)`}
+                                                >
+                                                  <span className="fw-extrabold" style={{ color: '#FC563C', fontSize: '0.80rem' }}>
+                                                    {v.amount.toFixed(1)} <span style={{ fontSize: '0.66rem', fontWeight: 600 }}>kg</span>
+                                                  </span>
+                                                  {v.cycles > 0 && (
+                                                    <span className="extra-small text-muted" style={{ fontSize: '0.64rem' }}>
+                                                      {v.cycles} {v.cycles === 1 ? 'run' : 'runs'}
+                                                    </span>
+                                                  )}
+                                                </div>
+                                              ) : (
+                                                <span className="text-muted extra-small opacity-50 font-monospace">—</span>
+                                              )}
+                                            </td>
+                                          ))}
+                                          <td className="py-2.5 px-3 text-end">
+                                            <div className="d-inline-flex flex-column align-items-end">
+                                              <span
+                                                className="badge rounded-pill px-2.5 py-1 fw-extrabold"
+                                                style={{
+                                                  backgroundColor: row.totalPondKg > 0 ? (isDark ? '#334155' : '#172A39') : (isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9'),
+                                                  color: row.totalPondKg > 0 ? '#FFFFFF' : '#94A3B8',
+                                                  fontSize: '0.82rem',
+                                                }}
+                                              >
+                                                {row.totalPondKg.toFixed(1)} kg
+                                              </span>
+                                              {feedHorizontalGridData.maxTotalKg > 0 && row.totalPondKg > 0 && (
+                                                <div
+                                                  className="w-100 mt-1"
+                                                  style={{
+                                                    maxWidth: 75,
+                                                    height: 4,
+                                                    backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#E2E8F0',
+                                                    borderRadius: 2,
+                                                    overflow: 'hidden'
+                                                  }}
+                                                >
+                                                  <div
+                                                    style={{
+                                                      width: `${Math.min(100, (row.totalPondKg / feedHorizontalGridData.maxTotalKg) * 100)}%`,
+                                                      height: '100%',
+                                                      backgroundColor: '#FC563C',
+                                                      borderRadius: 2
+                                                    }}
+                                                  />
+                                                </div>
+                                              )}
+                                            </div>
+                                          </td>
+                                        </tr>
+                                      ))
+                                    )}
+                                  </tbody>
+                                  {feedHorizontalGridData.rows.length > 0 && (
+                                    <tfoot
+                                      className="sticky-bottom shadow-2xs"
                                       style={{
-                                        width: 1,
-                                        height: 5,
-                                        backgroundColor: isDark ? '#94A3B8' : '#CBD5E1',
-                                        marginBottom: 3,
+                                        backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
+                                        borderTop: isDark ? '2px solid rgba(255,255,255,0.1)' : '2px solid #E2E8F0',
+                                        zIndex: 2,
                                       }}
-                                    />
-                                    <span
-                                      className="fw-bold extra-small text-truncate"
-                                      style={{
-                                        color: isDark ? '#E2E8F0' : '#475569',
-                                        fontSize: '0.78rem',
-                                      }}
-                                      title={col.label}
                                     >
-                                      {col.label}
-                                    </span>
-                                  </div>
-                                ))}
+                                      <tr className="fw-bold">
+                                        <td className="py-2.5 px-3 text-uppercase extra-small text-secondary">
+                                          {t('Farm Daily Total')}
+                                        </td>
+                                        {feedHorizontalGridData.columns.map((col) => {
+                                          const colSum = feedHorizontalGridData.rows.reduce((sum, r) => {
+                                            const cell = r.values.find((v) => v.key === col.key);
+                                            return sum + (cell ? cell.amount : 0);
+                                          }, 0);
+                                          return (
+                                            <td key={col.key} className="py-2.5 px-2 text-center text-dark" style={{ fontSize: '0.80rem' }}>
+                                              {colSum > 0 ? `${colSum.toFixed(1)} kg` : '0 kg'}
+                                            </td>
+                                          );
+                                        })}
+                                        <td className="py-2.5 px-3 text-end">
+                                          <span className="badge rounded-pill px-3 py-1.5 fw-black text-white" style={{ backgroundColor: '#FC563C', fontSize: '0.84rem' }}>
+                                            {feedHorizontalGridData.rows.reduce((sum, r) => sum + r.totalPondKg, 0).toFixed(1)} kg
+                                          </span>
+                                        </td>
+                                      </tr>
+                                    </tfoot>
+                                  )}
+                                </table>
                               </div>
                             </div>
-                            </div>
-                          </div>
+                          )}
                         </div>
                       )}
 
@@ -3021,251 +3094,429 @@ export default function AdminDashboard() {
             {dashboardTab === 'logs' && (
               <div>
                 <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-              <div>
-                <h5 className="fw-extrabold mb-0 tracking-tight text-dark" style={{ fontSize: '1.15rem' }}>
-                  {t('Daily Feed & Supplementation Logs')}
-                </h5>
-                <span className="text-muted extra-small">{t('Real-time caretaker daily feed logs, formulations, and vitamin supplementation from database')}</span>
-              </div>
-              <div>
-                <Link to="/admin/feeding" className="btn btn-sm btn-tri-outline px-3 py-1 extra-small shadow-xs">
-                  {t('Full Log History →')}
-                </Link>
-              </div>
-            </div>
+                  <div>
+                    <h5 className="fw-extrabold mb-0 tracking-tight text-dark" style={{ fontSize: '1.15rem' }}>
+                      {t('Daily Feed & Supplementation Logs')}
+                    </h5>
+                    <span className="text-muted extra-small">{t('Real-time caretaker daily feed logs, formulations, and vitamin supplementation from database')}</span>
+                  </div>
+                  <div>
+                    <Link to="/admin/feeding" className="btn btn-sm btn-tri-outline px-3 py-1 extra-small shadow-xs">
+                      {t('Full Log History →')}
+                    </Link>
+                  </div>
+                </div>
 
-            <div className="d-block d-md-none text-center text-muted extra-small mb-1 font-monospace" style={{ fontSize: '0.68rem' }}>
-              {t('← Swipe table horizontally to see full details →')}
-            </div>
-            <div className="table-responsive admin-scrollable-table-4rows" style={{ maxHeight: 290, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
-              <table className="table tri-table table-hover align-middle mb-0" style={{ fontSize: '0.80rem', minWidth: 680, width: '100%' }}>
-                <thead className="border-bottom admin-table-sticky-head">
-                  <tr className="text-muted extra-small text-uppercase fw-extrabold" style={{ letterSpacing: '0.03em' }}>
-                    <th className="py-2.5 ps-3" style={{ width: '14%' }}>{t('Operator')}</th>
-                    <th className="py-2.5" style={{ width: '12%' }}>{t('Pond')}</th>
-                    <th className="py-2.5" style={{ width: '17%' }}>{t('Stage & DOC')}</th>
-                    <th className="py-2.5" style={{ width: '11%' }}>{t('Time')}</th>
-                    <th className="py-2.5" style={{ width: '16%' }}>{t('Feed Formulation')}</th>
-                    <th className="py-2.5" style={{ width: '14%' }}>{t('Mass')}</th>
-                    <th className="py-2.5 pe-3" style={{ width: '16%' }}>{t('Additive')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredFeedingRecords.map((r) => {
-                    const pondObj = ponds.find((p) => String(p.id) === String(r.pond_id) || p.name === r.pond_name || p.pond_name === r.pond_name);
-                    const stockingDate = r.stocking_date || pondObj?.stocking_date || (String(r.pond_id) === '1' ? '2026-08-10' : null);
-                    const recordDate = (r.record_date || r.created_at || '').slice(0, 10);
-                    const doc = computeDoc(stockingDate, recordDate);
-                    const isNursery = doc !== null ? doc <= 19 : false;
-                    const amountKg = parseFloat(r.amount_kg) || 0;
-                    const amountG = r.amount_grams !== null && r.amount_grams !== undefined
-                      ? parseFloat(r.amount_grams)
-                      : Math.round(amountKg * 1000);
-
-                    return (
-                      <tr key={r.id} className="align-middle">
-                        <td className="ps-3 py-2">
-                          <span className="badge rounded-pill fw-bold px-2 py-1 border text-truncate d-inline-block" style={{ maxWidth: '100%', fontSize: '0.74rem', backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9', color: isDark ? '#FFFFFF' : '#172A39', borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#E2E8F0' }}>
-                            {r.recorded_by_name || r.recorded_by || t('Caretaker')}
-                          </span>
-                        </td>
-                        <td className="py-2">
-                          <span
-                            className="badge rounded-pill fw-bold px-2 py-1 d-inline-flex align-items-center gap-1 text-truncate"
-                            style={{ background: 'rgba(252, 86, 60, 0.08)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.16)', fontSize: '0.76rem', maxWidth: '100%' }}
-                            title={r.pond_name || `Pond #${r.pond_id}`}
-                          >
-                            <FaWater size={9} /> {r.pond_name || `Pond #${r.pond_id}`}
-                          </span>
-                        </td>
-                        <td className="py-2">
-                          <span
-                            className="badge rounded-pill extra-small px-2 py-0.5 fw-bold text-truncate d-inline-block"
-                            style={{
-                              maxWidth: '100%',
-                              backgroundColor: isNursery ? '#ECFDF5' : '#EFF6FF',
-                              color: isNursery ? '#047857' : '#1D4ED8',
-                              border: isNursery ? '1px solid #A7F3D0' : '1px solid #BFDBFE',
-                              fontSize: '0.72rem'
-                            }}
-                          >
-                            {doc !== null ? `DOC #${doc}` : 'DOC #39'} • {isNursery ? t('Nursery') : t('Grow-out')}
-                          </span>
-                        </td>
-                        <td className="py-2">
-                          <span className="badge border px-2 py-1 font-mono admin-time-badge" style={{ fontSize: '0.72rem' }}>{r.feeding_time || '08:00 AM'}</span>
-                        </td>
-                        <td className="py-2">
-                          <span className="fw-bold d-block text-dark text-truncate" style={{ fontSize: '0.76rem' }} title={r.feed_type || r.product_code || 'Starter Pro'}>
-                            {r.feed_type || r.product_code || 'Starter Pro'}
-                          </span>
-                          {recordDate && <span className="text-muted extra-small font-mono d-block text-truncate" style={{ fontSize: '0.68rem' }}>{recordDate}</span>}
-                        </td>
-                        <td className="py-2">
-                          {amountKg > 0 || amountG > 0 ? (
-                            <div>
-                              <span className="fw-extrabold text-dark" style={{ fontSize: '0.78rem' }}>{amountKg.toFixed(2)} kg</span>
-                              <span className="text-muted extra-small d-block font-mono" style={{ fontSize: '0.68rem' }}>({amountG.toLocaleString()} g)</span>
-                            </div>
-                          ) : (
-                            <div>
-                              <span className="badge border admin-time-badge" style={{ fontSize: '0.70rem' }}>0 kg</span>
-                            </div>
-                          )}
-                        </td>
-                        <td className="pe-3 py-2">
-                          {r.vitamin_name && r.vitamin_name !== 'None' ? (
-                            <span className="badge rounded-pill border px-2 py-1 shadow-xs admin-vitamin-badge text-truncate d-inline-block" style={{ maxWidth: '100%', fontSize: '0.72rem' }}>
-                              {r.vitamin_name}
-                            </span>
-                          ) : (
-                            <span className="text-muted extra-small">{t('None')}</span>
-                          )}
-                        </td>
+                <div className="d-block d-md-none text-center text-muted extra-small mb-1 font-monospace" style={{ fontSize: '0.68rem' }}>
+                  {t('← Swipe table horizontally to see full details →')}
+                </div>
+                <div className="table-responsive admin-scrollable-table-4rows" style={{ maxHeight: 290, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                  <table className="table tri-table table-hover align-middle mb-0" style={{ fontSize: '0.80rem', minWidth: 680, width: '100%' }}>
+                    <thead className="border-bottom admin-table-sticky-head">
+                      <tr className="text-muted extra-small text-uppercase fw-extrabold" style={{ letterSpacing: '0.03em' }}>
+                        <th className="py-2.5 ps-3" style={{ width: '14%' }}>{t('Operator')}</th>
+                        <th className="py-2.5" style={{ width: '12%' }}>{t('Pond')}</th>
+                        <th className="py-2.5" style={{ width: '17%' }}>{t('Stage & DOC')}</th>
+                        <th className="py-2.5" style={{ width: '11%' }}>{t('Time')}</th>
+                        <th className="py-2.5" style={{ width: '16%' }}>{t('Feed Formulation')}</th>
+                        <th className="py-2.5" style={{ width: '14%' }}>{t('Mass')}</th>
+                        <th className="py-2.5 pe-3" style={{ width: '16%' }}>{t('Additive')}</th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                    </thead>
+                    <tbody>
+                      {filteredFeedingRecords.map((r) => {
+                        const pondObj = ponds.find((p) => String(p.id) === String(r.pond_id) || p.name === r.pond_name || p.pond_name === r.pond_name);
+                        const stockingDate = r.stocking_date || pondObj?.stocking_date || (String(r.pond_id) === '1' ? '2026-08-10' : null);
+                        const recordDate = (r.record_date || r.created_at || '').slice(0, 10);
+                        const doc = computeDoc(stockingDate, recordDate);
+                        const isNursery = doc !== null ? doc <= 19 : false;
+                        const amountKg = parseFloat(r.amount_kg) || 0;
+                        const amountG = r.amount_grams !== null && r.amount_grams !== undefined
+                          ? parseFloat(r.amount_grams)
+                          : Math.round(amountKg * 1000);
+
+                        return (
+                          <tr key={r.id} className="align-middle">
+                            <td className="ps-3 py-2">
+                              <span className="badge rounded-pill fw-bold px-2 py-1 border text-truncate d-inline-block" style={{ maxWidth: '100%', fontSize: '0.74rem', backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9', color: isDark ? '#FFFFFF' : '#172A39', borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#E2E8F0' }}>
+                                {r.recorded_by_name || r.recorded_by || t('Caretaker')}
+                              </span>
+                            </td>
+                            <td className="py-2">
+                              <span
+                                className="badge rounded-pill fw-bold px-2 py-1 d-inline-flex align-items-center gap-1 text-truncate"
+                                style={{ background: 'rgba(252, 86, 60, 0.08)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.16)', fontSize: '0.76rem', maxWidth: '100%' }}
+                                title={r.pond_name || `Pond #${r.pond_id}`}
+                              >
+                                <FaWater size={9} /> {r.pond_name || `Pond #${r.pond_id}`}
+                              </span>
+                            </td>
+                            <td className="py-2">
+                              <span
+                                className="badge rounded-pill extra-small px-2 py-0.5 fw-bold text-truncate d-inline-block"
+                                style={{
+                                  maxWidth: '100%',
+                                  backgroundColor: isNursery ? '#ECFDF5' : '#EFF6FF',
+                                  color: isNursery ? '#047857' : '#1D4ED8',
+                                  border: isNursery ? '1px solid #A7F3D0' : '1px solid #BFDBFE',
+                                  fontSize: '0.72rem'
+                                }}
+                              >
+                                {doc !== null ? `DOC #${doc}` : 'DOC #39'} • {isNursery ? t('Nursery') : t('Grow-out')}
+                              </span>
+                            </td>
+                            <td className="py-2">
+                              <span className="badge border px-2 py-1 font-mono admin-time-badge" style={{ fontSize: '0.72rem' }}>{r.feeding_time || '08:00 AM'}</span>
+                            </td>
+                            <td className="py-2">
+                              <span className="fw-bold d-block text-dark text-truncate" style={{ fontSize: '0.76rem' }} title={r.feed_type || r.product_code || 'Starter Pro'}>
+                                {r.feed_type || r.product_code || 'Starter Pro'}
+                              </span>
+                              {recordDate && <span className="text-muted extra-small font-mono d-block text-truncate" style={{ fontSize: '0.68rem' }}>{recordDate}</span>}
+                            </td>
+                            <td className="py-2">
+                              {amountKg > 0 || amountG > 0 ? (
+                                <div>
+                                  <span className="fw-extrabold text-dark" style={{ fontSize: '0.78rem' }}>{amountKg.toFixed(2)} kg</span>
+                                  <span className="text-muted extra-small d-block font-mono" style={{ fontSize: '0.68rem' }}>({amountG.toLocaleString()} g)</span>
+                                </div>
+                              ) : (
+                                <div>
+                                  <span className="badge border admin-time-badge" style={{ fontSize: '0.70rem' }}>0 kg</span>
+                                </div>
+                              )}
+                            </td>
+                            <td className="pe-3 py-2">
+                              {r.vitamin_name && r.vitamin_name !== 'None' ? (
+                                <span className="badge rounded-pill border px-2 py-1 shadow-xs admin-vitamin-badge text-truncate d-inline-block" style={{ maxWidth: '100%', fontSize: '0.72rem' }}>
+                                  {r.vitamin_name}
+                                </span>
+                              ) : (
+                                <span className="text-muted extra-small">{t('None')}</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
 
-            {/* TAB 3: RECENT DETECTION ACTIVITY */}
+            {/* TAB 3: POND HEALTH & THREAT STATUS (NEW FARM OPERATIONS ADDITION) */}
             {dashboardTab === 'detections' && (
               <div>
-            {/* Title & Subtitle */}
-            <div className="d-flex justify-content-between align-items-start mb-2 flex-wrap gap-2">
-              <div>
-                <h5 className="fw-extrabold mb-1 tracking-tight" style={{ color: '#FC563C', fontSize: '1.15rem' }}>
-                  {t('Recent Detection Activity')}
-                </h5>
-                <p className="text-muted mb-0 small" style={{ fontSize: '0.82rem' }}>
-                  {t('Real-time biosecurity vision scans, WSD disease detection alerts, and pond health monitoring.')}
-                </p>
-              </div>
-              <button
-                type="button"
-                className="btn btn-sm btn-tri-outline px-3 py-1 extra-small shadow-xs"
-                onClick={() => navigate('/admin/scan-reports')}
-              >
-                {t('All Scan Reports →')}
-              </button>
-            </div>
-
-            {/* Filter Buttons Placed UNDER Title */}
-            <div className="d-flex align-items-center gap-2 mb-3.5 flex-wrap">
-              <span className="extra-small text-muted fw-bold text-uppercase">{t('Filter Status:')}</span>
-              <div className="d-flex gap-1.5 flex-wrap">
-                {[
-                  { key: 'all', label: 'All Scans' },
-                  { key: 'critical', label: 'Critical WSD' },
-                  { key: 'moderate', label: 'Moderate Risk' },
-                  { key: 'safe', label: 'Safe / Healthy' },
-                ].map((btn) => {
-                  const isSelected = diseaseFilter === btn.key;
-                  return (
-                    <button
-                      key={btn.key}
-                      type="button"
-                      className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all ${
-                        isSelected
-                          ? btn.key === 'critical' ? 'btn-tri-orange shadow-xs' : 'btn-tri-navy shadow-xs'
-                          : 'btn-tri-outline'
-                      }`}
-                      style={{ fontSize: '0.74rem' }}
-                      onClick={() => setDiseaseFilter(btn.key)}
-                    >
-                      {t(btn.label)}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Prioritized Detection Activity Grid */}
-            <div className="row g-3" style={{ maxHeight: 380, overflowY: 'auto' }}>
-              {diseaseItems.length > 0 ? (
-                diseaseItems.map((item) => (
-                  <div className="col-12 col-md-6 col-xl-4" key={item.id}>
+                <div className="row g-3 mt-1 mt-md-0">
+                  {/* Left Column: Pond Health & Threat Status Doughnut Section */}
+                  <div className="col-12 col-xl-5">
                     <div
-                      className="p-3 rounded-3 border h-100 d-flex flex-column justify-content-between transition-all hover-shadow admin-detection-card"
+                      className="p-3.5 rounded-3 border h-100 d-flex flex-column justify-content-between"
                       style={{
-                        backgroundColor: item.risk === 'critical' ? 'rgba(252, 86, 60, 0.06)' : (item.risk === 'moderate' ? 'rgba(110, 117, 117, 0.16)' : 'transparent'),
-                        borderColor: item.risk === 'critical' ? 'rgba(252, 86, 60, 0.25)' : (item.risk === 'moderate' ? 'rgba(110, 117, 117, 0.28)' : 'rgba(16, 185, 129, 0.2)'),
-                        borderLeft: item.risk === 'critical' ? '4px solid #FC563C' : (item.risk === 'moderate' ? '4px solid #6E7575' : '4px solid #10B981')
+                        borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#E2E8F0',
+                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                        minHeight: 390,
                       }}
                     >
-                      <div>
-                        <div className="d-flex justify-content-between align-items-center mb-2">
-                          {item.risk === 'critical' ? (
-                            <span className="badge badge-tri-orange rounded-pill px-2.5 py-0.5 extra-small">{t('CRITICAL WSD')}</span>
-                          ) : item.risk === 'moderate' ? (
-                            <span className="badge badge-tri-gray rounded-pill extra-small px-2.5 py-0.5">{t('MODERATE')}</span>
-                          ) : (
-                            <span className="badge badge-tri-navy rounded-pill px-2.5 py-0.5 extra-small">{t('SAFE')}</span>
-                          )}
-                          <span className="fw-extrabold extra-small font-mono px-2 py-0.5 rounded-pill border admin-pond-tag" style={{ color: '#FC563C' }}>
-                            {item.pond}
-                          </span>
+                      {/* Section Header */}
+                      <div className="d-flex justify-content-between align-items-center mb-3 pb-2.5 border-bottom flex-wrap gap-2" style={{ borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9' }}>
+                        <div>
+                          <h6 className="fw-extrabold text-dark mb-0.5" style={{ fontSize: '1.06rem', letterSpacing: '-0.01em' }}>
+                            {t('Pond Health & Threat Status')}
+                          </h6>
+                          <p className="text-muted extra-small mb-0" style={{ fontSize: '0.80rem' }}>
+                            {t('Overview of safe, moderate, and critical disease risks across monitored ponds.')}
+                          </p>
                         </div>
-                        <h6 className="fw-bold mb-1 text-truncate" style={{ color: '#FC563C', fontSize: '0.9rem' }}>
-                          {item.title}
-                        </h6>
-                        <p className="extra-small text-muted mb-2">
-                          {t('Vision Confidence')}: <strong>{item.confidence}</strong> • {item.time}
-                        </p>
+
+                        {/* Pond Filter Selector */}
+                        <div className="d-flex align-items-center gap-1.5">
+                          <span className="extra-small text-muted fw-bold d-none d-sm-inline" style={{ fontSize: '0.78rem' }}>{t('Pond:')}</span>
+                          <select
+                            className="form-select form-select-sm rounded-pill px-2.5 py-1 extra-small fw-bold border bg-light text-dark"
+                            style={{ borderColor: isDark ? 'rgba(255,255,255,0.15)' : '#CBD5E1', fontSize: '0.78rem', minWidth: 125 }}
+                            value={selectedThreatPond}
+                            onChange={(e) => setSelectedThreatPond(e.target.value)}
+                          >
+                            <option value="all">{t('All Ponds (Fleet)')}</option>
+                            {ponds.map((p) => {
+                              const pName = p.pond_name || p.name || `Pond #${p.id}`;
+                              return (
+                                <option key={p.id} value={pName}>{pName}</option>
+                              );
+                            })}
+                          </select>
+                        </div>
                       </div>
 
-                      {/* Quick Action Buttons */}
-                      <div className="d-flex align-items-center gap-2 pt-2 border-top mt-2" style={{ borderColor: 'rgba(252, 86, 60, 0.08)' }}>
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-tri-navy px-3 py-1 flex-grow-1 extra-small shadow-xs"
-                          style={{ fontSize: '0.72rem' }}
-                          onClick={() => navigate(`/admin/scan-reports?pond=${encodeURIComponent(item.pond)}`)}
+                      {/* Doughnut Chart with Centered Scans Count */}
+                      <div style={{ height: 230 }} className="my-1 position-relative d-flex justify-content-center align-items-center">
+                        <Doughnut data={threatDoughnutData} options={threatDoughnutOptions} />
+                        <div
+                          className="position-absolute d-flex flex-column align-items-center justify-content-center text-center p-1 rounded-circle shadow-2xs"
+                          style={{
+                            pointerEvents: 'none',
+                            zIndex: 2,
+                            width: 102,
+                            height: 102,
+                            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                            border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #F1F5F9',
+                            transition: 'all 0.2s ease',
+                          }}
                         >
-                          <FaEye size={10} className="me-1" /> {t('Inspect Details')}
-                        </button>
-                        {item.risk === 'critical' && (() => {
-                          const isIsolated = isPondIsolated({ pond_name: item.pond, id: item.id });
-                          return (
-                            <button
-                              type="button"
-                              className={`btn btn-sm px-2.5 py-1 extra-small shadow-xs ${
-                                isIsolated ? 'btn-secondary text-white' : 'btn-tri-orange'
-                              }`}
+                          {activeThreatItem ? (
+                            <>
+                              <span className="fw-black fs-2 mb-0" style={{ color: activeThreatItem.color, lineHeight: 1.0, transition: 'all 0.15s ease' }}>
+                                {activeThreatItem.count}
+                              </span>
+                              <span className="fw-extrabold px-1 text-truncate" style={{ fontSize: '0.74rem', lineHeight: 1.15, color: activeThreatItem.color, transition: 'all 0.15s ease' }}>
+                                {activeThreatItem.label}
+                              </span>
+                              <span className="fw-black mt-0.5" style={{ fontSize: '0.94rem', lineHeight: 1, color: activeThreatItem.color }}>
+                                {activeThreatItem.pct}%
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="fw-black fs-2 mb-0" style={{ color: threatSummary.high > 0 ? '#FC563C' : (isDark ? '#F1F5F9' : '#172A39'), lineHeight: 1.0, transition: 'all 0.15s ease' }}>
+                                {threatSummary.total}
+                              </span>
+                              <span className="fw-bold text-uppercase mt-0.5" style={{ fontSize: '0.70rem', letterSpacing: '0.04em', color: isDark ? '#94A3B8' : '#64748B' }}>
+                                {t('Total Scans')}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Legend / Risk Level Badges Below with Prominent Percentages */}
+                      <div className="pt-2.5 border-top" style={{ borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9' }}>
+                        <div className="row g-1.5 text-center align-items-center">
+                          {/* 1. Safe & Healthy */}
+                          <div className="col-4 px-1">
+                            <div
+                              className="p-1.5 rounded-3 border d-flex flex-column align-items-center justify-content-center transition-all"
                               style={{
-                                fontSize: '0.7rem',
-                                cursor: isIsolated ? 'not-allowed' : 'pointer',
-                                opacity: isIsolated ? 0.75 : 1,
+                                backgroundColor: isDark ? 'rgba(16, 185, 129, 0.10)' : '#F0FDF4',
+                                borderColor: isDark ? 'rgba(16, 185, 129, 0.28)' : '#BBF7D0',
                               }}
-                              disabled={isIsolated}
-                              onClick={() => !isIsolated && handleQuickIsolate(item)}
-                              title={isIsolated ? `Pond ${item.pond} is currently isolated` : `Isolate ${item.pond}`}
                             >
-                              {isIsolated ? (
-                                <>
-                                  <FaCheckCircle size={10} className="me-1" /> {t('Isolated')}
-                                </>
-                              ) : (
-                                <>
-                                  <FaShieldAlt size={9} className="me-1" /> {t('Isolate')}
-                                </>
-                              )}
-                            </button>
-                          );
-                        })()}
+                              <div className="d-flex align-items-center gap-1 mb-0.5">
+                                <span style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: '#10B981' }}></span>
+                                <span className="fw-bold text-truncate" style={{ fontSize: '0.74rem', color: isDark ? '#A7F3D0' : '#166534' }}>
+                                  {t('Safe')}
+                                </span>
+                              </div>
+                              <div className="d-flex align-items-baseline gap-1">
+                                <span className="fw-extrabold" style={{ fontSize: '0.98rem', color: isDark ? '#FFFFFF' : '#14532D', lineHeight: 1 }}>
+                                  {threatSummary.low}
+                                </span>
+                                <span className="fw-black" style={{ fontSize: '0.86rem', color: '#10B981', lineHeight: 1 }}>
+                                  {threatSummary.total > 0 ? Math.round((threatSummary.low / threatSummary.total) * 100) : 0}%
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 2. Moderate Risk */}
+                          <div className="col-4 px-1">
+                            <div
+                              className="p-1.5 rounded-3 border d-flex flex-column align-items-center justify-content-center transition-all"
+                              style={{
+                                backgroundColor: isDark ? 'rgba(148, 163, 184, 0.10)' : '#F8FAFC',
+                                borderColor: isDark ? 'rgba(148, 163, 184, 0.28)' : '#CBD5E1',
+                              }}
+                            >
+                              <div className="d-flex align-items-center gap-1 mb-0.5">
+                                <span style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: '#64748B' }}></span>
+                                <span className="fw-bold text-truncate" style={{ fontSize: '0.74rem', color: isDark ? '#CBD5E1' : '#334155' }}>
+                                  {t('Moderate')}
+                                </span>
+                              </div>
+                              <div className="d-flex align-items-baseline gap-1">
+                                <span className="fw-extrabold" style={{ fontSize: '0.98rem', color: isDark ? '#FFFFFF' : '#1E293B', lineHeight: 1 }}>
+                                  {threatSummary.medium}
+                                </span>
+                                <span className="fw-black" style={{ fontSize: '0.86rem', color: '#64748B', lineHeight: 1 }}>
+                                  {threatSummary.total > 0 ? Math.round((threatSummary.medium / threatSummary.total) * 100) : 0}%
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 3. Critical Risk */}
+                          <div className="col-4 px-1">
+                            <div
+                              className="p-1.5 rounded-3 border d-flex flex-column align-items-center justify-content-center transition-all"
+                              style={{
+                                backgroundColor: isDark ? 'rgba(252, 86, 60, 0.12)' : '#FEF2F2',
+                                borderColor: isDark ? 'rgba(252, 86, 60, 0.32)' : '#FECACA',
+                              }}
+                            >
+                              <div className="d-flex align-items-center gap-1 mb-0.5">
+                                <span style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: '#FC563C' }}></span>
+                                <span className="fw-bold text-truncate" style={{ fontSize: '0.74rem', color: isDark ? '#FCA5A5' : '#991B1B' }}>
+                                  {t('Critical')}
+                                </span>
+                              </div>
+                              <div className="d-flex align-items-baseline gap-1">
+                                <span className="fw-extrabold" style={{ fontSize: '0.98rem', color: isDark ? '#FFFFFF' : '#7F1D1D', lineHeight: 1 }}>
+                                  {threatSummary.high}
+                                </span>
+                                <span className="fw-black" style={{ fontSize: '0.86rem', color: '#FC563C', lineHeight: 1 }}>
+                                  {threatSummary.total > 0 ? Math.round((threatSummary.high / threatSummary.total) * 100) : 0}%
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
-                ))
-              ) : (
-                <div className="col-12 text-center p-4 text-muted">
-                  <p className="mb-0 extra-small">{t('No recent detection activity matching selected filter.')}</p>
+
+                  {/* Right Column: Recent Detection Activity List */}
+                  <div className="col-12 col-xl-7">
+                    <div
+                      className="p-3.5 rounded-3 border h-100 d-flex flex-column justify-content-between"
+                      style={{
+                        borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#E2E8F0',
+                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                        minHeight: 390,
+                      }}
+                    >
+                      {/* Header with Title and Link */}
+                      <div className="d-flex justify-content-between align-items-start mb-2 flex-wrap gap-2">
+                        <div>
+                          <h6 className="fw-extrabold text-dark mb-0.5" style={{ fontSize: '1.02rem', letterSpacing: '-0.01em' }}>
+                            {t('Recent Detection Activity')}
+                          </h6>
+                          <p className="text-muted mb-0 extra-small" style={{ fontSize: '0.74rem' }}>
+                            {t('Real-time biosecurity vision scans, WSD disease detection alerts, and pond health monitoring.')}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-tri-outline px-3 py-1 extra-small shadow-xs"
+                          onClick={() => navigate('/admin/scan-reports')}
+                        >
+                          {t('All Scan Reports →')}
+                        </button>
+                      </div>
+
+                      {/* Filter Buttons */}
+                      <div className="d-flex align-items-center gap-2 mb-2.5 flex-wrap">
+                        <span className="extra-small text-muted fw-bold text-uppercase" style={{ fontSize: '0.68rem' }}>{t('Filter Status:')}</span>
+                        <div className="d-flex gap-1.5 flex-wrap">
+                          {[
+                            { key: 'all', label: 'All Scans' },
+                            { key: 'critical', label: 'Critical Risk' },
+                            { key: 'moderate', label: 'Moderate Risk' },
+                            { key: 'safe', label: 'Safe & Healthy' },
+                          ].map((btn) => {
+                            const isSelected = diseaseFilter === btn.key;
+                            return (
+                              <button
+                                key={btn.key}
+                                type="button"
+                                className={`btn btn-sm rounded-pill px-2.5 py-0.5 extra-small fw-bold transition-all ${isSelected
+                                  ? btn.key === 'critical' ? 'btn-tri-orange shadow-xs' : 'btn-tri-navy shadow-xs'
+                                  : 'btn-tri-outline'
+                                  }`}
+                                style={{ fontSize: '0.72rem' }}
+                                onClick={() => setDiseaseFilter(btn.key)}
+                              >
+                                {t(btn.label)}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Cards Grid */}
+                      <div className="row g-2.5 flex-grow-1" style={{ maxHeight: 275, overflowY: 'auto' }}>
+                        {diseaseItems.length > 0 ? (
+                          diseaseItems.map((item) => (
+                            <div className="col-12 col-md-6" key={item.id}>
+                              <div
+                                className="p-2.5 rounded-3 border h-100 d-flex flex-column justify-content-between transition-all hover-shadow admin-detection-card"
+                                style={{
+                                  backgroundColor: item.risk === 'critical' ? (isDark ? 'rgba(252, 86, 60, 0.1)' : 'rgba(252, 86, 60, 0.06)') : (item.risk === 'moderate' ? (isDark ? 'rgba(110, 117, 117, 0.2)' : 'rgba(110, 117, 117, 0.12)') : 'transparent'),
+                                  borderColor: item.risk === 'critical' ? 'rgba(252, 86, 60, 0.25)' : (item.risk === 'moderate' ? 'rgba(110, 117, 117, 0.28)' : 'rgba(16, 185, 129, 0.2)'),
+                                  borderLeft: item.risk === 'critical' ? '4px solid #FC563C' : (item.risk === 'moderate' ? '4px solid #6E7575' : '4px solid #10B981')
+                                }}
+                              >
+                                <div>
+                                  <div className="d-flex justify-content-between align-items-center mb-1.5">
+                                    {item.risk === 'critical' ? (
+                                      <span className="badge badge-tri-orange rounded-pill px-2 py-0.5 extra-small" style={{ fontSize: '0.66rem' }}>{t('CRITICAL')}</span>
+                                    ) : item.risk === 'moderate' ? (
+                                      <span className="badge badge-tri-gray rounded-pill extra-small px-2 py-0.5" style={{ fontSize: '0.66rem' }}>{t('MODERATE')}</span>
+                                    ) : (
+                                      <span className="badge badge-tri-navy rounded-pill px-2 py-0.5 extra-small" style={{ fontSize: '0.66rem' }}>{t('SAFE')}</span>
+                                    )}
+                                    <span className="fw-extrabold extra-small font-mono px-2 py-0.5 rounded-pill border admin-pond-tag" style={{ color: '#FC563C', fontSize: '0.70rem' }}>
+                                      {item.pond}
+                                    </span>
+                                  </div>
+                                  <h6 className="fw-bold mb-1 text-truncate text-dark" style={{ fontSize: '0.86rem' }}>
+                                    {item.title}
+                                  </h6>
+                                  <p className="extra-small text-muted mb-2" style={{ fontSize: '0.70rem' }}>
+                                    {t('Confidence')}: <strong>{item.confidence}</strong> • {item.time}
+                                  </p>
+                                </div>
+
+                                {/* Quick Action Buttons */}
+                                <div className="d-flex align-items-center gap-2 pt-1.5 border-top mt-1" style={{ borderColor: 'rgba(252, 86, 60, 0.08)' }}>
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-tri-navy px-2.5 py-1 flex-grow-1 extra-small shadow-xs"
+                                    style={{ fontSize: '0.70rem' }}
+                                    onClick={() => navigate(`/admin/scan-reports?pond=${encodeURIComponent(item.pond)}`)}
+                                  >
+                                    <FaEye size={10} className="me-1" /> {t('Inspect')}
+                                  </button>
+                                  {item.risk === 'critical' && (() => {
+                                    const isIsolated = isPondIsolated({ pond_name: item.pond, id: item.id });
+                                    return (
+                                      <button
+                                        type="button"
+                                        className={`btn btn-sm px-2.5 py-1 extra-small shadow-xs ${isIsolated ? 'btn-secondary text-white' : 'btn-tri-orange'
+                                          }`}
+                                        style={{
+                                          fontSize: '0.70rem',
+                                          cursor: isIsolated ? 'not-allowed' : 'pointer',
+                                          opacity: isIsolated ? 0.75 : 1,
+                                        }}
+                                        disabled={isIsolated}
+                                        onClick={() => !isIsolated && handleQuickIsolate(item)}
+                                        title={isIsolated ? `Pond ${item.pond} is currently isolated` : `Isolate ${item.pond}`}
+                                      >
+                                        {isIsolated ? (
+                                          <>
+                                            <FaCheckCircle size={10} className="me-1" /> {t('Isolated')}
+                                          </>
+                                        ) : (
+                                          <>
+                                            <FaShieldAlt size={9} className="me-1" /> {t('Isolate')}
+                                          </>
+                                        )}
+                                      </button>
+                                    );
+                                  })()}
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="col-12 py-4 text-center text-muted extra-small">
+                            {t('No recent detection activity matching selected filter.')}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              )}
-            </div>
               </div>
             )}
           </div>

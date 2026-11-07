@@ -1290,16 +1290,8 @@ export default function FeedingPage() {
           </span>
         </div>
 
-        {/* Action Controls: Log Feeding, Refresh & CSV Export */}
+        {/* Action Controls: Refresh & CSV Export */}
         <div className="d-flex align-items-center gap-2 flex-wrap">
-          <button
-            type="button"
-            className="btn btn-sm btn-understated-feed d-inline-flex align-items-center gap-1.5 px-3.5 py-2 shadow-2xs hover-shadow"
-            onClick={handleOpenLogModal}
-          >
-            <FaPlus size={11} /> {t('Log Feeding')}
-          </button>
-
           <button
             type="button"
             className="btn btn-sm minimal-filter-control d-inline-flex align-items-center gap-1.5 px-3 py-2 shadow-2xs hover-shadow"
