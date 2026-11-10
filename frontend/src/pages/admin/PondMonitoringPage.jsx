@@ -67,7 +67,13 @@ function valueOrDash(value, suffix = '') {
 function formatNumber(value, digits = 1) {
   if (value === null || value === undefined || value === '' || Number.isNaN(Number(value))) return '-';
   const num = Number(value);
-  return num % 1 === 0 ? num.toLocaleString() : num.toFixed(digits);
+  if (digits === 0) {
+    return Math.round(num).toLocaleString();
+  }
+  return num.toLocaleString(undefined, {
+    minimumFractionDigits: num % 1 === 0 ? 1 : 1,
+    maximumFractionDigits: digits,
+  });
 }
 
 function isDiseaseAlert(value) {
@@ -80,6 +86,7 @@ export default function PondMonitoringPage() {
 
   const [ponds, setPonds] = useState([]);
   const [caretakers, setCaretakers] = useState([]);
+  const [harvestMap, setHarvestMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -89,7 +96,7 @@ export default function PondMonitoringPage() {
   const [diseaseFilter, setDiseaseFilter] = useState('All');
   const [caretakerFilter, setCaretakerFilter] = useState('All');
   const [stageFilter, setStageFilter] = useState('All'); // 'All' | 'Nursery' | 'Growout' | 'HarvestReady'
-  const [sortBy, setSortBy] = useState('doc-desc'); // 'doc-desc' | 'doc-asc' | 'weight-desc' | 'feed-desc' | 'name-asc'
+  const [sortBy, setSortBy] = useState('name-asc'); // Default arranged in order: 'name-asc' | 'doc-desc' | 'doc-asc' | 'weight-desc' | 'feed-desc'
   const [showFilters, setShowFilters] = useState(false);
   const [activeChartTab, setActiveChartTab] = useState('feed'); // 'feed' | 'weight' | 'stages'
   const [showFarmOverview, setShowFarmOverview] = useState(false);
@@ -105,8 +112,9 @@ export default function PondMonitoringPage() {
   const [formCaretakerId, setFormCaretakerId] = useState('');
   const [formStockingDate, setFormStockingDate] = useState(new Date().toISOString().split('T')[0]);
   const [formAreaSqm, setFormAreaSqm] = useState(500);
-  const [formShrimpWeight, setFormShrimpWeight] = useState(18.5);
-  const [formCycleTargetFeed, setFormCycleTargetFeed] = useState(800);
+  const [formShrimpWeight, setFormShrimpWeight] = useState(15.0);
+  const [formCycleTargetFeed, setFormCycleTargetFeed] = useState(15000);
+  const [formOperationalStatus, setFormOperationalStatus] = useState('Grow-out');
   const [savingPond, setSavingPond] = useState(false);
 
   // Isolated Ponds State
@@ -166,9 +174,10 @@ export default function PondMonitoringPage() {
     setLoading(true);
     setError(null);
     try {
-      const [pondsRes, usersRes] = await Promise.all([
+      const [pondsRes, usersRes, harvestRes] = await Promise.all([
         api.get('/ponds.php'),
-        api.get('/users.php?role=caretaker')
+        api.get('/users.php?role=caretaker'),
+        api.get('/harvest_predictions.php').catch(() => ({ data: { predictions: [] } }))
       ]);
 
       const pondList = safeArray(pondsRes.data?.ponds || pondsRes.data);
@@ -176,6 +185,14 @@ export default function PondMonitoringPage() {
 
       const userList = safeArray(usersRes.data?.users || usersRes.data);
       setCaretakers(userList.filter((u) => String(u.role || '').toLowerCase() === 'caretaker'));
+
+      const hPreds = safeArray(harvestRes.data?.predictions);
+      const hMap = {};
+      hPreds.forEach((hp) => {
+        if (hp.pond_id) hMap[String(hp.pond_id)] = hp;
+        if (hp.pond_name) hMap[String(hp.pond_name).toLowerCase().trim()] = hp;
+      });
+      setHarvestMap(hMap);
     } catch (err) {
       console.error('Error fetching pond reports:', err);
       setError(err.response?.data?.message || err.message || 'Error loading pond data.');
@@ -191,40 +208,154 @@ export default function PondMonitoringPage() {
   // Process Ponds with DOC and Feed Progress
   const processedPonds = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
+    const savedOverrides = (() => {
+      try {
+        return JSON.parse(localStorage.getItem('shrim_pond_status_overrides') || '{}');
+      } catch {
+        return {};
+      }
+    })();
+
     return ponds.map((p) => {
+      const pName = (p.pond_name || `Pond #${p.id}`).trim();
+      const cleanName = pName.toLowerCase();
+      const hp = harvestMap[String(p.id)] || harvestMap[cleanName] || null;
+
+      const rawOverride = savedOverrides[pName] || savedOverrides[String(p.id)] || p.operational_status;
       const doc = p.doc ?? computeDoc(p.stocking_date, todayStr);
-      const isNursery = doc !== null && doc >= 1 && doc <= 19;
-      const isGrowout = doc !== null && doc >= 20;
-      const isHarvestReady = (p.harvest_readiness || 0) >= 95 || (doc !== null && doc >= 85);
 
-      const consumedKg = !isNaN(parseFloat(p.total_feed_kg)) ? parseFloat(p.total_feed_kg) : 0;
-      const targetKg = parseFloat(p.cycle_target_feed_kg || 800);
-      const remainingKg = !isNaN(parseFloat(p.remaining_feed_kg))
-        ? parseFloat(p.remaining_feed_kg)
-        : Math.max(0, targetKg - consumedKg);
-      const feedProgressPct = targetKg > 0 ? Math.min(100, Math.round((consumedKg / targetKg) * 100)) : 0;
-      const weightG = !isNaN(parseFloat(p.shrimp_weight_g)) ? parseFloat(p.shrimp_weight_g) : 18.5;
+      // 1. Feeding Consumption: authoritative synchronization with Harvest Forecast
+      const consumedKg = hp && hp.total_feed_consumed_kg !== undefined
+        ? Number(hp.total_feed_consumed_kg)
+        : (!isNaN(parseFloat(p.total_feed_kg)) ? parseFloat(p.total_feed_kg) : 0);
 
-      let stageLabel = t('Unstocked');
-      if (isHarvestReady) stageLabel = t('Ready to Harvest');
-      else if (isNursery) stageLabel = t('Nursery');
-      else if (isGrowout) stageLabel = t('Grow-out');
+      // 2. Cycle Target Feed (15,000 kg standard farm benchmark in Harvest Forecast)
+      const targetKg = hp && hp.feed_reference_kg
+        ? Number(hp.feed_reference_kg)
+        : (parseFloat(p.cycle_target_feed_kg) >= 1000 ? parseFloat(p.cycle_target_feed_kg) : 15000);
+
+      // 3. Remaining Feed (kg left until 15,000 kg target harvest)
+      const remainingKg = hp && hp.remaining_feed_kg !== undefined
+        ? Number(hp.remaining_feed_kg)
+        : (!isNaN(parseFloat(p.remaining_feed_kg)) && parseFloat(p.remaining_feed_kg) > 0
+          ? parseFloat(p.remaining_feed_kg)
+          : Math.max(0, targetKg - consumedKg));
+
+      // 4. Feed Progress Percentage (%)
+      const feedProgressPct = hp && hp.feed_progress_percentage !== undefined
+        ? Number(hp.feed_progress_percentage)
+        : (targetKg > 0 ? Math.min(100, Math.round((consumedKg / targetKg) * 100)) : 0);
+
+      // 5. Average Shrimp Body Weight (ABW in grams from Harvest Forecast / feeding samples)
+      const weightG = hp && Number(hp.average_weight) > 0
+        ? Number(hp.average_weight)
+        : (!isNaN(parseFloat(p.shrimp_weight_g)) && parseFloat(p.shrimp_weight_g) > 0 && parseFloat(p.shrimp_weight_g) !== 18.5
+          ? parseFloat(p.shrimp_weight_g)
+          : (consumedKg > 0 ? 15.0 : 0));
+
+      // 6. Caretaker Name: prioritize Harvest Forecast assigned caretaker
+      const assignedCaretaker = hp?.caretaker_names || p.assigned_caretaker_name || p.caretaker_name || t('Unassigned');
+
+      // 7. Harvest Readiness & Forecast Metrics
+      const targetYieldKg = hp?.baseline_harvest_kg ?? p.target_yield_kg ?? (consumedKg * 0.7333);
+      const adjustedHarvestKg = hp?.adjusted_harvest_kg ?? p.adjusted_harvest_kg ?? targetYieldKg;
+      const predictedHarvestTons = hp?.predicted_harvest_tons ?? p.predicted_harvest_tons ?? (adjustedHarvestKg / 1000);
+      const harvestReadinessStatus = hp?.readiness_status ?? p.harvest_readiness_status ?? null;
+
+      // 8. Operational Status & Culture Stage
+      const isRecentlyHarvested =
+        rawOverride === 'Recently Harvested' ||
+        Boolean(p.is_harvested) ||
+        String(p.status || '').toLowerCase() === 'harvested' ||
+        String(p.operational_status || '').toLowerCase().includes('harvest');
+
+      const isNursery =
+        rawOverride === 'Nursery State' ||
+        (!isRecentlyHarvested && doc !== null && doc >= 1 && doc <= 19 && consumedKg < 1000);
+
+      const isHarvestReady =
+        rawOverride === 'Ready to Harvest' ||
+        (!isRecentlyHarvested && !isNursery && (
+          harvestReadinessStatus === 'Feed Reference Reached' ||
+          harvestReadinessStatus === 'Nearly Ready' ||
+          (feedProgressPct >= 85 && consumedKg > 0) ||
+          ((p.harvest_readiness || 0) >= 95 && consumedKg > 0)
+        ));
+
+      const isGrowout =
+        rawOverride === 'Grow-Out Phase' ||
+        rawOverride === 'Grow-out' ||
+        (!isRecentlyHarvested && !isNursery && !isHarvestReady && (
+          harvestReadinessStatus === 'Developing' ||
+          (consumedKg > 0 && doc !== null && doc >= 20) ||
+          feedProgressPct >= 20
+        ));
 
       const isInactive =
+        rawOverride === 'Resting / Prep' ||
+        rawOverride === 'Fallow / Prep' ||
+        rawOverride === 'Resting' ||
         (p.operational_status && String(p.operational_status).toLowerCase() === 'inactive') ||
         p.is_active === false ||
         (p.status && String(p.status).toLowerCase() === 'inactive') ||
-        !p.stocking_date;
+        (!p.stocking_date && !isRecentlyHarvested) ||
+        (consumedKg === 0 && !isNursery && !rawOverride);
+
       const operationalStatus = isInactive ? 'Inactive' : 'Active';
-      const isActive = !isInactive;
+      const isActive = !isInactive && !isRecentlyHarvested;
+
+      let stageLabel = t('Unstocked');
+      let statusDisplay = t('Active');
+      let statusColor = '#10B981';
+      let statusBg = '#ECFDF5';
+      let statusBorder = '#86EFAC';
+
+      if (isRecentlyHarvested) {
+        stageLabel = t('Recently Harvested');
+        statusDisplay = t('Recently Harvested');
+        statusColor = '#8B5CF6';
+        statusBg = '#EDE9FE';
+        statusBorder = '#C4B5FD';
+      } else if (isNursery) {
+        stageLabel = t('Nursery State');
+        statusDisplay = t('Nursery State');
+        statusColor = '#0284C7';
+        statusBg = '#E0F2FE';
+        statusBorder = '#7DD3FC';
+      } else if (isHarvestReady) {
+        stageLabel = t('Ready to Harvest');
+        statusDisplay = t('Ready to Harvest');
+        statusColor = '#D97706';
+        statusBg = '#FEF3C7';
+        statusBorder = '#FCD34D';
+      } else if (isGrowout || isActive) {
+        stageLabel = t('Grow-Out Phase');
+        statusDisplay = t('Grow-Out Phase');
+        statusColor = '#10B981';
+        statusBg = '#ECFDF5';
+        statusBorder = '#86EFAC';
+      } else {
+        stageLabel = t('Resting / Prep');
+        statusDisplay = t('Resting / Prep');
+        statusColor = '#64748B';
+        statusBg = '#F1F5F9';
+        statusBorder = '#CBD5E1';
+      }
 
       return {
         ...p,
         doc,
+        assigned_caretaker_name: assignedCaretaker,
+        isRecentlyHarvested,
         isNursery,
         isGrowout,
         isHarvestReady,
+        isInactive,
         stageLabel,
+        statusDisplay,
+        statusColor,
+        statusBg,
+        statusBorder,
         consumedKg,
         targetKg,
         remainingKg,
@@ -232,9 +363,13 @@ export default function PondMonitoringPage() {
         weightG,
         operationalStatus,
         isActive,
+        targetYieldKg,
+        adjustedHarvestKg,
+        predictedHarvestTons,
+        harvestReadinessStatus,
       };
     });
-  }, [ponds, t]);
+  }, [ponds, harvestMap, t]);
 
   // Filtered & Sorted Ponds
   const filteredPonds = useMemo(() => {
@@ -254,7 +389,15 @@ export default function PondMonitoringPage() {
 
         // Status Filter
         if (statusFilter !== 'All') {
-          if (statusFilter.toLowerCase() === 'active') {
+          if (statusFilter === 'Nursery') {
+            if (!p.isNursery) return false;
+          } else if (statusFilter === 'Harvested') {
+            if (!p.isRecentlyHarvested) return false;
+          } else if (statusFilter === 'HarvestReady') {
+            if (!p.isHarvestReady) return false;
+          } else if (statusFilter === 'Growout') {
+            if (!p.isGrowout) return false;
+          } else if (statusFilter.toLowerCase() === 'active') {
             if (!p.isActive) return false;
           } else if (statusFilter.toLowerCase() === 'inactive') {
             if (p.isActive) return false;
@@ -291,8 +434,8 @@ export default function PondMonitoringPage() {
         if (sortBy === 'doc-asc') return (a.doc || 0) - (b.doc || 0);
         if (sortBy === 'weight-desc') return (b.weightG || 0) - (a.weightG || 0);
         if (sortBy === 'feed-desc') return (b.consumedKg || 0) - (a.consumedKg || 0);
-        if (sortBy === 'name-asc') return (a.pond_name || '').localeCompare(b.pond_name || '');
-        return 0;
+        // Default: natural alphanumeric order (Pond A1, Pond A2, Pond A3...)
+        return (a.pond_name || '').localeCompare(b.pond_name || '', undefined, { numeric: true, sensitivity: 'base' });
       });
   }, [processedPonds, searchQuery, statusFilter, diseaseFilter, caretakerFilter, stageFilter, sortBy, isolatedPonds]);
 
@@ -426,10 +569,10 @@ export default function PondMonitoringPage() {
       `"${(p.assigned_caretaker_name || 'Unassigned').replace(/"/g, '""')}"`,
       p.doc ?? 0,
       `"${p.stageLabel || ''}"`,
-      p.weightG ?? 18.5,
+      p.weightG ?? 15.0,
       p.consumedKg ?? 0,
       p.remainingKg ?? 0,
-      p.targetKg ?? 800,
+      p.targetKg ?? 15000,
       `${p.feedProgressPct ?? 0}%`,
       `"${p.stocking_date || ''}"`,
       `"${p.expected_harvest_date || ''}"`,
@@ -452,8 +595,9 @@ export default function PondMonitoringPage() {
     setFormCaretakerId('');
     setFormStockingDate(new Date().toISOString().split('T')[0]);
     setFormAreaSqm(500);
-    setFormShrimpWeight(18.5);
-    setFormCycleTargetFeed(800);
+    setFormShrimpWeight(15.0);
+    setFormCycleTargetFeed(15000);
+    setFormOperationalStatus('Grow-out');
   };
 
   const openAddPondModal = () => {
@@ -467,8 +611,19 @@ export default function PondMonitoringPage() {
     setFormCaretakerId(pond.assigned_caretaker_id ? String(pond.assigned_caretaker_id) : '');
     setFormStockingDate(pond.stocking_date || new Date().toISOString().split('T')[0]);
     setFormAreaSqm(pond.area_sqm || 500);
-    setFormShrimpWeight(pond.shrimp_weight_g || 18.5);
-    setFormCycleTargetFeed(pond.cycle_target_feed_kg || 800);
+    setFormShrimpWeight(pond.weightG || pond.shrimp_weight_g || 15.0);
+    setFormCycleTargetFeed(pond.targetKg || pond.cycle_target_feed_kg || 15000);
+    setFormOperationalStatus(
+      pond.isRecentlyHarvested
+        ? 'Recently Harvested'
+        : pond.isNursery
+          ? 'Nursery State'
+          : pond.isHarvestReady
+            ? 'Ready to Harvest'
+            : !pond.isActive
+              ? 'Resting / Prep'
+              : 'Grow-out'
+    );
     setShowAddPondModal(true);
   };
 
@@ -487,8 +642,17 @@ export default function PondMonitoringPage() {
         assigned_caretaker_id: formCaretakerId,
         stocking_date: formStockingDate,
         area_sqm: parseInt(formAreaSqm, 10) || 500,
-        shrimp_weight_g: parseFloat(formShrimpWeight) || 18.5,
-        cycle_target_feed_kg: parseFloat(formCycleTargetFeed) || 800,
+        shrimp_weight_g: parseFloat(formShrimpWeight) || 15.0,
+        cycle_target_feed_kg: parseFloat(formCycleTargetFeed) || 15000,
+        operational_status: formOperationalStatus,
+        status:
+          formOperationalStatus === 'Recently Harvested'
+            ? 'Harvested'
+            : formOperationalStatus === 'Nursery State'
+              ? 'Nursery'
+              : formOperationalStatus === 'Resting / Prep' || formOperationalStatus === 'Fallow / Prep'
+                ? 'Inactive'
+                : 'Active',
       };
 
       if (editingPond) {
@@ -496,6 +660,16 @@ export default function PondMonitoringPage() {
         payload.id = editingPond.id;
         const currentFed = parseFloat(editingPond.total_feed_kg || 0);
         payload.remaining_feed_kg = Math.max(0, payload.cycle_target_feed_kg - currentFed);
+      }
+
+      // Persist operational status override locally
+      try {
+        const savedOverrides = JSON.parse(localStorage.getItem('shrim_pond_status_overrides') || '{}');
+        savedOverrides[pondName] = formOperationalStatus;
+        if (editingPond?.id) savedOverrides[String(editingPond.id)] = formOperationalStatus;
+        localStorage.setItem('shrim_pond_status_overrides', JSON.stringify(savedOverrides));
+      } catch (err) {
+        console.error('Storage override error:', err);
       }
 
       const res = await api.post('/ponds.php', payload);
@@ -644,6 +818,32 @@ export default function PondMonitoringPage() {
             </span>
           </div>
         </div>
+
+        {/* Status Filter Pills: All Ponds, Nursery State, Grow-Out, Recently Harvested, etc. */}
+        <div className="d-flex align-items-center gap-1.5 mt-2.5 pt-2 border-top flex-wrap" style={{ borderColor: '#F1F5F9' }}>
+          {[
+            { id: 'All', label: t('All Ponds') },
+            { id: 'Nursery', label: t('Nursery State') },
+            { id: 'Growout', label: t('Grow-Out Phase') },
+            { id: 'HarvestReady', label: t('Ready to Harvest') },
+            { id: 'Harvested', label: t('Recently Harvested') },
+            { id: 'Inactive', label: t('Resting / Inactive') }
+          ].map((tab) => {
+            const isActiveTab = statusFilter === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all ${isActiveTab ? 'text-white shadow-2xs' : 'btn-light border text-secondary'
+                  }`}
+                style={isActiveTab ? { backgroundColor: '#FC563C', borderColor: '#FC563C' } : { borderColor: '#E2E8F0' }}
+                onClick={() => setStatusFilter(tab.id)}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {error && (
@@ -690,13 +890,13 @@ export default function PondMonitoringPage() {
                         </div>
                       </div>
 
-                      {/* Status: Active / Inactive based on database */}
+                      {/* Status: Recently Harvested / Nursery State / Ready to Harvest / Grow-Out / Resting */}
                       <span
                         className="badge rounded-pill px-3 py-1.5 fw-bold d-inline-flex align-items-center gap-1.5"
                         style={{
-                          backgroundColor: pond.isActive ? '#ECFDF5' : '#F1F5F9',
-                          color: pond.isActive ? '#065F46' : '#475569',
-                          border: pond.isActive ? '1.5px solid #86EFAC' : '1.5px solid #CBD5E1',
+                          backgroundColor: pond.statusBg,
+                          color: pond.statusColor,
+                          border: `1.5px solid ${pond.statusBorder}`,
                           fontSize: '0.74rem',
                         }}
                       >
@@ -705,10 +905,10 @@ export default function PondMonitoringPage() {
                             width: 7,
                             height: 7,
                             borderRadius: '50%',
-                            backgroundColor: pond.isActive ? '#10B981' : '#94A3B8',
+                            backgroundColor: pond.statusColor,
                           }}
                         />
-                        {pond.isActive ? t('Active') : t('Inactive')}
+                        {pond.statusDisplay}
                       </span>
                     </div>
 
@@ -812,10 +1012,10 @@ export default function PondMonitoringPage() {
                           </div>
                           <div className="d-flex align-items-baseline gap-1 mt-1">
                             <span className="fw-extrabold" style={{ color: '#6B21A8', fontSize: '1.45rem', lineHeight: 1.1 }}>
-                              {formatNumber(pond.weightG, 1)}
+                              {pond.weightG > 0 ? formatNumber(pond.weightG, 1) : '—'}
                             </span>
                             <span className="fw-bold extra-small" style={{ color: '#7C3AED' }}>
-                              grams
+                              {pond.weightG > 0 ? 'grams' : ''}
                             </span>
                           </div>
                         </div>
@@ -849,7 +1049,7 @@ export default function PondMonitoringPage() {
                           </div>
                           <div className="d-flex align-items-baseline gap-1 mt-1">
                             <span className="fw-extrabold" style={{ color: '#C2410C', fontSize: '1.45rem', lineHeight: 1.1 }}>
-                              {formatNumber(pond.consumedKg, 1)}
+                              {formatNumber(pond.consumedKg, 0)}
                             </span>
                             <span className="fw-bold extra-small" style={{ color: '#EA580C' }}>
                               kg
@@ -886,7 +1086,7 @@ export default function PondMonitoringPage() {
                           </div>
                           <div className="d-flex align-items-baseline gap-1 mt-1">
                             <span className="fw-extrabold" style={{ color: '#0369A1', fontSize: '1.45rem', lineHeight: 1.1 }}>
-                              {formatNumber(pond.remainingKg, 1)}
+                              {formatNumber(pond.remainingKg, 0)}
                             </span>
                             <span className="fw-bold extra-small" style={{ color: '#0284C7' }}>
                               kg
@@ -923,9 +1123,8 @@ export default function PondMonitoringPage() {
           <div className="d-inline-flex p-1 rounded-pill bg-light border" style={{ borderColor: '#E2E8F0' }}>
             <button
               type="button"
-              className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all ${
-                activeChartTab === 'feed' ? 'bg-white text-dark shadow-2xs border' : 'btn-link text-secondary text-decoration-none'
-              }`}
+              className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all ${activeChartTab === 'feed' ? 'bg-white text-dark shadow-2xs border' : 'btn-link text-secondary text-decoration-none'
+                }`}
               style={{ fontSize: '0.78rem', borderColor: activeChartTab === 'feed' ? '#E2E8F0' : 'transparent' }}
               onClick={() => setActiveChartTab('feed')}
             >
@@ -934,9 +1133,8 @@ export default function PondMonitoringPage() {
             </button>
             <button
               type="button"
-              className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all ${
-                activeChartTab === 'weight' ? 'bg-white text-dark shadow-2xs border' : 'btn-link text-secondary text-decoration-none'
-              }`}
+              className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all ${activeChartTab === 'weight' ? 'bg-white text-dark shadow-2xs border' : 'btn-link text-secondary text-decoration-none'
+                }`}
               style={{ fontSize: '0.78rem', borderColor: activeChartTab === 'weight' ? '#E2E8F0' : 'transparent' }}
               onClick={() => setActiveChartTab('weight')}
             >
@@ -945,9 +1143,8 @@ export default function PondMonitoringPage() {
             </button>
             <button
               type="button"
-              className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all ${
-                activeChartTab === 'stages' ? 'bg-white text-dark shadow-2xs border' : 'btn-link text-secondary text-decoration-none'
-              }`}
+              className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all ${activeChartTab === 'stages' ? 'bg-white text-dark shadow-2xs border' : 'btn-link text-secondary text-decoration-none'
+                }`}
               style={{ fontSize: '0.78rem', borderColor: activeChartTab === 'stages' ? '#E2E8F0' : 'transparent' }}
               onClick={() => setActiveChartTab('stages')}
             >
@@ -1217,9 +1414,17 @@ export default function PondMonitoringPage() {
                     <div className="col-12 col-md-6">
                       <span className="extra-small text-muted d-block">{t('Harvest Readiness')}</span>
                       <span className="badge rounded-pill px-2.5 py-1 extra-small fw-bold" style={{ backgroundColor: '#FEF3C7', color: '#B45309', border: '1px solid #FCD34D' }}>
-                        {formatNumber(selectedPond.harvest_readiness)}% • {selectedPond.harvest_readiness_status || t('In Progress')}
+                        {selectedPond.feedProgressPct}% • {selectedPond.harvestReadinessStatus || t('In Progress')}
                       </span>
                     </div>
+                    {selectedPond.adjustedHarvestKg > 0 && (
+                      <div className="col-12 col-md-6">
+                        <span className="extra-small text-muted d-block">{t('Predicted Harvest Yield')}</span>
+                        <strong className="small text-dark">
+                          {Math.round(selectedPond.adjustedHarvestKg).toLocaleString()} kg ({selectedPond.predictedHarvestTons ? selectedPond.predictedHarvestTons.toFixed(2) : (selectedPond.adjustedHarvestKg / 1000).toFixed(2)} tons)
+                        </strong>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1323,6 +1528,21 @@ export default function PondMonitoringPage() {
                 </div>
 
                 <div className="mb-3">
+                  <label className="form-label small fw-bold text-dark">{t('Operational Status / State')}</label>
+                  <select
+                    className="form-select form-select-sm rounded-3"
+                    value={formOperationalStatus}
+                    onChange={(e) => setFormOperationalStatus(e.target.value)}
+                  >
+                    <option value="Grow-out">{t('Active (Grow-Out Phase)')}</option>
+                    <option value="Nursery State">{t('Nursery State (Recently Put into Nursery)')}</option>
+                    <option value="Recently Harvested">{t('Recently Harvested')}</option>
+                    <option value="Ready to Harvest">{t('Ready to Harvest')}</option>
+                    <option value="Resting / Prep">{t('Resting / Pond Preparation')}</option>
+                  </select>
+                </div>
+
+                <div className="mb-3">
                   <label className="form-label small fw-bold text-dark">{t('Assigned Caretaker')}</label>
                   <select
                     className="form-select form-select-sm rounded-3"
@@ -1384,7 +1604,7 @@ export default function PondMonitoringPage() {
                       className="form-control form-control-sm rounded-3"
                       value={formCycleTargetFeed}
                       onChange={(e) => setFormCycleTargetFeed(e.target.value)}
-                      placeholder="800"
+                      placeholder="15000"
                       required
                     />
                   </div>

@@ -122,6 +122,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $feedByPond[(int)$feedRow['pond_id']] = $feedRow;
         }
 
+        // Fetch latest authoritative harvest predictions to ensure Pond Reports & Harvest Forecast always match
+        $harvestByPond = [];
+        if (tableExists($conn, 'harvest_predictions')) {
+            try {
+                $harvestStmt = $conn->query('
+                    SELECT hp.*
+                    FROM harvest_predictions hp
+                    INNER JOIN (
+                        SELECT pond_id, MAX(id) AS latest_id
+                        FROM harvest_predictions
+                        GROUP BY pond_id
+                    ) latest ON latest.latest_id = hp.id
+                ');
+                foreach ($harvestStmt->fetchAll(PDO::FETCH_ASSOC) as $hRow) {
+                    $harvestByPond[(int)$hRow['pond_id']] = $hRow;
+                }
+            } catch (Throwable $e) {}
+        }
+
+        // Fetch latest Average Body Weight (ABW in grams) per pond from feeding records
+        $abwByPond = [];
+        if (tableExists($conn, 'feeding_records')) {
+            try {
+                $abwStmt = $conn->query('
+                    SELECT fr.pond_id, fr.shrimp_weight_grams
+                    FROM feeding_records fr
+                    INNER JOIN (
+                        SELECT pond_id, MAX(id) AS latest_id
+                        FROM feeding_records
+                        WHERE shrimp_weight_grams IS NOT NULL AND shrimp_weight_grams > 0
+                        GROUP BY pond_id
+                    ) latest ON latest.latest_id = fr.id
+                ');
+                foreach ($abwStmt->fetchAll(PDO::FETCH_ASSOC) as $abwRow) {
+                    $abwByPond[(int)$abwRow['pond_id']] = (float)$abwRow['shrimp_weight_grams'];
+                }
+            } catch (Throwable $e) {}
+        }
+
         $diseaseStmt = $conn->query('
             SELECT dr.*
             FROM disease_reports dr
@@ -201,24 +240,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 $diseaseAlertsCount++;
             }
 
-            $dbTotalFeed = is_numeric($p['total_feed_kg'] ?? null) ? (float)$p['total_feed_kg'] : 0.0;
-            $loggedTotalFeed = $feedRow ? (float)$feedRow['total_feed_kg'] : 0.0;
-            $totalFeed = max($dbTotalFeed, $loggedTotalFeed);
+            $hRow = $harvestByPond[$pondId] ?? null;
+            $abwVal = $abwByPond[$pondId] ?? null;
+
+            // Harmonize with Harvest Forecast (15,000 kg standard baseline)
+            $cycleTarget = 15000.0;
+            if ($hRow && (float)$hRow['total_feed_consumed_kg'] > 0) {
+                $totalFeed = (float)$hRow['total_feed_consumed_kg'];
+                $cycleTarget = (float)($hRow['feed_reference_kg'] ?? 15000.0);
+                $remainingFeed = max(0.0, round($cycleTarget - $totalFeed, 2));
+            } else {
+                $dbTotalFeed = is_numeric($p['total_feed_kg'] ?? null) ? (float)$p['total_feed_kg'] : 0.0;
+                $loggedTotalFeed = $feedRow ? (float)$feedRow['total_feed_kg'] : 0.0;
+                $totalFeed = max($dbTotalFeed, $loggedTotalFeed);
+                $remainingFeed = max(0.0, round($cycleTarget - $totalFeed, 2));
+            }
 
             $feedToday = $feedRow && (float)$feedRow['feed_today_kg'] > 0
                 ? (float)$feedRow['feed_today_kg']
                 : (is_numeric($p['feed_today_kg'] ?? null) ? (float)$p['feed_today_kg'] : 0.0);
             $totalFeedSum += $feedToday;
 
-            $cycleTarget = is_numeric($p['cycle_target_feed_kg'] ?? null) && (float)$p['cycle_target_feed_kg'] > 0
-                ? (float)$p['cycle_target_feed_kg']
-                : 800.0;
-            $remainingFeed = is_numeric($p['remaining_feed_kg'] ?? null) && (float)$p['remaining_feed_kg'] >= 0
-                ? (float)$p['remaining_feed_kg']
-                : max(0.0, round($cycleTarget - $totalFeed, 2));
-            $shrimpWeight = is_numeric($p['shrimp_weight_g'] ?? null) && (float)$p['shrimp_weight_g'] > 0
-                ? (float)$p['shrimp_weight_g']
-                : 18.50;
+            // Determine accurate Average Body Weight (ABW in grams)
+            if ($abwVal !== null && $abwVal > 0) {
+                $shrimpWeight = $abwVal;
+            } else if ($hRow && (float)$hRow['average_weight'] > 0) {
+                $shrimpWeight = (float)$hRow['average_weight'];
+            } else if (is_numeric($p['shrimp_weight_g'] ?? null) && (float)$p['shrimp_weight_g'] > 0 && (float)$p['shrimp_weight_g'] != 18.5) {
+                $shrimpWeight = (float)$p['shrimp_weight_g'];
+            } else {
+                $shrimpWeight = ($totalFeed > 0 ? 15.0 : 0.0);
+            }
+
+            $feedProgress = $hRow ? (float)$hRow['feed_progress_percentage'] : ($cycleTarget > 0 ? round(($totalFeed / $cycleTarget) * 100, 2) : 0);
+            if ($hRow && !empty($hRow['readiness_status'])) {
+                $readinessCategory = $hRow['readiness_status'];
+            }
 
             $rawStatus = trim((string)($p['status'] ?? ''));
             $isInactive = (strtolower($rawStatus) === 'inactive') 
@@ -245,17 +302,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 'shrimp_weight_g' => $shrimpWeight,
                 'cycle_target_feed_kg' => $cycleTarget,
                 'remaining_feed_kg' => $remainingFeed,
+                'feed_progress_percentage' => $feedProgress,
                 'growth_percentage' => is_numeric($p['growth_percentage'] ?? null) ? (float)$p['growth_percentage'] : null,
                 'disease_detection' => $disease,
                 'disease_confidence' => $diseaseConfidence,
                 'harvest_readiness' => $readiness,
                 'harvest_readiness_status' => $readinessCategory,
+                'target_yield_kg' => $hRow ? (float)$hRow['baseline_harvest_kg'] : null,
+                'adjusted_harvest_kg' => $hRow ? (float)$hRow['adjusted_harvest_kg'] : null,
+                'predicted_harvest_tons' => $hRow ? (float)$hRow['predicted_harvest_tons'] : null,
                 'expected_harvest_date' => !empty($p['expected_harvest_date']) ? $p['expected_harvest_date'] : null,
                 'feed_today_kg' => $feedToday,
                 'total_feed_kg' => $totalFeed,
                 'latest_feed_date' => $feedRow['latest_feed_date'] ?? null,
                 'latest_image' => $diseaseRow['image_path'] ?? (!empty($p['latest_image']) ? $p['latest_image'] : null),
-                'assigned_caretaker_name' => $p['caretaker_name'],
+                'assigned_caretaker_name' => $hRow['caretaker_names'] ?? $p['caretaker_name'],
                 'assigned_caretaker_id' => is_numeric($p['caretaker_id'] ?? null) ? (int)$p['caretaker_id'] : null
             ];
         }

@@ -651,11 +651,6 @@ export default function UsersPage() {
         ]}
         activeTab={roleFilter}
         onTabChange={setRoleFilter}
-        metaRight={
-          <>
-            {t('Access Control:')} <strong>{t('Enterprise User Management')}</strong>
-          </>
-        }
         filterFields={[
           {
             label: t('Account Status'),
@@ -730,179 +725,179 @@ export default function UsersPage() {
               </div>
               <div className="table-responsive admin-scrollable-table-4rows rounded-3" style={{ maxHeight: 290, overflowY: 'auto', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
                 <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.85rem' }}>
-                <thead className="table-light border-bottom" style={{ borderColor: '#E2E8F0' }}>
-                <tr className="extra-small text-uppercase fw-bold text-secondary">
-                  <th className="ps-3 py-3" style={{ minWidth: 220 }}>{t('User Profile')}</th>
-                  <th className="py-3" style={{ minWidth: 190 }}>{t('Contact Email')}</th>
-                  <th className="py-3" style={{ minWidth: 140 }}>{t('Mobile Number')}</th>
-                  <th className="py-3" style={{ minWidth: 120 }}>{t('Access Role')}</th>
-                  <th className="py-3" style={{ minWidth: 110 }}>{t('Status')}</th>
-                  <th className="py-3" style={{ minWidth: 200 }}>{t('Assigned Basins')}</th>
-                  <th className="pe-3 py-3 text-end text-nowrap" style={{ width: '1%' }}>{t('Actions')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedUsers.map((user) => {
-                  const formattedName = toTitleCase(user.full_name);
-                  const roleSubtitle = user.role === 'admin' ? t('System Administrator') : t('Pond Caretaker');
+                  <thead className="table-light border-bottom" style={{ borderColor: '#E2E8F0' }}>
+                    <tr className="extra-small text-uppercase fw-bold text-secondary">
+                      <th className="ps-3 py-3" style={{ minWidth: 220 }}>{t('User Profile')}</th>
+                      <th className="py-3" style={{ minWidth: 190 }}>{t('Contact Email')}</th>
+                      <th className="py-3" style={{ minWidth: 140 }}>{t('Mobile Number')}</th>
+                      <th className="py-3" style={{ minWidth: 120 }}>{t('Access Role')}</th>
+                      <th className="py-3" style={{ minWidth: 110 }}>{t('Status')}</th>
+                      <th className="py-3" style={{ minWidth: 200 }}>{t('Assigned Basins')}</th>
+                      <th className="pe-3 py-3 text-end text-nowrap" style={{ width: '1%' }}>{t('Actions')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedUsers.map((user) => {
+                      const formattedName = toTitleCase(user.full_name);
+                      const roleSubtitle = user.role === 'admin' ? t('System Administrator') : t('Pond Caretaker');
 
-                  return (
-                    <tr key={user.id} className="border-bottom">
-                      {/* Name & Avatar */}
-                      <td className="ps-3 py-3">
-                        <div
-                          className="d-flex align-items-center gap-2.5 cursor-pointer"
-                          style={{ cursor: 'pointer' }}
-                          onClick={() => setViewingUser(user)}
-                        >
-                          <div
-                            className="rounded-circle text-white d-flex align-items-center justify-content-center fw-bold shadow-xs flex-shrink-0"
-                            style={{
-                              width: 42,
-                              height: 42,
-                              fontSize: '1rem',
-                              background: getAvatarBg(user)
-                            }}
-                          >
-                            {formattedName ? formattedName.charAt(0).toUpperCase() : 'U'}
-                          </div>
-                          <div>
-                            <strong className="d-block text-dark">{formattedName}</strong>
-                            <span className="text-muted extra-small">{roleSubtitle}</span>
-                          </div>
-                        </div>
-                      </td>
+                      return (
+                        <tr key={user.id} className="border-bottom">
+                          {/* Name & Avatar */}
+                          <td className="ps-3 py-3">
+                            <div
+                              className="d-flex align-items-center gap-2.5 cursor-pointer"
+                              style={{ cursor: 'pointer' }}
+                              onClick={() => setViewingUser(user)}
+                            >
+                              <div
+                                className="rounded-circle text-white d-flex align-items-center justify-content-center fw-bold shadow-xs flex-shrink-0"
+                                style={{
+                                  width: 42,
+                                  height: 42,
+                                  fontSize: '1rem',
+                                  background: getAvatarBg(user)
+                                }}
+                              >
+                                {formattedName ? formattedName.charAt(0).toUpperCase() : 'U'}
+                              </div>
+                              <div>
+                                <strong className="d-block text-dark">{formattedName}</strong>
+                                <span className="text-muted extra-small">{roleSubtitle}</span>
+                              </div>
+                            </div>
+                          </td>
 
-                      <td className="py-3 text-secondary">
-                        <span className="d-flex align-items-center gap-1.5">
-                          <FaEnvelope size={11} className="text-muted" /> {user.email}
-                        </span>
-                      </td>
+                          <td className="py-3 text-secondary">
+                            <span className="d-flex align-items-center gap-1.5">
+                              <FaEnvelope size={11} className="text-muted" /> {user.email}
+                            </span>
+                          </td>
 
-                      <td className="py-3 text-secondary">
-                        <span className="d-flex align-items-center gap-1.5">
-                          <FaPhone size={11} className="text-muted" /> {user.phone || '09123456789'}
-                        </span>
-                      </td>
+                          <td className="py-3 text-secondary">
+                            <span className="d-flex align-items-center gap-1.5">
+                              <FaPhone size={11} className="text-muted" /> {user.phone || '09123456789'}
+                            </span>
+                          </td>
 
-                      <td className="py-3">
-                        <span
-                          className="badge rounded-pill fw-bold px-2.5 py-1"
-                          style={
-                            user.role === 'admin'
-                              ? { background: 'rgba(252, 86, 60, 0.08)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.2)' }
-                              : { background: '#F0F9FF', color: '#FC563C', border: '1px solid #BAE6FD' }
-                          }
-                        >
-                          {user.role === 'admin' ? (
-                            <>
-                              <FaUserShield className="me-1" size={11} /> {t('Admin')}
-                            </>
-                          ) : (
-                            <>
-                              <FaUserTie className="me-1" size={11} /> {t('Caretaker')}
-                            </>
-                          )}
-                        </span>
-                      </td>
+                          <td className="py-3">
+                            <span
+                              className="badge rounded-pill fw-bold px-2.5 py-1"
+                              style={
+                                user.role === 'admin'
+                                  ? { background: 'rgba(252, 86, 60, 0.08)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.2)' }
+                                  : { background: '#F0F9FF', color: '#FC563C', border: '1px solid #BAE6FD' }
+                              }
+                            >
+                              {user.role === 'admin' ? (
+                                <>
+                                  <FaUserShield className="me-1" size={11} /> {t('Admin')}
+                                </>
+                              ) : (
+                                <>
+                                  <FaUserTie className="me-1" size={11} /> {t('Caretaker')}
+                                </>
+                              )}
+                            </span>
+                          </td>
 
-                      <td className="py-3">
-                        <span
-                          className="badge rounded-pill px-2.5 py-1 fw-bold extra-small"
-                          style={
-                            user.status === 'Active'
-                              ? { background: '#ECFDF5', color: '#16A34A', border: '1px solid #BBF7D0' }
-                              : { background: '#FFF1F2', color: '#E11D48', border: '1px solid #FECDD3' }
-                          }
-                        >
-                          {user.status === 'Active' ? t('Active') : t('Inactive')}
-                        </span>
-                      </td>
+                          <td className="py-3">
+                            <span
+                              className="badge rounded-pill px-2.5 py-1 fw-bold extra-small"
+                              style={
+                                user.status === 'Active'
+                                  ? { background: '#ECFDF5', color: '#16A34A', border: '1px solid #BBF7D0' }
+                                  : { background: '#FFF1F2', color: '#E11D48', border: '1px solid #FECDD3' }
+                              }
+                            >
+                              {user.status === 'Active' ? t('Active') : t('Inactive')}
+                            </span>
+                          </td>
 
-                      {/* ASSIGNED PONDS */}
-                      <td className="py-3">
-                        {user.assigned_ponds && user.assigned_ponds.length > 0 ? (
-                          <div className="d-flex flex-wrap gap-1">
-                            {user.assigned_ponds.map((p) => (
+                          {/* ASSIGNED PONDS */}
+                          <td className="py-3">
+                            {user.assigned_ponds && user.assigned_ponds.length > 0 ? (
+                              <div className="d-flex flex-wrap gap-1">
+                                {user.assigned_ponds.map((p) => (
+                                  <span
+                                    key={p.id}
+                                    className="badge rounded-pill fw-bold px-2.5 py-1"
+                                    style={{ background: '#F0F9FF', color: '#FC563C', border: '1px solid #BAE6FD', fontSize: '0.75rem' }}
+                                  >
+                                    <FaWater className="me-1" size={10} /> {p.pond_name}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : user.pond_name ? (
                               <span
-                                key={p.id}
                                 className="badge rounded-pill fw-bold px-2.5 py-1"
                                 style={{ background: '#F0F9FF', color: '#FC563C', border: '1px solid #BAE6FD', fontSize: '0.75rem' }}
                               >
-                                <FaWater className="me-1" size={10} /> {p.pond_name}
+                                <FaWater className="me-1" size={10} /> {user.pond_name}
                               </span>
-                            ))}
-                          </div>
-                        ) : user.pond_name ? (
-                          <span
-                            className="badge rounded-pill fw-bold px-2.5 py-1"
-                            style={{ background: '#F0F9FF', color: '#FC563C', border: '1px solid #BAE6FD', fontSize: '0.75rem' }}
-                          >
-                            <FaWater className="me-1" size={10} /> {user.pond_name}
-                          </span>
-                        ) : (
-                          <span className="text-muted extra-small italic">— {t('Unassigned')}</span>
-                        )}
-                      </td>
+                            ) : (
+                              <span className="text-muted extra-small italic">— {t('Unassigned')}</span>
+                            )}
+                          </td>
 
-                      {/* Action Buttons */}
-                      <td className="pe-3 py-3 text-end text-nowrap" style={{ width: '1%' }}>
-                        <div className="d-flex align-items-center justify-content-end gap-1.5">
-                          {/* View Profile */}
-                          <button
-                            type="button"
-                            className="btn btn-sm rounded-circle d-inline-flex align-items-center justify-content-center p-0 shadow-xs"
-                            style={{ width: 34, height: 34, background: '#F0F9FF', color: '#FC563C', border: '1px solid #BAE6FD' }}
-                            title={t('Inspect Profile & Telemetry Performance')}
-                            onClick={() => setViewingUser(user)}
-                          >
-                            <FaEye size={13} />
-                          </button>
-
-                          {/* Edit Caretaker */}
-                          <button
-                            type="button"
-                            className="btn btn-sm rounded-circle d-inline-flex align-items-center justify-content-center p-0 shadow-xs"
-                            style={{ width: 34, height: 34, background: '#E9E4E0', color: '#475569', border: '1px solid #E2E8F0' }}
-                            title={t('Edit User Credentials & Basin Assignments')}
-                            onClick={() => openEditModal(user)}
-                          >
-                            <FaEdit size={13} />
-                          </button>
-
-                          {/* Delete & Archive Buttons */}
-                          {user.role !== 'admin' && (
-                            <>
+                          {/* Action Buttons */}
+                          <td className="pe-3 py-3 text-end text-nowrap" style={{ width: '1%' }}>
+                            <div className="d-flex align-items-center justify-content-end gap-1.5">
+                              {/* View Profile */}
                               <button
                                 type="button"
                                 className="btn btn-sm rounded-circle d-inline-flex align-items-center justify-content-center p-0 shadow-xs"
-                                style={{ width: 34, height: 34, background: '#E9E4E0', color: '#FC563C', border: '1px solid #6E7575' }}
-                                title={t('Archive Caretaker (Resigned / Inactive)')}
-                                onClick={() => handleArchiveCaretaker(user)}
+                                style={{ width: 34, height: 34, background: '#F0F9FF', color: '#FC563C', border: '1px solid #BAE6FD' }}
+                                title={t('Inspect Profile & Telemetry Performance')}
+                                onClick={() => setViewingUser(user)}
                               >
-                                <FaCalendarCheck size={12} />
+                                <FaEye size={13} />
                               </button>
+
+                              {/* Edit Caretaker */}
                               <button
                                 type="button"
                                 className="btn btn-sm rounded-circle d-inline-flex align-items-center justify-content-center p-0 shadow-xs"
-                                style={{ width: 34, height: 34, background: '#FFF1F2', color: '#E11D48', border: '1px solid #FECDD3' }}
-                                title={t('Delete Caretaker Account')}
-                                onClick={() => handleDeleteUser(user)}
+                                style={{ width: 34, height: 34, background: '#E9E4E0', color: '#475569', border: '1px solid #E2E8F0' }}
+                                title={t('Edit User Credentials & Basin Assignments')}
+                                onClick={() => openEditModal(user)}
                               >
-                                <FaTrashAlt size={12} />
+                                <FaEdit size={13} />
                               </button>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          </>
-        )}
+
+                              {/* Delete & Archive Buttons */}
+                              {user.role !== 'admin' && (
+                                <>
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm rounded-circle d-inline-flex align-items-center justify-content-center p-0 shadow-xs"
+                                    style={{ width: 34, height: 34, background: '#E9E4E0', color: '#FC563C', border: '1px solid #6E7575' }}
+                                    title={t('Archive Caretaker (Resigned / Inactive)')}
+                                    onClick={() => handleArchiveCaretaker(user)}
+                                  >
+                                    <FaCalendarCheck size={12} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm rounded-circle d-inline-flex align-items-center justify-content-center p-0 shadow-xs"
+                                    style={{ width: 34, height: 34, background: '#FFF1F2', color: '#E11D48', border: '1px solid #FECDD3' }}
+                                    title={t('Delete Caretaker Account')}
+                                    onClick={() => handleDeleteUser(user)}
+                                  >
+                                    <FaTrashAlt size={12} />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
         </div>
       </div>
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import AdminFilterToolbar from '../../components/AdminFilterToolbar';
-import { Bar, Doughnut, Line } from 'react-chartjs-2';
+import { Bar, Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -103,7 +103,7 @@ export default function DiseaseReportsPage() {
   const [loading, setLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState(null); // Detailed modal preview
   const [failedImages, setFailedImages] = useState({});
-  const [activeChartTab, setActiveChartTab] = useState('pathology'); // 'pathology' | 'threat' | 'trend'
+  const [activeChartTab, setActiveChartTab] = useState('pathology'); // 'pathology' | 'trend'
 
   const loadReports = useCallback(async () => {
     setLoading(true);
@@ -165,7 +165,7 @@ export default function DiseaseReportsPage() {
     return reports
       .filter((report) => {
         const pondMatch = pondFilter === 'all' || normalizeText(report.pond_name) === normalizeText(pondFilter);
-        
+
         let riskMatch = true;
         if (riskFilter !== 'all') {
           const rLevel = String(report.risk_level || '').toLowerCase();
@@ -245,7 +245,7 @@ export default function DiseaseReportsPage() {
   const diseaseChart = useMemo(() => {
     const labels = Object.keys(diseaseCounts).length > 0 ? Object.keys(diseaseCounts) : ['WSSV', 'Healthy', 'Black Gill'];
     const data = Object.values(diseaseCounts).length > 0 ? Object.values(diseaseCounts) : [4, 12, 2];
-    
+
     const backgroundColors = labels.map((name) => {
       const n = name.toLowerCase();
       if (n.includes('wsd') || n.includes('white spot') || n.includes('critical')) return '#FC563C'; // Shrimpy Orange
@@ -256,7 +256,7 @@ export default function DiseaseReportsPage() {
     return {
       labels,
       datasets: [{
-        label: 'Diagnosed Samples',
+        label: t('Scanned Shrimp'),
         data,
         backgroundColor: backgroundColors,
         borderRadius: 8,
@@ -265,23 +265,11 @@ export default function DiseaseReportsPage() {
     };
   }, [diseaseCounts]);
 
-  // Tri-Color Doughnut Chart Data (Threat Severity Split)
-  const riskChart = useMemo(() => ({
-    labels: ['Healthy / Safe', 'Moderate Risk', 'Critical WSD'],
-    datasets: [{
-      data: [summary.low || 8, summary.medium || 2, summary.high || 1],
-      backgroundColor: ['#10B981', '#6E7575', '#FC563C'],
-      borderWidth: 2,
-      borderColor: 'rgba(255, 255, 255, 0.1)',
-      hoverOffset: 4
-    }],
-  }), [summary]);
-
   // Tri-Color Line Chart Data (Scan Wave Trend)
   const trendChart = useMemo(() => ({
     labels: dailyCounts.length > 0 ? dailyCounts.map(([label]) => label) : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
     datasets: [{
-      label: 'Health Scans',
+      label: t('Health Scans'),
       data: dailyCounts.length > 0 ? dailyCounts.map(([, count]) => count) : [3, 6, 4, 8, 5, 7, 9],
       borderColor: '#FC563C',
       backgroundColor: (context) => {
@@ -303,7 +291,7 @@ export default function DiseaseReportsPage() {
       pointHoverBorderWidth: 2.5,
       borderWidth: 2.5,
     }],
-  }), [dailyCounts]);
+  }), [dailyCounts, t]);
 
   const chartOptions = useMemo(() => ({
     responsive: true,
@@ -311,15 +299,20 @@ export default function DiseaseReportsPage() {
     plugins: {
       legend: { display: false },
       tooltip: {
-        backgroundColor: '#FC563C',
-        titleColor: '#FFFFFF',
-        bodyColor: '#FC563C',
+        backgroundColor: '#0F172A',
+        titleColor: '#94A3B8',
+        bodyColor: '#FFFFFF',
         titleFont: { size: 12, weight: '700', family: "'Poppins', sans-serif" },
-        bodyFont: { size: 12, weight: '600', family: "'Poppins', sans-serif" },
-        borderColor: 'rgba(252, 86, 60, 0.3)',
+        bodyFont: { size: 13, weight: '700', family: "'Poppins', sans-serif" },
+        borderColor: 'rgba(255, 255, 255, 0.12)',
         borderWidth: 1,
         padding: 10,
-        cornerRadius: 10,
+        cornerRadius: 8,
+        displayColors: false,
+        callbacks: {
+          title: (items) => items?.[0]?.label || '',
+          label: (ctx) => ` ${ctx.parsed.y} ${ctx.parsed.y === 1 ? 'Scan' : 'Scans'}`,
+        }
       }
     },
     scales: {
@@ -333,22 +326,6 @@ export default function DiseaseReportsPage() {
         ticks: { color: '#64748B', font: { size: 11, weight: '600', family: "'Poppins', sans-serif" } },
       },
     },
-  }), []);
-
-  const donutOptions = useMemo(() => ({
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        backgroundColor: '#FC563C',
-        titleColor: '#FFFFFF',
-        bodyColor: '#FFFFFF',
-        padding: 10,
-        cornerRadius: 10,
-      }
-    },
-    cutout: '76%',
   }), []);
 
   // Quick Isolate Handler
@@ -529,108 +506,58 @@ export default function DiseaseReportsPage() {
         <div className="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom flex-wrap gap-2" style={{ borderColor: '#E2E8F0' }}>
           <div>
             <h5 className="fw-extrabold mb-1 tracking-tight text-dark" style={{ fontSize: '1.1rem' }}>
-              {activeChartTab === 'pathology' && t('Pathology Classification Breakdown')}
-              {activeChartTab === 'threat' && t('Biosecurity Threat Split')}
-              {activeChartTab === 'trend' && t('Diagnostic Wave Trend')}
+              {activeChartTab === 'pathology' ? t('Disease & Health Scan Breakdown') : t('Daily Scan Activity Trend')}
             </h5>
             <p className="text-secondary mb-0 small" style={{ fontSize: '0.82rem' }}>
-              {activeChartTab === 'pathology' && t('Frequency distribution of diagnosed shrimp conditions from vision inference.')}
-              {activeChartTab === 'threat' && t('Risk stratification ratio across fleet.')}
-              {activeChartTab === 'trend' && t('7-day scanning activity volume from field uploads.')}
+              {activeChartTab === 'pathology' ? t('Overview of detected shrimp health conditions from image scans.') : t('7-day scanning volume submitted by pond caretakers.')}
             </p>
           </div>
 
-          {/* Tab Toggle Pills */}
-          <div className="d-inline-flex p-1 rounded-pill bg-light border" style={{ borderColor: '#E2E8F0' }}>
-            <button
-              type="button"
-              className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all ${
-                activeChartTab === 'pathology' ? 'bg-white text-dark shadow-2xs border' : 'btn-link text-secondary text-decoration-none'
-              }`}
-              style={{ fontSize: '0.78rem', borderColor: activeChartTab === 'pathology' ? '#E2E8F0' : 'transparent' }}
-              onClick={() => setActiveChartTab('pathology')}
-            >
-              <FaMicroscope size={11} className="me-1.5" />
-              {t('Scan Breakdown')}
-            </button>
-            <button
-              type="button"
-              className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all ${
-                activeChartTab === 'threat' ? 'bg-white text-dark shadow-2xs border' : 'btn-link text-secondary text-decoration-none'
-              }`}
-              style={{ fontSize: '0.78rem', borderColor: activeChartTab === 'threat' ? '#E2E8F0' : 'transparent' }}
-              onClick={() => setActiveChartTab('threat')}
-            >
-              <FaExclamationTriangle size={11} className="me-1.5" />
-              {t('Threat Split')}
-            </button>
-            <button
-              type="button"
-              className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all ${
-                activeChartTab === 'trend' ? 'bg-white text-dark shadow-2xs border' : 'btn-link text-secondary text-decoration-none'
-              }`}
-              style={{ fontSize: '0.78rem', borderColor: activeChartTab === 'trend' ? '#E2E8F0' : 'transparent' }}
-              onClick={() => setActiveChartTab('trend')}
-            >
-              <FaChartLine size={11} className="me-1.5" />
-              {t('Wave Trend')}
-            </button>
+          <div className="d-flex align-items-center gap-2 flex-wrap">
+            {/* Tab Toggle Pills */}
+            <div className="d-inline-flex p-1 rounded-pill bg-light border" style={{ borderColor: '#E2E8F0' }}>
+              <button
+                type="button"
+                className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all ${activeChartTab === 'pathology' ? 'bg-white text-dark shadow-2xs border' : 'btn-link text-secondary text-decoration-none'
+                  }`}
+                style={{ fontSize: '0.78rem', borderColor: activeChartTab === 'pathology' ? '#E2E8F0' : 'transparent' }}
+                onClick={() => setActiveChartTab('pathology')}
+              >
+                <FaMicroscope size={11} className="me-1.5" />
+                {t('Disease Breakdown')}
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all ${activeChartTab === 'trend' ? 'bg-white text-dark shadow-2xs border' : 'btn-link text-secondary text-decoration-none'
+                  }`}
+                style={{ fontSize: '0.78rem', borderColor: activeChartTab === 'trend' ? '#E2E8F0' : 'transparent' }}
+                onClick={() => setActiveChartTab('trend')}
+              >
+                <FaChartLine size={11} className="me-1.5" />
+                {t('Scan Trend')}
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Tab 1: Pathology Classification Breakdown */}
+        {/* Tab 1: Disease & Health Scan Breakdown */}
         {activeChartTab === 'pathology' && (
           <div>
             <div style={{ height: 260 }} className="my-2">
               <Bar data={diseaseChart} options={chartOptions} />
             </div>
             <div className="pt-2.5 border-top d-flex justify-content-between align-items-center text-muted extra-small flex-wrap gap-2" style={{ borderColor: '#E2E8F0' }}>
-              <span>{t('Primary Threat:')} <strong style={{ color: '#FC563C' }}>WSSV (White Spot)</strong></span>
-              <span className="fw-bold text-secondary">{t('Active Screening 24/7')}</span>
+              <span>{t('Primary Target Disease:')} <strong style={{ color: '#FC563C' }}>WSSV (White Spot Disease)</strong></span>
+              <span className="fw-bold text-secondary">{t('Continuous 24/7 Monitoring')}</span>
             </div>
           </div>
         )}
 
-        {/* Tab 2: Threat Severity Split */}
-        {activeChartTab === 'threat' && (
-          <div>
-            <div style={{ height: 250 }} className="my-2 position-relative d-flex justify-content-center align-items-center">
-              <Doughnut data={riskChart} options={donutOptions} />
-              <div
-                className="position-absolute d-flex flex-column align-items-center justify-content-center text-center"
-                style={{ pointerEvents: 'none' }}
-              >
-                <span className="fw-extrabold fs-3 mb-0" style={{ color: summary.high > 0 ? '#FC563C' : '#172A39', lineHeight: 1.1 }}>
-                  {summary.total}
-                </span>
-                <span className="extra-small text-muted text-uppercase fw-bold" style={{ fontSize: '0.68rem' }}>{t('Scans')}</span>
-              </div>
-            </div>
-            <div className="pt-2.5 border-top d-flex justify-content-center gap-2 flex-wrap extra-small" style={{ borderColor: '#E2E8F0' }}>
-              <span className="badge rounded-pill px-2.5 py-1 d-inline-flex align-items-center gap-1 border" style={{ backgroundColor: '#F8FAFC', color: '#172A39', borderColor: '#E2E8F0' }}>
-                <span style={{ color: '#10B981' }}>●</span> {t('Safe')} ({summary.low})
-              </span>
-              {summary.medium > 0 && (
-                <span className="badge rounded-pill px-2.5 py-1 d-inline-flex align-items-center gap-1 border" style={{ backgroundColor: '#F8FAFC', color: '#475569', borderColor: '#E2E8F0' }}>
-                  <span style={{ color: '#64748B' }}>●</span> {t('Moderate')} ({summary.medium})
-                </span>
-              )}
-              <span className="badge rounded-pill px-2.5 py-1 d-inline-flex align-items-center gap-1 border" style={{ backgroundColor: '#FEF2F2', color: '#991B1B', borderColor: '#FCA5A5' }}>
-                <span style={{ color: '#FC563C' }}>●</span> {t('Critical')} ({summary.high})
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* Tab 3: Diagnostic Wave Trend */}
+        {/* Tab 2: Diagnostic Wave Trend */}
         {activeChartTab === 'trend' && (
           <div>
             <div style={{ height: 260 }} className="my-2">
               <Line data={trendChart} options={chartOptions} />
-            </div>
-            <div className="pt-2.5 border-top d-flex justify-content-between align-items-center text-muted extra-small flex-wrap gap-2" style={{ borderColor: '#E2E8F0' }}>
-              <span>{t('Sampling Cadence:')} <strong className="text-dark">{t('Daily Telemetry')}</strong></span>
-              <span className="fw-bold text-secondary">{t('Mobile Sync OK')}</span>
             </div>
           </div>
         )}
@@ -644,7 +571,7 @@ export default function DiseaseReportsPage() {
               {t('Caretaker Scan History Stream')}
             </h5>
             <p className="text-secondary small mb-0" style={{ fontSize: '0.82rem' }}>
-              {t('Microscopic images and real-time scan diagnosis results submitted by field farm caretakers.')}
+              {t('Shrimp photos and disease scan results submitted by farm caretakers.')}
             </p>
           </div>
           <span className="badge rounded-pill px-3 py-1.5 extra-small border" style={{ backgroundColor: '#F8FAFC', color: '#475569', borderColor: '#E2E8F0' }}>
@@ -671,11 +598,6 @@ export default function DiseaseReportsPage() {
           ]}
           activeTab={riskFilter}
           onTabChange={setRiskFilter}
-          metaRight={
-            <>
-              {t('Photo Health Check:')} <strong>White Spot &amp; Health Scanner</strong>
-            </>
-          }
           filterFields={[
             {
               label: t('Pond'),
@@ -920,7 +842,7 @@ export default function DiseaseReportsPage() {
                   </div>
                   <div>
                     <h5 className="fw-extrabold text-white mb-0 tracking-tight" style={{ fontSize: '1.2rem' }}>
-                      {t('Scan Pathology Telemetry:')} {selectedReport.disease_name}
+                      {t('Scan Result:')} {selectedReport.disease_name}
                     </h5>
                     <p className="text-white text-opacity-75 mb-0 extra-small">
                       {t('Scan Record')} #{selectedReport.id} • {formatDate(selectedReport.created_at || selectedReport.report_date)}
@@ -966,14 +888,14 @@ export default function DiseaseReportsPage() {
                             {selectedReport.disease_name || t('Microscope Telemetry Scan')}
                           </strong>
                           <span className="text-white text-opacity-75 extra-small" style={{ maxWidth: 280 }}>
-                            {t('Pathology telemetry recorded without microscope photographic attachment')}
+                            {t('Scan recorded without photo attachment')}
                           </span>
                         </div>
                       )}
                     </div>
                   </div>
 
-                  {/* Right: Telemetry & Pathology Details */}
+                  {/* Right: Scan & Health Details */}
                   <div className="col-12 col-lg-6">
                     {/* Severity & Confidence Badges */}
                     <div className="d-flex align-items-center gap-2 mb-3 flex-wrap">
@@ -1045,7 +967,7 @@ export default function DiseaseReportsPage() {
               {/* Modal Footer */}
               <div className="modal-footer p-3 px-4 bg-light border-top d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <span className="text-muted extra-small">
-                  ShrimpPredict Pathology Vision Core v2.4 • CNN-ResNet Classifier
+                  ShrimPredict AI Disease Scanner v2.4 • CNN Classifier
                 </span>
                 <div className="d-flex align-items-center gap-2">
                   <button
