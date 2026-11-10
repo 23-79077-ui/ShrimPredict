@@ -430,6 +430,10 @@ export default function SettingsPage() {
       Swal.fire({ icon: 'warning', title: 'Invalid Password', text: 'New password must be at least 6 characters long.' });
       return;
     }
+    if (!/[A-Za-z]/.test(security.new_password) || !/[0-9!@#$%^&*()_+\-=\[\]{};:'"\\|,.<>/?]/.test(security.new_password)) {
+      Swal.fire({ icon: 'warning', title: 'Weak Password', text: 'Password must combine letters and numbers or symbols for complexity.' });
+      return;
+    }
     if (security.new_password !== security.confirm_password) {
       Swal.fire({ icon: 'error', title: 'Password Mismatch', text: 'New password and confirm password do not match.' });
       return;
@@ -885,1235 +889,1231 @@ export default function SettingsPage() {
             </div>
           </div>
 
-      {/* Main Settings Body */}
-      <div className="row g-4 align-items-start">
-        {/* Left Navigation Sidebar / Tabs (Fixed/Sticky on Scroll below top dock bar) */}
-        <div className="col-12 col-lg-4 col-xl-3 settings-sidebar-sticky mb-4 mb-lg-0">
-          <div className="settings-menu-card p-3.5 shadow-xs">
-            {/* Settings Menu Header + Integrated Search Bar */}
-            <div className="px-1 pb-3 mb-2 border-bottom">
-              <div className="d-flex align-items-center justify-content-between mb-2">
-                <span className="text-uppercase fw-bold text-muted extra-small tracking-wider">{t('SETTINGS MENU')}</span>
-                <span className="badge rounded-pill extra-small px-2.5 py-1 fw-bold" style={{ backgroundColor: 'rgba(252, 86, 60, 0.08)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.15)' }}>
-                  {filteredTabs.length} {t('Tabs')}
-                </span>
-              </div>
+          {/* Main Settings Body */}
+          <div className="row g-4 align-items-start">
+            {/* Left Navigation Sidebar / Tabs (Fixed/Sticky on Scroll below top dock bar) */}
+            <div className="col-12 col-lg-4 col-xl-3 settings-sidebar-sticky mb-4 mb-lg-0">
+              <div className="settings-menu-card p-3.5 shadow-xs">
+                {/* Settings Menu Header + Integrated Search Bar */}
+                <div className="px-1 pb-3 mb-2 border-bottom">
+                  <div className="d-flex align-items-center justify-content-between mb-2">
+                    <span className="text-uppercase fw-bold text-muted extra-small tracking-wider">{t('SETTINGS MENU')}</span>
+                    <span className="badge rounded-pill extra-small px-2.5 py-1 fw-bold" style={{ backgroundColor: 'rgba(252, 86, 60, 0.08)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.15)' }}>
+                      {filteredTabs.length} {t('Tabs')}
+                    </span>
+                  </div>
 
-              {/* Integrated Search Settings Bar */}
-              <div className="position-relative mt-2">
-                <FaSearch className="position-absolute top-50 translate-middle-y text-primary" style={{ left: 14, fontSize: '0.85rem' }} />
-                <input
-                  type="text"
-                  className="form-control form-control-sm ps-5 pe-4 py-2 rounded-3 border-slate-200 shadow-xs"
-                  placeholder={t('Search Settings...')}
-                  style={{ fontSize: '0.86rem' }}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-link position-absolute top-50 translate-middle-y text-muted text-decoration-none p-0"
-                    style={{ right: 10, fontSize: '0.85rem' }}
-                    onClick={() => setSearchQuery('')}
-                  >
-                    &times;
-                  </button>
-                )}
+                  {/* Integrated Search Settings Bar */}
+                  <div className="position-relative mt-2">
+                    <FaSearch className="position-absolute top-50 translate-middle-y text-primary" style={{ left: 14, fontSize: '0.85rem' }} />
+                    <input
+                      type="text"
+                      className="form-control form-control-sm ps-5 pe-4 py-2 rounded-3 border-slate-200 shadow-xs"
+                      placeholder={t('Search Settings...')}
+                      style={{ fontSize: '0.86rem' }}
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-link position-absolute top-50 translate-middle-y text-muted text-decoration-none p-0"
+                        style={{ right: 10, fontSize: '0.85rem' }}
+                        onClick={() => setSearchQuery('')}
+                      >
+                        &times;
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="nav flex-column nav-pills gap-1.5 mt-2">
+                  {filteredTabs.length === 0 ? (
+                    <div className="p-3 text-center text-muted small">No settings matching "{searchQuery}"</div>
+                  ) : (
+                    filteredTabs.map((tabItem) => {
+                      const Icon = tabItem.icon;
+                      const isActive = activeTab === tabItem.id;
+                      return (
+                        <button
+                          key={tabItem.id}
+                          onClick={() => setActiveTab(tabItem.id)}
+                          className={`settings-nav-pill ${isActive ? 'active' : ''}`}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          <div className="settings-nav-icon">
+                            <Icon size={16} />
+                          </div>
+                          <div className="text-truncate flex-grow-1">
+                            <div className="fw-semibold fs-6 lh-1">{t(tabItem.label)}</div>
+                          </div>
+                          {isActive && (
+                            <span
+                              className="rounded-circle"
+                              style={{ width: 6, height: 6, backgroundColor: '#FC563C', flexShrink: 0 }}
+                            />
+                          )}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
               </div>
             </div>
 
-            <div className="nav flex-column nav-pills gap-1.5 mt-2">
-              {filteredTabs.length === 0 ? (
-                <div className="p-3 text-center text-muted small">No settings matching "{searchQuery}"</div>
-              ) : (
-                filteredTabs.map((tabItem) => {
-                  const Icon = tabItem.icon;
-                  const isActive = activeTab === tabItem.id;
-                  return (
-                    <button
-                      key={tabItem.id}
-                      onClick={() => setActiveTab(tabItem.id)}
-                      className={`settings-nav-pill ${isActive ? 'active' : ''}`}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <div className="settings-nav-icon">
-                        <Icon size={16} />
+            {/* Right Tab Content Panel */}
+            <div className="col-12 col-lg-8 col-xl-9">
+              {/* PROFILE SECTION */}
+              {activeTab === 'profile' && (
+                <div className="settings-card shadow-sm rounded-4 overflow-hidden">
+                  <div className="settings-card-header p-4 d-flex align-items-center justify-content-between flex-wrap gap-3">
+                    <div className="d-flex align-items-center gap-3">
+                      <div className="settings-icon-badge p-3 rounded-4 bg-primary bg-opacity-10 text-primary">
+                        <FaUser size={20} />
                       </div>
-                      <div className="text-truncate flex-grow-1">
-                        <div className="fw-semibold fs-6 lh-1">{t(tabItem.label)}</div>
+                      <div>
+                        <h4 className="fw-extrabold mb-0 text-dark">{t('Admin Profile')}</h4>
+                        <small className="text-muted fw-medium">{t('Administrator account details and profile information.')}</small>
                       </div>
-                      {isActive && (
-                        <span
-                          className="rounded-circle"
-                          style={{ width: 6, height: 6, backgroundColor: '#FC563C', flexShrink: 0 }}
+                    </div>
+                    <span className="badge bg-success text-white rounded-pill px-3.5 py-1.5 extra-small fw-bold shadow-xs">
+                      ● {t('Active Administrator')}
+                    </span>
+                  </div>
+
+                  <div className="card-body p-4 p-md-4">
+                    {/* Profile Picture Header Banner */}
+                    <div className="settings-banner-box d-flex flex-column flex-sm-row align-items-center gap-4 mb-4.5">
+                      <div className="position-relative flex-shrink-0">
+                        {profile.avatar_path && (
+                          <img
+                            src={profile.avatar_path}
+                            alt=""
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              const fallback = e.target.parentElement.querySelector('.avatar-initial-fallback');
+                              if (fallback) fallback.style.display = 'flex';
+                            }}
+                            className="avatar-halo avatar-halo-gold rounded-circle object-fit-cover border border-3 border-warning shadow-md"
+                            style={{ width: 96, height: 96 }}
+                          />
+                        )}
+                        <div
+                          className="avatar-initial-fallback avatar-halo avatar-halo-gold rounded-circle text-white align-items-center justify-content-center border border-3 border-warning fw-bold fs-2 shadow-md"
+                          style={{
+                            width: 96,
+                            height: 96,
+                            background: 'linear-gradient(135deg, #FC563C 0%, #1e40af 100%)',
+                            display: profile.avatar_path ? 'none' : 'flex'
+                          }}
+                        >
+                          {profile.full_name ? profile.full_name.charAt(0).toUpperCase() : 'A'}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="btn btn-warning btn-sm rounded-circle position-absolute bottom-0 end-0 p-2 border border-2 border-white shadow text-dark fw-bold"
+                          title={t('Upload Photo')}
+                        >
+                          <FaCamera size={13} />
+                        </button>
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          className="d-none"
+                          accept="image/*"
+                          onChange={handleAvatarChange}
                         />
+                      </div>
+                      <div className="text-center text-sm-start flex-grow-1">
+                        <div className="d-flex flex-wrap align-items-center justify-content-center justify-content-sm-start gap-2 mb-1.5">
+                          <h5 className="fw-extrabold mb-0 fs-5 text-dark">{profile.full_name}</h5>
+                          <span
+                            className="badge px-3 py-1.5 rounded-pill fw-bold extra-small"
+                            style={{
+                              backgroundColor: 'rgba(252, 86, 60, 0.1)',
+                              color: '#FC563C',
+                              border: '1.5px solid rgba(252, 86, 60, 0.3)'
+                            }}
+                          >
+                            {profile.position}
+                          </span>
+                        </div>
+                        <p className="text-secondary mb-2 small fw-semibold">{profile.email}</p>
+                        <small className="text-muted d-block extra-small fw-medium">
+                          {t('Allowed formats: JPG, PNG or GIF. Click the camera icon on the avatar to change photo.')}
+                        </small>
+                      </div>
+                    </div>
+
+                    {/* READ-ONLY VIEW MODE CARDS */}
+                    {!isEditingProfile ? (
+                      <div className="profile-view-section">
+                        <div
+                          className="d-flex align-items-center justify-content-between border-top border-slate-200"
+                          style={{ marginTop: 28, marginBottom: 28, paddingTop: 20 }}
+                        >
+                          <h6 className="fw-bold mb-0 d-flex align-items-center gap-2 fs-6">
+                            <FaCheckCircle className="text-success" size={16} /> {t('Account Profile Details Overview')}
+                          </h6>
+                          <span className="badge bg-light text-muted border px-3 py-1.5 extra-small fw-semibold">
+                            {t('Read-only account summary')}
+                          </span>
+                        </div>
+
+                        <div className="row g-4">
+                          {/* Full Name Card */}
+                          <div className="col-12 col-md-6">
+                            <div className="settings-info-card transition-all hover-shadow-xs">
+                              <div className="text-warning extra-small fw-bold text-uppercase mb-2.5 d-flex align-items-center gap-2">
+                                <FaUser className="text-warning flex-shrink-0" size={13} />
+                                <span className="tracking-wider ms-1">{t('System Administrator (Full Name)')}</span>
+                              </div>
+                              <div className="fw-extrabold fs-6 pt-1">{profile.full_name}</div>
+                            </div>
+                          </div>
+
+                          {/* Email Address Card */}
+                          <div className="col-12 col-md-6">
+                            <div className="settings-info-card transition-all hover-shadow-xs">
+                              <div className="text-warning extra-small fw-bold text-uppercase mb-2.5 d-flex align-items-center gap-2">
+                                <FaEnvelope className="text-warning flex-shrink-0" size={13} />
+                                <span className="tracking-wider ms-1">{t('Email Address')}</span>
+                              </div>
+                              <div className="fw-extrabold fs-6 pt-1">{profile.email}</div>
+                            </div>
+                          </div>
+
+                          {/* Phone Number Card */}
+                          <div className="col-12 col-md-6">
+                            <div className="settings-info-card transition-all hover-shadow-xs">
+                              <div className="text-warning extra-small fw-bold text-uppercase mb-2.5 d-flex align-items-center gap-2">
+                                <FaPhone className="text-warning flex-shrink-0" size={13} />
+                                <span className="tracking-wider ms-1">{t('Contact Phone Number')}</span>
+                              </div>
+                              <div className="fw-extrabold fs-6 pt-1">{profile.phone || '09123456789'}</div>
+                            </div>
+                          </div>
+
+                          {/* Position / Role Card */}
+                          <div className="col-12 col-md-6">
+                            <div className="settings-info-card transition-all hover-shadow-xs">
+                              <div className="text-warning extra-small fw-bold text-uppercase mb-2.5 d-flex align-items-center gap-2">
+                                <FaUserShield className="text-warning flex-shrink-0" size={13} />
+                                <span className="tracking-wider ms-1">{t('Position / System Role')}</span>
+                              </div>
+                              <div className="fw-extrabold fs-6 pt-1">{profile.position}</div>
+                            </div>
+                          </div>
+
+                          {/* Last Login Card */}
+                          <div className="col-12">
+                            <div className="settings-info-card transition-all hover-shadow-xs">
+                              <div className="text-warning extra-small fw-bold text-uppercase mb-2.5 d-flex align-items-center gap-2">
+                                <FaClock className="text-warning flex-shrink-0" size={13} />
+                                <span className="tracking-wider ms-1">{t('Last Login Timestamp')}</span>
+                              </div>
+                              <div className="fw-extrabold fs-6 pt-1">{profile.last_login}</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* EDIT PROFILE BUTTON IN LOWER RIGHT PART */}
+                        <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-4.5 pt-4 border-top">
+                          <div className="text-muted extra-small d-flex align-items-center gap-2">
+                            <FaShieldAlt className="text-success" size={14} />
+                            <span>{t('Administrator Account Info Verified & Secured')}</span>
+                          </div>
+                          <button
+                            type="button"
+                            className="btn btn-gold-glow px-4.5 py-2.5 rounded-3 d-flex align-items-center gap-2 shadow-sm fw-bold ms-auto"
+                            onClick={handleStartEditProfile}
+                          >
+                            <FaEdit size={15} /> {t('Edit Profile')}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* EDIT MODE CARDS FORM */
+                      <form onSubmit={handleSaveProfile} className="profile-edit-section">
+                        <div
+                          className="d-flex align-items-center justify-content-between bg-primary bg-opacity-10 rounded-4 border border-primary border-opacity-25 shadow-xs"
+                          style={{ marginTop: 28, marginBottom: 32, padding: '14px 20px' }}
+                        >
+                          <h6 className="fw-bold text-primary mb-0 d-flex align-items-center gap-2 fs-6">
+                            <FaEdit size={16} /> {t('Edit Administrator Profile Details')}
+                          </h6>
+                          <small className="text-muted extra-small ms-2">{t('Modify account fields below and click Save Changes.')}</small>
+                        </div>
+
+                        <div className="row g-4">
+                          <div className="col-12 col-md-6">
+                            <label className="form-label fw-bold text-dark small mb-2">{t('Full Name')}</label>
+                            <input
+                              type="text"
+                              className="form-control p-3 rounded-3 border-secondary border-opacity-25 shadow-xs"
+                              value={profile.full_name}
+                              onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
+                              required
+                            />
+                          </div>
+
+                          <div className="col-12 col-md-6">
+                            <label className="form-label fw-bold text-dark small mb-2">{t('Email Address')}</label>
+                            <input
+                              type="email"
+                              className="form-control p-3 rounded-3 border-secondary border-opacity-25 shadow-xs"
+                              value={profile.email}
+                              onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                              required
+                            />
+                          </div>
+
+                          <div className="col-12 col-md-6">
+                            <label className="form-label fw-bold text-dark small mb-2">{t('Contact Phone Number')}</label>
+                            <input
+                              type="text"
+                              className="form-control p-3 rounded-3 border-secondary border-opacity-25 shadow-xs"
+                              value={profile.phone}
+                              onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                            />
+                          </div>
+
+                          <div className="col-12 col-md-6">
+                            <label className="form-label fw-bold text-dark small mb-2">{t('Position / Role')}</label>
+                            <input
+                              type="text"
+                              className="form-control p-3 rounded-3 border-secondary border-opacity-25 shadow-xs"
+                              value={profile.position}
+                              onChange={(e) => setProfile({ ...profile, position: e.target.value })}
+                            />
+                          </div>
+
+                          <div className="col-12">
+                            <label className="form-label fw-bold text-dark small mb-2">{t('Last Login Timestamp (Read-Only)')}</label>
+                            <input
+                              type="text"
+                              className="form-control p-3 rounded-3 bg-light text-muted border-secondary border-opacity-25"
+                              value={profile.last_login}
+                              disabled
+                            />
+                          </div>
+                        </div>
+
+                        {/* Action Buttons: Cancel and Save Changes (Lower Right Part) */}
+                        <div className="d-flex align-items-center justify-content-end gap-3 mt-4.5 pt-4 border-top">
+                          <button
+                            type="button"
+                            className="btn btn-outline-secondary px-4 py-2.5 rounded-3 d-flex align-items-center gap-2 fw-semibold"
+                            onClick={handleCancelEditProfile}
+                          >
+                            <FaTimes size={14} /> {t('Cancel')}
+                          </button>
+
+                          <button
+                            type="submit"
+                            className="btn btn-settings-primary px-4.5 py-2.5 rounded-3 d-flex align-items-center gap-2 fw-semibold shadow-sm"
+                            disabled={saving}
+                          >
+                            <FaSave size={14} /> {saving ? t('Saving Changes...') : t('Save Changes')}
+                          </button>
+                        </div>
+                      </form>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* SECURITY SECTION */}
+              {activeTab === 'security' && (
+                <div className="settings-card bg-white">
+                  <div className="settings-card-header p-4 d-flex align-items-center gap-3">
+                    <div className="p-3 rounded-4 bg-danger bg-opacity-10 text-danger">
+                      <FaLock size={20} />
+                    </div>
+                    <div>
+                      <h4 className="fw-bold mb-0 text-dark">{t('Account Security')}</h4>
+                      <small className="text-muted">{t('Change password and manage account security credentials.')}</small>
+                    </div>
+                  </div>
+                  <div className="card-body p-4">
+                    <form onSubmit={handleUpdatePassword}>
+                      <h6 className="fw-bold text-dark mb-3">{t('Change Administrator Password')}</h6>
+                      <div className="row g-3">
+                        <div className="col-12">
+                          <label className="form-label fw-semibold text-dark">{t('Current Password')}</label>
+                          <input
+                            type="password"
+                            className="form-control py-2.5 rounded-3"
+                            placeholder={t('Enter current password')}
+                            value={security.current_password}
+                            onChange={(e) => setSecurity({ ...security, current_password: e.target.value })}
+                          />
+                        </div>
+
+                        <div className="col-12 col-md-6">
+                          <label className="form-label fw-semibold text-dark">{t('New Password')}</label>
+                          <input
+                            type="password"
+                            className="form-control py-2.5 rounded-3"
+                            placeholder={t('Min 6 characters')}
+                            value={security.new_password}
+                            onChange={(e) => setSecurity({ ...security, new_password: e.target.value })}
+                          />
+                        </div>
+
+                        <div className="col-12 col-md-6">
+                          <label className="form-label fw-semibold text-dark">{t('Confirm Password')}</label>
+                          <input
+                            type="password"
+                            className="form-control py-2.5 rounded-3"
+                            placeholder={t('Re-enter new password')}
+                            value={security.confirm_password}
+                            onChange={(e) => setSecurity({ ...security, confirm_password: e.target.value })}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="mt-3 text-end">
+                        <button
+                          type="submit"
+                          className="btn btn-settings-primary px-4 py-2.5 rounded-3 d-flex align-items-center gap-2 ms-auto"
+                          disabled={saving}
+                        >
+                          <FaShieldAlt size={14} /> {saving ? t('Updating...') : t('Update Password')}
+                        </button>
+                      </div>
+                    </form>
+
+                    <hr className="my-4" />
+
+                    {/* Two-Factor Authentication */}
+                    <div className="setting-row-card d-flex align-items-center justify-content-between p-4 mb-4 settings-switch">
+                      <div>
+                        <h6 className="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
+                          <FaShieldAlt className="text-primary" /> {t('Two-Factor Authentication (2FA)')}
+                        </h6>
+                        <small className="text-muted">{t('Add an additional security layer during administrator login.')}</small>
+                      </div>
+                      <div className="form-check form-switch fs-4 mb-0">
+                        <input
+                          className="form-check-input"
+                          type="checkbox"
+                          role="switch"
+                          checked={profile.two_factor_enabled}
+                          onChange={(e) => handleToggle2FA(e.target.checked)}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Logout All Devices */}
+                    <div className="d-flex align-items-center justify-content-between p-4 rounded-4 border border-danger border-opacity-25 bg-danger bg-opacity-10">
+                      <div>
+                        <h6 className="fw-bold text-danger mb-1 d-flex align-items-center gap-2">
+                          <FaSignOutAlt /> {t('Logout All Devices')}
+                        </h6>
+                        <small className="text-danger opacity-75">{t('Sign out from all active web sessions across mobile and desktop browsers.')}</small>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn-danger btn-sm px-4 py-2.5 rounded-3 shadow-sm fw-semibold"
+                        onClick={handleLogoutAllDevices}
+                      >
+                        {t('Logout All Devices')}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* POND SETTINGS SECTION */}
+              {activeTab === 'pond' && (
+                <div className="settings-card bg-white">
+                  <div className="settings-card-header p-4 d-flex align-items-center gap-3">
+                    <div className="p-3 rounded-4 bg-info bg-opacity-10 text-info">
+                      <FaWater size={20} />
+                    </div>
+                    <div>
+                      <h4 className="fw-bold mb-0 text-dark">{t('Pond Settings')}</h4>
+                      <small className="text-muted">{t('Default pond configuration (e.g. maximum ponds, auto-numbering).')}</small>
+                    </div>
+                  </div>
+                  <div className="card-body p-4">
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        saveSettingsGroup(pondSettings, 'Pond settings saved successfully!');
+                      }}
+                    >
+                      <div className="row g-4">
+                        <div className="col-12 col-md-6">
+                          <label className="form-label fw-semibold text-dark">{t('Maximum Number of Ponds')}</label>
+                          <input
+                            type="number"
+                            min="1"
+                            max="200"
+                            className="form-control py-2.5 rounded-3"
+                            value={pondSettings.max_ponds}
+                            onChange={(e) => setPondSettings({ ...pondSettings, max_ponds: e.target.value })}
+                          />
+                          <small className="text-muted">{t('Default system pond limit (e.g. 30 ponds).')}</small>
+                        </div>
+
+                        <div className="col-12 col-md-6">
+                          <label className="form-label fw-semibold text-dark">{t('Default Pond Status')}</label>
+                          <select
+                            className="form-select py-2.5 rounded-3"
+                            value={pondSettings.default_pond_status}
+                            onChange={(e) => setPondSettings({ ...pondSettings, default_pond_status: e.target.value })}
+                          >
+                            <option value="Unmonitored">{t('Unmonitored (Recommended)')}</option>
+                            <option value="Healthy">{t('Healthy')}</option>
+                            <option value="Warning">{t('Warning')}</option>
+                            <option value="Critical">{t('Critical')}</option>
+                          </select>
+                          <small className="text-muted">{t('Initial status assigned when creating a new pond.')}</small>
+                        </div>
+
+                        <div className="col-12">
+                          <div className="setting-row-card d-flex align-items-center justify-content-between p-4 settings-switch">
+                            <div>
+                              <strong className="d-block text-dark mb-1">{t('Auto Assign Pond Number')}</strong>
+                              <small className="text-muted">{t('Automatically generate sequential IDs for new pond additions (ON / OFF).')}</small>
+                            </div>
+                            <div className="form-check form-switch fs-4 mb-0">
+                              <input
+                                className="form-check-input"
+                                type="checkbox"
+                                role="switch"
+                                checked={pondSettings.auto_assign_pond_number === 'ON'}
+                                onChange={(e) =>
+                                  setPondSettings({
+                                    ...pondSettings,
+                                    auto_assign_pond_number: e.target.checked ? 'ON' : 'OFF'
+                                  })
+                                }
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 pt-3 border-top text-end">
+                        <button type="submit" className="btn btn-settings-primary px-4 py-2.5 rounded-3" disabled={saving}>
+                          <FaSave size={14} className="me-2" /> {saving ? t('Saving...') : t('Save')}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+
+              {/* HARVEST SETTINGS SECTION */}
+              {activeTab === 'harvest' && (
+                <div className="settings-card bg-white">
+                  <div className="settings-card-header p-4 d-flex align-items-center gap-3">
+                    <div className="p-3 rounded-4 bg-warning bg-opacity-10 text-warning">
+                      <FaFish size={20} />
+                    </div>
+                    <div>
+                      <h4 className="fw-bold mb-0 text-dark">{t('Harvest Settings')}</h4>
+                      <small className="text-muted">{t('Itakda ang target harvest age at readiness threshold na ginagamit ng system.')}</small>
+                    </div>
+                  </div>
+                  <div className="card-body p-4">
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        saveSettingsGroup(harvestSettings, 'Harvest settings updated successfully!');
+                      }}
+                    >
+                      {/* Note / Guidance Alert Banner */}
+                      <div className="harvest-rule-box p-4 mb-4 d-flex gap-3 align-items-start">
+                        <FaExclamationTriangle className="text-warning flex-shrink-0 mt-1" size={22} />
+                        <div>
+                          <strong className="d-block text-dark mb-1 fs-6">{t('Harvest Readiness Rule Guidance')}</strong>
+                          <p className="mb-0 text-dark small">
+                            <strong>Note:</strong> Reaching <strong>95%</strong> triggers <span className="badge bg-warning text-dark px-2.5 py-1 rounded-pill">{t('Upcoming Harvest')}</span>. Reaching <strong>100%</strong> triggers <span className="badge bg-success px-2.5 py-1 rounded-pill">{t('Ready to Harvest')}</span>.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="row g-4">
+                        <div className="col-12 col-md-6">
+                          <label className="form-label fw-semibold text-dark">{t('Target Harvest Age (Days)')}</label>
+                          <div className="input-group">
+                            <input
+                              type="number"
+                              min="30"
+                              max="300"
+                              className="form-control py-2.5 rounded-start-3"
+                              value={harvestSettings.target_harvest_age}
+                              onChange={(e) => setHarvestSettings({ ...harvestSettings, target_harvest_age: e.target.value })}
+                            />
+                            <span className="input-group-text bg-light text-muted">{t('Days')}</span>
+                          </div>
+                          <small className="text-muted">{t('Standard culture cycle period (e.g. 120 Days).')}</small>
+                        </div>
+
+                        <div className="col-12 col-md-6">
+                          <label className="form-label fw-semibold text-dark">{t('Harvest Ready Percentage (%)')}</label>
+                          <div className="input-group">
+                            <input
+                              type="number"
+                              min="50"
+                              max="100"
+                              className="form-control py-2.5 rounded-start-3"
+                              value={harvestSettings.harvest_ready_percentage}
+                              onChange={(e) => setHarvestSettings({ ...harvestSettings, harvest_ready_percentage: e.target.value })}
+                            />
+                            <span className="input-group-text bg-light text-muted">%</span>
+                          </div>
+                          <small className="text-muted">{t('Readiness threshold percentage (e.g. 95%).')}</small>
+                        </div>
+
+                        <div className="col-12">
+                          <label className="form-label fw-semibold text-dark">{t('Prediction Refresh Frequency')}</label>
+                          <select
+                            className="form-select py-2.5 rounded-3"
+                            value={harvestSettings.prediction_refresh}
+                            onChange={(e) => setHarvestSettings({ ...harvestSettings, prediction_refresh: e.target.value })}
+                          >
+                            <option value="Daily">{t('Daily')}</option>
+                            <option value="Weekly">{t('Weekly')}</option>
+                            <option value="Manual">{t('Manual')}</option>
+                          </select>
+                          <small className="text-muted">{t('How often harvest biomass & readiness predictions update.')}</small>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 pt-3 border-top text-end">
+                        <button type="submit" className="btn btn-settings-primary px-4 py-2.5 rounded-3" disabled={saving}>
+                          <FaSave size={14} className="me-2" /> {saving ? t('Saving...') : t('Save')}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+
+              {/* NOTIFICATION SETTINGS SECTION */}
+              {activeTab === 'notification' && (
+                <div className="settings-card bg-white">
+                  <div className="settings-card-header p-4 d-flex align-items-center gap-3">
+                    <div className="p-3 rounded-4 bg-primary bg-opacity-10 text-primary">
+                      <FaBell size={20} />
+                    </div>
+                    <div>
+                      <h4 className="fw-bold mb-0 text-dark">{t('Notification Settings')}</h4>
+                      <small className="text-muted">{t('Select notification alerts delivered to administrators.')}</small>
+                    </div>
+                  </div>
+                  <div className="card-body p-4">
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        saveSettingsGroup(notificationSettings, 'Notification preferences saved successfully!');
+                      }}
+                    >
+                      <div className="d-flex flex-column gap-3 settings-switch">
+                        {/* Disease Alerts */}
+                        <div className="setting-row-card d-flex align-items-center justify-content-between p-4">
+                          <div>
+                            <strong className="d-block text-dark mb-1">{t('Receive Disease Alerts')}</strong>
+                            <small className="text-muted">{t('Get immediate alerts when caretaker scans detect disease risk.')}</small>
+                          </div>
+                          <div className="form-check form-switch fs-4 mb-0">
+                            <input
+                              className="form-check-input"
+                              type="checkbox"
+                              role="switch"
+                              checked={notificationSettings.receive_disease_alerts === 'ON'}
+                              onChange={(e) =>
+                                setNotificationSettings({
+                                  ...notificationSettings,
+                                  receive_disease_alerts: e.target.checked ? 'ON' : 'OFF'
+                                })
+                              }
+                            />
+                          </div>
+                        </div>
+
+                        {/* Harvest Alerts */}
+                        <div className="setting-row-card d-flex align-items-center justify-content-between p-4">
+                          <div>
+                            <strong className="d-block text-dark mb-1">{t('Receive Harvest Alerts')}</strong>
+                            <small className="text-muted">{t('Receive notifications when ponds hit 95% or 100% harvest readiness.')}</small>
+                          </div>
+                          <div className="form-check form-switch fs-4 mb-0">
+                            <input
+                              className="form-check-input"
+                              type="checkbox"
+                              role="switch"
+                              checked={notificationSettings.receive_harvest_alerts === 'ON'}
+                              onChange={(e) =>
+                                setNotificationSettings({
+                                  ...notificationSettings,
+                                  receive_harvest_alerts: e.target.checked ? 'ON' : 'OFF'
+                                })
+                              }
+                            />
+                          </div>
+                        </div>
+
+                        {/* Feeding Alerts */}
+                        <div className="setting-row-card d-flex align-items-center justify-content-between p-4">
+                          <div>
+                            <strong className="d-block text-dark mb-1">{t('Receive Feeding Alerts')}</strong>
+                            <small className="text-muted">{t('Notify admin when feeding schedules or daily feed logs are submitted.')}</small>
+                          </div>
+                          <div className="form-check form-switch fs-4 mb-0">
+                            <input
+                              className="form-check-input"
+                              type="checkbox"
+                              role="switch"
+                              checked={notificationSettings.receive_feeding_alerts === 'ON'}
+                              onChange={(e) =>
+                                setNotificationSettings({
+                                  ...notificationSettings,
+                                  receive_feeding_alerts: e.target.checked ? 'ON' : 'OFF'
+                                })
+                              }
+                            />
+                          </div>
+                        </div>
+
+                        {/* Caretaker Activity Alerts */}
+                        <div className="setting-row-card d-flex align-items-center justify-content-between p-4">
+                          <div>
+                            <strong className="d-block text-dark mb-1">{t('Receive Caretaker Activity Alerts')}</strong>
+                            <small className="text-muted">{t('Alert when caretakers log water quality, water maintenance, or login activity.')}</small>
+                          </div>
+                          <div className="form-check form-switch fs-4 mb-0">
+                            <input
+                              className="form-check-input"
+                              type="checkbox"
+                              role="switch"
+                              checked={notificationSettings.receive_caretaker_activity_alerts === 'ON'}
+                              onChange={(e) =>
+                                setNotificationSettings({
+                                  ...notificationSettings,
+                                  receive_caretaker_activity_alerts: e.target.checked ? 'ON' : 'OFF'
+                                })
+                              }
+                            />
+                          </div>
+                        </div>
+
+                        {/* Email Notifications */}
+                        <div className="setting-row-card d-flex align-items-center justify-content-between p-4">
+                          <div>
+                            <strong className="d-block text-dark mb-1">{t('Receive Email Notifications')}</strong>
+                            <small className="text-muted">{t('Send urgent system summaries directly to administrator email address.')}</small>
+                          </div>
+                          <div className="form-check form-switch fs-4 mb-0">
+                            <input
+                              className="form-check-input"
+                              type="checkbox"
+                              role="switch"
+                              checked={notificationSettings.receive_email_notifications === 'ON'}
+                              onChange={(e) =>
+                                setNotificationSettings({
+                                  ...notificationSettings,
+                                  receive_email_notifications: e.target.checked ? 'ON' : 'OFF'
+                                })
+                              }
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 pt-3 border-top text-end">
+                        <button type="submit" className="btn btn-settings-primary px-4 py-2.5 rounded-3" disabled={saving}>
+                          <FaSave size={14} className="me-2" /> {saving ? t('Saving...') : t('Save')}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+
+              {/* SYSTEM PREFERENCES SECTION */}
+              {activeTab === 'preference' && (
+                <div className="settings-card bg-white">
+                  <div className="settings-card-header p-4 d-flex align-items-center gap-3">
+                    <div className="p-3 rounded-4 bg-secondary bg-opacity-10 text-secondary">
+                      <FaSlidersH size={20} />
+                    </div>
+                    <div>
+                      <h4 className="fw-bold mb-0 text-dark">{t('System Preferences')}</h4>
+                      <small className="text-muted">{t('Theme, language, at date/time format.')}</small>
+                    </div>
+                  </div>
+                  <div className="card-body p-4">
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        saveSettingsGroup(systemPreferences, 'System preferences updated successfully!');
+                      }}
+                    >
+                      <div className="row g-4">
+                        {/* Theme Mode Toggle Selector */}
+                        <div className="col-12">
+                          <label className="form-label fw-semibold text-dark">{t('Display Theme Mode')}</label>
+                          <div className="setting-row-card d-flex align-items-center justify-content-between p-4">
+                            <div className="d-flex align-items-center gap-3">
+                              <div
+                                className={`p-3 rounded-circle d-flex align-items-center justify-content-center ${systemPreferences.theme === 'Dark'
+                                    ? 'bg-dark text-warning'
+                                    : 'bg-warning bg-opacity-10 text-warning'
+                                  }`}
+                                style={{ width: 48, height: 48 }}
+                              >
+                                {systemPreferences.theme === 'Dark' ? <FaMoon size={22} /> : <FaSun size={22} />}
+                              </div>
+                              <div>
+                                <strong className="d-block text-dark mb-0 fs-6">
+                                  {t(systemPreferences.theme)} {t('Mode')}
+                                </strong>
+                                <small className="text-muted">
+                                  {systemPreferences.theme === 'Auto'
+                                    ? t('Auto schedule active: Light mode from 6:00 AM to 6:00 PM, Dark mode from 6:00 PM to 6:00 AM.')
+                                    : systemPreferences.theme === 'Dark'
+                                      ? t('Dark theme is active. Reduces eye strain and optimizes low-light visibility.')
+                                      : t('Clean standard Light theme is active.')}
+                                </small>
+                              </div>
+                            </div>
+
+                            <div className="btn-group" role="group">
+                              <button
+                                type="button"
+                                className={`btn btn-sm px-3 py-2 fw-semibold ${systemPreferences.theme === 'Auto' ? 'btn-primary shadow-sm' : 'btn-outline-secondary'
+                                  }`}
+                                onClick={() => handleThemeChange('Auto')}
+                                title="Automatically adjust between Light (6 AM–6 PM) and Dark (6 PM–6 AM)"
+                              >
+                                <FaClock className="me-1.5" /> {t('Auto')}
+                              </button>
+                              <button
+                                type="button"
+                                className={`btn btn-sm px-3 py-2 fw-semibold ${systemPreferences.theme === 'Light' ? 'btn-primary shadow-sm' : 'btn-outline-secondary'
+                                  }`}
+                                onClick={() => handleThemeChange('Light')}
+                              >
+                                <FaSun className="me-1.5" /> {t('Light')}
+                              </button>
+                              <button
+                                type="button"
+                                className={`btn btn-sm px-3 py-2 fw-semibold ${systemPreferences.theme === 'Dark' ? 'btn-primary shadow-sm' : 'btn-outline-secondary'
+                                  }`}
+                                onClick={() => handleThemeChange('Dark')}
+                              >
+                                <FaMoon className="me-1.5" /> {t('Dark')}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Language */}
+                        <div className="col-12 col-md-4">
+                          <label className="form-label fw-semibold text-dark d-flex align-items-center gap-1.5">
+                            <FaGlobe className="text-primary" /> {t('Language')}
+                          </label>
+                          <select
+                            className="form-select py-2.5 rounded-3"
+                            value={language === 'fil' ? 'Tagalog / Filipino' : 'English'}
+                            onChange={async (e) => {
+                              const val = e.target.value;
+                              const nextLang = val === 'Tagalog / Filipino' ? 'fil' : 'en';
+                              if (nextLang === language) return;
+                              const confirmed = await confirmAndSetLanguage(nextLang);
+                              if (confirmed) {
+                                setSystemPreferences((prev) => ({ ...prev, language: val }));
+                              }
+                            }}
+                          >
+                            <option value="English">English</option>
+                            <option value="Tagalog / Filipino">Tagalog / Filipino</option>
+                          </select>
+                        </div>
+
+                        {/* Date Format */}
+                        <div className="col-12 col-md-4">
+                          <label className="form-label fw-semibold text-dark d-flex align-items-center gap-1.5">
+                            <FaCalendarAlt className="text-primary" /> {t('Date Format')}
+                          </label>
+                          <select
+                            className="form-select py-2.5 rounded-3"
+                            value={systemPreferences.date_format}
+                            onChange={(e) => setSystemPreferences({ ...systemPreferences, date_format: e.target.value })}
+                          >
+                            <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                            <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+                            <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                          </select>
+                        </div>
+
+                        {/* Time Format */}
+                        <div className="col-12 col-md-4">
+                          <label className="form-label fw-semibold text-dark d-flex align-items-center gap-1.5">
+                            <FaClock className="text-primary" /> {t('Time Format')}
+                          </label>
+                          <select
+                            className="form-select py-2.5 rounded-3"
+                            value={systemPreferences.time_format}
+                            onChange={(e) => setSystemPreferences({ ...systemPreferences, time_format: e.target.value })}
+                          >
+                            <option value="12 Hours">{t('12 Hours (AM/PM)')}</option>
+                            <option value="24 Hours">{t('24 Hours (Military)')}</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 pt-3 border-top text-end">
+                        <button type="submit" className="btn btn-settings-primary px-4 py-2.5 rounded-3" disabled={saving}>
+                          <FaSave size={14} className="me-2" /> {saving ? t('Saving...') : t('Save')}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+
+              {/* BACKUP & RESTORE SECTION */}
+              {activeTab === 'backup' && (
+                <div className="settings-card bg-white">
+                  <div className="settings-card-header p-4 d-flex align-items-center gap-3">
+                    <div className="p-3 rounded-4 bg-success bg-opacity-10 text-success">
+                      <FaDatabase size={20} />
+                    </div>
+                    <div>
+                      <h4 className="fw-bold mb-0 text-dark">{t('Backup & Restore')}</h4>
+                      <small className="text-muted">{t('Create or restore system data backups.')}</small>
+                    </div>
+                  </div>
+                  <div className="card-body p-4">
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        saveSettingsGroup(backupSettings, 'Backup configurations saved successfully!');
+                      }}
+                    >
+                      <div className="row g-4">
+                        {/* Last Backup Display */}
+                        <div className="col-12">
+                          <div className="p-4 rounded-4 bg-light border d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3">
+                            <div>
+                              <strong className="d-block text-dark mb-1">{t('Last Backup Timestamp')}</strong>
+                              <span className="fs-5 fw-bold text-primary">{backupSettings.last_backup}</span>
+                            </div>
+                            <span className="badge bg-success bg-opacity-10 text-success px-3 py-2 rounded-pill fw-semibold fs-6">
+                              <FaCheckCircle className="me-1.5" /> {t('Backup Verified')}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Automatic Backup */}
+                        <div className="col-12 col-md-6">
+                          <div className="setting-row-card d-flex align-items-center justify-content-between p-4 h-100 settings-switch">
+                            <div>
+                              <strong className="d-block text-dark mb-1">{t('Automatic Backup')}</strong>
+                              <small className="text-muted">{t('Enable scheduled database snapshots.')}</small>
+                            </div>
+                            <div className="form-check form-switch fs-4 mb-0">
+                              <input
+                                className="form-check-input"
+                                type="checkbox"
+                                role="switch"
+                                checked={backupSettings.automatic_backup === 'ON'}
+                                onChange={(e) =>
+                                  setBackupSettings({
+                                    ...backupSettings,
+                                    automatic_backup: e.target.checked ? 'ON' : 'OFF'
+                                  })
+                                }
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Backup Frequency */}
+                        <div className="col-12 col-md-6">
+                          <label className="form-label fw-semibold text-dark">{t('Backup Frequency')}</label>
+                          <select
+                            className="form-select py-2.5 rounded-3"
+                            value={backupSettings.backup_frequency}
+                            onChange={(e) => setBackupSettings({ ...backupSettings, backup_frequency: e.target.value })}
+                          >
+                            <option value="Daily">{t('Daily')}</option>
+                            <option value="Weekly">{t('Weekly')}</option>
+                            <option value="Monthly">{t('Monthly')}</option>
+                          </select>
+                          <small className="text-muted">{t('How often automatic backups occur.')}</small>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 pt-3 border-top text-end">
+                        <button type="submit" className="btn btn-settings-primary px-4 py-2.5 rounded-3" disabled={saving}>
+                          <FaSave size={14} className="me-2" /> {saving ? t('Saving...') : t('Save Configuration')}
+                        </button>
+                      </div>
+                    </form>
+
+                    <hr className="my-4" />
+
+                    {/* Backup & Restore Action Buttons */}
+                    <h6 className="fw-bold text-dark mb-3">{t('Database Actions')}</h6>
+                    <div className="row g-3">
+                      <div className="col-12 col-md-6">
+                        <div className="p-4 rounded-4 border bg-primary bg-opacity-10 d-flex flex-column gap-2">
+                          <strong className="text-dark fs-6">{t('Export Database Snapshot')}</strong>
+                          <p className="small text-muted mb-2">{t('Download complete SQL data dump of shrim_predict_db directly to your disk.')}</p>
+                          <button
+                            type="button"
+                            className="btn btn-settings-primary rounded-3 py-2.5 d-flex align-items-center justify-content-center gap-2"
+                            onClick={handleBackupNow}
+                          >
+                            <FaDownload size={14} /> {t('Backup Now')}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="col-12 col-md-6">
+                        <div className="p-4 rounded-4 border bg-warning bg-opacity-10 d-flex flex-column gap-2">
+                          <strong className="text-dark fs-6">{t('Restore Database Backup')}</strong>
+                          <p className="small text-muted mb-2">{t('Upload a previously generated .sql file to restore tables and system records.')}</p>
+                          <button
+                            type="button"
+                            className="btn btn-warning text-dark rounded-3 py-2.5 d-flex align-items-center justify-content-center gap-2 shadow-sm fw-bold"
+                            onClick={handleRestoreBackup}
+                            disabled={saving}
+                          >
+                            <FaUpload size={14} /> {t('Restore Backup')}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ARCHIVED CARETAKERS SECTION */}
+              {activeTab === 'archived_caretakers' && (
+                <div className="settings-card bg-white shadow-sm border border-slate-200 rounded-4 overflow-hidden mb-4">
+                  <div className="settings-card-header p-4 border-bottom bg-slate-50 d-flex align-items-center justify-content-between flex-wrap gap-3">
+                    <div className="d-flex align-items-center gap-3">
+                      <div className="settings-icon-badge p-3 rounded-4 bg-warning bg-opacity-10 text-warning">
+                        <FaUserCheck size={20} />
+                      </div>
+                      <div>
+                        <h4 className="fw-bold mb-0 text-dark">{t('Archived Caretakers Directory')}</h4>
+                        <small className="text-muted">{t('Preserved record archives of resigned, inactive, or former farm caretakers.')}</small>
+                      </div>
+                    </div>
+                    <span className="badge bg-warning bg-opacity-10 text-warning rounded-pill px-3.5 py-1.5 extra-small fw-bold">
+                      {archivedCaretakers.length} {t('Archived Accounts')}
+                    </span>
+                  </div>
+
+                  <div className="card-body p-4">
+                    {/* Search Bar */}
+                    <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+                      <div className="position-relative flex-grow-1" style={{ maxWidth: 380 }}>
+                        <FaSearch className="position-absolute top-50 translate-middle-y text-muted" style={{ left: 14 }} />
+                        <input
+                          type="text"
+                          className="form-control ps-5 rounded-3 py-2 border-slate-200"
+                          placeholder={t('Search by name, employee ID, or reason...')}
+                          value={archivedSearch}
+                          onChange={(e) => setArchivedSearch(e.target.value)}
+                        />
+                      </div>
+                      <button type="button" className="btn btn-outline-secondary btn-sm rounded-3 px-3 py-2 d-flex align-items-center gap-1.5" onClick={fetchArchivedCaretakers}>
+                        <FaHistory /> {t('Refresh Repository')}
+                      </button>
+                    </div>
+
+                    {/* Table View (Matching user's requested layout format) */}
+                    <div className="table-responsive border rounded-4 bg-white">
+                      {loadingArchived ? (
+                        <div className="text-center py-5 text-muted">
+                          <div className="spinner-border text-warning" role="status"></div>
+                          <p className="mt-2 mb-0">{t('Loading Archived Caretakers Directory...')}</p>
+                        </div>
+                      ) : archivedCaretakers.length === 0 ? (
+                        <div className="text-center py-5 text-muted">
+                          <FaUserCheck size={36} className="text-warning mb-2 opacity-50" />
+                          <h6 className="fw-bold mb-1">{t('No Archived Caretakers Found')}</h6>
+                          <p className="small mb-0">{t('Resigned or archived caretaker records will appear here.')}</p>
+                        </div>
+                      ) : (
+                        <div className="table-responsive admin-scrollable-table-4rows" style={{ maxHeight: 290, overflowY: 'auto' }}>
+                          <table className="table align-middle mb-0">
+                            <thead className="table-light">
+                              <tr>
+                                <th style={{ padding: '12px 16px' }}>{t('Name')}</th>
+                                <th style={{ padding: '12px 16px' }}>{t('Employee ID')}</th>
+                                <th style={{ padding: '12px 16px' }}>{t('Date Hired')}</th>
+                                <th style={{ padding: '12px 16px' }}>{t('Date Archived')}</th>
+                                <th style={{ padding: '12px 16px' }}>{t('Reason')}</th>
+                                <th style={{ padding: '12px 16px' }} className="text-end">{t('Action')}</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {archivedCaretakers
+                                .filter((c) => {
+                                  if (!archivedSearch.trim()) return true;
+                                  const q = archivedSearch.toLowerCase();
+                                  return (
+                                    c.full_name.toLowerCase().includes(q) ||
+                                    (c.employee_id && c.employee_id.toLowerCase().includes(q)) ||
+                                    (c.archive_reason && c.archive_reason.toLowerCase().includes(q))
+                                  );
+                                })
+                                .map((caretaker) => (
+                                  <tr key={caretaker.id}>
+                                    <td style={{ padding: '14px 16px' }}>
+                                      <div className="d-flex align-items-center gap-2.5">
+                                        <div
+                                          className="rounded-circle bg-warning bg-opacity-10 text-warning fw-bold d-flex align-items-center justify-content-center border border-warning border-opacity-25"
+                                          style={{ width: 38, height: 38, fontSize: '0.9rem' }}
+                                        >
+                                          {caretaker.full_name.charAt(0)}
+                                        </div>
+                                        <div>
+                                          <strong className="text-dark d-block leading-tight">{caretaker.full_name}</strong>
+                                          <small className="text-muted extra-small">{caretaker.email}</small>
+                                        </div>
+                                      </div>
+                                    </td>
+                                    <td style={{ padding: '14px 16px' }}>
+                                      <span className="badge bg-secondary bg-opacity-10 text-secondary border px-2.5 py-1 rounded-pill font-mono extra-small fw-semibold">
+                                        {caretaker.employee_id}
+                                      </span>
+                                    </td>
+                                    <td style={{ padding: '14px 16px' }} className="small text-muted">
+                                      {caretaker.date_hired_formatted}
+                                    </td>
+                                    <td style={{ padding: '14px 16px' }} className="small text-dark fw-semibold">
+                                      {caretaker.date_archived_formatted}
+                                    </td>
+                                    <td style={{ padding: '14px 16px' }}>
+                                      <span className="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 px-2.5 py-1 rounded-pill extra-small fw-semibold">
+                                        {caretaker.archive_reason}
+                                      </span>
+                                    </td>
+                                    <td style={{ padding: '14px 16px' }} className="text-end">
+                                      <div className="d-flex align-items-center justify-content-end gap-2">
+                                        <button
+                                          type="button"
+                                          className="btn btn-sm btn-outline-primary rounded-3 px-2.5 py-1 extra-small fw-semibold d-flex align-items-center gap-1"
+                                          onClick={() => openArchivedDetails(caretaker.id)}
+                                        >
+                                          <FaEye size={12} /> {t('View Details')}
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className="btn btn-sm btn-outline-success rounded-3 px-2.5 py-1 extra-small fw-semibold d-flex align-items-center gap-1"
+                                          onClick={() => handleRestoreCaretaker(caretaker)}
+                                        >
+                                          <FaUserCheck size={12} /> {t('Restore')}
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className="btn btn-sm btn-outline-danger rounded-3 p-1.5 extra-small"
+                                          title={t('Delete Permanently')}
+                                          onClick={() => handleDeletePermanently(caretaker)}
+                                        >
+                                          <FaTrashAlt size={12} />
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                            </tbody>
+                          </table>
+                        </div>
                       )}
-                    </button>
-                  );
-                })
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ABOUT SYSTEM SECTION */}
+              {activeTab === 'about' && (
+                <div className="settings-card bg-white">
+                  <div className="settings-card-header p-4 d-flex align-items-center gap-3">
+                    <div className="p-3 rounded-4 bg-primary bg-opacity-10 text-primary">
+                      <FaInfoCircle size={20} />
+                    </div>
+                    <div>
+                      <h4 className="fw-bold mb-0 text-dark">{t('About System')}</h4>
+                      <small className="text-muted">{t('Information regarding system build and development team.')}</small>
+                    </div>
+                  </div>
+                  <div className="card-body p-4">
+                    <div className="p-4 rounded-4 bg-light border text-center mb-4">
+                      <div
+                        className="mx-auto rounded-4 bg-primary text-white d-flex align-items-center justify-content-center mb-3 shadow-lg"
+                        style={{ width: 78, height: 78, fontSize: '2rem', fontWeight: 800 }}
+                      >
+                        <FaFish size={36} />
+                      </div>
+                      <h3 className="fw-bold mb-1" style={{ color: '#172A39' }}>
+                        Shrimp<span style={{ color: '#FC563C' }}>Predict</span>
+                      </h3>
+                      <span className="badge bg-primary px-3.5 py-1.5 rounded-pill fs-6 fw-normal mb-2">
+                        {t('Version 1.0')}
+                      </span>
+                      <p className="text-muted max-w-md mx-auto small">
+                        {t('Smart Shrimp Disease Risk Prediction & Pond Monitoring System.')}
+                      </p>
+                    </div>
+
+                    <div className="row g-3">
+                      <div className="col-12 col-md-6">
+                        <div className="setting-row-card p-3.5">
+                          <small className="text-muted text-uppercase extra-small fw-bold d-block mb-1">{t('Developed By')}</small>
+                          <strong className="fs-6 text-dark d-flex align-items-center gap-2">
+                            <FaUser className="text-primary" /> Team Shrimp<span style={{ color: '#FC563C' }}>Predict</span>
+                          </strong>
+                        </div>
+                      </div>
+
+                      <div className="col-12 col-md-6">
+                        <div className="setting-row-card p-3.5">
+                          <small className="text-muted text-uppercase extra-small fw-bold d-block mb-1">{t('Educational Institution')}</small>
+                          <strong className="fs-6 text-dark d-flex align-items-center gap-2">
+                            <FaDesktop className="text-primary" /> Batangas State University
+                          </strong>
+                        </div>
+                      </div>
+
+                      <div className="col-12 col-md-6">
+                        <div className="setting-row-card p-3.5">
+                          <small className="text-muted text-uppercase extra-small fw-bold d-block mb-1">{t('Academic Year')}</small>
+                          <strong className="fs-6 text-dark d-flex align-items-center gap-2">
+                            <FaCalendarAlt className="text-primary" /> 2026
+                          </strong>
+                        </div>
+                      </div>
+
+                      <div className="col-12 col-md-6">
+                        <div className="setting-row-card p-3.5">
+                          <small className="text-muted text-uppercase extra-small fw-bold d-block mb-1">{t('System Operational Status')}</small>
+                          <strong className="fs-6 text-success d-flex align-items-center gap-2">
+                            <FaCheckCircle /> {t('Active & Operational')}
+                          </strong>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
           </div>
-        </div>
-
-        {/* Right Tab Content Panel */}
-        <div className="col-12 col-lg-8 col-xl-9">
-          {/* PROFILE SECTION */}
-          {activeTab === 'profile' && (
-            <div className="settings-card shadow-sm rounded-4 overflow-hidden">
-              <div className="settings-card-header p-4 d-flex align-items-center justify-content-between flex-wrap gap-3">
-                <div className="d-flex align-items-center gap-3">
-                  <div className="settings-icon-badge p-3 rounded-4 bg-primary bg-opacity-10 text-primary">
-                    <FaUser size={20} />
-                  </div>
-                  <div>
-                    <h4 className="fw-extrabold mb-0 text-dark">{t('Admin Profile')}</h4>
-                    <small className="text-muted fw-medium">{t('Administrator account details and profile information.')}</small>
-                  </div>
-                </div>
-                <span className="badge bg-success text-white rounded-pill px-3.5 py-1.5 extra-small fw-bold shadow-xs">
-                  ● {t('Active Administrator')}
-                </span>
-              </div>
-
-              <div className="card-body p-4 p-md-4">
-                {/* Profile Picture Header Banner */}
-                <div className="settings-banner-box d-flex flex-column flex-sm-row align-items-center gap-4 mb-4.5">
-                  <div className="position-relative flex-shrink-0">
-                    {profile.avatar_path && (
-                      <img
-                        src={profile.avatar_path}
-                        alt=""
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                          const fallback = e.target.parentElement.querySelector('.avatar-initial-fallback');
-                          if (fallback) fallback.style.display = 'flex';
-                        }}
-                        className="avatar-halo avatar-halo-gold rounded-circle object-fit-cover border border-3 border-warning shadow-md"
-                        style={{ width: 96, height: 96 }}
-                      />
-                    )}
-                    <div
-                      className="avatar-initial-fallback avatar-halo avatar-halo-gold rounded-circle text-white align-items-center justify-content-center border border-3 border-warning fw-bold fs-2 shadow-md"
-                      style={{
-                        width: 96,
-                        height: 96,
-                        background: 'linear-gradient(135deg, #FC563C 0%, #1e40af 100%)',
-                        display: profile.avatar_path ? 'none' : 'flex'
-                      }}
-                    >
-                      {profile.full_name ? profile.full_name.charAt(0).toUpperCase() : 'A'}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="btn btn-warning btn-sm rounded-circle position-absolute bottom-0 end-0 p-2 border border-2 border-white shadow text-dark fw-bold"
-                      title={t('Upload Photo')}
-                    >
-                      <FaCamera size={13} />
-                    </button>
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      className="d-none"
-                      accept="image/*"
-                      onChange={handleAvatarChange}
-                    />
-                  </div>
-                  <div className="text-center text-sm-start flex-grow-1">
-                    <div className="d-flex flex-wrap align-items-center justify-content-center justify-content-sm-start gap-2 mb-1.5">
-                      <h5 className="fw-extrabold mb-0 fs-5 text-dark">{profile.full_name}</h5>
-                      <span
-                        className="badge px-3 py-1.5 rounded-pill fw-bold extra-small"
-                        style={{
-                          backgroundColor: 'rgba(252, 86, 60, 0.1)',
-                          color: '#FC563C',
-                          border: '1.5px solid rgba(252, 86, 60, 0.3)'
-                        }}
-                      >
-                        {profile.position}
-                      </span>
-                    </div>
-                    <p className="text-secondary mb-2 small fw-semibold">{profile.email}</p>
-                    <small className="text-muted d-block extra-small fw-medium">
-                      {t('Allowed formats: JPG, PNG or GIF. Click the camera icon on the avatar to change photo.')}
-                    </small>
-                  </div>
-                </div>
-
-                {/* READ-ONLY VIEW MODE CARDS */}
-                {!isEditingProfile ? (
-                  <div className="profile-view-section">
-                    <div
-                      className="d-flex align-items-center justify-content-between border-top border-slate-200"
-                      style={{ marginTop: 28, marginBottom: 28, paddingTop: 20 }}
-                    >
-                      <h6 className="fw-bold mb-0 d-flex align-items-center gap-2 fs-6">
-                        <FaCheckCircle className="text-success" size={16} /> {t('Account Profile Details Overview')}
-                      </h6>
-                      <span className="badge bg-light text-muted border px-3 py-1.5 extra-small fw-semibold">
-                        {t('Read-only account summary')}
-                      </span>
-                    </div>
-
-                    <div className="row g-4">
-                      {/* Full Name Card */}
-                      <div className="col-12 col-md-6">
-                        <div className="settings-info-card transition-all hover-shadow-xs">
-                          <div className="text-warning extra-small fw-bold text-uppercase mb-2.5 d-flex align-items-center gap-2">
-                            <FaUser className="text-warning flex-shrink-0" size={13} />
-                            <span className="tracking-wider ms-1">{t('System Administrator (Full Name)')}</span>
-                          </div>
-                          <div className="fw-extrabold fs-6 pt-1">{profile.full_name}</div>
-                        </div>
-                      </div>
-
-                      {/* Email Address Card */}
-                      <div className="col-12 col-md-6">
-                        <div className="settings-info-card transition-all hover-shadow-xs">
-                          <div className="text-warning extra-small fw-bold text-uppercase mb-2.5 d-flex align-items-center gap-2">
-                            <FaEnvelope className="text-warning flex-shrink-0" size={13} />
-                            <span className="tracking-wider ms-1">{t('Email Address')}</span>
-                          </div>
-                          <div className="fw-extrabold fs-6 pt-1">{profile.email}</div>
-                        </div>
-                      </div>
-
-                      {/* Phone Number Card */}
-                      <div className="col-12 col-md-6">
-                        <div className="settings-info-card transition-all hover-shadow-xs">
-                          <div className="text-warning extra-small fw-bold text-uppercase mb-2.5 d-flex align-items-center gap-2">
-                            <FaPhone className="text-warning flex-shrink-0" size={13} />
-                            <span className="tracking-wider ms-1">{t('Contact Phone Number')}</span>
-                          </div>
-                          <div className="fw-extrabold fs-6 pt-1">{profile.phone || '09123456789'}</div>
-                        </div>
-                      </div>
-
-                      {/* Position / Role Card */}
-                      <div className="col-12 col-md-6">
-                        <div className="settings-info-card transition-all hover-shadow-xs">
-                          <div className="text-warning extra-small fw-bold text-uppercase mb-2.5 d-flex align-items-center gap-2">
-                            <FaUserShield className="text-warning flex-shrink-0" size={13} />
-                            <span className="tracking-wider ms-1">{t('Position / System Role')}</span>
-                          </div>
-                          <div className="fw-extrabold fs-6 pt-1">{profile.position}</div>
-                        </div>
-                      </div>
-
-                      {/* Last Login Card */}
-                      <div className="col-12">
-                        <div className="settings-info-card transition-all hover-shadow-xs">
-                          <div className="text-warning extra-small fw-bold text-uppercase mb-2.5 d-flex align-items-center gap-2">
-                            <FaClock className="text-warning flex-shrink-0" size={13} />
-                            <span className="tracking-wider ms-1">{t('Last Login Timestamp')}</span>
-                          </div>
-                          <div className="fw-extrabold fs-6 pt-1">{profile.last_login}</div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* EDIT PROFILE BUTTON IN LOWER RIGHT PART */}
-                    <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-4.5 pt-4 border-top">
-                      <div className="text-muted extra-small d-flex align-items-center gap-2">
-                        <FaShieldAlt className="text-success" size={14} />
-                        <span>{t('Administrator Account Info Verified & Secured')}</span>
-                      </div>
-                      <button
-                        type="button"
-                        className="btn btn-gold-glow px-4.5 py-2.5 rounded-3 d-flex align-items-center gap-2 shadow-sm fw-bold ms-auto"
-                        onClick={handleStartEditProfile}
-                      >
-                        <FaEdit size={15} /> {t('Edit Profile')}
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  /* EDIT MODE CARDS FORM */
-                  <form onSubmit={handleSaveProfile} className="profile-edit-section">
-                    <div
-                      className="d-flex align-items-center justify-content-between bg-primary bg-opacity-10 rounded-4 border border-primary border-opacity-25 shadow-xs"
-                      style={{ marginTop: 28, marginBottom: 32, padding: '14px 20px' }}
-                    >
-                      <h6 className="fw-bold text-primary mb-0 d-flex align-items-center gap-2 fs-6">
-                        <FaEdit size={16} /> {t('Edit Administrator Profile Details')}
-                      </h6>
-                      <small className="text-muted extra-small ms-2">{t('Modify account fields below and click Save Changes.')}</small>
-                    </div>
-
-                    <div className="row g-4">
-                      <div className="col-12 col-md-6">
-                        <label className="form-label fw-bold text-dark small mb-2">{t('Full Name')}</label>
-                        <input
-                          type="text"
-                          className="form-control p-3 rounded-3 border-secondary border-opacity-25 shadow-xs"
-                          value={profile.full_name}
-                          onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
-                          required
-                        />
-                      </div>
-
-                      <div className="col-12 col-md-6">
-                        <label className="form-label fw-bold text-dark small mb-2">{t('Email Address')}</label>
-                        <input
-                          type="email"
-                          className="form-control p-3 rounded-3 border-secondary border-opacity-25 shadow-xs"
-                          value={profile.email}
-                          onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                          required
-                        />
-                      </div>
-
-                      <div className="col-12 col-md-6">
-                        <label className="form-label fw-bold text-dark small mb-2">{t('Contact Phone Number')}</label>
-                        <input
-                          type="text"
-                          className="form-control p-3 rounded-3 border-secondary border-opacity-25 shadow-xs"
-                          value={profile.phone}
-                          onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                        />
-                      </div>
-
-                      <div className="col-12 col-md-6">
-                        <label className="form-label fw-bold text-dark small mb-2">{t('Position / Role')}</label>
-                        <input
-                          type="text"
-                          className="form-control p-3 rounded-3 border-secondary border-opacity-25 shadow-xs"
-                          value={profile.position}
-                          onChange={(e) => setProfile({ ...profile, position: e.target.value })}
-                        />
-                      </div>
-
-                      <div className="col-12">
-                        <label className="form-label fw-bold text-dark small mb-2">{t('Last Login Timestamp (Read-Only)')}</label>
-                        <input
-                          type="text"
-                          className="form-control p-3 rounded-3 bg-light text-muted border-secondary border-opacity-25"
-                          value={profile.last_login}
-                          disabled
-                        />
-                      </div>
-                    </div>
-
-                    {/* Action Buttons: Cancel and Save Changes (Lower Right Part) */}
-                    <div className="d-flex align-items-center justify-content-end gap-3 mt-4.5 pt-4 border-top">
-                      <button
-                        type="button"
-                        className="btn btn-outline-secondary px-4 py-2.5 rounded-3 d-flex align-items-center gap-2 fw-semibold"
-                        onClick={handleCancelEditProfile}
-                      >
-                        <FaTimes size={14} /> {t('Cancel')}
-                      </button>
-
-                      <button
-                        type="submit"
-                        className="btn btn-settings-primary px-4.5 py-2.5 rounded-3 d-flex align-items-center gap-2 fw-semibold shadow-sm"
-                        disabled={saving}
-                      >
-                        <FaSave size={14} /> {saving ? t('Saving Changes...') : t('Save Changes')}
-                      </button>
-                    </div>
-                  </form>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* SECURITY SECTION */}
-          {activeTab === 'security' && (
-            <div className="settings-card bg-white">
-              <div className="settings-card-header p-4 d-flex align-items-center gap-3">
-                <div className="p-3 rounded-4 bg-danger bg-opacity-10 text-danger">
-                  <FaLock size={20} />
-                </div>
-                <div>
-                  <h4 className="fw-bold mb-0 text-dark">{t('Account Security')}</h4>
-                  <small className="text-muted">{t('Change password and manage account security credentials.')}</small>
-                </div>
-              </div>
-              <div className="card-body p-4">
-                <form onSubmit={handleUpdatePassword}>
-                  <h6 className="fw-bold text-dark mb-3">{t('Change Administrator Password')}</h6>
-                  <div className="row g-3">
-                    <div className="col-12">
-                      <label className="form-label fw-semibold text-dark">{t('Current Password')}</label>
-                      <input
-                        type="password"
-                        className="form-control py-2.5 rounded-3"
-                        placeholder={t('Enter current password')}
-                        value={security.current_password}
-                        onChange={(e) => setSecurity({ ...security, current_password: e.target.value })}
-                      />
-                    </div>
-
-                    <div className="col-12 col-md-6">
-                      <label className="form-label fw-semibold text-dark">{t('New Password')}</label>
-                      <input
-                        type="password"
-                        className="form-control py-2.5 rounded-3"
-                        placeholder={t('Min 6 characters')}
-                        value={security.new_password}
-                        onChange={(e) => setSecurity({ ...security, new_password: e.target.value })}
-                      />
-                    </div>
-
-                    <div className="col-12 col-md-6">
-                      <label className="form-label fw-semibold text-dark">{t('Confirm Password')}</label>
-                      <input
-                        type="password"
-                        className="form-control py-2.5 rounded-3"
-                        placeholder={t('Re-enter new password')}
-                        value={security.confirm_password}
-                        onChange={(e) => setSecurity({ ...security, confirm_password: e.target.value })}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="mt-3 text-end">
-                    <button
-                      type="submit"
-                      className="btn btn-settings-primary px-4 py-2.5 rounded-3 d-flex align-items-center gap-2 ms-auto"
-                      disabled={saving}
-                    >
-                      <FaShieldAlt size={14} /> {saving ? t('Updating...') : t('Update Password')}
-                    </button>
-                  </div>
-                </form>
-
-                <hr className="my-4" />
-
-                {/* Two-Factor Authentication */}
-                <div className="setting-row-card d-flex align-items-center justify-content-between p-4 mb-4 settings-switch">
-                  <div>
-                    <h6 className="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
-                      <FaShieldAlt className="text-primary" /> {t('Two-Factor Authentication (2FA)')}
-                    </h6>
-                    <small className="text-muted">{t('Add an additional security layer during administrator login.')}</small>
-                  </div>
-                  <div className="form-check form-switch fs-4 mb-0">
-                    <input
-                      className="form-check-input"
-                      type="checkbox"
-                      role="switch"
-                      checked={profile.two_factor_enabled}
-                      onChange={(e) => handleToggle2FA(e.target.checked)}
-                    />
-                  </div>
-                </div>
-
-                {/* Logout All Devices */}
-                <div className="d-flex align-items-center justify-content-between p-4 rounded-4 border border-danger border-opacity-25 bg-danger bg-opacity-10">
-                  <div>
-                    <h6 className="fw-bold text-danger mb-1 d-flex align-items-center gap-2">
-                      <FaSignOutAlt /> {t('Logout All Devices')}
-                    </h6>
-                    <small className="text-danger opacity-75">{t('Sign out from all active web sessions across mobile and desktop browsers.')}</small>
-                  </div>
-                  <button
-                    type="button"
-                    className="btn btn-danger btn-sm px-4 py-2.5 rounded-3 shadow-sm fw-semibold"
-                    onClick={handleLogoutAllDevices}
-                  >
-                    {t('Logout All Devices')}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* POND SETTINGS SECTION */}
-          {activeTab === 'pond' && (
-            <div className="settings-card bg-white">
-              <div className="settings-card-header p-4 d-flex align-items-center gap-3">
-                <div className="p-3 rounded-4 bg-info bg-opacity-10 text-info">
-                  <FaWater size={20} />
-                </div>
-                <div>
-                  <h4 className="fw-bold mb-0 text-dark">{t('Pond Settings')}</h4>
-                  <small className="text-muted">{t('Default pond configuration (e.g. maximum ponds, auto-numbering).')}</small>
-                </div>
-              </div>
-              <div className="card-body p-4">
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    saveSettingsGroup(pondSettings, 'Pond settings saved successfully!');
-                  }}
-                >
-                  <div className="row g-4">
-                    <div className="col-12 col-md-6">
-                      <label className="form-label fw-semibold text-dark">{t('Maximum Number of Ponds')}</label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="200"
-                        className="form-control py-2.5 rounded-3"
-                        value={pondSettings.max_ponds}
-                        onChange={(e) => setPondSettings({ ...pondSettings, max_ponds: e.target.value })}
-                      />
-                      <small className="text-muted">{t('Default system pond limit (e.g. 30 ponds).')}</small>
-                    </div>
-
-                    <div className="col-12 col-md-6">
-                      <label className="form-label fw-semibold text-dark">{t('Default Pond Status')}</label>
-                      <select
-                        className="form-select py-2.5 rounded-3"
-                        value={pondSettings.default_pond_status}
-                        onChange={(e) => setPondSettings({ ...pondSettings, default_pond_status: e.target.value })}
-                      >
-                        <option value="Unmonitored">{t('Unmonitored (Recommended)')}</option>
-                        <option value="Healthy">{t('Healthy')}</option>
-                        <option value="Warning">{t('Warning')}</option>
-                        <option value="Critical">{t('Critical')}</option>
-                      </select>
-                      <small className="text-muted">{t('Initial status assigned when creating a new pond.')}</small>
-                    </div>
-
-                    <div className="col-12">
-                      <div className="setting-row-card d-flex align-items-center justify-content-between p-4 settings-switch">
-                        <div>
-                          <strong className="d-block text-dark mb-1">{t('Auto Assign Pond Number')}</strong>
-                          <small className="text-muted">{t('Automatically generate sequential IDs for new pond additions (ON / OFF).')}</small>
-                        </div>
-                        <div className="form-check form-switch fs-4 mb-0">
-                          <input
-                            className="form-check-input"
-                            type="checkbox"
-                            role="switch"
-                            checked={pondSettings.auto_assign_pond_number === 'ON'}
-                            onChange={(e) =>
-                              setPondSettings({
-                                ...pondSettings,
-                                auto_assign_pond_number: e.target.checked ? 'ON' : 'OFF'
-                              })
-                            }
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 pt-3 border-top text-end">
-                    <button type="submit" className="btn btn-settings-primary px-4 py-2.5 rounded-3" disabled={saving}>
-                      <FaSave size={14} className="me-2" /> {saving ? t('Saving...') : t('Save')}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
-
-          {/* HARVEST SETTINGS SECTION */}
-          {activeTab === 'harvest' && (
-            <div className="settings-card bg-white">
-              <div className="settings-card-header p-4 d-flex align-items-center gap-3">
-                <div className="p-3 rounded-4 bg-warning bg-opacity-10 text-warning">
-                  <FaFish size={20} />
-                </div>
-                <div>
-                  <h4 className="fw-bold mb-0 text-dark">{t('Harvest Settings')}</h4>
-                  <small className="text-muted">{t('Itakda ang target harvest age at readiness threshold na ginagamit ng system.')}</small>
-                </div>
-              </div>
-              <div className="card-body p-4">
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    saveSettingsGroup(harvestSettings, 'Harvest settings updated successfully!');
-                  }}
-                >
-                  {/* Note / Guidance Alert Banner */}
-                  <div className="harvest-rule-box p-4 mb-4 d-flex gap-3 align-items-start">
-                    <FaExclamationTriangle className="text-warning flex-shrink-0 mt-1" size={22} />
-                    <div>
-                      <strong className="d-block text-dark mb-1 fs-6">{t('Harvest Readiness Rule Guidance')}</strong>
-                      <p className="mb-0 text-dark small">
-                        <strong>Note:</strong> Reaching <strong>95%</strong> triggers <span className="badge bg-warning text-dark px-2.5 py-1 rounded-pill">{t('Upcoming Harvest')}</span>. Reaching <strong>100%</strong> triggers <span className="badge bg-success px-2.5 py-1 rounded-pill">{t('Ready to Harvest')}</span>.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="row g-4">
-                    <div className="col-12 col-md-6">
-                      <label className="form-label fw-semibold text-dark">{t('Target Harvest Age (Days)')}</label>
-                      <div className="input-group">
-                        <input
-                          type="number"
-                          min="30"
-                          max="300"
-                          className="form-control py-2.5 rounded-start-3"
-                          value={harvestSettings.target_harvest_age}
-                          onChange={(e) => setHarvestSettings({ ...harvestSettings, target_harvest_age: e.target.value })}
-                        />
-                        <span className="input-group-text bg-light text-muted">{t('Days')}</span>
-                      </div>
-                      <small className="text-muted">{t('Standard culture cycle period (e.g. 120 Days).')}</small>
-                    </div>
-
-                    <div className="col-12 col-md-6">
-                      <label className="form-label fw-semibold text-dark">{t('Harvest Ready Percentage (%)')}</label>
-                      <div className="input-group">
-                        <input
-                          type="number"
-                          min="50"
-                          max="100"
-                          className="form-control py-2.5 rounded-start-3"
-                          value={harvestSettings.harvest_ready_percentage}
-                          onChange={(e) => setHarvestSettings({ ...harvestSettings, harvest_ready_percentage: e.target.value })}
-                        />
-                        <span className="input-group-text bg-light text-muted">%</span>
-                      </div>
-                      <small className="text-muted">{t('Readiness threshold percentage (e.g. 95%).')}</small>
-                    </div>
-
-                    <div className="col-12">
-                      <label className="form-label fw-semibold text-dark">{t('Prediction Refresh Frequency')}</label>
-                      <select
-                        className="form-select py-2.5 rounded-3"
-                        value={harvestSettings.prediction_refresh}
-                        onChange={(e) => setHarvestSettings({ ...harvestSettings, prediction_refresh: e.target.value })}
-                      >
-                        <option value="Daily">{t('Daily')}</option>
-                        <option value="Weekly">{t('Weekly')}</option>
-                        <option value="Manual">{t('Manual')}</option>
-                      </select>
-                      <small className="text-muted">{t('How often harvest biomass & readiness predictions update.')}</small>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 pt-3 border-top text-end">
-                    <button type="submit" className="btn btn-settings-primary px-4 py-2.5 rounded-3" disabled={saving}>
-                      <FaSave size={14} className="me-2" /> {saving ? t('Saving...') : t('Save')}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
-
-          {/* NOTIFICATION SETTINGS SECTION */}
-          {activeTab === 'notification' && (
-            <div className="settings-card bg-white">
-              <div className="settings-card-header p-4 d-flex align-items-center gap-3">
-                <div className="p-3 rounded-4 bg-primary bg-opacity-10 text-primary">
-                  <FaBell size={20} />
-                </div>
-                <div>
-                  <h4 className="fw-bold mb-0 text-dark">{t('Notification Settings')}</h4>
-                  <small className="text-muted">{t('Select notification alerts delivered to administrators.')}</small>
-                </div>
-              </div>
-              <div className="card-body p-4">
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    saveSettingsGroup(notificationSettings, 'Notification preferences saved successfully!');
-                  }}
-                >
-                  <div className="d-flex flex-column gap-3 settings-switch">
-                    {/* Disease Alerts */}
-                    <div className="setting-row-card d-flex align-items-center justify-content-between p-4">
-                      <div>
-                        <strong className="d-block text-dark mb-1">{t('Receive Disease Alerts')}</strong>
-                        <small className="text-muted">{t('Get immediate alerts when caretaker scans detect disease risk.')}</small>
-                      </div>
-                      <div className="form-check form-switch fs-4 mb-0">
-                        <input
-                          className="form-check-input"
-                          type="checkbox"
-                          role="switch"
-                          checked={notificationSettings.receive_disease_alerts === 'ON'}
-                          onChange={(e) =>
-                            setNotificationSettings({
-                              ...notificationSettings,
-                              receive_disease_alerts: e.target.checked ? 'ON' : 'OFF'
-                            })
-                          }
-                        />
-                      </div>
-                    </div>
-
-                    {/* Harvest Alerts */}
-                    <div className="setting-row-card d-flex align-items-center justify-content-between p-4">
-                      <div>
-                        <strong className="d-block text-dark mb-1">{t('Receive Harvest Alerts')}</strong>
-                        <small className="text-muted">{t('Receive notifications when ponds hit 95% or 100% harvest readiness.')}</small>
-                      </div>
-                      <div className="form-check form-switch fs-4 mb-0">
-                        <input
-                          className="form-check-input"
-                          type="checkbox"
-                          role="switch"
-                          checked={notificationSettings.receive_harvest_alerts === 'ON'}
-                          onChange={(e) =>
-                            setNotificationSettings({
-                              ...notificationSettings,
-                              receive_harvest_alerts: e.target.checked ? 'ON' : 'OFF'
-                            })
-                          }
-                        />
-                      </div>
-                    </div>
-
-                    {/* Feeding Alerts */}
-                    <div className="setting-row-card d-flex align-items-center justify-content-between p-4">
-                      <div>
-                        <strong className="d-block text-dark mb-1">{t('Receive Feeding Alerts')}</strong>
-                        <small className="text-muted">{t('Notify admin when feeding schedules or daily feed logs are submitted.')}</small>
-                      </div>
-                      <div className="form-check form-switch fs-4 mb-0">
-                        <input
-                          className="form-check-input"
-                          type="checkbox"
-                          role="switch"
-                          checked={notificationSettings.receive_feeding_alerts === 'ON'}
-                          onChange={(e) =>
-                            setNotificationSettings({
-                              ...notificationSettings,
-                              receive_feeding_alerts: e.target.checked ? 'ON' : 'OFF'
-                            })
-                          }
-                        />
-                      </div>
-                    </div>
-
-                    {/* Caretaker Activity Alerts */}
-                    <div className="setting-row-card d-flex align-items-center justify-content-between p-4">
-                      <div>
-                        <strong className="d-block text-dark mb-1">{t('Receive Caretaker Activity Alerts')}</strong>
-                        <small className="text-muted">{t('Alert when caretakers log water quality, water maintenance, or login activity.')}</small>
-                      </div>
-                      <div className="form-check form-switch fs-4 mb-0">
-                        <input
-                          className="form-check-input"
-                          type="checkbox"
-                          role="switch"
-                          checked={notificationSettings.receive_caretaker_activity_alerts === 'ON'}
-                          onChange={(e) =>
-                            setNotificationSettings({
-                              ...notificationSettings,
-                              receive_caretaker_activity_alerts: e.target.checked ? 'ON' : 'OFF'
-                            })
-                          }
-                        />
-                      </div>
-                    </div>
-
-                    {/* Email Notifications */}
-                    <div className="setting-row-card d-flex align-items-center justify-content-between p-4">
-                      <div>
-                        <strong className="d-block text-dark mb-1">{t('Receive Email Notifications')}</strong>
-                        <small className="text-muted">{t('Send urgent system summaries directly to administrator email address.')}</small>
-                      </div>
-                      <div className="form-check form-switch fs-4 mb-0">
-                        <input
-                          className="form-check-input"
-                          type="checkbox"
-                          role="switch"
-                          checked={notificationSettings.receive_email_notifications === 'ON'}
-                          onChange={(e) =>
-                            setNotificationSettings({
-                              ...notificationSettings,
-                              receive_email_notifications: e.target.checked ? 'ON' : 'OFF'
-                            })
-                          }
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 pt-3 border-top text-end">
-                    <button type="submit" className="btn btn-settings-primary px-4 py-2.5 rounded-3" disabled={saving}>
-                      <FaSave size={14} className="me-2" /> {saving ? t('Saving...') : t('Save')}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
-
-          {/* SYSTEM PREFERENCES SECTION */}
-          {activeTab === 'preference' && (
-            <div className="settings-card bg-white">
-              <div className="settings-card-header p-4 d-flex align-items-center gap-3">
-                <div className="p-3 rounded-4 bg-secondary bg-opacity-10 text-secondary">
-                  <FaSlidersH size={20} />
-                </div>
-                <div>
-                  <h4 className="fw-bold mb-0 text-dark">{t('System Preferences')}</h4>
-                  <small className="text-muted">{t('Theme, language, at date/time format.')}</small>
-                </div>
-              </div>
-              <div className="card-body p-4">
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    saveSettingsGroup(systemPreferences, 'System preferences updated successfully!');
-                  }}
-                >
-                  <div className="row g-4">
-                    {/* Theme Mode Toggle Selector */}
-                    <div className="col-12">
-                      <label className="form-label fw-semibold text-dark">{t('Display Theme Mode')}</label>
-                      <div className="setting-row-card d-flex align-items-center justify-content-between p-4">
-                        <div className="d-flex align-items-center gap-3">
-                          <div
-                            className={`p-3 rounded-circle d-flex align-items-center justify-content-center ${
-                              systemPreferences.theme === 'Dark'
-                                ? 'bg-dark text-warning'
-                                : 'bg-warning bg-opacity-10 text-warning'
-                            }`}
-                            style={{ width: 48, height: 48 }}
-                          >
-                            {systemPreferences.theme === 'Dark' ? <FaMoon size={22} /> : <FaSun size={22} />}
-                          </div>
-                          <div>
-                            <strong className="d-block text-dark mb-0 fs-6">
-                              {t(systemPreferences.theme)} {t('Mode')}
-                            </strong>
-                            <small className="text-muted">
-                              {systemPreferences.theme === 'Auto'
-                                ? t('Auto schedule active: Light mode from 6:00 AM to 6:00 PM, Dark mode from 6:00 PM to 6:00 AM.')
-                                : systemPreferences.theme === 'Dark'
-                                ? t('Dark theme is active. Reduces eye strain and optimizes low-light visibility.')
-                                : t('Clean standard Light theme is active.')}
-                            </small>
-                          </div>
-                        </div>
-
-                        <div className="btn-group" role="group">
-                          <button
-                            type="button"
-                            className={`btn btn-sm px-3 py-2 fw-semibold ${
-                              systemPreferences.theme === 'Auto' ? 'btn-primary shadow-sm' : 'btn-outline-secondary'
-                            }`}
-                            onClick={() => handleThemeChange('Auto')}
-                            title="Automatically adjust between Light (6 AM–6 PM) and Dark (6 PM–6 AM)"
-                          >
-                            <FaClock className="me-1.5" /> {t('Auto')}
-                          </button>
-                          <button
-                            type="button"
-                            className={`btn btn-sm px-3 py-2 fw-semibold ${
-                              systemPreferences.theme === 'Light' ? 'btn-primary shadow-sm' : 'btn-outline-secondary'
-                            }`}
-                            onClick={() => handleThemeChange('Light')}
-                          >
-                            <FaSun className="me-1.5" /> {t('Light')}
-                          </button>
-                          <button
-                            type="button"
-                            className={`btn btn-sm px-3 py-2 fw-semibold ${
-                              systemPreferences.theme === 'Dark' ? 'btn-primary shadow-sm' : 'btn-outline-secondary'
-                            }`}
-                            onClick={() => handleThemeChange('Dark')}
-                          >
-                            <FaMoon className="me-1.5" /> {t('Dark')}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Language */}
-                    <div className="col-12 col-md-4">
-                      <label className="form-label fw-semibold text-dark d-flex align-items-center gap-1.5">
-                        <FaGlobe className="text-primary" /> {t('Language')}
-                      </label>
-                      <select
-                        className="form-select py-2.5 rounded-3"
-                        value={language === 'fil' ? 'Tagalog / Filipino' : 'English'}
-                        onChange={async (e) => {
-                          const val = e.target.value;
-                          const nextLang = val === 'Tagalog / Filipino' ? 'fil' : 'en';
-                          if (nextLang === language) return;
-                          const confirmed = await confirmAndSetLanguage(nextLang);
-                          if (confirmed) {
-                            setSystemPreferences((prev) => ({ ...prev, language: val }));
-                          }
-                        }}
-                      >
-                        <option value="English">English</option>
-                        <option value="Tagalog / Filipino">Tagalog / Filipino</option>
-                      </select>
-                    </div>
-
-                    {/* Date Format */}
-                    <div className="col-12 col-md-4">
-                      <label className="form-label fw-semibold text-dark d-flex align-items-center gap-1.5">
-                        <FaCalendarAlt className="text-primary" /> {t('Date Format')}
-                      </label>
-                      <select
-                        className="form-select py-2.5 rounded-3"
-                        value={systemPreferences.date_format}
-                        onChange={(e) => setSystemPreferences({ ...systemPreferences, date_format: e.target.value })}
-                      >
-                        <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-                        <option value="DD/MM/YYYY">DD/MM/YYYY</option>
-                        <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-                      </select>
-                    </div>
-
-                    {/* Time Format */}
-                    <div className="col-12 col-md-4">
-                      <label className="form-label fw-semibold text-dark d-flex align-items-center gap-1.5">
-                        <FaClock className="text-primary" /> {t('Time Format')}
-                      </label>
-                      <select
-                        className="form-select py-2.5 rounded-3"
-                        value={systemPreferences.time_format}
-                        onChange={(e) => setSystemPreferences({ ...systemPreferences, time_format: e.target.value })}
-                      >
-                        <option value="12 Hours">{t('12 Hours (AM/PM)')}</option>
-                        <option value="24 Hours">{t('24 Hours (Military)')}</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 pt-3 border-top text-end">
-                    <button type="submit" className="btn btn-settings-primary px-4 py-2.5 rounded-3" disabled={saving}>
-                      <FaSave size={14} className="me-2" /> {saving ? t('Saving...') : t('Save')}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
-
-          {/* BACKUP & RESTORE SECTION */}
-          {activeTab === 'backup' && (
-            <div className="settings-card bg-white">
-              <div className="settings-card-header p-4 d-flex align-items-center gap-3">
-                <div className="p-3 rounded-4 bg-success bg-opacity-10 text-success">
-                  <FaDatabase size={20} />
-                </div>
-                <div>
-                  <h4 className="fw-bold mb-0 text-dark">{t('Backup & Restore')}</h4>
-                  <small className="text-muted">{t('Create or restore system data backups.')}</small>
-                </div>
-              </div>
-              <div className="card-body p-4">
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    saveSettingsGroup(backupSettings, 'Backup configurations saved successfully!');
-                  }}
-                >
-                  <div className="row g-4">
-                    {/* Last Backup Display */}
-                    <div className="col-12">
-                      <div className="p-4 rounded-4 bg-light border d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3">
-                        <div>
-                          <strong className="d-block text-dark mb-1">{t('Last Backup Timestamp')}</strong>
-                          <span className="fs-5 fw-bold text-primary">{backupSettings.last_backup}</span>
-                        </div>
-                        <span className="badge bg-success bg-opacity-10 text-success px-3 py-2 rounded-pill fw-semibold fs-6">
-                          <FaCheckCircle className="me-1.5" /> {t('Backup Verified')}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Automatic Backup */}
-                    <div className="col-12 col-md-6">
-                      <div className="setting-row-card d-flex align-items-center justify-content-between p-4 h-100 settings-switch">
-                        <div>
-                          <strong className="d-block text-dark mb-1">{t('Automatic Backup')}</strong>
-                          <small className="text-muted">{t('Enable scheduled database snapshots.')}</small>
-                        </div>
-                        <div className="form-check form-switch fs-4 mb-0">
-                          <input
-                            className="form-check-input"
-                            type="checkbox"
-                            role="switch"
-                            checked={backupSettings.automatic_backup === 'ON'}
-                            onChange={(e) =>
-                              setBackupSettings({
-                                ...backupSettings,
-                                automatic_backup: e.target.checked ? 'ON' : 'OFF'
-                              })
-                            }
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Backup Frequency */}
-                    <div className="col-12 col-md-6">
-                      <label className="form-label fw-semibold text-dark">{t('Backup Frequency')}</label>
-                      <select
-                        className="form-select py-2.5 rounded-3"
-                        value={backupSettings.backup_frequency}
-                        onChange={(e) => setBackupSettings({ ...backupSettings, backup_frequency: e.target.value })}
-                      >
-                        <option value="Daily">{t('Daily')}</option>
-                        <option value="Weekly">{t('Weekly')}</option>
-                        <option value="Monthly">{t('Monthly')}</option>
-                      </select>
-                      <small className="text-muted">{t('How often automatic backups occur.')}</small>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 pt-3 border-top text-end">
-                    <button type="submit" className="btn btn-settings-primary px-4 py-2.5 rounded-3" disabled={saving}>
-                      <FaSave size={14} className="me-2" /> {saving ? t('Saving...') : t('Save Configuration')}
-                    </button>
-                  </div>
-                </form>
-
-                <hr className="my-4" />
-
-                {/* Backup & Restore Action Buttons */}
-                <h6 className="fw-bold text-dark mb-3">{t('Database Actions')}</h6>
-                <div className="row g-3">
-                  <div className="col-12 col-md-6">
-                    <div className="p-4 rounded-4 border bg-primary bg-opacity-10 d-flex flex-column gap-2">
-                      <strong className="text-dark fs-6">{t('Export Database Snapshot')}</strong>
-                      <p className="small text-muted mb-2">{t('Download complete SQL data dump of shrim_predict_db directly to your disk.')}</p>
-                      <button
-                        type="button"
-                        className="btn btn-settings-primary rounded-3 py-2.5 d-flex align-items-center justify-content-center gap-2"
-                        onClick={handleBackupNow}
-                      >
-                        <FaDownload size={14} /> {t('Backup Now')}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="col-12 col-md-6">
-                    <div className="p-4 rounded-4 border bg-warning bg-opacity-10 d-flex flex-column gap-2">
-                      <strong className="text-dark fs-6">{t('Restore Database Backup')}</strong>
-                      <p className="small text-muted mb-2">{t('Upload a previously generated .sql file to restore tables and system records.')}</p>
-                      <button
-                        type="button"
-                        className="btn btn-warning text-dark rounded-3 py-2.5 d-flex align-items-center justify-content-center gap-2 shadow-sm fw-bold"
-                        onClick={handleRestoreBackup}
-                        disabled={saving}
-                      >
-                        <FaUpload size={14} /> {t('Restore Backup')}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ARCHIVED CARETAKERS SECTION */}
-          {activeTab === 'archived_caretakers' && (
-            <div className="settings-card bg-white shadow-sm border border-slate-200 rounded-4 overflow-hidden mb-4">
-              <div className="settings-card-header p-4 border-bottom bg-slate-50 d-flex align-items-center justify-content-between flex-wrap gap-3">
-                <div className="d-flex align-items-center gap-3">
-                  <div className="settings-icon-badge p-3 rounded-4 bg-warning bg-opacity-10 text-warning">
-                    <FaUserCheck size={20} />
-                  </div>
-                  <div>
-                    <h4 className="fw-bold mb-0 text-dark">{t('Archived Caretakers Directory')}</h4>
-                    <small className="text-muted">{t('Preserved record archives of resigned, inactive, or former farm caretakers.')}</small>
-                  </div>
-                </div>
-                <span className="badge bg-warning bg-opacity-10 text-warning rounded-pill px-3.5 py-1.5 extra-small fw-bold">
-                  {archivedCaretakers.length} {t('Archived Accounts')}
-                </span>
-              </div>
-
-              <div className="card-body p-4">
-                {/* Search Bar */}
-                <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-                  <div className="position-relative flex-grow-1" style={{ maxWidth: 380 }}>
-                    <FaSearch className="position-absolute top-50 translate-middle-y text-muted" style={{ left: 14 }} />
-                    <input
-                      type="text"
-                      className="form-control ps-5 rounded-3 py-2 border-slate-200"
-                      placeholder={t('Search by name, employee ID, or reason...')}
-                      value={archivedSearch}
-                      onChange={(e) => setArchivedSearch(e.target.value)}
-                    />
-                  </div>
-                  <button type="button" className="btn btn-outline-secondary btn-sm rounded-3 px-3 py-2 d-flex align-items-center gap-1.5" onClick={fetchArchivedCaretakers}>
-                    <FaHistory /> {t('Refresh Repository')}
-                  </button>
-                </div>
-
-                {/* Table View (Matching user's requested layout format) */}
-                <div className="table-responsive border rounded-4 bg-white">
-                  {loadingArchived ? (
-                    <div className="text-center py-5 text-muted">
-                      <div className="spinner-border text-warning" role="status"></div>
-                      <p className="mt-2 mb-0">{t('Loading Archived Caretakers Directory...')}</p>
-                    </div>
-                  ) : archivedCaretakers.length === 0 ? (
-                    <div className="text-center py-5 text-muted">
-                      <FaUserCheck size={36} className="text-warning mb-2 opacity-50" />
-                      <h6 className="fw-bold mb-1">{t('No Archived Caretakers Found')}</h6>
-                      <p className="small mb-0">{t('Resigned or archived caretaker records will appear here.')}</p>
-                    </div>
-                  ) : (
-                    <div className="table-responsive admin-scrollable-table-4rows" style={{ maxHeight: 290, overflowY: 'auto' }}>
-                      <table className="table align-middle mb-0">
-                        <thead className="table-light">
-                        <tr>
-                          <th style={{ padding: '12px 16px' }}>{t('Name')}</th>
-                          <th style={{ padding: '12px 16px' }}>{t('Employee ID')}</th>
-                          <th style={{ padding: '12px 16px' }}>{t('Date Hired')}</th>
-                          <th style={{ padding: '12px 16px' }}>{t('Date Archived')}</th>
-                          <th style={{ padding: '12px 16px' }}>{t('Reason')}</th>
-                          <th style={{ padding: '12px 16px' }} className="text-end">{t('Action')}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {archivedCaretakers
-                          .filter((c) => {
-                            if (!archivedSearch.trim()) return true;
-                            const q = archivedSearch.toLowerCase();
-                            return (
-                              c.full_name.toLowerCase().includes(q) ||
-                              (c.employee_id && c.employee_id.toLowerCase().includes(q)) ||
-                              (c.archive_reason && c.archive_reason.toLowerCase().includes(q))
-                            );
-                          })
-                          .map((caretaker) => (
-                            <tr key={caretaker.id}>
-                              <td style={{ padding: '14px 16px' }}>
-                                <div className="d-flex align-items-center gap-2.5">
-                                  <div
-                                    className="rounded-circle bg-warning bg-opacity-10 text-warning fw-bold d-flex align-items-center justify-content-center border border-warning border-opacity-25"
-                                    style={{ width: 38, height: 38, fontSize: '0.9rem' }}
-                                  >
-                                    {caretaker.full_name.charAt(0)}
-                                  </div>
-                                  <div>
-                                    <strong className="text-dark d-block leading-tight">{caretaker.full_name}</strong>
-                                    <small className="text-muted extra-small">{caretaker.email}</small>
-                                  </div>
-                                </div>
-                              </td>
-                              <td style={{ padding: '14px 16px' }}>
-                                <span className="badge bg-secondary bg-opacity-10 text-secondary border px-2.5 py-1 rounded-pill font-mono extra-small fw-semibold">
-                                  {caretaker.employee_id}
-                                </span>
-                              </td>
-                              <td style={{ padding: '14px 16px' }} className="small text-muted">
-                                {caretaker.date_hired_formatted}
-                              </td>
-                              <td style={{ padding: '14px 16px' }} className="small text-dark fw-semibold">
-                                {caretaker.date_archived_formatted}
-                              </td>
-                              <td style={{ padding: '14px 16px' }}>
-                                <span className="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 px-2.5 py-1 rounded-pill extra-small fw-semibold">
-                                  {caretaker.archive_reason}
-                                </span>
-                              </td>
-                              <td style={{ padding: '14px 16px' }} className="text-end">
-                                <div className="d-flex align-items-center justify-content-end gap-2">
-                                  <button
-                                    type="button"
-                                    className="btn btn-sm btn-outline-primary rounded-3 px-2.5 py-1 extra-small fw-semibold d-flex align-items-center gap-1"
-                                    onClick={() => openArchivedDetails(caretaker.id)}
-                                  >
-                                    <FaEye size={12} /> {t('View Details')}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="btn btn-sm btn-outline-success rounded-3 px-2.5 py-1 extra-small fw-semibold d-flex align-items-center gap-1"
-                                    onClick={() => handleRestoreCaretaker(caretaker)}
-                                  >
-                                    <FaUserCheck size={12} /> {t('Restore')}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="btn btn-sm btn-outline-danger rounded-3 p-1.5 extra-small"
-                                    title={t('Delete Permanently')}
-                                    onClick={() => handleDeletePermanently(caretaker)}
-                                  >
-                                    <FaTrashAlt size={12} />
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ABOUT SYSTEM SECTION */}
-          {activeTab === 'about' && (
-            <div className="settings-card bg-white">
-              <div className="settings-card-header p-4 d-flex align-items-center gap-3">
-                <div className="p-3 rounded-4 bg-primary bg-opacity-10 text-primary">
-                  <FaInfoCircle size={20} />
-                </div>
-                <div>
-                  <h4 className="fw-bold mb-0 text-dark">{t('About System')}</h4>
-                  <small className="text-muted">{t('Information regarding system build and development team.')}</small>
-                </div>
-              </div>
-              <div className="card-body p-4">
-                <div className="p-4 rounded-4 bg-light border text-center mb-4">
-                  <div
-                    className="mx-auto rounded-4 bg-primary text-white d-flex align-items-center justify-content-center mb-3 shadow-lg"
-                    style={{ width: 78, height: 78, fontSize: '2rem', fontWeight: 800 }}
-                  >
-                    <FaFish size={36} />
-                  </div>
-                  <h3 className="fw-bold mb-1" style={{ color: '#172A39' }}>
-                    Shrimp<span style={{ color: '#FC563C' }}>Predict</span>
-                  </h3>
-                  <span className="badge bg-primary px-3.5 py-1.5 rounded-pill fs-6 fw-normal mb-2">
-                    {t('Version 1.0')}
-                  </span>
-                  <p className="text-muted max-w-md mx-auto small">
-                    {t('Smart Shrimp Disease Risk Prediction & Pond Monitoring System.')}
-                  </p>
-                </div>
-
-                <div className="row g-3">
-                  <div className="col-12 col-md-6">
-                    <div className="setting-row-card p-3.5">
-                      <small className="text-muted text-uppercase extra-small fw-bold d-block mb-1">{t('Developed By')}</small>
-                      <strong className="fs-6 text-dark d-flex align-items-center gap-2">
-                        <FaUser className="text-primary" /> Team Shrimp<span style={{ color: '#FC563C' }}>Predict</span>
-                      </strong>
-                    </div>
-                  </div>
-
-                  <div className="col-12 col-md-6">
-                    <div className="setting-row-card p-3.5">
-                      <small className="text-muted text-uppercase extra-small fw-bold d-block mb-1">{t('Educational Institution')}</small>
-                      <strong className="fs-6 text-dark d-flex align-items-center gap-2">
-                        <FaDesktop className="text-primary" /> Batangas State University
-                      </strong>
-                    </div>
-                  </div>
-
-                  <div className="col-12 col-md-6">
-                    <div className="setting-row-card p-3.5">
-                      <small className="text-muted text-uppercase extra-small fw-bold d-block mb-1">{t('Academic Year')}</small>
-                      <strong className="fs-6 text-dark d-flex align-items-center gap-2">
-                        <FaCalendarAlt className="text-primary" /> 2026
-                      </strong>
-                    </div>
-                  </div>
-
-                  <div className="col-12 col-md-6">
-                    <div className="setting-row-card p-3.5">
-                      <small className="text-muted text-uppercase extra-small fw-bold d-block mb-1">{t('System Operational Status')}</small>
-                      <strong className="fs-6 text-success d-flex align-items-center gap-2">
-                        <FaCheckCircle /> {t('Active & Operational')}
-                      </strong>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-      </>
+        </>
       )}
 
       {/* FULL ARCHIVED CARETAKER DETAILS MODAL */}

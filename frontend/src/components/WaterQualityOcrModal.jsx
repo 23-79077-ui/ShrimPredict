@@ -1798,31 +1798,37 @@ export default function WaterQualityOcrModal({
         const errMsg = err?.response?.data?.message || err?.message || 'Could not connect to Vision API backend.';
         const errCode = err?.response?.data?.error;
 
-        // If API key is missing, offer quick key configuration
+        // If API key is missing, offer key entry OR immediate local Tesseract OCR fallback
+        let runLocalFallback = false;
         if (errCode === 'API_KEY_REQUIRED' || errMsg.includes('API key')) {
-          Swal.fire({
+          const modalRes = await Swal.fire({
             icon: 'info',
-            title: 'Vision OCR Key Required',
-            html: `To transcribe handwritten physical logsheets using Gemini Vision or GPT-4o-mini, please provide an API key:<br/><br/>` +
-              `<input id="swal-gemini-key" class="swal2-input" placeholder="Enter Gemini API Key (AIzaSy...)" />` +
-              `<div class="small text-muted mt-1">Key is saved securely in your local environment.</div>`,
+            title: 'Vision OCR Key Required (or Use Offline OCR)',
+            html: `Provide a Gemini API key for cloud Vision OCR, or click <b>Use Local Offline OCR</b>:<br/><br/>` +
+              `<input id="swal-gemini-key" class="swal2-input" placeholder="Enter Gemini API Key (optional)" />`,
             showCancelButton: true,
             confirmButtonText: 'Save &amp; Scan',
+            cancelButtonText: 'Use Local Offline OCR',
             preConfirm: () => {
               const k = document.getElementById('swal-gemini-key')?.value?.trim();
               if (!k) {
-                Swal.showValidationMessage('Please enter a valid API key or cancel.');
+                Swal.showValidationMessage('Enter a key or click "Use Local Offline OCR".');
                 return false;
               }
               return k;
             },
-          }).then((result) => {
-            if (result.isConfirmed && result.value) {
-              localStorage.setItem('SHRIM_GEMINI_API_KEY', result.value);
-              processImage(imageSource);
-            }
           });
+          if (modalRes.isConfirmed && modalRes.value) {
+            localStorage.setItem('SHRIM_GEMINI_API_KEY', modalRes.value);
+            processImage(imageSource);
+            return;
+          }
+          runLocalFallback = true;
         } else {
+          runLocalFallback = true;
+        }
+
+        if (runLocalFallback) {
           console.warn('Vision API unavailable or timed out. Initiating local Tesseract OCR fallback...');
           setScanStatusText('Vision API busy — Running local OCR fallback...');
           try {

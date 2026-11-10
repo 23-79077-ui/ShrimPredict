@@ -3,7 +3,7 @@ require_once __DIR__ . '/../config/database.php';
 
 header('Access-Control-Allow-Origin: *');
 header('Content-Type: application/json; charset=UTF-8');
-header('Access-Control-Allow-Methods: GET, OPTIONS');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
 $requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
@@ -101,10 +101,77 @@ function ensureHarvestTables(PDO $conn): void {
 }
 
 function readinessStatus(float $progress): string {
-    if ($progress >= 100) return 'Feed Reference Reached';
+    if ($progress >= 100) return 'Ready to Harvest';
     if ($progress >= 85) return 'Nearly Ready';
     if ($progress >= 60) return 'Developing';
     return 'Not Ready';
+}
+
+function ensureNotificationsTable(PDO $conn): void {
+    $conn->exec("
+        CREATE TABLE IF NOT EXISTS notifications (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT DEFAULT NULL,
+            title VARCHAR(255) NOT NULL,
+            message TEXT NOT NULL,
+            caretaker_name VARCHAR(150) DEFAULT NULL,
+            action_type VARCHAR(50) DEFAULT 'general',
+            pond_name VARCHAR(100) DEFAULT NULL,
+            target_id INT DEFAULT NULL,
+            is_read TINYINT(1) DEFAULT 0,
+            status VARCHAR(20) DEFAULT 'active',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_notification_user (user_id),
+            INDEX idx_notification_status (status),
+            INDEX idx_notification_read (is_read),
+            INDEX idx_notification_created (created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+}
+
+function getAssignedCaretakersForPond(PDO $conn, int $pondId): array {
+    $stmt = $conn->prepare("
+        SELECT DISTINCT u.id, u.full_name
+        FROM users u
+        LEFT JOIN ponds p ON p.id = :pond_id_join
+        WHERE u.role = 'caretaker'
+          AND COALESCE(u.status, 'Active') != 'Archived'
+          AND (
+              u.id IN (SELECT cp.user_id FROM caretaker_ponds cp WHERE cp.pond_id = :pond_id_cp)
+              OR u.pond_id = :pond_id_user
+              OR (
+                  p.assigned_caretaker_name IS NOT NULL
+                  AND TRIM(p.assigned_caretaker_name) <> ''
+                  AND LOWER(TRIM(u.full_name)) = LOWER(TRIM(p.assigned_caretaker_name))
+              )
+          )
+        ORDER BY u.full_name ASC
+    ");
+    $stmt->execute([
+        ':pond_id_join' => $pondId,
+        ':pond_id_cp' => $pondId,
+        ':pond_id_user' => $pondId,
+    ]);
+    $caretakers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    if (empty($caretakers)) {
+        $fallback = $conn->prepare("
+            SELECT DISTINCT u.id, u.full_name
+            FROM feeding_records fr
+            JOIN users u ON u.id = fr.user_id
+            WHERE fr.pond_id = :pond_id
+              AND u.role = 'caretaker'
+              AND COALESCE(u.status, 'Active') != 'Archived'
+            ORDER BY u.full_name ASC
+        ");
+        $fallback->execute([':pond_id' => $pondId]);
+        $caretakers = $fallback->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    return array_map(fn($r) => [
+        'id' => (int)$r['id'],
+        'full_name' => (string)$r['full_name'],
+    ], $caretakers);
 }
 
 function dataCompleteness(?string $lastFeedingDate, float $totalFeed): string {
@@ -182,6 +249,150 @@ function savePrediction(PDO $conn, array $item): void {
 }
 
 ensureHarvestTables($conn);
+ensureNotificationsTable($conn);
+
+if ($requestMethod === 'POST') {
+    $payload = json_decode(file_get_contents('php://input'), true);
+    if (!is_array($payload) || empty($payload)) {
+        $payload = $_POST;
+    }
+
+    $action = isset($payload['action']) ? trim((string)$payload['action']) : '';
+    if ($action !== 'notify_harvest_ready') {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Unsupported action for harvest_predictions.php.']);
+        exit;
+    }
+
+    $pondId = isset($payload['pond_id']) ? (int)$payload['pond_id'] : 0;
+    if ($pondId <= 0) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Valid pond_id is required.']);
+        exit;
+    }
+
+    $pondStmt = $conn->prepare('SELECT id, pond_name, assigned_caretaker_name FROM ponds WHERE id = :id LIMIT 1');
+    $pondStmt->execute([':id' => $pondId]);
+    $pondRow = $pondStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$pondRow) {
+        http_response_code(404);
+        echo json_encode(['success' => false, 'message' => 'Pond not found.']);
+        exit;
+    }
+
+    $feedCheckStmt = $conn->prepare('SELECT COALESCE(SUM(amount_kg), 0) FROM feeding_records WHERE pond_id = :pond_id');
+    $feedCheckStmt->execute([':pond_id' => $pondId]);
+    $totalFeed = (float)$feedCheckStmt->fetchColumn();
+    $progress = $totalFeed > 0 ? ($totalFeed / FEED_REFERENCE_KG) * 100.0 : 0.0;
+
+    if ($progress < 100.0) {
+        http_response_code(400);
+        echo json_encode([
+            'success' => false,
+            'message' => 'This pond has not yet completed the 15,000 kg feeding target required for harvest readiness.',
+            'feed_progress_percentage' => round($progress, 2),
+        ]);
+        exit;
+    }
+
+    $adjStmt = $conn->prepare('SELECT COALESCE(SUM(percentage), 0) FROM harvest_adjustments WHERE pond_id = :pond_id');
+    $adjStmt->execute([':pond_id' => $pondId]);
+    $adjPct = (float)$adjStmt->fetchColumn();
+    $baselineHarvestKg = $totalFeed * BASELINE_RATIO;
+    $estHarvestKg = max(0.0, $baselineHarvestKg * (1 + ($adjPct / 100.0)));
+    $estHarvestTons = $estHarvestKg / 1000.0;
+
+    $pondName = (string)$pondRow['pond_name'];
+    $adminName = isset($payload['admin_name']) && trim((string)$payload['admin_name']) !== ''
+        ? trim((string)$payload['admin_name'])
+        : 'Administrator';
+
+    $assignedCaretakers = getAssignedCaretakersForPond($conn, $pondId);
+    $caretakerNames = array_values(array_unique(array_filter(array_map(
+        fn($c) => trim((string)$c['full_name']),
+        $assignedCaretakers
+    ))));
+    $caretakerSummary = !empty($caretakerNames)
+        ? implode(', ', $caretakerNames)
+        : (trim((string)($pondRow['assigned_caretaker_name'] ?? '')) ?: 'Assigned Caretaker');
+
+    $totalFeedFmt = number_format($totalFeed, 0);
+    $estKgFmt = number_format($estHarvestKg, 0);
+    $estTonsFmt = number_format($estHarvestTons, 2);
+
+    $alertTitle = "Harvest Ready: {$pondName}";
+    $alertMsg = "{$adminName} marked {$pondName} as Ready to Harvest ({$totalFeedFmt} kg feed completed, est. yield {$estKgFmt} kg / {$estTonsFmt} tons). Prepare harvest equipment and coordinate pond drainage/harvest.";
+    $recommendedAction = 'Prepare nets, containers, and aerators; coordinate immediate pond harvest schedule with the farm administrator.';
+
+    try {
+        $conn->beginTransaction();
+
+        $alertInsert = $conn->prepare("
+            INSERT INTO alerts (
+                pond_id, alert_type, title, message, severity, category,
+                affected_pond_name, assigned_caretaker_name, confidence_pct,
+                recommended_action, status, created_at
+            ) VALUES (
+                :pond_id, 'harvest_ready', :title, :message, 'High', 'Harvest',
+                :pond_name, :caretaker_name, 100,
+                :recommended_action, 'Pending', NOW()
+            )
+        ");
+        $alertInsert->execute([
+            ':pond_id' => $pondId,
+            ':title' => $alertTitle,
+            ':message' => $alertMsg,
+            ':pond_name' => $pondName,
+            ':caretaker_name' => $caretakerSummary,
+            ':recommended_action' => $recommendedAction,
+        ]);
+        $alertId = (int)$conn->lastInsertId();
+
+        $notificationIds = [];
+        $notifInsert = $conn->prepare("
+            INSERT INTO notifications (
+                user_id, title, message, caretaker_name, action_type,
+                pond_name, target_id, is_read, status, created_at
+            ) VALUES (
+                :user_id, :title, :message, :caretaker_name, 'harvest_ready',
+                :pond_name, :target_id, 0, 'active', NOW()
+            )
+        ");
+        foreach ($assignedCaretakers as $ct) {
+            $notifInsert->execute([
+                ':user_id' => $ct['id'],
+                ':title' => "Ready for Harvest: {$pondName}",
+                ':message' => $alertMsg,
+                ':caretaker_name' => $ct['full_name'],
+                ':pond_name' => $pondName,
+                ':target_id' => $alertId,
+            ]);
+            $notificationIds[] = (int)$conn->lastInsertId();
+        }
+
+        $conn->commit();
+
+        echo json_encode([
+            'success' => true,
+            'message' => !empty($caretakerNames)
+                ? "Harvest alert sent to {$caretakerSummary} for {$pondName}."
+                : "Harvest alert logged for {$pondName} (no active user account matched for targeted push).",
+            'pond_id' => $pondId,
+            'pond_name' => $pondName,
+            'alert_id' => $alertId,
+            'notified_caretakers' => $assignedCaretakers,
+            'notification_ids' => $notificationIds,
+            'alerted_at' => date('Y-m-d H:i:s'),
+        ]);
+    } catch (Throwable $e) {
+        if ($conn->inTransaction()) {
+            $conn->rollBack();
+        }
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Failed to dispatch harvest alert: ' . $e->getMessage()]);
+    }
+    exit;
+}
 
 $caretakerId = isset($_GET['caretaker_id']) && $_GET['caretaker_id'] !== 'all' ? (int)$_GET['caretaker_id'] : 0;
 if ($caretakerId <= 0 && isset($_GET['user_id'])) {
@@ -226,7 +437,8 @@ $feedStmt = $conn->prepare("
         p.salinity,
         p.dissolved_oxygen,
         COALESCE(SUM(fr.amount_kg), 0) AS total_feed_consumed_kg,
-        COUNT(fr.id) AS feeding_record_count,
+        COUNT(DISTINCT fr.id) AS feeding_record_count,
+        COUNT(DISTINCT DATE(fr.record_date)) AS active_feeding_days,
         MAX(fr.record_date) AS last_feeding_date,
         COALESCE((
             SELECT shrimp_weight_grams 
@@ -237,8 +449,8 @@ $feedStmt = $conn->prepare("
         GROUP_CONCAT(DISTINCT u.id ORDER BY u.full_name SEPARATOR ',') AS caretaker_ids,
         GROUP_CONCAT(DISTINCT u.full_name ORDER BY u.full_name SEPARATOR ', ') AS caretaker_names
     FROM feeding_records fr
-    JOIN users u ON fr.user_id = u.id AND u.role = 'caretaker'
-    JOIN ponds p ON fr.pond_id = p.id
+    JOIN (SELECT DISTINCT id, full_name, role FROM users WHERE role = 'caretaker') u ON fr.user_id = u.id
+    JOIN (SELECT DISTINCT id, pond_name, status, stocking_date, temperature, ph_level, salinity, dissolved_oxygen FROM ponds) p ON fr.pond_id = p.id
     WHERE 1 = 1 {$filterSql}
     GROUP BY p.id
     ORDER BY p.id ASC
@@ -251,6 +463,24 @@ $adjustmentStmt = $conn->prepare("
     FROM harvest_adjustments
     WHERE pond_id = :pond_id
 ");
+
+$alertHistoryByPond = [];
+try {
+    $alertHistStmt = $conn->query("
+        SELECT pond_id, MAX(created_at) AS last_alerted_at, COUNT(*) AS alert_count
+        FROM alerts
+        WHERE alert_type = 'harvest_ready' AND pond_id IS NOT NULL
+        GROUP BY pond_id
+    ");
+    foreach ($alertHistStmt->fetchAll(PDO::FETCH_ASSOC) as $ahRow) {
+        $alertHistoryByPond[(int)$ahRow['pond_id']] = [
+            'last_alerted_at' => $ahRow['last_alerted_at'],
+            'alert_count' => (int)$ahRow['alert_count'],
+        ];
+    }
+} catch (Throwable $e) {
+    $alertHistoryByPond = [];
+}
 
 $predictions = [];
 $summary = [
@@ -281,12 +511,32 @@ foreach ($feedStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
         $cultureDays = (new DateTime($row['stocking_date']))->diff(new DateTime())->days;
     }
 
+    $activeDays = max(1, (int)($row['active_feeding_days'] ?? 0));
+    $dailyFeedRate = $totalFeed > 0 ? round($totalFeed / $activeDays, 2) : 0.0;
+    if ($remainingFeed <= 0) {
+        $estimatedDaysRemaining = 0;
+    } elseif ($dailyFeedRate > 0) {
+        $estimatedDaysRemaining = (int)min(365, max(1, ceil($remainingFeed / $dailyFeedRate)));
+    } elseif ($cultureDays !== null) {
+        $estimatedDaysRemaining = (int)max(0, 120 - $cultureDays);
+    } else {
+        $estimatedDaysRemaining = 90;
+    }
+    $predictedHarvestDate = date('Y-m-d', strtotime("+{$estimatedDaysRemaining} days"));
+    $assignedCtList = getAssignedCaretakersForPond($conn, (int)$row['pond_id']);
+    $assignedCtNames = !empty($assignedCtList)
+        ? implode(', ', array_map(fn($c) => $c['full_name'], $assignedCtList))
+        : ($row['caretaker_names'] ?: 'Caretaker account');
+    $alertHist = $alertHistoryByPond[(int)$row['pond_id']] ?? null;
+
     $item = [
         'pond_id' => (int)$row['pond_id'],
         'pond_name' => $row['pond_name'],
-        'caretaker_ids' => $row['caretaker_ids'] ?: '',
-        'caretaker_names' => $row['caretaker_names'] ?: 'Caretaker account',
+        'caretaker_ids' => $row['caretaker_ids'] ?: implode(',', array_map(fn($c) => (string)$c['id'], $assignedCtList)),
+        'caretaker_names' => $assignedCtNames,
+        'assigned_caretakers' => $assignedCtList,
         'total_feed_consumed_kg' => round($totalFeed, 2),
+        'daily_feed_rate_kg' => $dailyFeedRate,
         'baseline_ratio' => BASELINE_RATIO,
         'feed_reference_kg' => FEED_REFERENCE_KG,
         'target_harvest_kg' => TARGET_HARVEST_KG,
@@ -298,8 +548,14 @@ foreach ($feedStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
         'feed_progress_percentage' => round($progress, 2),
         'feed_progress_visual_percentage' => round(min(100, $progress), 2),
         'remaining_feed_kg' => round($remainingFeed, 2),
+        'estimated_days_to_harvest' => $estimatedDaysRemaining,
+        'predicted_harvest_date' => $predictedHarvestDate,
         'readiness_status' => readinessStatus($progress),
+        'is_ready_to_harvest' => ($progress >= 100.0),
+        'harvest_alert_sent' => ($alertHist !== null && $alertHist['alert_count'] > 0),
+        'last_harvest_alert_at' => $alertHist ? $alertHist['last_alerted_at'] : null,
         'prediction_method' => PREDICTION_METHOD,
+        'model_type' => 'Linear Feed-Rate Projection & Caretaker Historical Baseline',
         'prediction_label' => 'Harvest Estimate Based on Caretaker Historical Feeding Data',
         'prediction_date' => date('Y-m-d'),
         'calculated_at' => date('Y-m-d H:i:s'),

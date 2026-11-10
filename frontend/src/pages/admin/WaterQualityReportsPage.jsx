@@ -556,6 +556,27 @@ export default function WaterQualityReportsPage() {
 
     setSubmittingForm(true);
     try {
+      const doVal = parseFloat(formDo);
+      const tempVal = parseFloat(formTemp);
+      const phVal = parseFloat(formPh);
+      const salVal = parseFloat(formSalinity);
+
+      if (
+        !Number.isFinite(doVal) || doVal < 0 || doVal > 30 ||
+        !Number.isFinite(tempVal) || tempVal < 0 || tempVal > 60 ||
+        !Number.isFinite(phVal) || phVal < 0 || phVal > 14 ||
+        !Number.isFinite(salVal) || salVal < 0 || salVal > 60
+      ) {
+        Swal.fire({
+          icon: 'warning',
+          title: t('Out-of-Bounds Value Rejected'),
+          text: t('Please enter valid biological ranges: DO (0–30 mg/L), Temperature (0–60 °C), pH (0.0–14.0), and Salinity (0–60 ppt).'),
+          confirmButtonColor: '#FC563C',
+        });
+        setSubmittingForm(false);
+        return;
+      }
+
       const formData = new FormData();
       formData.append('pond_id', formPondId);
       formData.append('recorded_by_name', 'Farm Administrator');
@@ -563,10 +584,6 @@ export default function WaterQualityReportsPage() {
       formData.append('temperature', formTemp);
       formData.append('ph_level', formPh);
       formData.append('salinity', formSalinity);
-      const doVal = parseFloat(formDo || 0);
-      const tempVal = parseFloat(formTemp || 0);
-      const phVal = parseFloat(formPh || 0);
-      const salVal = parseFloat(formSalinity || 0);
       const isSafe = (doVal >= 5.0 && doVal <= 10.0) &&
         (tempVal >= 26.0 && tempVal <= 32.0) &&
         (phVal >= 7.5 && phVal <= 8.5) &&

@@ -175,12 +175,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $delPonds->execute([':user_id' => $userId]);
 
             if (!empty($selectedPonds)) {
-                $insPond = $conn->prepare('INSERT INTO caretaker_ponds (user_id, pond_id) VALUES (:user_id, :pond_id)');
+                $insPond = $conn->prepare('INSERT IGNORE INTO caretaker_ponds (user_id, pond_id) VALUES (:user_id, :pond_id)');
                 foreach ($selectedPonds as $pId) {
-                    try {
-                        $insPond->execute([':user_id' => $userId, ':pond_id' => (int)$pId]);
-                    } catch (Exception $e) {
-                        // Ignore duplicate key errors
+                    $pIdInt = (int)$pId;
+                    if ($pIdInt > 0) {
+                        $insPond->execute([':user_id' => $userId, ':pond_id' => $pIdInt]);
                     }
                 }
             }
@@ -252,14 +251,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Assign ponds if provided
         if (!empty($selectedPonds)) {
-            $insPond = $conn->prepare('INSERT INTO caretaker_ponds (user_id, pond_id) VALUES (:user_id, :pond_id)');
+            $insPond = $conn->prepare('INSERT IGNORE INTO caretaker_ponds (user_id, pond_id) VALUES (:user_id, :pond_id)');
             foreach ($selectedPonds as $pId) {
-                if ($pId > 0) {
-                    try {
-                        $insPond->execute([':user_id' => $newId, ':pond_id' => $pId]);
-                    } catch (Exception $pe) {
-                        // ignore duplicate key
-                    }
+                $pIdInt = (int)$pId;
+                if ($pIdInt > 0) {
+                    $insPond->execute([':user_id' => $newId, ':pond_id' => $pIdInt]);
                 }
             }
         }

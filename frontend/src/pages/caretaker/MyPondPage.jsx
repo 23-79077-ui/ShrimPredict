@@ -991,6 +991,11 @@ export default function MyPondPage() {
               <strong class="d-block text-dark" style="font-size: 0.95rem; font-weight: 700;">All 4 Check Trays Consumed</strong>
             </label>
           </div>
+          <div class="mb-2">
+            <label for="input_remaining_tray_g" class="form-label small fw-semibold text-dark mb-1">Remaining Feed in Trays (grams, out of 80g)</label>
+            <input type="number" id="input_remaining_tray_g" class="form-control form-control-sm" min="0" max="80" step="1" value="15" />
+            <div id="tray_consumption_preview" class="extra-small text-muted mt-1">Estimated consumption: 81.25% &bull; Next dosage adjusted by -2 kg</div>
+          </div>
         </div>
       `,
       didOpen: () => {
@@ -998,6 +1003,16 @@ export default function MyPondPage() {
         const l2 = document.getElementById('lbl-tray-consumed');
         const r1 = document.getElementById('opt_tray_leftover');
         const r2 = document.getElementById('opt_tray_consumed');
+        const remInput = document.getElementById('input_remaining_tray_g');
+        const previewEl = document.getElementById('tray_consumption_preview');
+        const updatePreview = () => {
+          const rem = Math.max(0, Math.min(80, parseFloat(remInput?.value || '0') || 0));
+          const pct = Math.round(((80 - rem) / 80) * 10000) / 100;
+          const isConsumed = Boolean(r2 && r2.checked);
+          if (previewEl) {
+            previewEl.textContent = `Estimated consumption: ${isConsumed ? 100 : pct}% • Next dosage: ${isConsumed ? amountIfConsumedKg : amountIfLeftoverKg} kg`;
+          }
+        };
         const updateStyles = () => {
           if (r1 && r1.checked) {
             if (l1) l1.style.border = '2px solid #FC563C';
@@ -1005,8 +1020,11 @@ export default function MyPondPage() {
           } else if (r2 && r2.checked) {
             if (l2) l2.style.border = '2px solid #FC563C';
             if (l1) l1.style.border = '1.5px solid #CBD5E1';
+            if (remInput) remInput.value = '0';
           }
+          updatePreview();
         };
+        if (remInput) remInput.oninput = updatePreview;
         if (l1 && r1) {
           l1.onclick = () => { r1.checked = true; updateStyles(); };
           r1.onchange = updateStyles;
@@ -1021,7 +1039,11 @@ export default function MyPondPage() {
       cancelButtonText: 'Skip Inspection',
       preConfirm: () => {
         const checked = document.querySelector('input[name="tray_status"]:checked');
-        return checked ? checked.value : 'leftover';
+        const remVal = parseFloat(document.getElementById('input_remaining_tray_g')?.value || '0');
+        return {
+          statusValue: checked ? checked.value : 'leftover',
+          remainingGrams: checked?.value === 'consumed' ? 0 : Math.max(0, Number.isFinite(remVal) ? remVal : 0),
+        };
       },
     });
 
@@ -1044,23 +1066,25 @@ export default function MyPondPage() {
       return null;
     }
 
+    const statusChoice = typeof value === 'object' ? value.statusValue : value;
+    const remTrayG = typeof value === 'object' ? (Number(value.remainingGrams) || 0) : (statusChoice === 'consumed' ? 0 : 15);
+    const consumptionPct = Math.round(Math.max(0, Math.min(100, ((80 - Math.min(80, remTrayG)) / 80) * 100)) * 100) / 100;
+
     let suggestedGrams = amountIfLeftoverGrams;
     let suggestedKg = amountIfLeftoverKg;
-    let statusLabel = 'Unconsumed Feed Detected (-2kg)';
+    let statusLabel = `Unconsumed Feed Detected (${remTrayG}g left • ${consumptionPct}% consumed • -2kg)`;
 
-    if (value === 'consumed') {
+    if (statusChoice === 'consumed') {
       suggestedGrams = amountIfConsumedGrams;
       suggestedKg = amountIfConsumedKg;
-      statusLabel = 'Completely Consumed (Empty, +1kg)';
-    } else {
-      suggestedGrams = amountIfLeftoverGrams;
-      suggestedKg = amountIfLeftoverKg;
-      statusLabel = 'Unconsumed Feed Detected (-2kg)';
+      statusLabel = 'Completely Consumed (Empty • 100% consumed • +1kg)';
     }
 
     const monitoringResult = {
       status: statusLabel,
-      trayStatusValue: value,
+      trayStatusValue: statusChoice,
+      remainingTrayFeedGrams: remTrayG,
+      consumptionPercentage: statusChoice === 'consumed' ? 100 : consumptionPct,
       suggestedAmountKg: suggestedKg,
       suggestedAmountGrams: suggestedGrams,
     };
@@ -1234,6 +1258,9 @@ export default function MyPondPage() {
         total_tray_feed_grams: Number(totalTrayFeedGrams.toFixed(2)),
         broadcast_feed_kg: Number(broadcastFeedKg.toFixed(3)),
         tray_monitoring_status: trayMonitoring?.status || trayMonitoring,
+        remaining_tray_feed_grams: trayMonitoring?.remainingTrayFeedGrams ?? undefined,
+        consumption_percentage: trayMonitoring?.consumptionPercentage ?? undefined,
+        recommended_next_feed_kg: trayMonitoring?.suggestedAmountKg ?? undefined,
         notes: [form.notes, trayNotes].filter(Boolean).join(' | '),
         record_date: todayDateStr,
         recorded_by: user?.full_name || 'Caretaker',

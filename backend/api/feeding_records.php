@@ -64,6 +64,10 @@ $ensureFeedingTable = function ($conn): void {
         ['broadcast_feed_kg', "ALTER TABLE feeding_records ADD COLUMN broadcast_feed_kg DECIMAL(10,3) DEFAULT NULL"],
         ['amount_grams', "ALTER TABLE feeding_records ADD COLUMN amount_grams DECIMAL(10,2) DEFAULT NULL"],
         ['tray_monitoring_status', "ALTER TABLE feeding_records ADD COLUMN tray_monitoring_status VARCHAR(150) DEFAULT NULL"],
+        ['remaining_tray_feed_grams', "ALTER TABLE feeding_records ADD COLUMN remaining_tray_feed_grams DECIMAL(10,2) DEFAULT NULL"],
+        ['remaining_feed_kg', "ALTER TABLE feeding_records ADD COLUMN remaining_feed_kg DECIMAL(10,3) DEFAULT NULL"],
+        ['consumption_percentage', "ALTER TABLE feeding_records ADD COLUMN consumption_percentage DECIMAL(5,2) DEFAULT NULL"],
+        ['recommended_next_feed_kg', "ALTER TABLE feeding_records ADD COLUMN recommended_next_feed_kg DECIMAL(10,2) DEFAULT NULL"],
         ['record_date', "ALTER TABLE feeding_records ADD COLUMN record_date DATE NOT NULL DEFAULT (CURRENT_DATE)"],
         ['recorded_by_name', "ALTER TABLE feeding_records ADD COLUMN recorded_by_name VARCHAR(100) DEFAULT NULL"],
         ['user_id', "ALTER TABLE feeding_records ADD COLUMN user_id INT DEFAULT NULL"],
@@ -176,9 +180,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'PUT
     $feedingTime = isset($data['feeding_time']) ? trim((string)$data['feeding_time']) : '';
     $productCode = isset($data['product_code']) ? trim((string)$data['product_code']) : '';
     $normalizedProduct = strtolower($productCode);
-    if ($normalizedProduct === 'starter') {
+    if (in_array($normalizedProduct, ['starter', 'starter feed', 'sf-001', 'sf001', 'starter pro'], true)) {
         $productCode = 'Starter';
-    } elseif ($normalizedProduct === 'grower') {
+    } elseif (in_array($normalizedProduct, ['grower', 'grower feed', 'gf-001', 'gf001', 'grower plus'], true)) {
         $productCode = 'Grower';
     }
     $vitaminName = isset($data['vitamin_name']) ? trim((string)$data['vitamin_name']) : (isset($data['vitamin']) ? trim((string)$data['vitamin']) : 'None');
@@ -273,6 +277,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'PUT
     $hasBroadcastFeedKg = in_array('broadcast_feed_kg', $columns, true);
     $hasAmountGrams = in_array('amount_grams', $columns, true);
     $hasTrayMonitoringStatus = in_array('tray_monitoring_status', $columns, true);
+    $hasRemainingTrayFeedGrams = in_array('remaining_tray_feed_grams', $columns, true);
+    $hasRemainingFeedKg = in_array('remaining_feed_kg', $columns, true);
+    $hasConsumptionPct = in_array('consumption_percentage', $columns, true);
+    $hasRecommendedNextFeed = in_array('recommended_next_feed_kg', $columns, true);
+
+    $remainingTrayGrams = isset($data['remaining_tray_feed_grams']) && is_numeric($data['remaining_tray_feed_grams'])
+        ? max(0.0, (float)$data['remaining_tray_feed_grams'])
+        : null;
+    $remainingFeedKgInput = isset($data['remaining_feed_kg']) && is_numeric($data['remaining_feed_kg'])
+        ? max(0.0, (float)$data['remaining_feed_kg'])
+        : null;
+
+    if ($remainingTrayGrams !== null && $remainingFeedKgInput === null) {
+        $remainingFeedKgInput = round($remainingTrayGrams / 1000.0, 3);
+    } elseif ($remainingFeedKgInput !== null && $remainingTrayGrams === null) {
+        $remainingTrayGrams = round($remainingFeedKgInput * 1000.0, 2);
+    }
+
+    $consumptionPct = null;
+    if (isset($data['consumption_percentage']) && is_numeric($data['consumption_percentage'])) {
+        $consumptionPct = round(max(0.0, min(100.0, (float)$data['consumption_percentage'])), 2);
+    } elseif ($remainingTrayGrams !== null && $totalTrayFeedGrams > 0) {
+        $consumedRatio = max(0.0, min(1.0, ($totalTrayFeedGrams - min($totalTrayFeedGrams, $remainingTrayGrams)) / $totalTrayFeedGrams));
+        $consumptionPct = round($consumedRatio * 100.0, 2);
+    } elseif ($remainingFeedKgInput !== null && $amountKg > 0) {
+        $consumedRatio = max(0.0, min(1.0, ($amountKg - min($amountKg, $remainingFeedKgInput)) / $amountKg));
+        $consumptionPct = round($consumedRatio * 100.0, 2);
+    } elseif (stripos($trayMonitoringStatus, 'Consumed') !== false) {
+        $consumptionPct = 100.00;
+        $remainingTrayGrams = $remainingTrayGrams ?? 0.0;
+        $remainingFeedKgInput = $remainingFeedKgInput ?? 0.0;
+    }
+
+    $recommendedNextFeedKg = null;
+    if (isset($data['recommended_next_feed_kg']) && is_numeric($data['recommended_next_feed_kg'])) {
+        $recommendedNextFeedKg = round(max(0.0, (float)$data['recommended_next_feed_kg']), 2);
+    } elseif ($consumptionPct !== null) {
+        if ($consumptionPct >= 95.0) {
+            $recommendedNextFeedKg = round($amountKg + 1.0, 2);
+        } elseif ($consumptionPct >= 75.0) {
+            $recommendedNextFeedKg = round($amountKg, 2);
+        } else {
+            $recommendedNextFeedKg = round(max(0.5, $amountKg - 2.0), 2);
+        }
+    }
 
     // -------------------------------------------------------------
     // UPDATE EXISTING RECORD
@@ -418,6 +467,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'PUT
         $params[':tray_monitoring_status'] = $trayMonitoringStatus;
     }
 
+    if ($hasRemainingTrayFeedGrams) {
+        $insertFields[] = 'remaining_tray_feed_grams';
+        $placeholders[] = ':remaining_tray_feed_grams';
+        $params[':remaining_tray_feed_grams'] = $remainingTrayGrams;
+    }
+
+    if ($hasRemainingFeedKg) {
+        $insertFields[] = 'remaining_feed_kg';
+        $placeholders[] = ':remaining_feed_kg';
+        $params[':remaining_feed_kg'] = $remainingFeedKgInput;
+    }
+
+    if ($hasConsumptionPct) {
+        $insertFields[] = 'consumption_percentage';
+        $placeholders[] = ':consumption_percentage';
+        $params[':consumption_percentage'] = $consumptionPct;
+    }
+
+    if ($hasRecommendedNextFeed) {
+        $insertFields[] = 'recommended_next_feed_kg';
+        $placeholders[] = ':recommended_next_feed_kg';
+        $params[':recommended_next_feed_kg'] = $recommendedNextFeedKg;
+    }
+
     if ($hasRecordedByName) {
         $insertFields[] = 'recorded_by_name';
         $placeholders[] = ':recorded_by_name';
@@ -464,7 +537,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'PUT
         createNotification($conn, 'Feeding Record Logged', $notifMsg, $cName, 'feeding', $pondName, $userId ?: null);
 
         http_response_code(201);
-        echo json_encode(['success' => true, 'message' => 'Feeding record saved.', 'id' => $newId]);
+        echo json_encode([
+            'success' => true,
+            'message' => 'Feeding record saved.',
+            'id' => $newId,
+            'consumption_percentage' => $consumptionPct,
+            'remaining_tray_feed_grams' => $remainingTrayGrams,
+            'remaining_feed_kg' => $remainingFeedKgInput,
+            'recommended_next_feed_kg' => $recommendedNextFeedKg,
+        ]);
         exit;
     } catch (Throwable $e) {
         $fallbackStmt = $conn->prepare(

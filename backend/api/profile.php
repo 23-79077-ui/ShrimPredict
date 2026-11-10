@@ -171,6 +171,12 @@ if ($method === 'POST') {
             exit;
         }
 
+        if (!preg_match('/[A-Za-z]/', $newPassword) || !preg_match('/[0-9!@#$%^&*()_+\-=\[\]{};:\'"\\\\|,.<>\/?]/', $newPassword)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Password complexity check failed: new password must combine letters and numbers or symbols.']);
+            exit;
+        }
+
         $userStmt = $conn->prepare("SELECT password_hash FROM users WHERE id = :id LIMIT 1");
         $userStmt->execute([':id' => $userId]);
         $userRow = $userStmt->fetch(PDO::FETCH_ASSOC);
@@ -189,6 +195,12 @@ if ($method === 'POST') {
         if (!$isValidCurrent) {
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => 'Current password is incorrect.']);
+            exit;
+        }
+
+        if ($newPassword === $currentPassword || password_verify($newPassword, $storedHash)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'New password must be different from your current password.']);
             exit;
         }
 

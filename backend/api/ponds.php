@@ -25,6 +25,9 @@ function ensurePondMonitoringColumns($conn) {
     $columns = $conn->query('SHOW COLUMNS FROM ponds')->fetchAll(PDO::FETCH_COLUMN);
     $needed = [
         'area_sqm' => 'ALTER TABLE ponds ADD COLUMN area_sqm INT DEFAULT NULL',
+        'dimensions' => 'ALTER TABLE ponds ADD COLUMN dimensions VARCHAR(100) DEFAULT NULL',
+        'stocking_density' => 'ALTER TABLE ponds ADD COLUMN stocking_density INT DEFAULT NULL',
+        'pl_count' => 'ALTER TABLE ponds ADD COLUMN pl_count INT DEFAULT NULL',
         'stocking_date' => 'ALTER TABLE ponds ADD COLUMN stocking_date DATE DEFAULT NULL',
         'growth_percentage' => 'ALTER TABLE ponds ADD COLUMN growth_percentage DECIMAL(5,2) DEFAULT NULL',
         'disease_detection' => 'ALTER TABLE ponds ADD COLUMN disease_detection VARCHAR(150) DEFAULT NULL',
@@ -296,6 +299,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 'operational_status' => $operationalStatus,
                 'is_active' => !$isInactive,
                 'area_sqm' => is_numeric($p['area_sqm'] ?? null) ? (int)$p['area_sqm'] : null,
+                'dimensions' => $p['dimensions'] ?? null,
+                'stocking_density' => is_numeric($p['stocking_density'] ?? null) ? (int)$p['stocking_density'] : null,
+                'pl_count' => is_numeric($p['pl_count'] ?? null) ? (int)$p['pl_count'] : null,
                 'stocking_date' => $stockingDateStr,
                 'current_age_days' => $ageDays,
                 'doc' => $ageDays,
@@ -400,6 +406,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 ':id' => $pondId,
             ];
 
+            if (isset($data['area_sqm']) && is_numeric($data['area_sqm'])) {
+                $updateFields[] = 'area_sqm = :area_sqm';
+                $params[':area_sqm'] = (int)$data['area_sqm'];
+            }
+            if (array_key_exists('dimensions', $data)) {
+                $updateFields[] = 'dimensions = :dimensions';
+                $params[':dimensions'] = trim((string)$data['dimensions']) ?: null;
+            }
+            if (isset($data['stocking_density']) && is_numeric($data['stocking_density'])) {
+                $updateFields[] = 'stocking_density = :stocking_density';
+                $params[':stocking_density'] = (int)$data['stocking_density'];
+            }
+            $plInput = $data['pl_count'] ?? $data['post_larvae'] ?? null;
+            if ($plInput !== null && is_numeric($plInput)) {
+                $updateFields[] = 'pl_count = :pl_count';
+                $params[':pl_count'] = (int)$plInput;
+            }
             if (isset($data['stocking_date']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $data['stocking_date'])) {
                 $updateFields[] = 'stocking_date = :stocking_date';
                 $params[':stocking_date'] = $data['stocking_date'];
@@ -533,6 +556,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     }
 
     // Do NOT set dummy data. New ponds start with NULL parameters and Unmonitored status.
+    ensurePondMonitoringColumns($conn);
     $status = 'Unmonitored';
     $temp = isset($data['temperature']) ? (float)$data['temperature'] : null;
     $ph = isset($data['ph_level']) ? (float)$data['ph_level'] : null;
@@ -540,6 +564,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $do = isset($data['dissolved_oxygen']) ? (float)$data['dissolved_oxygen'] : null;
     $waterLevel = isset($data['water_level']) ? (float)$data['water_level'] : null;
     $areaSqm = isset($data['area_sqm']) ? (int)$data['area_sqm'] : 500;
+    $dimensions = isset($data['dimensions']) && trim((string)$data['dimensions']) !== '' ? trim((string)$data['dimensions']) : null;
+    $stockingDensity = isset($data['stocking_density']) && is_numeric($data['stocking_density']) ? (int)$data['stocking_density'] : null;
+    $plRaw = $data['pl_count'] ?? $data['post_larvae'] ?? null;
+    $plCount = $plRaw !== null && is_numeric($plRaw) ? (int)$plRaw : null;
     $stockingDate = $data['stocking_date'] ?? date('Y-m-d');
     $growthPct = isset($data['growth_percentage']) ? (float)$data['growth_percentage'] : null;
     $diseaseDetection = null;
@@ -555,11 +583,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $stmt = $conn->prepare('
             INSERT INTO ponds (
                 pond_name, temperature, ph_level, salinity, dissolved_oxygen, water_level, status,
-                area_sqm, stocking_date, growth_percentage, disease_detection, disease_confidence, harvest_readiness,
+                area_sqm, dimensions, stocking_density, pl_count, stocking_date, growth_percentage, disease_detection, disease_confidence, harvest_readiness,
                 expected_harvest_date, feed_today_kg, total_feed_kg, assigned_caretaker_name, created_at
             ) VALUES (
                 :pond_name, :temperature, :ph_level, :salinity, :dissolved_oxygen, :water_level, :status,
-                :area_sqm, :stocking_date, :growth_percentage, :disease_detection, :disease_confidence, :harvest_readiness,
+                :area_sqm, :dimensions, :stocking_density, :pl_count, :stocking_date, :growth_percentage, :disease_detection, :disease_confidence, :harvest_readiness,
                 :expected_harvest_date, :feed_today_kg, :total_feed_kg, :assigned_caretaker_name, NOW()
             )
         ');
@@ -572,6 +600,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             ':water_level' => $waterLevel,
             ':status' => $status,
             ':area_sqm' => $areaSqm,
+            ':dimensions' => $dimensions,
+            ':stocking_density' => $stockingDensity,
+            ':pl_count' => $plCount,
             ':stocking_date' => $stockingDate,
             ':growth_percentage' => $growthPct,
             ':disease_detection' => $diseaseDetection,

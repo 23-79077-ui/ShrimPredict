@@ -147,6 +147,8 @@ export default function AdminDashboard() {
   const [allFeedingRecords, setAllFeedingRecords] = useState([]);
   const [allDiseaseReports, setAllDiseaseReports] = useState([]);
   const [harvestPredictions, setHarvestPredictions] = useState([]);
+  const [activeAlerts, setActiveAlerts] = useState([]);
+  const [urgentIncidents, setUrgentIncidents] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Load caretakers
@@ -168,12 +170,14 @@ export default function AdminDashboard() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [dashRes, feedRes, diseaseRes, pondsRes, harvestRes] = await Promise.allSettled([
+      const [dashRes, feedRes, diseaseRes, pondsRes, harvestRes, alertsRes, maintRes] = await Promise.allSettled([
         api.get('/dashboard.php'),
         api.get('/feeding_records.php'),
         api.get('/disease_reports.php'),
         api.get('/ponds.php'),
         api.get('/harvest_predictions.php'),
+        api.get('/alerts.php'),
+        api.get('/maintenance_reports.php'),
       ]);
 
       if (dashRes.status === 'fulfilled') {
@@ -191,6 +195,20 @@ export default function AdminDashboard() {
       if (harvestRes.status === 'fulfilled') {
         const hData = harvestRes.value.data;
         setHarvestPredictions(safeArray(hData?.predictions || hData));
+      }
+      if (alertsRes.status === 'fulfilled') {
+        const aList = safeArray(alertsRes.value.data?.alerts || alertsRes.value.data);
+        setActiveAlerts(aList.filter((a) => String(a.status || '').toLowerCase() !== 'resolved'));
+      }
+      if (maintRes.status === 'fulfilled') {
+        const mList = safeArray(maintRes.value.data?.reports || maintRes.value.data);
+        setUrgentIncidents(
+          mList.filter(
+            (m) =>
+              ['high', 'critical'].includes(String(m.severity_level || '').toLowerCase()) &&
+              !['done', 'resolved'].includes(String(m.status || '').toLowerCase())
+          )
+        );
       }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -1803,7 +1821,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
               <h2 className="fw-extrabold mb-1" style={{ color: '#DC2626', fontSize: 'clamp(1.2rem, 3.8vw, 2.2rem)', letterSpacing: '-0.03em' }}>
-                {kpiStats.wsdSuspectedCount > 0 ? `${kpiStats.wsdSuspectedCount} Alerts` : '50 Alerts'}
+                {`${Math.max(kpiStats.wsdSuspectedCount, activeAlerts.length + urgentIncidents.length)} Alerts`}
               </h2>
             </div>
             <div className="pt-1">

@@ -141,7 +141,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
     $stmt = $conn->prepare("SELECT * FROM disease_reports {$whereSql} ORDER BY created_at DESC, id DESC");
     $stmt->execute($params);
-    echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($rows as &$r) {
+        $rel = ltrim((string)($r['image_path'] ?? ''), '/');
+        $r['image_exists'] = $rel !== '' && is_file(__DIR__ . '/../' . $rel);
+    }
+    echo json_encode($rows);
 } else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $rawBody = file_get_contents('php://input');
     $jsonData = json_decode($rawBody, true);

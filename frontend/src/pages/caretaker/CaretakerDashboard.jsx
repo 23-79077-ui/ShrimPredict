@@ -163,7 +163,11 @@ export default function CaretakerDashboard() {
             caretaker_name: user?.full_name || '',
           },
         }),
-        api.get('/alerts.php'),
+        api.get('/alerts.php', {
+          params: {
+            caretaker_id: user?.id || 0,
+          },
+        }),
         api.get('/water_quality_records.php', {
           params: {
             caretaker_id: user?.id || 0,
@@ -261,7 +265,6 @@ export default function CaretakerDashboard() {
     return String(scan.pond_name || '').trim().toLowerCase() === String(selectedDiseasePondFilter).trim().toLowerCase();
   });
   const latestDisease = filteredDiseaseScans[0];
-  const latestAlert = alerts[0];
 
   // My Tasks Checklist computation derived from assigned ponds, today's logs, and admin actions
   const tasks = useMemo(() => {
@@ -1276,12 +1279,32 @@ export default function CaretakerDashboard() {
               </span>
             </div>
 
-            {latestAlert ? (
-              <div className="d-flex flex-column justify-content-center p-3 rounded-3 mb-3" style={{ minHeight: 90, backgroundColor: isDark ? '#253549' : '#FFFFFF', border: isDark ? '1px solid rgba(252, 86, 60, 0.35)' : '1px solid #FECACA', boxShadow: isDark ? '0 2px 8px rgba(0, 0, 0, 0.25)' : '0 1px 4px rgba(15, 23, 42, 0.04)' }}>
-                <div className="fw-bold d-flex align-items-center gap-2 mb-1 text-danger fs-6">
-                  <FaExclamationTriangle size={13} /> {latestAlert.title}
-                </div>
-                <small className="text-muted" style={{ lineHeight: 1.45 }}>{latestAlert.message}</small>
+            {alerts.length > 0 ? (
+              <div className="d-flex flex-column gap-2 mb-3">
+                {alerts.slice(0, 3).map((alertItem, idx) => {
+                  const isHarvestAlert = String(alertItem.alert_type || '').toLowerCase() === 'harvest_ready'
+                    || String(alertItem.category || '').toLowerCase() === 'harvest';
+                  return (
+                    <div
+                      key={alertItem.id || idx}
+                      className="d-flex flex-column justify-content-center p-3 rounded-3"
+                      style={{
+                        minHeight: 80,
+                        backgroundColor: isDark ? '#253549' : (isHarvestAlert ? '#F0FDF4' : '#FFFFFF'),
+                        border: isDark
+                          ? (isHarvestAlert ? '1px solid rgba(34, 197, 94, 0.45)' : '1px solid rgba(252, 86, 60, 0.35)')
+                          : (isHarvestAlert ? '1px solid #BBF7D0' : '1px solid #FECACA'),
+                        boxShadow: isDark ? '0 2px 8px rgba(0, 0, 0, 0.25)' : '0 1px 4px rgba(15, 23, 42, 0.04)'
+                      }}
+                    >
+                      <div className={`fw-bold d-flex align-items-center gap-2 mb-1 fs-6 ${isHarvestAlert ? 'text-success' : 'text-danger'}`}>
+                        {isHarvestAlert ? <FaSeedling size={13} /> : <FaExclamationTriangle size={13} />}
+                        <span>{alertItem.title}</span>
+                      </div>
+                      <small className="text-muted" style={{ lineHeight: 1.45 }}>{alertItem.message}</small>
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-4 rounded-3 text-muted small mb-3" style={{ backgroundColor: isDark ? '#253549' : '#FFFFFF', border: isDark ? '1px solid rgba(255, 255, 255, 0.14)' : '1px solid #CBD5E1' }}>
