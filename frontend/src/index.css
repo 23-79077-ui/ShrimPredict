@@ -9816,6 +9816,13 @@
    color: #F1F5F9 !important;
  }
 
+ [data-theme="dark"] .caretaker-notifications-hub .bg-primary-subtle,
+ [data-bs-theme="dark"] .caretaker-notifications-hub .bg-primary-subtle,
+ body.dark-theme .caretaker-notifications-hub .bg-primary-subtle {
+   background-color: rgba(30, 58, 138, 0.35) !important;
+   border-color: #38BDF8 !important;
+ }
+
  /* 3. Beige (#E9E4E0) and Pale Cream (#FFFBF5) Fallback Containers */
  [data-theme="dark"] .caretaker-dashboard-hub [style*="#E9E4E0"],
  [data-theme="dark"] .caretaker-dashboard-hub [style*="#e9e4e0"],
@@ -10605,7 +10612,7 @@ body.dark-theme .pond-monitoring-card:hover {
 }
 
 /* Caretaker 60/40 Dashboard Split & 3-Item Tasks Scroll Container */
-@media (min-width: 1200px) {
+@media (min-width: 992px) {
   .caretaker-col-60 {
     flex: 0 0 60% !important;
     max-width: 60% !important;
@@ -10667,15 +10674,15 @@ body.dark-theme .pond-monitoring-card:hover {
 
 .caretaker-tasks-scroll-3items {
   flex: 1 1 auto;
-  max-height: 580px;
+  max-height: 310px;
   overflow-y: auto !important;
   overflow-x: hidden !important;
   scrollbar-width: thin;
 }
 
-@media (min-width: 1200px) {
+@media (min-width: 992px) {
   .caretaker-tasks-scroll-3items {
-    max-height: 640px;
+    max-height: 310px;
   }
 }
 
@@ -10689,11 +10696,11 @@ body.dark-theme .pond-monitoring-card:hover {
 .gap-2\.5 { gap: 0.625rem !important; }
 .gap-3\.5 { gap: 0.875rem !important; }
 
-/* Caretaker Tasks List: Generous Breathing Room between every task card */
+/* Caretaker Tasks List: Exactly 3 items visible with clean spacing */
 .caretaker-tasks-list {
   display: flex !important;
   flex-direction: column !important;
-  gap: 1.15rem !important; /* 18px distinct spacing between every task card */
+  gap: 0.65rem !important; /* ~10px distinct spacing between task cards */
 }
 
 .caretaker-tasks-list > article {
@@ -10702,7 +10709,7 @@ body.dark-theme .pond-monitoring-card:hover {
 
 @media (max-width: 575.98px) {
   .caretaker-tasks-list {
-    gap: 1rem !important; /* 16px on mobile screens */
+    gap: 0.5rem !important; /* 8px on mobile screens */
   }
 }
 
@@ -10717,6 +10724,11 @@ body.dark-theme .pond-monitoring-card:hover {
 .caretaker-tasks-scroll-3items::-webkit-scrollbar-thumb {
   background-color: rgba(148, 163, 184, 0.45);
   border-radius: 9999px;
+}
+
+[data-theme="dark"] .caretaker-tasks-scroll-3items::-webkit-scrollbar-thumb,
+body.dark-theme .caretaker-tasks-scroll-3items::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.35);
 }
 
 
@@ -11527,8 +11539,8 @@ body.dark-theme .caretaker-task-article:hover {
     overflow-y: visible !important;
   }
   .caretaker-tasks-scroll-3items {
-    max-height: none !important;
-    overflow-y: visible !important;
+    max-height: 310px !important;
+    overflow-y: auto !important;
   }
   #my-tasks-section {
     margin-bottom: 2.25rem !important;

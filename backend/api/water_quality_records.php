@@ -443,6 +443,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if (move_uploaded_file($_FILES['image']['tmp_name'], $destination)) {
                 $imagePath = 'uploads/water_quality/' . $filename;
+                // Dual-sync to ensure both workspace and webroot have the uploaded proof
+                $altDirs = [
+                    'C:/xampp/htdocs/shrim_predict_api/backend/uploads/water_quality',
+                    'C:/ShrimPredict/backend/uploads/water_quality'
+                ];
+                foreach ($altDirs as $altDir) {
+                    if (is_dir($altDir) && realpath($altDir) !== realpath($uploadsDir)) {
+                        @copy($destination, $altDir . '/' . $filename);
+                    }
+                }
             }
         }
 

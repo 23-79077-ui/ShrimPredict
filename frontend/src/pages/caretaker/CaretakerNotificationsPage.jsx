@@ -314,8 +314,8 @@ export default function CaretakerNotificationsPage() {
           <button
             type="button"
             className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold transition-all ${currentTab === 'active'
-                ? 'btn-chart-range-active shadow-xs'
-                : 'btn-chart-range-inactive'
+              ? 'btn-chart-range-active shadow-xs'
+              : 'btn-chart-range-inactive'
               }`}
             onClick={() => setCurrentTab('active')}
           >
@@ -325,8 +325,8 @@ export default function CaretakerNotificationsPage() {
           <button
             type="button"
             className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold transition-all ${currentTab === 'unread'
-                ? 'btn-chart-range-active shadow-xs'
-                : 'btn-chart-range-inactive'
+              ? 'btn-chart-range-active shadow-xs'
+              : 'btn-chart-range-inactive'
               }`}
             onClick={() => setCurrentTab('unread')}
           >
@@ -336,8 +336,8 @@ export default function CaretakerNotificationsPage() {
           <button
             type="button"
             className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold transition-all ${currentTab === 'archived'
-                ? 'btn-chart-range-active shadow-xs'
-                : 'btn-chart-range-inactive'
+              ? 'btn-chart-range-active shadow-xs'
+              : 'btn-chart-range-inactive'
               }`}
             onClick={() => setCurrentTab('archived')}
           >
@@ -348,8 +348,8 @@ export default function CaretakerNotificationsPage() {
           <button
             type="button"
             className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold transition-all ${currentTab === 'deleted'
-                ? 'btn-chart-range-active shadow-xs'
-                : 'btn-chart-range-inactive'
+              ? 'btn-chart-range-active shadow-xs'
+              : 'btn-chart-range-inactive'
               }`}
             onClick={() => setCurrentTab('deleted')}
           >
@@ -416,12 +416,17 @@ export default function CaretakerNotificationsPage() {
               </p>
             </div>
           ) : (
-            <div className="list-group list-group-flush">
+            <div className="d-flex flex-column gap-3 p-3">
               {notifications.map((notif) => (
                 <div
                   key={notif.id}
-                  className={`list-group-item p-3.5 d-flex align-items-start justify-content-between gap-3 border-bottom transition-all ${!notif.is_read && currentTab !== 'deleted' ? 'bg-light border-start border-primary border-4' : ''
+                  className={`p-3.5 d-flex align-items-start justify-content-between gap-3 border transition-all ${!notif.is_read && currentTab !== 'deleted'
+                      ? 'border-primary border-start border-4 shadow-sm bg-primary-subtle bg-opacity-25'
+                      : 'border-secondary-subtle bg-white shadow-2xs'
                     }`}
+                  style={{
+                    borderRadius: 14,
+                  }}
                 >
                   <div className="d-flex align-items-start gap-3 flex-grow-1">
                     {/* Action Icon */}
@@ -474,10 +479,10 @@ export default function CaretakerNotificationsPage() {
                             <span className="extra-small fw-bold text-secondary">{t('Admin decision')}</span>
                             {scanActions[String(notif.target_id)]?.status && (
                               <span className={`badge rounded-pill ${scanActions[String(notif.target_id)].status === 'Done'
-                                  ? 'bg-success-subtle text-success-emphasis'
-                                  : scanActions[String(notif.target_id)].status === 'In Progress'
-                                    ? 'bg-primary-subtle text-primary-emphasis'
-                                    : 'bg-warning-subtle text-warning-emphasis'
+                                ? 'bg-success-subtle text-success-emphasis'
+                                : scanActions[String(notif.target_id)].status === 'In Progress'
+                                  ? 'bg-primary-subtle text-primary-emphasis'
+                                  : 'bg-warning-subtle text-warning-emphasis'
                                 }`}>
                                 {t(scanActions[String(notif.target_id)].status)}
                               </span>

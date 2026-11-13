@@ -260,6 +260,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'PUT
         exit;
     }
 
+    // Missed Day Integrity Check:
+    // If inserting for today (or future date), verify that previous days in culture cycle were not missed.
+    $todayStr = date('Y-m-d');
+    if (!$isUpdate && $recordDate >= $todayStr) {
+        try {
+            $pondStmt = $conn->prepare('SELECT stocking_date FROM ponds WHERE id = :p LIMIT 1');
+            $pondStmt->execute([':p' => $pondId]);
+            $stockingDate = $pondStmt->fetchColumn() ?: '2000-01-01';
+
+            $missedDates = [];
+            for ($offset = 3; $offset >= 1; $offset--) {
+                $checkDate = date('Y-m-d', strtotime("-$offset day", strtotime($todayStr)));
+                if ($checkDate >= $stockingDate) {
+                    $checkStmt = $conn->prepare('SELECT COUNT(*) FROM feeding_records WHERE pond_id = :p AND record_date = :d');
+                    $checkStmt->execute([':p' => $pondId, ':d' => $checkDate]);
+                    if ((int)$checkStmt->fetchColumn() === 0) {
+                        $missedDates[] = $checkDate;
+                    }
+                }
+            }
+
+            if (!empty($missedDates)) {
+                $earliestMissed = $missedDates[0];
+                http_response_code(400);
+                echo json_encode([
+                    'success' => false,
+                    'locked' => true,
+                    'message' => "Today's logs are locked because you missed logging on {$earliestMissed}. Please complete logs for missed days first.",
+                    'missed_date' => $earliestMissed,
+                    'missed_dates' => $missedDates
+                ]);
+                exit;
+            }
+        } catch (Throwable $e) {}
+    }
+
     try {
         $columnsStmt = $conn->query('SHOW COLUMNS FROM feeding_records');
         $columns = $columnsStmt->fetchAll(PDO::FETCH_COLUMN);
@@ -574,6 +610,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'PUT
         echo json_encode(['success' => true, 'message' => 'Feeding record saved with fallback insert.', 'id' => $newId]);
         exit;
     }
+}
+
+// GET Missed Days Status Check
+if (isset($_GET['action']) && $_GET['action'] === 'check_missed_days') {
+    $pondId = (int)($_GET['pond_id'] ?? 0);
+    $targetDate = !empty($_GET['target_date']) ? $_GET['target_date'] : date('Y-m-d');
+    if ($pondId <= 0) {
+        echo json_encode(['success' => false, 'message' => 'Pond ID is required.']);
+        exit;
+    }
+
+    $pondStmt = $conn->prepare('SELECT stocking_date, pond_name FROM ponds WHERE id = :p LIMIT 1');
+    $pondStmt->execute([':p' => $pondId]);
+    $pondInfo = $pondStmt->fetch(PDO::FETCH_ASSOC);
+    $stockingDate = $pondInfo['stocking_date'] ?? '2000-01-01';
+
+    $missedDates = [];
+    for ($offset = 3; $offset >= 1; $offset--) {
+        $checkDate = date('Y-m-d', strtotime("-$offset day", strtotime($targetDate)));
+        if ($checkDate >= $stockingDate) {
+            $cntStmt = $conn->prepare('SELECT COUNT(*) FROM feeding_records WHERE pond_id = :p AND record_date = :d');
+            $cntStmt->execute([':p' => $pondId, ':d' => $checkDate]);
+            if ((int)$cntStmt->fetchColumn() === 0) {
+                $missedDates[] = $checkDate;
+            }
+        }
+    }
+
+    echo json_encode([
+        'success' => true,
+        'pond_id' => $pondId,
+        'target_date' => $targetDate,
+        'stocking_date' => $stockingDate,
+        'has_missed_days' => !empty($missedDates),
+        'missed_dates' => $missedDates,
+        'first_missed_date' => !empty($missedDates) ? $missedDates[0] : null
+    ]);
+    exit;
 }
 
 // GET: Fetch feeding records, optionally filter by pond_id, user_id, recorded_by_name, date, search

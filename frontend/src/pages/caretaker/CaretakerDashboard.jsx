@@ -303,15 +303,33 @@ export default function CaretakerDashboard() {
     const feedTasks = assignedPonds.flatMap((pond) => {
       const pondFeeds = todaysFeeds.filter((record) => String(record.pond_id) === String(pond.id));
       const loggedSlots = new Set(pondFeeds.map((record) => normalizeFeedingTime(record.feeding_time)));
+      const stockingDate = pond.stocking_date || '2000-01-01';
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = [
+        yesterday.getFullYear(),
+        String(yesterday.getMonth() + 1).padStart(2, '0'),
+        String(yesterday.getDate()).padStart(2, '0'),
+      ].join('-');
+      const hasYesterdayLog = records.some((record) => {
+        const recordDate = String(record.record_date || record.created_at || '').slice(0, 10);
+        return String(record.pond_id) === String(pond.id) && recordDate === yesterdayStr;
+      });
+      const isYesterdayMissed = stockingDate <= yesterdayStr && !hasYesterdayLog;
+
       return feedingTimes.map((slot) => ({
         id: `feed-${pond.id}-${slot}`,
         type: 'feeding',
         pond,
         slot,
         isComplete: loggedSlots.has(slot),
+        isLocked: isYesterdayMissed && !loggedSlots.has(slot),
+        missedDate: isYesterdayMissed ? yesterdayStr : null,
         route: '/caretaker/my-pond',
         title: t('myTasks.feedTitle', 'Log the scheduled feeding'),
-        detail: t('myTasks.feedDesc', 'Verify ration and record feed tray consumption.'),
+        detail: isYesterdayMissed && !loggedSlots.has(slot)
+          ? `⚠️ Locked: Missed feeding logs on ${yesterdayStr}. Catch up past day first.`
+          : t('myTasks.feedDesc', 'Verify ration and record feed tray consumption.'),
       }));
     });
 
@@ -622,7 +640,7 @@ export default function CaretakerDashboard() {
       </div>
 
       {/* 4. FIELD OPERATIONS (60%) & MY TASKS (40%) SIDE-BY-SIDE WITH GAP */}
-      <div className="row g-4 mb-4 mb-xl-5 align-items-start" id="my-tasks-section">
+      <div className="row g-4 mb-4 mb-xl-5 align-items-stretch" id="my-tasks-section">
         {/* 4A. LEFT COLUMN: FIELD OPERATIONS & DAILY TASKS (60%) */}
         <div className="col-12 caretaker-col-60 d-flex flex-column">
           <div
@@ -1341,27 +1359,27 @@ export default function CaretakerDashboard() {
         >
           {/* My Tasks Header */}
           <div
-            className="p-3.5 p-md-4 d-flex align-items-center justify-content-between gap-3 border-bottom"
+            className="p-3 px-md-3.5 py-md-3 d-flex align-items-center justify-content-between gap-3 border-bottom"
             style={{ borderColor: isDark ? '#334155' : '#E2E8F0' }}
           >
-            <div className="d-flex align-items-center gap-3">
+            <div className="d-flex align-items-center gap-2.5">
               <div
                 className="rounded-3 d-flex align-items-center justify-content-center shadow-xs flex-shrink-0"
                 style={{
-                  width: 38,
-                  height: 38,
+                  width: 36,
+                  height: 36,
                   backgroundColor: 'rgba(252, 86, 60, 0.1)',
                   color: '#FC563C',
                   border: '1px solid rgba(252, 86, 60, 0.25)'
                 }}
               >
-                <FaClipboardList size={16} />
+                <FaClipboardList size={15} />
               </div>
               <div>
-                <h5 className="fw-extrabold mb-0.5 tracking-tight text-dark" style={{ fontSize: '1.15rem', letterSpacing: '-0.02em', lineHeight: 1.25 }}>
+                <h5 className="fw-extrabold mb-0.5 tracking-tight text-dark" style={{ fontSize: '1.08rem', letterSpacing: '-0.02em', lineHeight: 1.25 }}>
                   {t('myTasks.title', 'My Tasks')}
                 </h5>
-                <p className="text-muted mb-0 extra-small" style={{ fontSize: '0.76rem', lineHeight: 1.35 }}>
+                <p className="text-muted mb-0 extra-small" style={{ fontSize: '0.74rem', lineHeight: 1.3 }}>
                   {t('myTasks.subtitle', 'Follow the checklist in order. Completion updates from your saved pond records.')}
                 </p>
               </div>
@@ -1391,18 +1409,18 @@ export default function CaretakerDashboard() {
 
           {/* Today's Progress Strip */}
           <div
-            className="p-3.5 px-md-4 py-md-3 border-bottom"
+            className="px-3.5 py-2 px-md-3.5 py-md-2 border-bottom"
             style={{
               backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : '#F8FAFC',
               borderColor: isDark ? '#334155' : '#E2E8F0'
             }}
           >
-            <div className="d-flex justify-content-between align-items-center mb-1.5 flex-wrap gap-1">
+            <div className="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-1">
               <div>
-                <span className="fw-bold extra-small text-dark text-uppercase tracking-wider">
+                <span className="fw-bold extra-small text-dark text-uppercase tracking-wider" style={{ fontSize: '0.7rem' }}>
                   {t('myTasks.progress', "Today's Progress")}
                 </span>
-                <span className="text-muted extra-small ms-2">
+                <span className="text-muted extra-small ms-2" style={{ fontSize: '0.72rem' }}>
                   {allTasksComplete
                     ? t('myTasks.allComplete', 'All listed tasks are complete. Great work!')
                     : t('myTasks.progressCount', '{done} of {total} tasks complete')
@@ -1411,11 +1429,12 @@ export default function CaretakerDashboard() {
                 </span>
               </div>
               <span
-                className="badge rounded-pill extra-small px-2.5 py-1 fw-bold"
+                className="badge rounded-pill extra-small px-2 py-0.5 fw-bold"
                 style={{
                   backgroundColor: allTasksComplete ? '#ECFDF5' : (isDark ? 'rgba(255,255,255,0.08)' : '#F1F5F9'),
                   color: allTasksComplete ? '#059669' : (isDark ? '#CBD5E1' : '#334155'),
-                  border: allTasksComplete ? '1px solid #A7F3D0' : (isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #E2E8F0')
+                  border: allTasksComplete ? '1px solid #A7F3D0' : (isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #E2E8F0'),
+                  fontSize: '0.66rem'
                 }}
               >
                 {tasks.length ? `${Math.round((completedTasksCount / tasks.length) * 100)}%` : '0%'}
@@ -1427,7 +1446,7 @@ export default function CaretakerDashboard() {
               aria-valuenow={completedTasksCount}
               aria-valuemin="0"
               aria-valuemax={tasks.length || 1}
-              style={{ height: 7, backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0' }}
+              style={{ height: 6, backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0' }}
             >
               <div
                 className="progress-bar rounded-pill transition-all"
@@ -1441,7 +1460,7 @@ export default function CaretakerDashboard() {
 
           {/* Tasks Scrollable List */}
           <div
-            className="p-3 p-md-4 flex-grow-1 caretaker-tasks-scroll-3items"
+            className="p-2.5 p-md-3 flex-grow-1 caretaker-tasks-scroll-3items"
           >
             {loading && tasks.length === 0 ? (
               <div className="text-center text-muted py-5">
@@ -1455,13 +1474,13 @@ export default function CaretakerDashboard() {
                 <p className="text-muted extra-small mb-0">{t('myTasks.noPonds', 'Ask your farm administrator to assign a pond to your caretaker account.')}</p>
               </div>
             ) : (
-              <div className="d-flex flex-column gap-3 pb-2 caretaker-tasks-list">
+              <div className="d-flex flex-column caretaker-tasks-list">
                 {tasks.map((task, index) => {
                   const isNext = index === firstIncompleteTaskIndex;
                   return (
                     <article
                       key={task.id}
-                      className={`rounded-4 p-3 p-md-3.5 transition-all shadow-xs ${isNext ? 'border-2' : ''}`}
+                      className={`rounded-3 p-2.5 transition-all shadow-xs ${isNext ? 'border-2' : ''}`}
                       style={{
                         backgroundColor: isDark ? '#253549' : '#FFFFFF',
                         border: isNext
@@ -1470,13 +1489,13 @@ export default function CaretakerDashboard() {
                         boxShadow: isNext ? '0 2px 8px rgba(252, 86, 60, 0.25)' : (isDark ? '0 2px 6px rgba(0, 0, 0, 0.25)' : '0 1px 4px rgba(15, 23, 42, 0.04)')
                       }}
                     >
-                      <div className="d-flex flex-column gap-2">
+                      <div className="d-flex flex-column gap-1.5">
                         <div className="d-flex align-items-start gap-2.5">
                           <div
                             className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
                             style={{
-                              width: 32,
-                              height: 32,
+                              width: 30,
+                              height: 30,
                               backgroundColor: task.isComplete
                                 ? (isDark ? 'rgba(34, 197, 94, 0.2)' : '#DCFCE7')
                                 : isNext
@@ -1492,7 +1511,7 @@ export default function CaretakerDashboard() {
                                 : isNext
                                   ? (isDark ? '1px solid rgba(252, 86, 60, 0.35)' : '1px solid #FECDD3')
                                   : (isDark ? '1px solid rgba(255, 255, 255, 0.1)' : 'none'),
-                              fontSize: '0.8rem'
+                              fontSize: '0.78rem'
                             }}
                             aria-label={task.isComplete ? t('myTasks.completed', 'Completed') : t('myTasks.notCompleted', 'Not completed')}
                           >
@@ -1500,8 +1519,8 @@ export default function CaretakerDashboard() {
                           </div>
 
                           <div className="flex-grow-1 min-w-0">
-                            <div className="d-flex align-items-start justify-content-between gap-2 mb-1">
-                              <h6 className="fw-bold mb-0 text-break" style={{ fontSize: '0.88rem', lineHeight: 1.35, color: isDark ? '#FFFFFF' : '#0F172A' }}>
+                            <div className="d-flex align-items-center justify-content-between gap-1.5 mb-0.5">
+                              <h6 className="fw-bold mb-0 text-break" style={{ fontSize: '0.86rem', lineHeight: 1.3, color: isDark ? '#FFFFFF' : '#0F172A' }}>
                                 {task.title}
                               </h6>
                               <div className="d-flex align-items-center gap-1.5 flex-shrink-0">
@@ -1512,7 +1531,7 @@ export default function CaretakerDashboard() {
                                       backgroundColor: isDark ? 'rgba(252, 86, 60, 0.22)' : '#FFF1ED',
                                       color: isDark ? '#FF8A75' : '#C2410C',
                                       border: isDark ? '1px solid rgba(252, 86, 60, 0.4)' : '1px solid #FECDD3',
-                                      fontSize: '0.66rem'
+                                      fontSize: '0.64rem'
                                     }}
                                   >
                                     {t('myTasks.next', 'NEXT')}
@@ -1533,7 +1552,7 @@ export default function CaretakerDashboard() {
                                           ? (isDark ? '#38BDF8' : '#0369A1')
                                           : (isDark ? '#FBBF24' : '#B45309'),
                                       border: isDark ? '1px solid rgba(255, 255, 255, 0.12)' : 'none',
-                                      fontSize: '0.68rem'
+                                      fontSize: '0.66rem'
                                     }}
                                   >
                                     {t(task.action.status)}
@@ -1545,7 +1564,7 @@ export default function CaretakerDashboard() {
                                       backgroundColor: isDark ? 'rgba(34, 197, 94, 0.2)' : '#DCFCE7',
                                       color: isDark ? '#4ADE80' : '#15803D',
                                       border: isDark ? '1px solid rgba(74, 222, 128, 0.35)' : '1px solid #86EFAC',
-                                      fontSize: '0.68rem'
+                                      fontSize: '0.66rem'
                                     }}
                                   >
                                     {t('myTasks.done', 'Done')}
@@ -1554,23 +1573,23 @@ export default function CaretakerDashboard() {
                               </div>
                             </div>
 
-                            <div className="extra-small fw-semibold mb-1" style={{ color: '#FC563C', fontSize: '0.75rem' }}>
+                            <div className="extra-small fw-semibold mb-0.5" style={{ color: '#FC563C', fontSize: '0.74rem' }}>
                               {task.type === 'admin-action' && `${t('myTasks.adminDecision', 'Admin decision')} · `}
                               {task.pond.pond_name || task.pond.name || `${t('myTasks.pond', 'Pond')} #${task.pond.id}`}
                               {task.slot ? ` · ${task.slot}` : ''}
                             </div>
-                            <p className="extra-small mb-0" style={{ color: isDark ? '#CBD5E1' : '#64748B', fontSize: '0.75rem', lineHeight: 1.35 }}>{task.detail}</p>
+                            <p className="extra-small mb-0 text-truncate" style={{ color: isDark ? '#CBD5E1' : '#64748B', fontSize: '0.73rem', lineHeight: 1.3 }}>{task.detail}</p>
                           </div>
                         </div>
 
                         {/* Dedicated Action Button Row */}
-                        <div className="d-flex justify-content-end align-items-center gap-2 pt-2.5 border-top mt-2" style={{ borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(226, 232, 240, 0.8)' }}>
+                        <div className="d-flex justify-content-end align-items-center gap-2 pt-1.5 border-top mt-1" style={{ borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(226, 232, 240, 0.8)' }}>
                           {task.type === 'admin-action' ? (
                             <div className="d-flex gap-1.5 flex-wrap w-100 justify-content-end">
                               {task.action.status !== 'In Progress' && !task.isComplete && (
                                 <button
                                   type="button"
-                                  className={isNext ? 'btn btn-tri-orange btn-sm extra-small fw-bold px-3 py-1.5' : 'btn btn-outline-primary btn-sm extra-small fw-semibold px-3 py-1.5'}
+                                  className={isNext ? 'btn btn-tri-orange btn-sm extra-small fw-bold px-2.5 py-1' : 'btn btn-outline-primary btn-sm extra-small fw-semibold px-2.5 py-1'}
                                   disabled={updatingActionId === task.action.id}
                                   onClick={() => updateAdminAction(task, 'In Progress')}
                                 >
@@ -1581,7 +1600,7 @@ export default function CaretakerDashboard() {
                               {!task.isComplete && (
                                 <button
                                   type="button"
-                                  className="btn btn-success btn-sm extra-small fw-bold px-3 py-1.5"
+                                  className="btn btn-success btn-sm extra-small fw-bold px-2.5 py-1"
                                   disabled={updatingActionId === task.action.id}
                                   onClick={() => updateAdminAction(task, 'Done')}
                                 >
@@ -1593,7 +1612,15 @@ export default function CaretakerDashboard() {
                           ) : (
                             <button
                               type="button"
-                              className={isNext ? 'btn btn-tri-orange btn-sm extra-small fw-bold px-3.5 py-1.5' : 'btn btn-outline-secondary btn-sm extra-small fw-semibold px-3.5 py-1.5'}
+                              className={
+                                task.isComplete
+                                  ? 'btn btn-outline-secondary btn-sm extra-small fw-semibold px-3 py-1'
+                                  : task.isLocked
+                                    ? 'btn btn-danger btn-sm extra-small fw-bold px-3 py-1 shadow-xs'
+                                    : isNext
+                                      ? 'btn btn-tri-orange btn-sm extra-small fw-bold px-3 py-1'
+                                      : 'btn btn-outline-secondary btn-sm extra-small fw-semibold px-3 py-1'
+                              }
                               onClick={() => {
                                 if (task.type === 'water') {
                                   setActiveActivityTab('waterQuality');
@@ -1607,6 +1634,7 @@ export default function CaretakerDashboard() {
                                       feedingTask: {
                                         pondId: task.pond.id,
                                         slot: task.slot,
+                                        targetDate: task.missedDate,
                                       },
                                     },
                                   });
@@ -1615,7 +1643,15 @@ export default function CaretakerDashboard() {
                                 navigate(task.type === 'feeding' ? '/caretaker/feeding-history' : task.route);
                               }}
                             >
-                              {task.isComplete ? t('myTasks.view', 'View') : t('myTasks.proceed', 'Proceed')}
+                              {task.isComplete
+                                ? t('myTasks.view', 'View')
+                                : task.isLocked
+                                  ? (
+                                    <>
+                                      <FaLock className="me-1" size={9} /> Catch Up
+                                    </>
+                                  )
+                                  : t('myTasks.proceed', 'Proceed')}
                             </button>
                           )}
                         </div>
@@ -1629,7 +1665,7 @@ export default function CaretakerDashboard() {
 
           {/* My Tasks Clean Bottom Status Strip */}
           <div
-            className="px-3.5 py-2.5 border-top d-flex align-items-center justify-content-between extra-small text-muted mt-auto"
+            className="px-3.5 py-2 border-top d-flex align-items-center justify-content-between extra-small text-muted mt-auto"
             style={{
               borderColor: isDark ? '#334155' : '#E2E8F0',
               backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : '#F8FAFC'

@@ -36,16 +36,16 @@ const resolveImageUrl = (url) => {
   }
   if (url.startsWith('http://') || url.startsWith('https://')) {
     if (url.includes('localhost') || url.includes('127.0.0.1')) {
-      const cleaned = url.replace(/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/shrim_predict_api)?/i, '');
+      const cleaned = url.replace(/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/shrim_predict_api)?(\/backend)?/i, '');
       return cleaned.startsWith('/') ? cleaned : `/${cleaned}`;
     }
     return url;
   }
-  const cleanPath = url.startsWith('/') ? url : `/${url}`;
-  if (cleanPath.startsWith('/shrim_predict_api')) {
-    return cleanPath.replace(/^\/shrim_predict_api/, '');
+  let clean = url.replace(/^\/?(shrim_predict_api\/)?(backend\/)?/, '');
+  if (!clean.startsWith('uploads/')) {
+    clean = `uploads/${clean}`;
   }
-  return cleanPath;
+  return `/${clean}`;
 };
 
 const formatDate = (dateValue, timeValue) => {
