@@ -18,6 +18,7 @@ import {
   FaTrashRestore,
   FaInfoCircle,
   FaPlay,
+  FaSeedling,
 } from 'react-icons/fa';
 
 export default function CaretakerNotificationsPage() {
@@ -250,7 +251,11 @@ export default function CaretakerNotificationsPage() {
 
   // Icon mapper by action_type or title
   const getActionIcon = (notif) => {
+    const actionType = (notif.action_type || '').toLowerCase();
     const title = (notif.title || '').toLowerCase();
+    if (actionType === 'harvest_ready' || title.includes('harvest')) {
+      return <FaSeedling className="text-success" />;
+    }
     if (title.includes('done') || title.includes('resolved')) {
       return <FaCheckCircle className="text-success" />;
     }
@@ -308,11 +313,10 @@ export default function CaretakerNotificationsPage() {
         <div className="d-flex align-items-center gap-1.5 flex-wrap">
           <button
             type="button"
-            className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold transition-all ${
-              currentTab === 'active'
-                ? 'btn-chart-range-active shadow-xs'
-                : 'btn-chart-range-inactive'
-            }`}
+            className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold transition-all ${currentTab === 'active'
+              ? 'btn-chart-range-active shadow-xs'
+              : 'btn-chart-range-inactive'
+              }`}
             onClick={() => setCurrentTab('active')}
           >
             Active <span className="badge rounded-pill ms-1" style={{ backgroundColor: currentTab === 'active' ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.08)', color: currentTab === 'active' ? '#FFFFFF' : 'inherit' }}>{counts.active}</span>
@@ -320,11 +324,10 @@ export default function CaretakerNotificationsPage() {
 
           <button
             type="button"
-            className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold transition-all ${
-              currentTab === 'unread'
-                ? 'btn-chart-range-active shadow-xs'
-                : 'btn-chart-range-inactive'
-            }`}
+            className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold transition-all ${currentTab === 'unread'
+              ? 'btn-chart-range-active shadow-xs'
+              : 'btn-chart-range-inactive'
+              }`}
             onClick={() => setCurrentTab('unread')}
           >
             Unread <span className="badge rounded-pill bg-danger text-white ms-1">{counts.unread}</span>
@@ -332,11 +335,10 @@ export default function CaretakerNotificationsPage() {
 
           <button
             type="button"
-            className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold transition-all ${
-              currentTab === 'archived'
-                ? 'btn-chart-range-active shadow-xs'
-                : 'btn-chart-range-inactive'
-            }`}
+            className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold transition-all ${currentTab === 'archived'
+              ? 'btn-chart-range-active shadow-xs'
+              : 'btn-chart-range-inactive'
+              }`}
             onClick={() => setCurrentTab('archived')}
           >
             <FaArchive size={10} className="me-1" /> Archived{' '}
@@ -345,11 +347,10 @@ export default function CaretakerNotificationsPage() {
 
           <button
             type="button"
-            className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold transition-all ${
-              currentTab === 'deleted'
-                ? 'btn-chart-range-active shadow-xs'
-                : 'btn-chart-range-inactive'
-            }`}
+            className={`btn btn-sm py-1 px-3 rounded-2 extra-small fw-bold transition-all ${currentTab === 'deleted'
+              ? 'btn-chart-range-active shadow-xs'
+              : 'btn-chart-range-inactive'
+              }`}
             onClick={() => setCurrentTab('deleted')}
           >
             <FaTrashAlt size={10} className="me-1" /> Deleted History{' '}
@@ -357,40 +358,40 @@ export default function CaretakerNotificationsPage() {
           </button>
         </div>
 
-            {/* Date Filter Toolbar */}
-            <div className="d-flex align-items-center gap-2 flex-wrap">
-              <div className="d-flex align-items-center gap-1.5 px-3 py-1 rounded-pill bg-white border shadow-xs" style={{ height: 36 }}>
-                <FaFilter size={10} className="text-muted me-1" />
-                <select
-                  className="form-select form-select-sm border-0 bg-transparent text-dark fw-semibold p-0 extra-small cursor-pointer"
-                  style={{ width: 120, outline: 'none' }}
-                  value={dateFilterType}
-                  onChange={(e) => {
-                    setDateFilterType(e.target.value);
-                    if (e.target.value !== 'custom') setCustomDate('');
-                  }}
-                >
-                  <option value="all">All Dates</option>
-                  <option value="today">Today</option>
-                  <option value="yesterday">Yesterday</option>
-                  <option value="last7">Last 7 Days</option>
-                  <option value="custom">Custom Date…</option>
-                </select>
-              </div>
-
-              {dateFilterType === 'custom' && (
-                <div className="d-flex align-items-center px-2 py-1 rounded-pill bg-white border shadow-xs" style={{ height: 36 }}>
-                  <input
-                    type="date"
-                    className="form-control form-control-sm border-0 bg-transparent extra-small p-0 fw-semibold"
-                    style={{ width: 125 }}
-                    value={customDate}
-                    onChange={(e) => setCustomDate(e.target.value)}
-                  />
-                </div>
-              )}
-            </div>
+        {/* Date Filter Toolbar */}
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <div className="d-flex align-items-center gap-1.5 px-3 py-1 rounded-pill bg-white border shadow-xs" style={{ height: 36 }}>
+            <FaFilter size={10} className="text-muted me-1" />
+            <select
+              className="form-select form-select-sm border-0 bg-transparent text-dark fw-semibold p-0 extra-small cursor-pointer"
+              style={{ width: 120, outline: 'none' }}
+              value={dateFilterType}
+              onChange={(e) => {
+                setDateFilterType(e.target.value);
+                if (e.target.value !== 'custom') setCustomDate('');
+              }}
+            >
+              <option value="all">All Dates</option>
+              <option value="today">Today</option>
+              <option value="yesterday">Yesterday</option>
+              <option value="last7">Last 7 Days</option>
+              <option value="custom">Custom Date…</option>
+            </select>
           </div>
+
+          {dateFilterType === 'custom' && (
+            <div className="d-flex align-items-center px-2 py-1 rounded-pill bg-white border shadow-xs" style={{ height: 36 }}>
+              <input
+                type="date"
+                className="form-control form-control-sm border-0 bg-transparent extra-small p-0 fw-semibold"
+                style={{ width: 125 }}
+                value={customDate}
+                onChange={(e) => setCustomDate(e.target.value)}
+              />
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Notifications List Container */}
       <div className="asymmetric-card p-0 overflow-hidden" ref={dropdownRef}>
@@ -408,20 +409,24 @@ export default function CaretakerNotificationsPage() {
                 {currentTab === 'deleted'
                   ? t('No deleted notifications in history.')
                   : currentTab === 'archived'
-                  ? t('No archived notifications.')
-                  : currentTab === 'unread'
-                  ? t('All admin responses are marked as read.')
-                  : t('No admin updates returned for your submitted reports yet.')}
+                    ? t('No archived notifications.')
+                    : currentTab === 'unread'
+                      ? t('All admin responses are marked as read.')
+                      : t('No admin updates returned for your submitted reports yet.')}
               </p>
             </div>
           ) : (
-            <div className="list-group list-group-flush">
+            <div className="d-flex flex-column gap-3 p-3">
               {notifications.map((notif) => (
                 <div
                   key={notif.id}
-                  className={`list-group-item p-3.5 d-flex align-items-start justify-content-between gap-3 border-bottom transition-all ${
-                    !notif.is_read && currentTab !== 'deleted' ? 'bg-light border-start border-primary border-4' : ''
-                  }`}
+                  className={`p-3.5 d-flex align-items-start justify-content-between gap-3 border transition-all ${!notif.is_read && currentTab !== 'deleted'
+                      ? 'border-primary border-start border-4 shadow-sm bg-primary-subtle bg-opacity-25'
+                      : 'border-secondary-subtle bg-white shadow-2xs'
+                    }`}
+                  style={{
+                    borderRadius: 14,
+                  }}
                 >
                   <div className="d-flex align-items-start gap-3 flex-grow-1">
                     {/* Action Icon */}
@@ -442,6 +447,12 @@ export default function CaretakerNotificationsPage() {
                         {notif.pond_name && (
                           <span className="badge bg-secondary bg-opacity-10 text-secondary extra-small px-2 py-0.5 rounded-pill">
                             {notif.pond_name}
+                          </span>
+                        )}
+
+                        {notif.action_type === 'harvest_ready' && (
+                          <span className="badge bg-success-subtle text-success-emphasis border border-success-subtle extra-small px-2 py-0.5 rounded-pill fw-bold">
+                            {t('Ready to Harvest')}
                           </span>
                         )}
                       </div>
@@ -467,13 +478,12 @@ export default function CaretakerNotificationsPage() {
                           <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
                             <span className="extra-small fw-bold text-secondary">{t('Admin decision')}</span>
                             {scanActions[String(notif.target_id)]?.status && (
-                              <span className={`badge rounded-pill ${
-                                scanActions[String(notif.target_id)].status === 'Done'
-                                  ? 'bg-success-subtle text-success-emphasis'
-                                  : scanActions[String(notif.target_id)].status === 'In Progress'
-                                    ? 'bg-primary-subtle text-primary-emphasis'
-                                    : 'bg-warning-subtle text-warning-emphasis'
-                              }`}>
+                              <span className={`badge rounded-pill ${scanActions[String(notif.target_id)].status === 'Done'
+                                ? 'bg-success-subtle text-success-emphasis'
+                                : scanActions[String(notif.target_id)].status === 'In Progress'
+                                  ? 'bg-primary-subtle text-primary-emphasis'
+                                  : 'bg-warning-subtle text-warning-emphasis'
+                                }`}>
                                 {t(scanActions[String(notif.target_id)].status)}
                               </span>
                             )}

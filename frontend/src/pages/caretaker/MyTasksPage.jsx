@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaCheck, FaCheckCircle, FaClipboardList, FaClock, FaExclamationCircle, FaPlay, FaRedo, FaSpinner, FaTools, FaWater } from 'react-icons/fa';
+import { FaCheck, FaCheckCircle, FaClipboardList, FaClock, FaExclamationCircle, FaLock, FaPlay, FaRedo, FaSpinner, FaTools, FaWater } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import api, { safeArray } from '../../services/api';
@@ -158,15 +158,29 @@ export default function MyTasksPage() {
     const feedTasks = ponds.flatMap((pond) => {
       const pondFeeds = todaysFeeds.filter((record) => String(record.pond_id) === String(pond.id));
       const loggedSlots = new Set(pondFeeds.map((record) => normalizeFeedingTime(record.feeding_time)));
+      const stockingDate = pond.stocking_date || '2000-01-01';
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = getLocalDateString(yesterday);
+      const hasYesterdayLog = feedingRecords.some((record) => {
+        const recordDate = String(record.record_date || record.created_at || '').slice(0, 10);
+        return String(record.pond_id) === String(pond.id) && recordDate === yesterdayStr;
+      });
+      const isYesterdayMissed = stockingDate <= yesterdayStr && !hasYesterdayLog;
+
       return feedingSlots.map((slot) => ({
         id: `feed-${pond.id}-${slot}`,
         type: 'feeding',
         pond,
         slot,
         isComplete: loggedSlots.has(slot),
+        isLocked: isYesterdayMissed && !loggedSlots.has(slot),
+        missedDate: isYesterdayMissed ? yesterdayStr : null,
         route: '/caretaker/my-pond',
         title: t('myTasks.feedTitle', 'Log the scheduled feeding'),
-        detail: t('myTasks.feedDesc', 'Verify ration and record feed tray consumption.'),
+        detail: isYesterdayMissed && !loggedSlots.has(slot)
+          ? `⚠️ Locked: Missed feeding logs on ${yesterdayStr}. Catch up past day first.`
+          : t('myTasks.feedDesc', 'Verify ration and record feed tray consumption.'),
       }));
     });
 
@@ -310,13 +324,12 @@ export default function MyTasksPage() {
                       <div className="d-flex align-items-center gap-1.5 flex-shrink-0">
                         {isNext && <span className="badge rounded-pill extra-small fw-bold px-2 py-0.5" style={{ backgroundColor: '#FFF1ED', color: '#C2410C' }}>{t('myTasks.next', 'NEXT')}</span>}
                         {task.type === 'admin-action' ? (
-                          <span className={`badge rounded-pill extra-small fw-bold px-2 py-0.5 ${
-                            task.action.status === 'Done'
+                          <span className={`badge rounded-pill extra-small fw-bold px-2 py-0.5 ${task.action.status === 'Done'
                               ? 'bg-success-subtle text-success'
                               : task.action.status === 'In Progress'
                                 ? 'bg-primary-subtle text-primary'
                                 : 'bg-warning-subtle text-warning-emphasis'
-                          }`}>
+                            }`}>
                             {t(task.action.status)}
                           </span>
                         ) : task.isComplete && <span className="badge rounded-pill extra-small fw-bold px-2 py-0.5 bg-success-subtle text-success">{t('myTasks.done', 'Done')}</span>}
@@ -359,7 +372,15 @@ export default function MyTasksPage() {
                   ) : (
                     <button
                       type="button"
-                      className={isNext ? 'btn btn-tri-orange btn-sm fw-bold text-nowrap' : 'btn btn-outline-secondary btn-sm fw-semibold text-nowrap'}
+                      className={
+                        task.isComplete
+                          ? 'btn btn-outline-secondary btn-sm fw-semibold text-nowrap'
+                          : task.isLocked
+                            ? 'btn btn-danger btn-sm fw-bold text-nowrap shadow-xs'
+                            : isNext
+                              ? 'btn btn-tri-orange btn-sm fw-bold text-nowrap'
+                              : 'btn btn-outline-secondary btn-sm fw-semibold text-nowrap'
+                      }
                       onClick={() => {
                         if (task.type === 'feeding' && !task.isComplete) {
                           navigate('/caretaker/my-pond', {
@@ -367,6 +388,7 @@ export default function MyTasksPage() {
                               feedingTask: {
                                 pondId: task.pond.id,
                                 slot: task.slot,
+                                targetDate: task.missedDate,
                               },
                             },
                           });
@@ -375,7 +397,15 @@ export default function MyTasksPage() {
                         navigate(task.type === 'feeding' ? '/caretaker/feeding-history' : task.route);
                       }}
                     >
-                      {task.isComplete ? t('myTasks.view', 'View') : t('myTasks.proceed', 'Proceed')}
+                      {task.isComplete
+                        ? t('myTasks.view', 'View')
+                        : task.isLocked
+                          ? (
+                            <>
+                              <FaLock className="me-1" size={10} /> Catch Up
+                            </>
+                          )
+                          : t('myTasks.proceed', 'Proceed')}
                     </button>
                   )}
                 </div>

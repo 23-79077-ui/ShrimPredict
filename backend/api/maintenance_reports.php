@@ -211,6 +211,42 @@ if ($method === 'POST') {
             $notifMsg = "{$caretakerName} reported an issue for {$pondName}: {$specificIssue} ({$problemType}).";
             createNotification($conn, $notifTitle, $notifMsg, $caretakerName, 'maintenance', $pondName, null, $newId);
 
+            // Also surface High/Critical/Abnormality emergency reports inside alerts table
+            $isUrgentIncident = in_array(strtolower($severityLevel), ['high', 'critical'], true)
+                || stripos($problemType, 'abnormality') !== false
+                || stripos($problemType, 'shrimp') !== false
+                || stripos($specificIssue, 'lethargy') !== false
+                || stripos($specificIssue, 'surface') !== false;
+            if ($isUrgentIncident) {
+                try {
+                    $alertStmt = $conn->prepare("
+                        INSERT INTO alerts (
+                            pond_id, alert_type, title, message, severity, category,
+                            affected_pond_name, assigned_caretaker_name, confidence_pct,
+                            recommended_action, status, created_at
+                        ) VALUES (
+                            :pond_id, :alert_type, :title, :message, :severity, :category,
+                            :affected_pond_name, :assigned_caretaker_name, :confidence_pct,
+                            :recommended_action, 'Pending', NOW()
+                        )
+                    ");
+                    $alertStmt->execute([
+                        ':pond_id' => $pondId ?: null,
+                        ':alert_type' => 'Incident Report',
+                        ':title' => "Urgent Field Incident: {$specificIssue}",
+                        ':message' => "{$pondName} — {$description} (Reported by {$caretakerName})",
+                        ':severity' => ucfirst(strtolower($severityLevel)) === 'Critical' ? 'Critical' : 'High',
+                        ':category' => $problemType ?: 'Emergency Incident',
+                        ':affected_pond_name' => $pondName,
+                        ':assigned_caretaker_name' => $caretakerName ?: 'Caretaker',
+                        ':confidence_pct' => 100,
+                        ':recommended_action' => $suggestedAction ?: 'Inspect affected pond immediately and isolate if abnormal mortality/lethargy persists.',
+                    ]);
+                } catch (Throwable $alertEx) {
+                    error_log('Incident alert creation warning: ' . $alertEx->getMessage());
+                }
+            }
+
             http_response_code(201);
             echo json_encode([
                 'success' => true,

@@ -34,12 +34,10 @@ def detect_cooked_orange_shrimp(image, threshold: float = 0.55) -> bool:
 
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
-    # Restrict to strongly saturated orange/red tones. Natural shrimp browns and
-    # white-spot lesions are not bright enough to satisfy this guard.
-    mask1 = cv2.inRange(hsv, np.array([5, 150, 110], dtype=np.uint8), np.array([30, 255, 255], dtype=np.uint8))
-    mask2 = cv2.inRange(hsv, np.array([0, 150, 110], dtype=np.uint8), np.array([12, 255, 255], dtype=np.uint8))
-    mask3 = cv2.inRange(hsv, np.array([160, 150, 110], dtype=np.uint8), np.array([180, 255, 255], dtype=np.uint8))
-    bright_orange_mask = cv2.bitwise_or(cv2.bitwise_or(mask1, mask2), mask3)
+    # Restrict strictly to strongly saturated cooked orange tones (HSV Hue 3–25, avoiding dark shells & pinkish/magenta trays).
+    mask1 = cv2.inRange(hsv, np.array([3, 170, 140], dtype=np.uint8), np.array([25, 255, 255], dtype=np.uint8))
+    mask2 = cv2.inRange(hsv, np.array([0, 180, 150], dtype=np.uint8), np.array([8, 255, 255], dtype=np.uint8))
+    bright_orange_mask = cv2.bitwise_or(mask1, mask2)
 
     bright_orange_ratio = float(np.mean(bright_orange_mask > 0)) if bright_orange_mask.size else 0.0
     return bright_orange_ratio >= threshold

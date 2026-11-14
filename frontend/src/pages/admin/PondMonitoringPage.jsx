@@ -112,6 +112,9 @@ export default function PondMonitoringPage() {
   const [formCaretakerId, setFormCaretakerId] = useState('');
   const [formStockingDate, setFormStockingDate] = useState(new Date().toISOString().split('T')[0]);
   const [formAreaSqm, setFormAreaSqm] = useState(500);
+  const [formDimensions, setFormDimensions] = useState('');
+  const [formStockingDensity, setFormStockingDensity] = useState('');
+  const [formPlCount, setFormPlCount] = useState('');
   const [formShrimpWeight, setFormShrimpWeight] = useState(15.0);
   const [formCycleTargetFeed, setFormCycleTargetFeed] = useState(15000);
   const [formOperationalStatus, setFormOperationalStatus] = useState('Grow-out');
@@ -595,6 +598,9 @@ export default function PondMonitoringPage() {
     setFormCaretakerId('');
     setFormStockingDate(new Date().toISOString().split('T')[0]);
     setFormAreaSqm(500);
+    setFormDimensions('');
+    setFormStockingDensity('');
+    setFormPlCount('');
     setFormShrimpWeight(15.0);
     setFormCycleTargetFeed(15000);
     setFormOperationalStatus('Grow-out');
@@ -611,6 +617,9 @@ export default function PondMonitoringPage() {
     setFormCaretakerId(pond.assigned_caretaker_id ? String(pond.assigned_caretaker_id) : '');
     setFormStockingDate(pond.stocking_date || new Date().toISOString().split('T')[0]);
     setFormAreaSqm(pond.area_sqm || 500);
+    setFormDimensions(pond.dimensions || '');
+    setFormStockingDensity(pond.stocking_density ? String(pond.stocking_density) : '');
+    setFormPlCount(pond.pl_count ? String(pond.pl_count) : '');
     setFormShrimpWeight(pond.weightG || pond.shrimp_weight_g || 15.0);
     setFormCycleTargetFeed(pond.targetKg || pond.cycle_target_feed_kg || 15000);
     setFormOperationalStatus(
@@ -642,6 +651,9 @@ export default function PondMonitoringPage() {
         assigned_caretaker_id: formCaretakerId,
         stocking_date: formStockingDate,
         area_sqm: parseInt(formAreaSqm, 10) || 500,
+        dimensions: formDimensions.trim() || null,
+        stocking_density: formStockingDensity ? parseInt(formStockingDensity, 10) : null,
+        pl_count: formPlCount ? parseInt(formPlCount, 10) : null,
         shrimp_weight_g: parseFloat(formShrimpWeight) || 15.0,
         cycle_target_feed_kg: parseFloat(formCycleTargetFeed) || 15000,
         operational_status: formOperationalStatus,
@@ -1579,6 +1591,41 @@ export default function PondMonitoringPage() {
                       min="50"
                       step="10"
                       required
+                    />
+                  </div>
+                </div>
+
+                <div className="row g-2 mb-3">
+                  <div className="col-4">
+                    <label className="form-label extra-small fw-bold text-dark">{t('Dimensions (L × W)')}</label>
+                    <input
+                      type="text"
+                      className="form-control form-control-sm rounded-3"
+                      value={formDimensions}
+                      onChange={(e) => setFormDimensions(e.target.value)}
+                      placeholder="25m × 20m"
+                    />
+                  </div>
+                  <div className="col-4">
+                    <label className="form-label extra-small fw-bold text-dark">{t('Stocking Density')}</label>
+                    <input
+                      type="number"
+                      className="form-control form-control-sm rounded-3"
+                      value={formStockingDensity}
+                      onChange={(e) => setFormStockingDensity(e.target.value)}
+                      min="1"
+                      placeholder="50000"
+                    />
+                  </div>
+                  <div className="col-4">
+                    <label className="form-label extra-small fw-bold text-dark">{t('Post-Larvae (PL) Count')}</label>
+                    <input
+                      type="number"
+                      className="form-control form-control-sm rounded-3"
+                      value={formPlCount}
+                      onChange={(e) => setFormPlCount(e.target.value)}
+                      min="1"
+                      placeholder="50000"
                     />
                   </div>
                 </div>

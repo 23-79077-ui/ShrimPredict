@@ -108,9 +108,24 @@ function evaluateWaterQualityAlerts($conn, $pondId, $pondName, $caretakerName, $
         $message = "{$issueText}. Recorded by {$caretakerName}. Immediate corrective aeration or water exchange recommended.";
 
         try {
+            $cols = $conn->query('SHOW COLUMNS FROM alerts')->fetchAll(PDO::FETCH_COLUMN);
+            if (!in_array('pond_id', $cols, true)) {
+                try { $conn->exec('ALTER TABLE alerts ADD COLUMN pond_id INT NULL AFTER id'); } catch (Throwable $ignored) {}
+            }
+            if (!in_array('alert_type', $cols, true)) {
+                try { $conn->exec("ALTER TABLE alerts ADD COLUMN alert_type VARCHAR(50) NULL DEFAULT 'General' AFTER pond_id"); } catch (Throwable $ignored) {}
+            }
             $alertStmt = $conn->prepare('
-                INSERT INTO alerts (pond_id, alert_type, title, message, severity, status, created_at)
-                VALUES (:pond_id, :alert_type, :title, :message, :severity, "Open", NOW())
+                INSERT INTO alerts (
+                    pond_id, alert_type, title, message, severity, category,
+                    affected_pond_name, assigned_caretaker_name, confidence_pct,
+                    recommended_action, status, created_at
+                )
+                VALUES (
+                    :pond_id, :alert_type, :title, :message, :severity, :category,
+                    :affected_pond_name, :assigned_caretaker_name, :confidence_pct,
+                    :recommended_action, "Open", NOW()
+                )
             ');
             $alertStmt->execute([
                 ':pond_id' => $pondId,
@@ -118,11 +133,18 @@ function evaluateWaterQualityAlerts($conn, $pondId, $pondName, $caretakerName, $
                 ':title' => $title,
                 ':message' => $message,
                 ':severity' => $severity,
+                ':category' => 'Water Quality',
+                ':affected_pond_name' => $pondName,
+                ':assigned_caretaker_name' => $caretakerName ?: 'Caretaker',
+                ':confidence_pct' => 100,
+                ':recommended_action' => 'Perform water exchange, boost aeration, and verify DO/Temp/pH immediately.',
             ]);
+            return (int)$conn->lastInsertId();
         } catch (Throwable $e) {
-            // Non-blocking alert failure
+            error_log('Water quality alert insert failed: ' . $e->getMessage());
         }
     }
+    return null;
 }
 
 // -------------------------------------------------------------------------
@@ -366,6 +388,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
+        // Strict biological/sensor bounds validation
+        $boundsErrors = [];
+        if (!is_numeric($_POST['dissolved_oxygen'] ?? null) || $dissolvedOxygen < 0.0 || $dissolvedOxygen > 30.0) {
+            $boundsErrors[] = 'Dissolved Oxygen (DO) must be between 0.0 and 30.0 mg/L.';
+        }
+        if (!is_numeric($_POST['temperature'] ?? null) || $temperature < 0.0 || $temperature > 60.0) {
+            $boundsErrors[] = 'Temperature must be between 0.0 and 60.0 °C.';
+        }
+        if (!is_numeric($_POST['ph_level'] ?? null) || $phLevel < 0.0 || $phLevel > 14.0) {
+            $boundsErrors[] = 'pH level must be strictly within 0.0 to 14.0.';
+        }
+        if (!is_numeric($_POST['salinity'] ?? null) || $salinity < 0.0 || $salinity > 60.0) {
+            $boundsErrors[] = 'Salinity must be between 0.0 and 60.0 ppt.';
+        }
+        if (!empty($boundsErrors)) {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Out-of-bounds water quality parameter rejected: ' . implode(' ', $boundsErrors),
+                'validation_errors' => $boundsErrors,
+            ]);
+            exit;
+        }
+
         // Verify pond exists
         $pondStmt = $conn->prepare('SELECT id, pond_name FROM ponds WHERE id = :id LIMIT 1');
         $pondStmt->execute([':id' => $pondId]);
@@ -397,6 +443,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if (move_uploaded_file($_FILES['image']['tmp_name'], $destination)) {
                 $imagePath = 'uploads/water_quality/' . $filename;
+                // Dual-sync to ensure both workspace and webroot have the uploaded proof
+                $altDirs = [
+                    'C:/xampp/htdocs/shrim_predict_api/backend/uploads/water_quality',
+                    'C:/ShrimPredict/backend/uploads/water_quality'
+                ];
+                foreach ($altDirs as $altDir) {
+                    if (is_dir($altDir) && realpath($altDir) !== realpath($uploadsDir)) {
+                        @copy($destination, $altDir . '/' . $filename);
+                    }
+                }
             }
         }
 
@@ -545,8 +601,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // Only evaluate active alert notifications for records logged today or future
+        $createdAlertId = null;
         if ($recordDate >= date('Y-m-d')) {
-            evaluateWaterQualityAlerts($conn, $pondId, $pondName, $recordedByName, $dissolvedOxygen, $temperature, $phLevel, $salinity);
+            $createdAlertId = evaluateWaterQualityAlerts($conn, $pondId, $pondName, $recordedByName, $dissolvedOxygen, $temperature, $phLevel, $salinity);
         }
 
         // Record activity log
@@ -566,6 +623,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo json_encode([
             'success' => true,
             'is_update' => $isUpdate,
+            'alert_created' => $createdAlertId !== null,
+            'alert_id' => $createdAlertId,
             'message' => $isUpdate
                 ? "Water quality record for {$pondName} ({$recordDate}) successfully updated!"
                 : "Water quality record for {$pondName} ({$recordDate}) successfully logged!",

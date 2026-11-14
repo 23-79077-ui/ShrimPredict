@@ -45,6 +45,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import api, { safeArray } from '../../services/api';
 import PondCycleCalendar from '../../components/PondCycleCalendar';
+import { getEffectiveTheme } from '../../utils/theme';
 
 ChartJS.register(
   CategoryScale,
@@ -693,12 +694,14 @@ export default function FeedingPage() {
   const feedTypeChartData = useMemo(() => {
     const types = {};
     records.forEach((r) => {
-      const type = r.feed_type || 'Starter Feed';
-      types[type] = (types[type] || 0) + (Number(r.amount_kg) || 0);
+      const rawType = r.feed_type || 'Starter Feed';
+      if (!rawType.toLowerCase().includes('finisher')) {
+        types[rawType] = (types[rawType] || 0) + (Number(r.amount_kg) || 0);
+      }
     });
 
-    const labels = Object.keys(types).length > 0 ? Object.keys(types) : ['Starter', 'Grower', 'Finisher'];
-    const values = Object.keys(types).length > 0 ? Object.values(types) : [120, 340, 180];
+    const labels = Object.keys(types).length > 0 ? Object.keys(types) : ['Starter Pro', 'Grower Plus'];
+    const values = Object.keys(types).length > 0 ? Object.values(types) : [120, 340];
 
     return {
       labels,
@@ -706,7 +709,7 @@ export default function FeedingPage() {
         {
           label: 'Consumption by Type (kg)',
           data: values,
-          backgroundColor: ['#FC563C', '#16A34A', '#FC563C', '#FC563C', '#8B5CF6'],
+          backgroundColor: ['#FC563C', '#16A34A', '#38BDF8', '#8B5CF6'],
           borderRadius: 8,
           barPercentage: 0.6,
         },
@@ -1180,70 +1183,109 @@ export default function FeedingPage() {
                 ? `Logs (${customDate})`
                 : "All Historical Logs";
 
-    let statusBadge = `<span style="background: #ECFDF5; color: #16A34A; border: 1px solid #BBF7D0; font-weight: 700; font-size: 0.75rem; border-radius: 9999px; padding: 0.3rem 0.8rem;">Optimal Compliance (${compliance}%)</span>`;
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark' ||
+      document.body.classList.contains('dark-theme') ||
+      getEffectiveTheme() === 'dark';
+
+    let statusBadge = isDark
+      ? `<span style="background: rgba(16, 185, 129, 0.2); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.4); font-weight: 700; font-size: 0.75rem; border-radius: 9999px; padding: 0.3rem 0.8rem;">Optimal Compliance (${compliance}%)</span>`
+      : `<span style="background: #ECFDF5; color: #16A34A; border: 1px solid #BBF7D0; font-weight: 700; font-size: 0.75rem; border-radius: 9999px; padding: 0.3rem 0.8rem;">Optimal Compliance (${compliance}%)</span>`;
     if (compliance > 110) {
-      statusBadge = `<span style="background: #E9E4E0; color: #FC563C; border: 1px solid #6E7575; font-weight: 700; font-size: 0.75rem; border-radius: 9999px; padding: 0.3rem 0.8rem;">Overfeeding Notice (${compliance}%)</span>`;
+      statusBadge = isDark
+        ? `<span style="background: rgba(252, 86, 60, 0.2); color: #FF8A75; border: 1px solid rgba(252, 86, 60, 0.4); font-weight: 700; font-size: 0.75rem; border-radius: 9999px; padding: 0.3rem 0.8rem;">Overfeeding Notice (${compliance}%)</span>`
+        : `<span style="background: #FFF5F3; color: #FC563C; border: 1px solid #FECDD3; font-weight: 700; font-size: 0.75rem; border-radius: 9999px; padding: 0.3rem 0.8rem;">Overfeeding Notice (${compliance}%)</span>`;
     } else if (pondLogs.length === 0) {
-      statusBadge = `<span style="background: #F1F5F9; color: #64748B; border: 1px solid #CBD5E1; font-weight: 700; font-size: 0.75rem; border-radius: 9999px; padding: 0.3rem 0.8rem;">No Logs Recorded (${dateLabel})</span>`;
+      statusBadge = isDark
+        ? `<span style="background: rgba(255, 255, 255, 0.08); color: #CBD5E1; border: 1px solid rgba(255, 255, 255, 0.15); font-weight: 700; font-size: 0.75rem; border-radius: 9999px; padding: 0.3rem 0.8rem;">No Logs Recorded (${dateLabel})</span>`
+        : `<span style="background: #F1F5F9; color: #64748B; border: 1px solid #CBD5E1; font-weight: 700; font-size: 0.75rem; border-radius: 9999px; padding: 0.3rem 0.8rem;">No Logs Recorded (${dateLabel})</span>`;
     } else if (compliance < 85) {
-      statusBadge = `<span style="background: #FFF1F2; color: #E11D48; border: 1px solid #FECDD3; font-weight: 700; font-size: 0.75rem; border-radius: 9999px; padding: 0.3rem 0.8rem;">Underfeeding Alert (${compliance}%)</span>`;
+      statusBadge = isDark
+        ? `<span style="background: rgba(239, 68, 68, 0.2); color: #F87171; border: 1px solid rgba(239, 68, 68, 0.4); font-weight: 700; font-size: 0.75rem; border-radius: 9999px; padding: 0.3rem 0.8rem;">Underfeeding Alert (${compliance}%)</span>`
+        : `<span style="background: #FFF1F2; color: #E11D48; border: 1px solid #FECDD3; font-weight: 700; font-size: 0.75rem; border-radius: 9999px; padding: 0.3rem 0.8rem;">Underfeeding Alert (${compliance}%)</span>`;
     }
+
+    const cardBg1 = isDark ? '#253549' : '#F8FAFC';
+    const cardBorder1 = isDark ? '1px solid rgba(255, 255, 255, 0.14)' : '1px solid #E2E8F0';
+    const cardLabel1 = isDark ? '#94A3B8' : '#64748B';
+    const cardVal1 = isDark ? '#FFFFFF' : '#0F172A';
+
+    const cardBg2 = isDark ? 'rgba(16, 185, 129, 0.18)' : '#ECFDF5';
+    const cardBorder2 = isDark ? '1px solid rgba(16, 185, 129, 0.35)' : '1px solid #BBF7D0';
+    const cardText2 = isDark ? '#34D399' : '#16A34A';
+
+    const cardBg3 = isDark ? 'rgba(252, 86, 60, 0.18)' : '#FFF5F3';
+    const cardBorder3 = isDark ? '1px solid rgba(252, 86, 60, 0.35)' : '1px solid #FECDD3';
+    const cardText3 = isDark ? '#FF8A75' : '#FC563C';
+
+    const tableBg = isDark ? '#1E293B' : '#FFFFFF';
+    const tableBorder = isDark ? '1px solid #334155' : '1px solid #E2E8F0';
+    const theadBg = isDark ? '#253549' : '#F8FAFC';
+    const thColor = isDark ? '#E2E8F0' : '#475569';
+    const rowBorder = isDark ? '1px solid #334155' : '1px solid #F1F5F9';
+    const primaryTextColor = isDark ? '#FFFFFF' : '#1E293B';
+    const subTextColor = isDark ? '#CBD5E1' : '#64748B';
+    const mutedTextColor = isDark ? '#94A3B8' : '#94A3B8';
+    const titleColor = isDark ? '#FFFFFF' : '#0F172A';
+
+    const timeBadgeBg = isDark ? 'rgba(252, 86, 60, 0.2)' : '#FFF5F3';
+    const timeBadgeBorder = isDark ? '1px solid rgba(252, 86, 60, 0.4)' : '1px solid #FECDD3';
+    const timeBadgeColor = isDark ? '#FF8A75' : '#FC563C';
 
     const logHtml = `
       <div style="text-align: left; font-family: 'Poppins', sans-serif;">
         <!-- TOP KPI STATS SUMMARY CARDS -->
         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 18px;">
-          <div style="padding: 12px; border-radius: 14px; background: #E9E4E0; border: 1px solid #E2E8F0; text-align: center;">
-            <span style="color: #64748B; font-size: 0.72rem; display: block; font-weight: 700; text-transform: uppercase;">Daily Target</span>
-            <strong style="color: #0F172A; font-size: 1.15rem;">${targetKg.toFixed(1)} kg</strong>
+          <div style="padding: 12px; border-radius: 14px; background: ${cardBg1}; border: ${cardBorder1}; text-align: center;">
+            <span style="color: ${cardLabel1}; font-size: 0.72rem; display: block; font-weight: 700; text-transform: uppercase;">Daily Target</span>
+            <strong style="color: ${cardVal1}; font-size: 1.15rem;">${targetKg.toFixed(1)} kg</strong>
           </div>
-          <div style="padding: 12px; border-radius: 14px; background: #ECFDF5; border: 1px solid #BBF7D0; text-align: center;">
-            <span style="color: #16A34A; font-size: 0.72rem; display: block; font-weight: 700; text-transform: uppercase;">Dispensed Mass</span>
-            <strong style="color: #16A34A; font-size: 1.15rem;">${totalGiven.toFixed(1)} kg</strong>
+          <div style="padding: 12px; border-radius: 14px; background: ${cardBg2}; border: ${cardBorder2}; text-align: center;">
+            <span style="color: ${cardText2}; font-size: 0.72rem; display: block; font-weight: 700; text-transform: uppercase;">Dispensed Mass</span>
+            <strong style="color: ${cardText2}; font-size: 1.15rem;">${totalGiven.toFixed(1)} kg</strong>
           </div>
-          <div style="padding: 12px; border-radius: 14px; background: #F0F9FF; border: 1px solid #BAE6FD; text-align: center;">
-            <span style="color: #FC563C; font-size: 0.72rem; display: block; font-weight: 700; text-transform: uppercase;">Log Sessions</span>
-            <strong style="color: #FC563C; font-size: 1.15rem;">${pondLogs.length} Records</strong>
+          <div style="padding: 12px; border-radius: 14px; background: ${cardBg3}; border: ${cardBorder3}; text-align: center;">
+            <span style="color: ${cardText3}; font-size: 0.72rem; display: block; font-weight: 700; text-transform: uppercase;">Log Sessions</span>
+            <strong style="color: ${cardText3}; font-size: 1.15rem;">${pondLogs.length} Records</strong>
           </div>
         </div>
 
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-          <span style="font-weight: 700; color: #0F172A; font-size: 0.95rem;">Feeding Log Records (${dateLabel})</span>
+          <span style="font-weight: 700; color: ${titleColor}; font-size: 0.95rem;">Feeding Log Records (${dateLabel})</span>
           ${statusBadge}
         </div>
 
         <!-- FEEDING LOGS DETAILED TABLE -->
-        <div style="max-height: 320px; overflow-y: auto; border: 1px solid #E2E8F0; border-radius: 14px;">
+        <div style="max-height: 320px; overflow-y: auto; border: ${tableBorder}; border-radius: 14px; background: ${tableBg};">
           <table style="width: 100%; border-collapse: collapse; font-size: 0.8rem; text-align: left;">
-            <thead style="background: #E9E4E0; position: sticky; top: 0; z-index: 2; border-bottom: 1px solid #E2E8F0;">
+            <thead style="background: ${theadBg}; position: sticky; top: 0; z-index: 2; border-bottom: ${tableBorder};">
               <tr>
-                <th style="padding: 10px 14px; color: #475569; font-weight: 700;">Time Slot</th>
-                <th style="padding: 10px 12px; color: #475569; font-weight: 700;">Feed Formulation</th>
-                <th style="padding: 10px 12px; color: #475569; font-weight: 700;">Mass (kg)</th>
-                <th style="padding: 10px 12px; color: #475569; font-weight: 700;">Additives</th>
-                <th style="padding: 10px 12px; color: #475569; font-weight: 700;">Caretaker</th>
-                <th style="padding: 10px 14px; color: #475569; font-weight: 700;">Remarks</th>
+                <th style="padding: 10px 14px; color: ${thColor}; font-weight: 700;">Time Slot</th>
+                <th style="padding: 10px 12px; color: ${thColor}; font-weight: 700;">Feed Formulation</th>
+                <th style="padding: 10px 12px; color: ${thColor}; font-weight: 700;">Mass (kg)</th>
+                <th style="padding: 10px 12px; color: ${thColor}; font-weight: 700;">Additives</th>
+                <th style="padding: 10px 12px; color: ${thColor}; font-weight: 700;">Caretaker</th>
+                <th style="padding: 10px 14px; color: ${thColor}; font-weight: 700;">Remarks</th>
               </tr>
             </thead>
             <tbody>
               ${pondLogs.length === 0
-        ? `<tr><td colspan="6" style="text-align: center; padding: 24px; color: #94A3B8;">No feeding logs recorded for ${pondName} for ${dateLabel}.</td></tr>`
+        ? `<tr><td colspan="6" style="text-align: center; padding: 24px; color: ${mutedTextColor};">No feeding logs recorded for ${pondName} for ${dateLabel}.</td></tr>`
         : pondLogs
           .map(
             (l) => `
-                <tr style="border-bottom: 1px solid #F1F5F9;">
+                <tr style="border-bottom: ${rowBorder};">
                   <td style="padding: 10px 14px;">
-                    <span style="background: #F0F9FF; color: #FC563C; border: 1px solid #BAE6FD; font-weight: 700; padding: 3px 8px; border-radius: 9999px; font-size: 0.75rem;">${String(l.feeding_time || '6:00 AM').replace(/^0(\d:)/, '$1')}</span>
-                    <div style="font-size: 0.7rem; color: #94A3B8; margin-top: 3px;">${l.record_date || 'Today'}</div>
+                    <span style="background: ${timeBadgeBg}; color: ${timeBadgeColor}; border: ${timeBadgeBorder}; font-weight: 700; padding: 3px 8px; border-radius: 9999px; font-size: 0.75rem;">${String(l.feeding_time || '6:00 AM').replace(/^0(\d:)/, '$1')}</span>
+                    <div style="font-size: 0.7rem; color: ${mutedTextColor}; margin-top: 3px;">${l.record_date || 'Today'}</div>
                   </td>
-                  <td style="padding: 10px 12px; font-weight: 600; color: #1E293B;">${l.feed_type || 'Tateh - Starter'}</td>
-                  <td style="padding: 10px 12px; font-weight: 700; color: #16A34A; font-size: 0.92rem;">${l.amount_kg} kg</td>
-                  <td style="padding: 10px 12px;">${l.vitamin_name && l.vitamin_name !== 'None' ? `<span style="background: #ECFDF5; color: #16A34A; border: 1px solid #BBF7D0; padding: 2px 7px; border-radius: 9999px; font-size: 0.72rem; font-weight: 600;">+ ${l.vitamin_name}</span>` : '<span style="color: #94A3B8; font-size: 0.72rem;">None</span>'}</td>
+                  <td style="padding: 10px 12px; font-weight: 600; color: ${primaryTextColor};">${l.feed_type || 'Tateh - Starter'}</td>
+                  <td style="padding: 10px 12px; font-weight: 700; color: #10B981; font-size: 0.92rem;">${l.amount_kg} kg</td>
+                  <td style="padding: 10px 12px;">${l.vitamin_name && l.vitamin_name !== 'None' ? `<span style="background: ${cardBg2}; color: ${cardText2}; border: ${cardBorder2}; padding: 2px 7px; border-radius: 9999px; font-size: 0.72rem; font-weight: 600;">+ ${l.vitamin_name}</span>` : `<span style="color: ${mutedTextColor}; font-size: 0.72rem;">None</span>`}</td>
                   <td style="padding: 10px 12px;">
-                    <div style="font-weight: 600; color: #1E293B;">${assignedCaretakerName}</div>
-                    <div style="font-size: 0.7rem; color: #94A3B8;">Staff In-Charge</div>
+                    <div style="font-weight: 600; color: ${primaryTextColor};">${assignedCaretakerName}</div>
+                    <div style="font-size: 0.7rem; color: ${mutedTextColor};">Staff In-Charge</div>
                   </td>
-                  <td style="padding: 10px 14px; color: #64748B; font-size: 0.75rem; max-width: 200px; word-wrap: break-word;">
+                  <td style="padding: 10px 14px; color: ${subTextColor}; font-size: 0.75rem; max-width: 200px; word-wrap: break-word;">
                     ${l.notes || 'Normal feeding session completed.'}
                   </td>
                 </tr>`
@@ -1260,6 +1302,8 @@ export default function FeedingPage() {
       title: `<div style="display: flex; align-items: center; gap: 8px; font-family: 'Poppins', sans-serif;"><span style="color: #FC563C; font-weight: 800; font-size: 1.25rem;">Pond Feeding Logs Reports: ${pondName}</span></div>`,
       html: logHtml,
       width: 820,
+      background: isDark ? '#1E293B' : '#FFFFFF',
+      color: isDark ? '#FFFFFF' : '#0F172A',
       showCloseButton: true,
       confirmButtonColor: '#FC563C',
       confirmButtonText: 'Done / Close Log View'
@@ -1630,10 +1674,6 @@ export default function FeedingPage() {
                 <span className="rounded-circle" style={{ width: 8, height: 8, background: '#16A34A' }}></span>
                 Grower Plus
               </span>
-              <span className="d-flex align-items-center gap-1.5">
-                <span className="rounded-circle" style={{ width: 8, height: 8, background: '#FC563C' }}></span>
-                Finisher Max
-              </span>
             </div>
           </div>
         </div>
@@ -1804,153 +1844,153 @@ export default function FeedingPage() {
                     <th className="pe-3 py-2.5 text-end" style={{ minWidth: 90 }}>{t('Actions')}</th>
                   </tr>
                 </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan="8" className="text-center py-5 text-muted">
-                      <FaSync className="fa-spin me-2 text-primary" /> {t('Loading live pond feeding records...')}
-                    </td>
-                  </tr>
-                ) : perPondRecords.length === 0 ? (
-                  <tr>
-                    <td colSpan="8" className="text-center py-5 text-muted">
-                      {t('No active pond feeding records found for the selected stage and date filter.')}
-                    </td>
-                  </tr>
-                ) : (
-                  perPondRecords.map((p) => (
-                    <tr key={p.pond_id} className="border-bottom">
-                      <td className="ps-3 py-2">
-                        <span
-                          className="badge rounded-pill fw-bold px-2 py-1 d-inline-flex align-items-center gap-1 text-truncate"
-                          style={{ background: 'rgba(252, 86, 60, 0.08)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.16)', fontSize: '0.78rem', maxWidth: '100%' }}
-                          title={p.pond_name}
-                        >
-                          <FaWater size={10} /> {p.pond_name}
-                        </span>
-                      </td>
-                      <td className="py-2">
-                        {p.isNursery ? (
-                          <span
-                            className="badge rounded-pill px-2 py-1 fw-bold d-inline-flex align-items-center gap-1 text-truncate"
-                            style={{ background: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0', fontSize: '0.74rem', maxWidth: '100%' }}
-                          >
-                            {p.doc ? `${t('Day')} ${p.doc}` : 'DOC 1-19'} • {t('Nursery')}
-                          </span>
-                        ) : p.isGrowout ? (
-                          <span
-                            className="badge rounded-pill px-2 py-1 fw-bold d-inline-flex align-items-center gap-1 text-truncate"
-                            style={{ background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', fontSize: '0.74rem', maxWidth: '100%' }}
-                          >
-                            {p.doc ? `${t('Day')} ${p.doc}` : 'DOC 20+'} • {t('Grow-out')}
-                          </span>
-                        ) : (
-                          <span className="badge bg-light text-muted border extra-small">{t('Pre-Stocking')}</span>
-                        )}
-                      </td>
-                      <td className="py-2">
-                        <div className="fw-bold text-dark text-truncate" style={{ fontSize: '0.78rem' }} title={t(p.feed_type)}>{t(p.feed_type)}</div>
-                        <span className="extra-small text-muted text-truncate d-block" style={{ fontSize: '0.70rem' }}>{t('Target:')} {p.expectedFeed}</span>
-                      </td>
-                      <td className="py-2">
-                        <span className="fw-semibold text-secondary" style={{ fontSize: '0.78rem' }}>{p.target_feed_kg.toFixed(1)} kg</span>
-                      </td>
-                      <td className="py-2">
-                        <div className="d-flex align-items-center justify-content-between mb-1" style={{ fontSize: '0.76rem' }}>
-                          <strong className="text-dark">
-                            {p.actual_given_kg.toFixed(1)} kg
-                          </strong>
-                          <span className="extra-small text-muted">{t('of')} {p.target_feed_kg.toFixed(1)} kg</span>
-                        </div>
-                        <div className="feeding-progress-track" style={{ height: 5 }}>
-                          <div
-                            className="feeding-progress-bar"
-                            style={{
-                              width: `${Math.min(100, p.compliance)}%`,
-                              background:
-                                p.compliance > 110
-                                  ? '#FC563C'
-                                  : p.compliance >= 85
-                                    ? '#16A34A'
-                                    : p.compliance > 0
-                                      ? '#E11D48'
-                                      : '#CBD5E1'
-                            }}
-                          ></div>
-                        </div>
-                      </td>
-                      <td className="py-2">
-                        <span
-                          className="badge rounded-pill px-2 py-1 fw-bold extra-small text-truncate d-inline-block"
-                          style={{
-                            maxWidth: '100%',
-                            fontSize: '0.72rem',
-                            background: p.statusBg,
-                            color: p.statusText,
-                            border: `1px solid ${p.statusBorder}`
-                          }}
-                        >
-                          {t(p.status)} ({p.compliance}%)
-                        </span>
-                      </td>
-                      <td className="py-2">
-                        <div className="d-flex align-items-center gap-1.5" title={p.assigned_caretaker}>
-                          <div
-                            className="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white flex-shrink-0"
-                            style={{ width: 22, height: 22, fontSize: '0.68rem', background: '#FC563C' }}
-                          >
-                            {(p.assigned_caretaker || 'C').charAt(0).toUpperCase()}
-                          </div>
-                          <div className="text-truncate flex-grow-1">
-                            <span className="fw-bold text-dark text-truncate d-block" style={{ fontSize: '0.78rem' }}>{p.assigned_caretaker}</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="pe-3 py-2 text-end">
-                        <div className="d-inline-flex align-items-center gap-1 justify-content-end">
-                          <button
-                            type="button"
-                            className="btn btn-sm rounded-pill px-2 py-0.5 fw-semibold d-inline-flex align-items-center gap-1 shadow-xs"
-                            style={{
-                              fontSize: '0.72rem',
-                              background: '#F0F9FF',
-                              color: '#FC563C',
-                              border: '1px solid #BAE6FD'
-                            }}
-                            onClick={() => handleViewPondLogs(p.pond_name, p.pond_id)}
-                            title="Inspect Detailed Feeding Sessions"
-                          >
-                            <FaEye size={10} /> {t('Logs')}
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn-sm rounded-pill px-1.5 py-0.5 fw-semibold d-inline-flex align-items-center shadow-xs"
-                            style={{
-                              fontSize: '0.72rem',
-                              background: '#E9E4E0',
-                              color: '#475569',
-                              border: '1px solid #CBD5E1'
-                            }}
-                            onClick={() => {
-                              const originalPond = ponds.find((pond) => String(pond.id) === String(p.pond_id) || pond.pond_name === p.pond_name) || {
-                                id: p.pond_id,
-                                pond_name: p.pond_name,
-                                stocking_date: p.stocking_date,
-                              };
-                              setCalendarModalPond(originalPond);
-                            }}
-                            title="Inspect Culture Cycle Calendar"
-                          >
-                            <FaCalendarAlt size={10} />
-                          </button>
-                        </div>
+                <tbody>
+                  {loading ? (
+                    <tr>
+                      <td colSpan="8" className="text-center py-5 text-muted">
+                        <FaSync className="fa-spin me-2 text-primary" /> {t('Loading live pond feeding records...')}
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  ) : perPondRecords.length === 0 ? (
+                    <tr>
+                      <td colSpan="8" className="text-center py-5 text-muted">
+                        {t('No active pond feeding records found for the selected stage and date filter.')}
+                      </td>
+                    </tr>
+                  ) : (
+                    perPondRecords.map((p) => (
+                      <tr key={p.pond_id} className="border-bottom">
+                        <td className="ps-3 py-2">
+                          <span
+                            className="badge rounded-pill fw-bold px-2 py-1 d-inline-flex align-items-center gap-1 text-truncate"
+                            style={{ background: 'rgba(252, 86, 60, 0.08)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.16)', fontSize: '0.78rem', maxWidth: '100%' }}
+                            title={p.pond_name}
+                          >
+                            <FaWater size={10} /> {p.pond_name}
+                          </span>
+                        </td>
+                        <td className="py-2">
+                          {p.isNursery ? (
+                            <span
+                              className="badge rounded-pill px-2 py-1 fw-bold d-inline-flex align-items-center gap-1 text-truncate"
+                              style={{ background: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0', fontSize: '0.74rem', maxWidth: '100%' }}
+                            >
+                              {p.doc ? `${t('Day')} ${p.doc}` : 'DOC 1-19'} • {t('Nursery')}
+                            </span>
+                          ) : p.isGrowout ? (
+                            <span
+                              className="badge rounded-pill px-2 py-1 fw-bold d-inline-flex align-items-center gap-1 text-truncate"
+                              style={{ background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', fontSize: '0.74rem', maxWidth: '100%' }}
+                            >
+                              {p.doc ? `${t('Day')} ${p.doc}` : 'DOC 20+'} • {t('Grow-out')}
+                            </span>
+                          ) : (
+                            <span className="badge bg-light text-muted border extra-small">{t('Pre-Stocking')}</span>
+                          )}
+                        </td>
+                        <td className="py-2">
+                          <div className="fw-bold text-dark text-truncate" style={{ fontSize: '0.78rem' }} title={t(p.feed_type)}>{t(p.feed_type)}</div>
+                          <span className="extra-small text-muted text-truncate d-block" style={{ fontSize: '0.70rem' }}>{t('Target:')} {p.expectedFeed}</span>
+                        </td>
+                        <td className="py-2">
+                          <span className="fw-semibold text-secondary" style={{ fontSize: '0.78rem' }}>{p.target_feed_kg.toFixed(1)} kg</span>
+                        </td>
+                        <td className="py-2">
+                          <div className="d-flex align-items-center justify-content-between mb-1" style={{ fontSize: '0.76rem' }}>
+                            <strong className="text-dark">
+                              {p.actual_given_kg.toFixed(1)} kg
+                            </strong>
+                            <span className="extra-small text-muted">{t('of')} {p.target_feed_kg.toFixed(1)} kg</span>
+                          </div>
+                          <div className="feeding-progress-track" style={{ height: 5 }}>
+                            <div
+                              className="feeding-progress-bar"
+                              style={{
+                                width: `${Math.min(100, p.compliance)}%`,
+                                background:
+                                  p.compliance > 110
+                                    ? '#FC563C'
+                                    : p.compliance >= 85
+                                      ? '#16A34A'
+                                      : p.compliance > 0
+                                        ? '#E11D48'
+                                        : '#CBD5E1'
+                              }}
+                            ></div>
+                          </div>
+                        </td>
+                        <td className="py-2">
+                          <span
+                            className="badge rounded-pill px-2 py-1 fw-bold extra-small text-truncate d-inline-block"
+                            style={{
+                              maxWidth: '100%',
+                              fontSize: '0.72rem',
+                              background: p.statusBg,
+                              color: p.statusText,
+                              border: `1px solid ${p.statusBorder}`
+                            }}
+                          >
+                            {t(p.status)} ({p.compliance}%)
+                          </span>
+                        </td>
+                        <td className="py-2">
+                          <div className="d-flex align-items-center gap-1.5" title={p.assigned_caretaker}>
+                            <div
+                              className="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white flex-shrink-0"
+                              style={{ width: 22, height: 22, fontSize: '0.68rem', background: '#FC563C' }}
+                            >
+                              {(p.assigned_caretaker || 'C').charAt(0).toUpperCase()}
+                            </div>
+                            <div className="text-truncate flex-grow-1">
+                              <span className="fw-bold text-dark text-truncate d-block" style={{ fontSize: '0.78rem' }}>{p.assigned_caretaker}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="pe-3 py-2 text-end">
+                          <div className="d-inline-flex align-items-center gap-1 justify-content-end">
+                            <button
+                              type="button"
+                              className="btn btn-sm rounded-pill px-2 py-0.5 fw-semibold d-inline-flex align-items-center gap-1 shadow-xs"
+                              style={{
+                                fontSize: '0.72rem',
+                                background: '#F0F9FF',
+                                color: '#FC563C',
+                                border: '1px solid #BAE6FD'
+                              }}
+                              onClick={() => handleViewPondLogs(p.pond_name, p.pond_id)}
+                              title="Inspect Detailed Feeding Sessions"
+                            >
+                              <FaEye size={10} /> {t('Logs')}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-sm rounded-pill px-1.5 py-0.5 fw-semibold d-inline-flex align-items-center shadow-xs"
+                              style={{
+                                fontSize: '0.72rem',
+                                background: '#E9E4E0',
+                                color: '#475569',
+                                border: '1px solid #CBD5E1'
+                              }}
+                              onClick={() => {
+                                const originalPond = ponds.find((pond) => String(pond.id) === String(p.pond_id) || pond.pond_name === p.pond_name) || {
+                                  id: p.pond_id,
+                                  pond_name: p.pond_name,
+                                  stocking_date: p.stocking_date,
+                                };
+                                setCalendarModalPond(originalPond);
+                              }}
+                              title="Inspect Culture Cycle Calendar"
+                            >
+                              <FaCalendarAlt size={10} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </>
         )}
 
@@ -1973,94 +2013,94 @@ export default function FeedingPage() {
                     <th className="pe-2 py-2.5" style={{ minWidth: 135 }}>{t('Remarks & Notes')}</th>
                   </tr>
                 </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan="7" className="text-center py-5 text-muted">
-                      <FaSync className="fa-spin me-2 text-primary" /> {t('Loading feeding log stream...')}
-                    </td>
-                  </tr>
-                ) : filteredRecords.length === 0 ? (
-                  <tr>
-                    <td colSpan="7" className="text-center py-5 text-muted">
-                      {t('No granular feeding logs found matching your filters.')}
-                    </td>
-                  </tr>
-                ) : (
-                  filteredRecords.map((r) => (
-                    <tr key={r.id} className="border-bottom">
-                      <td className="ps-3 py-3">
-                        <span
-                          className="badge rounded-pill fw-bold px-2.5 py-1"
-                          style={{ background: '#F0F9FF', color: '#FC563C', border: '1px solid #BAE6FD', fontSize: '0.78rem' }}
-                        >
-                          <FaClock size={10} className="me-1" />
-                          {String(r.feeding_time || '08:00 AM').replace(/^0(\d:)/, '$1')}
-                        </span>
-                        <div className="extra-small text-muted mt-1">{r.record_date || t('Today')}</div>
-                      </td>
-                      <td className="py-3">
-                        <strong className="text-dark d-block">{r.pond_name || `Pond #${r.pond_id}`}</strong>
-                        {r.isNursery ? (
-                          <span
-                            className="badge rounded-pill px-2 py-0.5 fw-bold extra-small mt-1"
-                            style={{ background: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0', fontSize: '0.68rem' }}
-                          >
-                            {r.doc ? `${t('Day')} ${r.doc}` : 'DOC 1-19'} • {t('Nursery')}
-                          </span>
-                        ) : r.isGrowout ? (
-                          <span
-                            className="badge rounded-pill px-2 py-0.5 fw-bold extra-small mt-1"
-                            style={{ background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', fontSize: '0.68rem' }}
-                          >
-                            {r.doc ? `${t('Day')} ${r.doc}` : 'DOC 20+'} • {t('Grow-out')}
-                          </span>
-                        ) : null}
-                      </td>
-                      <td className="py-3">
-                        <span className="fw-semibold text-dark">{t(r.feed_type || 'Starter Feed')}</span>
-                      </td>
-                      <td className="py-3">
-                        <span className="fw-extrabold text-success fs-6">{r.amount_kg} kg</span>
-                      </td>
-                      <td className="py-3">
-                        {String(r.feeding_time || '').trim().toUpperCase() === '6:00 PM' ? (
-                          <span
-                            className="badge rounded-pill px-2.5 py-1 fw-semibold extra-small"
-                            style={{ background: '#F1F5F9', color: '#475569', border: '1px solid #CBD5E1', fontSize: '0.72rem' }}
-                          >
-                            {t('5th Feed (No Vit)')}
-                          </span>
-                        ) : r.vitamin_name && r.vitamin_name !== 'None' ? (
-                          <span
-                            className="badge rounded-pill px-2.5 py-1 fw-bold"
-                            style={{ background: '#ECFDF5', color: '#16A34A', border: '1px solid #BBF7D0', fontSize: '0.72rem' }}
-                          >
-                            <FaCapsules size={10} className="me-1" /> + {r.vitamin_name}
-                          </span>
-                        ) : (
-                          <span className="text-muted extra-small">{t('None')}</span>
-                        )}
-                      </td>
-                      <td className="py-3">
-                        <span
-                          className="badge rounded-pill fw-bold px-2.5 py-1"
-                          style={{ background: 'rgba(252, 86, 60, 0.08)', color: '#FC563C', fontSize: '0.75rem' }}
-                        >
-                          <FaUserCheck size={10} className="me-1" /> {r.recorded_by_name || r.recorded_by || t('Caretaker')}
-                        </span>
-                      </td>
-                      <td className="pe-3 py-3">
-                        <span className="text-secondary extra-small d-block" style={{ maxWidth: 220, wordWrap: 'break-word' }}>
-                          {t(r.notes || 'Normal feeding session logged.')}
-                        </span>
+                <tbody>
+                  {loading ? (
+                    <tr>
+                      <td colSpan="7" className="text-center py-5 text-muted">
+                        <FaSync className="fa-spin me-2 text-primary" /> {t('Loading feeding log stream...')}
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  ) : filteredRecords.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" className="text-center py-5 text-muted">
+                        {t('No granular feeding logs found matching your filters.')}
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredRecords.map((r) => (
+                      <tr key={r.id} className="border-bottom">
+                        <td className="ps-3 py-3">
+                          <span
+                            className="badge rounded-pill fw-bold px-2.5 py-1"
+                            style={{ background: '#F0F9FF', color: '#FC563C', border: '1px solid #BAE6FD', fontSize: '0.78rem' }}
+                          >
+                            <FaClock size={10} className="me-1" />
+                            {String(r.feeding_time || '08:00 AM').replace(/^0(\d:)/, '$1')}
+                          </span>
+                          <div className="extra-small text-muted mt-1">{r.record_date || t('Today')}</div>
+                        </td>
+                        <td className="py-3">
+                          <strong className="text-dark d-block">{r.pond_name || `Pond #${r.pond_id}`}</strong>
+                          {r.isNursery ? (
+                            <span
+                              className="badge rounded-pill px-2 py-0.5 fw-bold extra-small mt-1"
+                              style={{ background: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0', fontSize: '0.68rem' }}
+                            >
+                              {r.doc ? `${t('Day')} ${r.doc}` : 'DOC 1-19'} • {t('Nursery')}
+                            </span>
+                          ) : r.isGrowout ? (
+                            <span
+                              className="badge rounded-pill px-2 py-0.5 fw-bold extra-small mt-1"
+                              style={{ background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', fontSize: '0.68rem' }}
+                            >
+                              {r.doc ? `${t('Day')} ${r.doc}` : 'DOC 20+'} • {t('Grow-out')}
+                            </span>
+                          ) : null}
+                        </td>
+                        <td className="py-3">
+                          <span className="fw-semibold text-dark">{t(r.feed_type || 'Starter Feed')}</span>
+                        </td>
+                        <td className="py-3">
+                          <span className="fw-extrabold text-success fs-6">{r.amount_kg} kg</span>
+                        </td>
+                        <td className="py-3">
+                          {String(r.feeding_time || '').trim().toUpperCase() === '6:00 PM' ? (
+                            <span
+                              className="badge rounded-pill px-2.5 py-1 fw-semibold extra-small"
+                              style={{ background: '#F1F5F9', color: '#475569', border: '1px solid #CBD5E1', fontSize: '0.72rem' }}
+                            >
+                              {t('5th Feed (No Vit)')}
+                            </span>
+                          ) : r.vitamin_name && r.vitamin_name !== 'None' ? (
+                            <span
+                              className="badge rounded-pill px-2.5 py-1 fw-bold"
+                              style={{ background: '#ECFDF5', color: '#16A34A', border: '1px solid #BBF7D0', fontSize: '0.72rem' }}
+                            >
+                              <FaCapsules size={10} className="me-1" /> + {r.vitamin_name}
+                            </span>
+                          ) : (
+                            <span className="text-muted extra-small">{t('None')}</span>
+                          )}
+                        </td>
+                        <td className="py-3">
+                          <span
+                            className="badge rounded-pill fw-bold px-2.5 py-1"
+                            style={{ background: 'rgba(252, 86, 60, 0.08)', color: '#FC563C', fontSize: '0.75rem' }}
+                          >
+                            <FaUserCheck size={10} className="me-1" /> {r.recorded_by_name || r.recorded_by || t('Caretaker')}
+                          </span>
+                        </td>
+                        <td className="pe-3 py-3">
+                          <span className="text-secondary extra-small d-block" style={{ maxWidth: 220, wordWrap: 'break-word' }}>
+                            {t(r.notes || 'Normal feeding session logged.')}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </>
         )}
       </div>
@@ -2187,10 +2227,10 @@ export default function FeedingPage() {
                               key={tSlot}
                               type="button"
                               className={`btn btn-sm rounded-pill px-3 py-1.5 extra-small fw-bold transition-all d-flex align-items-center gap-1.5 ${isSelected
-                                  ? 'btn-primary shadow-sm text-white'
-                                  : logged
-                                    ? 'bg-success bg-opacity-10 text-success border border-success border-opacity-25'
-                                    : 'bg-light text-dark border'
+                                ? 'btn-primary shadow-sm text-white'
+                                : logged
+                                  ? 'bg-success bg-opacity-10 text-success border border-success border-opacity-25'
+                                  : 'bg-light text-dark border'
                                 }`}
                               onClick={() => handleAdminSlotChange(tSlot)}
                             >

@@ -2362,111 +2362,7 @@ export default function DiseaseScanPage() {
 
                 </div>
 
-
-
-                <button
-
-                  type="button"
-
-                  className={`caretaker-scan-submit-btn btn btn-sm px-4 py-2 fw-bold extra-small flex-shrink-0 shadow-2xs rounded-3 text-white ${scanReady ? 'disease-step-button-active' : ''}`}
-
-                  style={{ minWidth: 130, backgroundColor: '#FC563C' }}
-
-                  onClick={() => handleScan(false)}
-
-                  disabled={!scanReady}
-
-                >
-
-                  {scanning ? <FaSpinner className="disease-spin" /> : <FaQrcode />}
-
-                  {scanning
-
-                    ? t('diseaseScan.action.analyzing', 'Analyzing…')
-
-                    : t('diseaseScan.action.scanShrimp', 'Scan Shrimp')}
-
-                </button>
-
               </div>
-
-            </div>
-
-
-
-            {/* Literature Benchmark Accordion */}
-
-            <div
-
-              className="mt-4 rounded-3 overflow-hidden bg-light border"
-
-              style={{ borderColor: '#E2E8F0' }}
-
-            >
-
-              <details>
-
-                <summary className="fw-bold p-3 extra-small text-dark" style={{ cursor: 'pointer', listStyle: 'none' }}>
-
-                  <FaInfoCircle className="me-2 text-primary" />
-
-                  View Model Accuracy Literature &amp; Research Baselines
-
-                </summary>
-
-                <div className="p-3 pt-0 border-top" style={{ fontSize: '0.82rem', borderColor: '#E2E8F0' }}>
-
-                  <p className="mb-2 text-muted extra-small">Current detection baselines established by scientific literature:</p>
-
-                  <ul className="mb-0 extra-small ps-3">
-
-                    <li className="mb-1.5">
-
-                      <strong>Advanced CNN (LeNet) Precision:</strong> Up to 96.1% Precision for <i>Penaeus vannamei</i> disease classification.
-
-                      <a href="https://doi.org/10.1016/j.aquaeng.2022.102296" target="_blank" rel="noopener noreferrer" className="ms-1 fw-bold text-decoration-none" style={{ color: '#FC563C' }}>
-
-                        (Read Study)
-
-                      </a>
-
-                    </li>
-
-                    <li className="mb-1.5">
-
-                      <strong>Deep Learning (YOLOv8):</strong> 92.0% mean Average Precision (mAP) for healthy vs. diseased classification.
-
-                      <a href="https://scholar.google.com/scholar?q=Video-Based+Disease+Detection+in+Vannamei+Shrimp+Using+YOLOv8" target="_blank" rel="noopener noreferrer" className="ms-1 fw-bold text-decoration-none" style={{ color: '#FC563C' }}>
-
-                        (Search Scholar)
-
-                      </a>
-
-                    </li>
-
-                    <li className="mb-0">
-
-                      <strong>WSSV Specific Detection (ANN/DL):</strong> 90.0% Accuracy Rate.
-
-                      <a href="https://scholar.google.com/scholar?q=Shrimp+disease+detection+using+deep+learning+techniques" target="_blank" rel="noopener noreferrer" className="ms-1 fw-bold text-decoration-none" style={{ color: '#FC563C' }}>
-
-                        (Search Scholar)
-
-                      </a>
-
-                    </li>
-
-                  </ul>
-
-                  <p className="mt-2 mb-0 extra-small text-muted fst-italic">
-
-                    *Our system utilizes an EfficientNet/CNN transfer learning pipeline targeted to perform within or above these literature baselines.
-
-                  </p>
-
-                </div>
-
-              </details>
 
             </div>
 
@@ -2714,7 +2610,7 @@ export default function DiseaseScanPage() {
 
                               ? t('diseaseScan.guide.stepTwoScanningCopy', 'The image is being analyzed. Keep this page open while the scan finishes.')
 
-                              : t('diseaseScan.guide.stepTwoReadyCopy', 'Once the photo is ready, select the pulsing Scan Shrimp button to start the assessment.')}
+                              : t('diseaseScan.guide.stepTwoReadyCopy', 'Once the photo is selected, the system automatically analyzes and classifies shrimp health.')}
 
                           </p>
 
@@ -3760,7 +3656,7 @@ export default function DiseaseScanPage() {
 
                     >
 
-                      {['Low', 'Medium', 'High', 'Critical'].map((severity) => (
+                      {['Low', 'Medium', 'High'].map((severity) => (
 
                         <option key={severity} value={severity}>
 

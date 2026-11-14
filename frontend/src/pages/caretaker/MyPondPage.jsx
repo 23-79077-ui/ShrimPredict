@@ -159,6 +159,40 @@ export default function MyPondPage() {
   const todayDateStr = recordDate || defaultDateStr;
   const isPastDate = todayDateStr !== defaultDateStr;
 
+  // Missed days lockout state for sequential logging integrity
+  const [missedDaysInfo, setMissedDaysInfo] = useState({
+    hasMissedDays: false,
+    missedDates: [],
+    firstMissedDate: null,
+  });
+
+  const fetchMissedDays = useCallback(async (pondId, targetDate) => {
+    if (!pondId) {
+      setMissedDaysInfo({ hasMissedDays: false, missedDates: [], firstMissedDate: null });
+      return;
+    }
+    try {
+      const res = await api.get('/feeding_records.php', {
+        params: {
+          action: 'check_missed_days',
+          pond_id: pondId,
+          target_date: targetDate || defaultDateStr,
+        },
+      });
+      if (res.data?.success) {
+        setMissedDaysInfo({
+          hasMissedDays: Boolean(res.data.has_missed_days),
+          missedDates: Array.isArray(res.data.missed_dates) ? res.data.missed_dates : [],
+          firstMissedDate: res.data.first_missed_date || null,
+        });
+      }
+    } catch (err) {
+      console.error('Error checking missed days:', err);
+    }
+  }, [defaultDateStr]);
+
+  const isLockedByMissedDays = !isPastDate && missedDaysInfo.hasMissedDays;
+
   // Filter ponds by culture stage relative to selected date: 'all' | 'nursery' | 'growout'
   const [stageFilter, setStageFilter] = useState('all');
   const [showCycleCalendar, setShowCycleCalendar] = useState(false);
@@ -200,7 +234,7 @@ export default function MyPondPage() {
       pondId: String(targetPond.id),
       slot: taskEntry.slot,
     };
-    setRecordDate(defaultDateStr);
+    setRecordDate(taskEntry.targetDate || defaultDateStr);
     setSelectedPondId(String(targetPond.id));
     setShowFeedingModal(true);
     navigate(location.pathname, { replace: true, state: null });
@@ -501,6 +535,7 @@ export default function MyPondPage() {
     fetchTodayLogs(selectedPondId);
     fetchWaterQualityStatus(selectedPondId);
     fetchPreviousDayLastFeed(selectedPondId, todayDateStr);
+    fetchMissedDays(selectedPondId, defaultDateStr);
 
     const handleUpdate = (event) => {
       const { pond_id, record } = event?.detail || {};
@@ -520,6 +555,7 @@ export default function MyPondPage() {
       fetchTodayLogs(selectedPondId);
       fetchWaterQualityStatus(selectedPondId);
       fetchPreviousDayLastFeed(selectedPondId, todayDateStr);
+      fetchMissedDays(selectedPondId, defaultDateStr);
     };
 
     window.addEventListener('shrim-feed-updated', handleUpdate);
@@ -531,7 +567,7 @@ export default function MyPondPage() {
       window.removeEventListener('shrim-water-quality-updated', handleUpdate);
       window.removeEventListener('storage', handleUpdate);
     };
-  }, [selectedPondId, todayDateStr, fetchTodayLogs, fetchWaterQualityStatus, fetchPreviousDayLastFeed]);
+  }, [selectedPondId, todayDateStr, defaultDateStr, fetchTodayLogs, fetchWaterQualityStatus, fetchPreviousDayLastFeed, fetchMissedDays]);
 
   // When previous day last feed is loaded and 6:00 AM is unlogged, auto-fill 6:00 AM feed amount
   useEffect(() => {
@@ -991,6 +1027,11 @@ export default function MyPondPage() {
               <strong class="d-block text-dark" style="font-size: 0.95rem; font-weight: 700;">All 4 Check Trays Consumed</strong>
             </label>
           </div>
+          <div class="mb-2">
+            <label for="input_remaining_tray_g" class="form-label small fw-semibold text-dark mb-1">Remaining Feed in Trays (grams, out of 80g)</label>
+            <input type="number" id="input_remaining_tray_g" class="form-control form-control-sm" min="0" max="80" step="1" value="15" />
+            <div id="tray_consumption_preview" class="extra-small text-muted mt-1">Estimated consumption: 81.25% &bull; Next dosage adjusted by -2 kg</div>
+          </div>
         </div>
       `,
       didOpen: () => {
@@ -998,6 +1039,16 @@ export default function MyPondPage() {
         const l2 = document.getElementById('lbl-tray-consumed');
         const r1 = document.getElementById('opt_tray_leftover');
         const r2 = document.getElementById('opt_tray_consumed');
+        const remInput = document.getElementById('input_remaining_tray_g');
+        const previewEl = document.getElementById('tray_consumption_preview');
+        const updatePreview = () => {
+          const rem = Math.max(0, Math.min(80, parseFloat(remInput?.value || '0') || 0));
+          const pct = Math.round(((80 - rem) / 80) * 10000) / 100;
+          const isConsumed = Boolean(r2 && r2.checked);
+          if (previewEl) {
+            previewEl.textContent = `Estimated consumption: ${isConsumed ? 100 : pct}% • Next dosage: ${isConsumed ? amountIfConsumedKg : amountIfLeftoverKg} kg`;
+          }
+        };
         const updateStyles = () => {
           if (r1 && r1.checked) {
             if (l1) l1.style.border = '2px solid #FC563C';
@@ -1005,8 +1056,11 @@ export default function MyPondPage() {
           } else if (r2 && r2.checked) {
             if (l2) l2.style.border = '2px solid #FC563C';
             if (l1) l1.style.border = '1.5px solid #CBD5E1';
+            if (remInput) remInput.value = '0';
           }
+          updatePreview();
         };
+        if (remInput) remInput.oninput = updatePreview;
         if (l1 && r1) {
           l1.onclick = () => { r1.checked = true; updateStyles(); };
           r1.onchange = updateStyles;
@@ -1021,7 +1075,11 @@ export default function MyPondPage() {
       cancelButtonText: 'Skip Inspection',
       preConfirm: () => {
         const checked = document.querySelector('input[name="tray_status"]:checked');
-        return checked ? checked.value : 'leftover';
+        const remVal = parseFloat(document.getElementById('input_remaining_tray_g')?.value || '0');
+        return {
+          statusValue: checked ? checked.value : 'leftover',
+          remainingGrams: checked?.value === 'consumed' ? 0 : Math.max(0, Number.isFinite(remVal) ? remVal : 0),
+        };
       },
     });
 
@@ -1044,23 +1102,25 @@ export default function MyPondPage() {
       return null;
     }
 
+    const statusChoice = typeof value === 'object' ? value.statusValue : value;
+    const remTrayG = typeof value === 'object' ? (Number(value.remainingGrams) || 0) : (statusChoice === 'consumed' ? 0 : 15);
+    const consumptionPct = Math.round(Math.max(0, Math.min(100, ((80 - Math.min(80, remTrayG)) / 80) * 100)) * 100) / 100;
+
     let suggestedGrams = amountIfLeftoverGrams;
     let suggestedKg = amountIfLeftoverKg;
-    let statusLabel = 'Unconsumed Feed Detected (-2kg)';
+    let statusLabel = `Unconsumed Feed Detected (${remTrayG}g left • ${consumptionPct}% consumed • -2kg)`;
 
-    if (value === 'consumed') {
+    if (statusChoice === 'consumed') {
       suggestedGrams = amountIfConsumedGrams;
       suggestedKg = amountIfConsumedKg;
-      statusLabel = 'Completely Consumed (Empty, +1kg)';
-    } else {
-      suggestedGrams = amountIfLeftoverGrams;
-      suggestedKg = amountIfLeftoverKg;
-      statusLabel = 'Unconsumed Feed Detected (-2kg)';
+      statusLabel = 'Completely Consumed (Empty • 100% consumed • +1kg)';
     }
 
     const monitoringResult = {
       status: statusLabel,
-      trayStatusValue: value,
+      trayStatusValue: statusChoice,
+      remainingTrayFeedGrams: remTrayG,
+      consumptionPercentage: statusChoice === 'consumed' ? 100 : consumptionPct,
       suggestedAmountKg: suggestedKg,
       suggestedAmountGrams: suggestedGrams,
     };
@@ -1125,6 +1185,22 @@ export default function MyPondPage() {
         setIsOcrModalOpen(true);
         return;
       }
+    }
+
+    if (isLockedByMissedDays) {
+      Swal.fire({
+        icon: 'warning',
+        title: "Today's Logs Are Locked",
+        text: `You missed logging feeding entries for past day(s) (${missedDaysInfo.firstMissedDate}). Farm protocol requires logging missed days before recording today.`,
+        confirmButtonText: `Log for ${missedDaysInfo.firstMissedDate}`,
+        showCancelButton: true,
+        confirmButtonColor: '#FC563C',
+      }).then((result) => {
+        if (result.isConfirmed && missedDaysInfo.firstMissedDate) {
+          setRecordDate(missedDaysInfo.firstMissedDate);
+        }
+      });
+      return;
     }
 
     const form = formState[selectedPondId] || emptyForm;
@@ -1234,6 +1310,9 @@ export default function MyPondPage() {
         total_tray_feed_grams: Number(totalTrayFeedGrams.toFixed(2)),
         broadcast_feed_kg: Number(broadcastFeedKg.toFixed(3)),
         tray_monitoring_status: trayMonitoring?.status || trayMonitoring,
+        remaining_tray_feed_grams: trayMonitoring?.remainingTrayFeedGrams ?? undefined,
+        consumption_percentage: trayMonitoring?.consumptionPercentage ?? undefined,
+        recommended_next_feed_kg: trayMonitoring?.suggestedAmountKg ?? undefined,
         notes: [form.notes, trayNotes].filter(Boolean).join(' | '),
         record_date: todayDateStr,
         recorded_by: user?.full_name || 'Caretaker',
@@ -1698,8 +1777,63 @@ export default function MyPondPage() {
               >
                 <FaEdit size={11} /> Re-scan / Edit
               </button>
+              <button
+                type="button"
+                className="btn btn-sm text-white px-3.5 py-1.5 extra-small fw-bold shadow-2xs rounded-3 d-flex align-items-center gap-1.5"
+                style={{ backgroundColor: isLockedByMissedDays ? '#DC2626' : '#FC563C' }}
+                onClick={() => setShowFeedingModal(true)}
+              >
+                {isLockedByMissedDays ? <FaLock size={11} /> : <FaUtensils size={11} />}
+                {isLockedByMissedDays ? 'Today Locked (Catch Up)' : 'Log Feeding'}
+              </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* MISSED DAYS LOCKOUT ALERT BANNER (PAGE LEVEL) */}
+      {isLockedByMissedDays && (
+        <div
+          className="bg-white border rounded-4 p-3.5 mb-4 d-flex justify-content-between align-items-center flex-wrap gap-3 shadow-2xs"
+          style={{
+            borderColor: '#F87171',
+            borderLeft: '4.5px solid #EF4444',
+            backgroundColor: isDark ? 'rgba(239, 68, 68, 0.12)' : '#FEF2F2',
+          }}
+        >
+          <div className="d-flex align-items-center gap-3">
+            <div
+              className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+              style={{ width: 44, height: 44, background: '#FEE2E2', color: '#DC2626', fontSize: '1.25rem' }}
+            >
+              <FaLock />
+            </div>
+            <div>
+              <div className="d-flex align-items-center gap-2 flex-wrap">
+                <h6 className="fw-bold mb-0 text-dark">
+                  Today's Logs Are Locked — Missed Past Day Logs
+                </h6>
+                <span className="badge rounded-pill extra-small fw-bold bg-danger text-white">
+                  Sequential Lock Active
+                </span>
+              </div>
+              <p className="extra-small text-muted mb-0 mt-1" style={{ maxWidth: 660, lineHeight: 1.5 }}>
+                You missed logging feeding entries on <strong>{missedDaysInfo.firstMissedDate}</strong>
+                {missedDaysInfo.missedDates.length > 1 ? ` (plus ${missedDaysInfo.missedDates.length - 1} other missed date(s))` : ''}.
+                Farm protocol requires all daily logs to be recorded sequentially. Today's logs are locked until the missed days are logged.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn btn-sm btn-danger fw-bold px-3 py-2 rounded-3 text-nowrap shadow-xs hover-lift d-flex align-items-center gap-2"
+            onClick={() => {
+              setRecordDate(missedDaysInfo.firstMissedDate);
+              setShowFeedingModal(true);
+            }}
+          >
+            <FaCalendarAlt /> Catch Up: Log for {missedDaysInfo.firstMissedDate}
+          </button>
         </div>
       )}
 
@@ -1776,6 +1910,27 @@ export default function MyPondPage() {
                 />
               </div>
               <div className="modal-body p-2 p-md-3">
+      {/* MISSED DAYS ALERT INSIDE MODAL */}
+      {isLockedByMissedDays && (
+        <div
+          className="alert alert-danger border border-danger-subtle rounded-3 p-3 mb-3 d-flex align-items-center justify-content-between flex-wrap gap-2"
+          role="alert"
+        >
+          <div className="d-flex align-items-center gap-2">
+            <FaLock className="text-danger flex-shrink-0" size={18} />
+            <span className="extra-small">
+              <strong>Today's logs are locked:</strong> You missed logging on <strong>{missedDaysInfo.firstMissedDate}</strong>. Daily feeding logs must be completed sequentially before recording today.
+            </span>
+          </div>
+          <button
+            type="button"
+            className="btn btn-sm btn-danger fw-bold extra-small"
+            onClick={() => setRecordDate(missedDaysInfo.firstMissedDate)}
+          >
+            Switch to {missedDaysInfo.firstMissedDate}
+          </button>
+        </div>
+      )}
       {/* Main Feeding Form Panel Card */}
       <div className="bg-white border rounded-4 p-4 p-md-4.5 mb-4 shadow-2xs" style={{ borderColor: '#E2E8F0' }}>
         <div>
@@ -2280,12 +2435,16 @@ export default function MyPondPage() {
             ) : (
               <button
                 type="button"
-                className="btn btn-tri-navy btn-lg w-100 py-2.5 fw-bold d-flex align-items-center justify-content-center gap-2 shadow-sm"
-                disabled={submitting || (allSlotsCompleted && !editingRecord)}
+                className={`btn btn-lg w-100 py-2.5 fw-bold d-flex align-items-center justify-content-center gap-2 shadow-sm ${isLockedByMissedDays ? 'btn-danger' : 'btn-tri-navy'}`}
+                disabled={submitting || (allSlotsCompleted && !editingRecord) || isLockedByMissedDays}
                 onClick={handleSubmit}
               >
                 {submitting ? (
                   'Saving...'
+                ) : isLockedByMissedDays ? (
+                  <>
+                    <FaLock /> Logs Locked — Complete {missedDaysInfo.firstMissedDate} First
+                  </>
                 ) : (
                   <>
                     <FaPlus /> {isPastDate ? `Save Past Feeding Entry (${todayDateStr} • ${currentForm.feedingTime})` : `Log Feeding for ${selectedPond?.pond_name || 'Selected Pond'} (${currentForm.feedingTime})`}

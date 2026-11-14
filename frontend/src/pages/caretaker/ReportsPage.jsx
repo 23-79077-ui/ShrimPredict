@@ -108,7 +108,6 @@ const SEVERITY_LEVELS = [
   { value: 'Low', label: 'Low', desc: 'Routine observation', colorClass: 'low' },
   { value: 'Medium', label: 'Medium', desc: 'Attention in 24h', colorClass: 'medium' },
   { value: 'High', label: 'High', desc: 'Urgent risk', colorClass: 'high' },
-  { value: 'Critical', label: 'Critical', desc: 'Immediate threat', colorClass: 'critical' },
 ];
 
 export default function ReportsPage() {
@@ -1081,7 +1080,6 @@ export default function ReportsPage() {
                 onChange={(e) => setHistorySeverityFilter(e.target.value)}
               >
                 <option value="all">All Severity</option>
-                <option value="Critical">Critical</option>
                 <option value="High">High</option>
                 <option value="Medium">Medium</option>
                 <option value="Low">Low</option>
@@ -1167,27 +1165,26 @@ export default function ReportsPage() {
                                 sev === 'Critical'
                                   ? 'rgba(185, 28, 28, 0.12)'
                                   : sev === 'High'
-                                  ? 'rgba(225, 29, 72, 0.12)'
-                                  : sev === 'Medium'
-                                  ? (isDark ? 'rgba(252, 86, 60, 0.18)' : '#FFF1ED')
-                                  : 'rgba(16, 185, 129, 0.12)',
+                                    ? 'rgba(225, 29, 72, 0.12)'
+                                    : sev === 'Medium'
+                                      ? (isDark ? 'rgba(252, 86, 60, 0.18)' : '#FFF1ED')
+                                      : 'rgba(16, 185, 129, 0.12)',
                               color:
                                 sev === 'Critical'
                                   ? '#B91C1C'
                                   : sev === 'High'
-                                  ? '#E11D48'
-                                  : sev === 'Medium'
-                                  ? (isDark ? '#FF8A75' : '#C2410C')
-                                  : '#059669',
-                              border: `1px solid ${
-                                sev === 'Critical'
+                                    ? '#E11D48'
+                                    : sev === 'Medium'
+                                      ? (isDark ? '#FF8A75' : '#C2410C')
+                                      : '#059669',
+                              border: `1px solid ${sev === 'Critical'
                                   ? 'rgba(185, 28, 28, 0.3)'
                                   : sev === 'High'
-                                  ? 'rgba(225, 29, 72, 0.3)'
-                                  : sev === 'Medium'
-                                  ? 'rgba(252, 86, 60, 0.3)'
-                                  : 'rgba(16, 185, 129, 0.3)'
-                              }`,
+                                    ? 'rgba(225, 29, 72, 0.3)'
+                                    : sev === 'Medium'
+                                      ? 'rgba(252, 86, 60, 0.3)'
+                                      : 'rgba(16, 185, 129, 0.3)'
+                                }`,
                             }}
                           >
                             ● {sev} Severity
@@ -1236,12 +1233,11 @@ export default function ReportsPage() {
                           backgroundColor: isDone
                             ? (isDark ? 'rgba(16, 185, 129, 0.18)' : '#ECFDF5')
                             : isInProgress
-                            ? (isDark ? 'rgba(252, 86, 60, 0.18)' : 'rgba(252, 86, 60, 0.08)')
-                            : (isDark ? 'rgba(252, 86, 60, 0.14)' : '#FFF1ED'),
+                              ? (isDark ? 'rgba(252, 86, 60, 0.18)' : 'rgba(252, 86, 60, 0.08)')
+                              : (isDark ? 'rgba(252, 86, 60, 0.14)' : '#FFF1ED'),
                           color: isDone ? (isDark ? '#34D399' : '#047857') : isInProgress ? '#FC563C' : (isDark ? '#FF8A75' : '#C2410C'),
-                          border: `1px solid ${
-                            isDone ? 'rgba(16, 185, 129, 0.4)' : isInProgress ? 'rgba(252, 86, 60, 0.35)' : 'rgba(252, 86, 60, 0.3)'
-                          }`,
+                          border: `1px solid ${isDone ? 'rgba(16, 185, 129, 0.4)' : isInProgress ? 'rgba(252, 86, 60, 0.35)' : 'rgba(252, 86, 60, 0.3)'
+                            }`,
                         }}
                       >
                         {isDone ? (

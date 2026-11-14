@@ -63,8 +63,39 @@ try {
         exit;
     }
 
-    // 3. Verify API Key availability
+    // 3. Verify API Key availability (with Local Flask OpenCV + Tesseract OCR fallback)
     if (empty($geminiKey) && empty($openaiKey)) {
+        if (file_exists(__DIR__ . '/config.php')) {
+            require_once __DIR__ . '/config.php';
+        } elseif (file_exists(__DIR__ . '/../config/config.php')) {
+            require_once __DIR__ . '/../config/config.php';
+        }
+        $flaskOcrUrl = (defined('FLASK_BASE_URL') ? rtrim(FLASK_BASE_URL, '/') : 'http://127.0.0.1:5001') . '/scan_paper_logsheet';
+        if (function_exists('curl_init')) {
+            $chLocal = curl_init($flaskOcrUrl);
+            curl_setopt_array($chLocal, [
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => json_encode(['image' => "data:{$mimeType};base64,{$base64Data}"]),
+                CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'ngrok-skip-browser-warning: 1'],
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYHOST => false,
+                CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
+                CURLOPT_CONNECTTIMEOUT => 3,
+                CURLOPT_TIMEOUT => 25,
+            ]);
+            $localResp = curl_exec($chLocal);
+            $localCode = curl_getinfo($chLocal, CURLINFO_HTTP_CODE);
+            curl_close($chLocal);
+            if ($localResp && $localCode >= 200 && $localCode < 300) {
+                $localDecoded = json_decode($localResp, true);
+                if (is_array($localDecoded) && !empty($localDecoded['success'])) {
+                    http_response_code(200);
+                    echo json_encode($localDecoded, JSON_PRETTY_PRINT);
+                    exit;
+                }
+            }
+        }
         http_response_code(200);
         echo json_encode([
             'success' => false,

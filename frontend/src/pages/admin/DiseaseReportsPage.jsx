@@ -58,16 +58,16 @@ const resolveImageUrl = (url) => {
   }
   if (url.startsWith('http://') || url.startsWith('https://')) {
     if (url.includes('localhost') || url.includes('127.0.0.1')) {
-      const cleaned = url.replace(/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/shrim_predict_api)?/i, '');
+      const cleaned = url.replace(/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/shrim_predict_api)?(\/backend)?/i, '');
       return cleaned.startsWith('/') ? cleaned : `/${cleaned}`;
     }
     return url;
   }
-  const cleanPath = url.startsWith('/') ? url : `/${url}`;
-  if (cleanPath.startsWith('/shrim_predict_api')) {
-    return cleanPath.replace(/^\/shrim_predict_api/, '');
+  let clean = url.replace(/^\/?(shrim_predict_api\/)?(backend\/)?/, '');
+  if (!clean.startsWith('uploads/')) {
+    clean = `uploads/${clean}`;
   }
-  return cleanPath;
+  return `/${clean}`;
 };
 
 const formatDate = (value) => {
@@ -413,7 +413,7 @@ export default function DiseaseReportsPage() {
       {/* 2. 4 SHRIMP KPI CARDS */}
       <div className="row g-3 g-xl-4 mb-4">
         {/* Card 1: Total Scan Reports */}
-        <div className="col-12 col-sm-6 col-xl-3">
+        <div className="col-12 col-md-4">
           <div className="shrimp-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-2">
@@ -434,7 +434,7 @@ export default function DiseaseReportsPage() {
         </div>
 
         {/* Card 2: Critical WSD Threats */}
-        <div className="col-12 col-sm-6 col-xl-3">
+        <div className="col-12 col-md-4">
           <div className="shrimp-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-2">
@@ -456,29 +456,8 @@ export default function DiseaseReportsPage() {
           </div>
         </div>
 
-        {/* Card 3: CNN Vision Accuracy */}
-        <div className="col-12 col-sm-6 col-xl-3">
-          <div className="shrimp-kpi-card">
-            <div>
-              <div className="d-flex align-items-center justify-content-between mb-2">
-                <span className="kpi-label">{t('CNN Vision Accuracy')}</span>
-                <div className="kpi-icon-bubble">
-                  <FaShieldVirus size={14} />
-                </div>
-              </div>
-              <div className="kpi-value text-dark">
-                {summary.avgConfidence.toFixed(1)}%
-              </div>
-            </div>
-            <div className="mt-3 pt-2 border-top d-flex justify-content-between align-items-center">
-              <span className="extra-small text-muted">ResNet / EfficientNet Core</span>
-              <span className="badge rounded-pill extra-small px-2 py-0.5 bg-light border text-secondary">F1: 0.96</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Card 4: Surveillance Scope */}
-        <div className="col-12 col-sm-6 col-xl-3">
+        {/* Card 3: Surveillance Scope */}
+        <div className="col-12 col-md-4">
           <div className="shrimp-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-2">
@@ -965,10 +944,7 @@ export default function DiseaseReportsPage() {
               </div>
 
               {/* Modal Footer */}
-              <div className="modal-footer p-3 px-4 bg-light border-top d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <span className="text-muted extra-small">
-                  ShrimPredict AI Disease Scanner v2.4 • CNN Classifier
-                </span>
+              <div className="modal-footer p-3 px-4 bg-light border-top d-flex justify-content-end align-items-center flex-wrap gap-2">
                 <div className="d-flex align-items-center gap-2">
                   <button
                     type="button"

@@ -93,7 +93,7 @@ if ($userId > 0) {
 }
 $todaysFeeding = $stmt->fetch(PDO::FETCH_ASSOC)['todays_feeding'] ?: 0;
 
-$stmt = $conn->query('SELECT COUNT(*) as upcoming_harvest FROM harvest_predictions');
+$stmt = $conn->query('SELECT COUNT(DISTINCT pond_id) as upcoming_harvest FROM harvest_predictions');
 $upcomingHarvest = $stmt->fetch(PDO::FETCH_ASSOC)['upcoming_harvest'] ?: 0;
 
 // Find latest record date and total stats for these ponds/user
@@ -159,9 +159,10 @@ if ($userId > 0) {
         $activityStmt = $conn->prepare(
             "SELECT fr.*, p.pond_name, COALESCE(fr.recorded_by_name, u.full_name, 'Caretaker') as recorded_by_name
             FROM feeding_records fr
-            LEFT JOIN ponds p ON p.id = fr.pond_id
-            LEFT JOIN users u ON u.id = fr.user_id
+            LEFT JOIN (SELECT DISTINCT id, pond_name FROM ponds) p ON p.id = fr.pond_id
+            LEFT JOIN (SELECT DISTINCT id, full_name FROM users) u ON u.id = fr.user_id
             WHERE fr.pond_id IN ($ph)
+            GROUP BY fr.id
             ORDER BY fr.created_at DESC, fr.id DESC LIMIT 15"
         );
         $activityStmt->execute($pondIds);
@@ -169,9 +170,10 @@ if ($userId > 0) {
         $activityStmt = $conn->prepare(
             "SELECT fr.*, p.pond_name, COALESCE(fr.recorded_by_name, u.full_name, 'Caretaker') as recorded_by_name
             FROM feeding_records fr
-            LEFT JOIN ponds p ON p.id = fr.pond_id
-            LEFT JOIN users u ON u.id = fr.user_id
+            LEFT JOIN (SELECT DISTINCT id, pond_name FROM ponds) p ON p.id = fr.pond_id
+            LEFT JOIN (SELECT DISTINCT id, full_name FROM users) u ON u.id = fr.user_id
             WHERE (fr.user_id = :user_id OR LOWER(fr.recorded_by_name) LIKE LOWER(CONCAT('%', :user_name, '%')))
+            GROUP BY fr.id
             ORDER BY fr.created_at DESC, fr.id DESC LIMIT 15"
         );
         $activityStmt->execute([':user_id' => $userId, ':user_name' => $userName]);
@@ -180,8 +182,9 @@ if ($userId > 0) {
     $activityStmt = $conn->query(
         "SELECT fr.*, p.pond_name, COALESCE(fr.recorded_by_name, u.full_name, 'Caretaker') as recorded_by_name
         FROM feeding_records fr
-        LEFT JOIN ponds p ON p.id = fr.pond_id
-        LEFT JOIN users u ON u.id = fr.user_id
+        LEFT JOIN (SELECT DISTINCT id, pond_name FROM ponds) p ON p.id = fr.pond_id
+        LEFT JOIN (SELECT DISTINCT id, full_name FROM users) u ON u.id = fr.user_id
+        GROUP BY fr.id
         ORDER BY fr.created_at DESC, fr.id DESC LIMIT 15"
     );
 }

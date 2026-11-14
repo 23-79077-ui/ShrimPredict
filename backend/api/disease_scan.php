@@ -313,9 +313,49 @@ try {
     $notifMsg = "{$caretakerName} scanned for disease: {$diseaseName} ({$healthStatus}) using {$modelUsed} with {$confidenceScore}% confidence.";
     createNotification($conn, 'Disease Scan Submitted', $notifMsg, $caretakerName, 'disease_scan', $pondName, $userId, $reportId);
 
+    // Trigger real-time alert entry in alerts table when High or Medium risk disease is detected
+    $createdAlertId = null;
+    if (in_array(strtolower((string)$riskLevel), ['high', 'medium', 'critical'], true)) {
+        try {
+            $pRowStmt = $conn->prepare('SELECT id FROM ponds WHERE LOWER(TRIM(pond_name)) = LOWER(TRIM(:pname)) LIMIT 1');
+            $pRowStmt->execute([':pname' => $pondName]);
+            $resolvedPondId = $pRowStmt->fetchColumn();
+            $alertSeverity = strtolower((string)$riskLevel) === 'medium' ? 'High' : 'Critical';
+            $alertIns = $conn->prepare('
+                INSERT INTO alerts (
+                    pond_id, alert_type, title, message, severity, category,
+                    affected_pond_name, assigned_caretaker_name, confidence_pct,
+                    recommended_action, status, created_at
+                )
+                VALUES (
+                    :pond_id, :alert_type, :title, :message, :severity, :category,
+                    :affected_pond_name, :assigned_caretaker_name, :confidence_pct,
+                    :recommended_action, "Pending", NOW()
+                )
+            ');
+            $alertIns->execute([
+                ':pond_id' => $resolvedPondId ? (int)$resolvedPondId : null,
+                ':alert_type' => 'Disease',
+                ':title' => "Disease Detected: {$diseaseName}",
+                ':message' => "{$diseaseName} detected in {$pondName} ({$confidenceScore}% confidence).",
+                ':severity' => $alertSeverity,
+                ':category' => 'Disease',
+                ':affected_pond_name' => $pondName,
+                ':assigned_caretaker_name' => $caretakerName ?: 'Caretaker',
+                ':confidence_pct' => (int)round($confidenceScore),
+                ':recommended_action' => $recommendation,
+            ]);
+            $createdAlertId = (int)$conn->lastInsertId();
+        } catch (Throwable $alertEx) {
+            error_log('Disease scan alert insert warning: ' . $alertEx->getMessage());
+        }
+    }
+
     echo json_encode([
         'success' => true,
         'message' => 'Disease scan completed and saved.',
+        'alert_created' => $createdAlertId !== null,
+        'alert_id' => $createdAlertId,
         'preview' => $previewResult,
         'prediction' => $prediction,
         'report' => [

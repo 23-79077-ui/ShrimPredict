@@ -14,6 +14,18 @@ export default defineConfig({
         secure: false,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
+      '/uploads': {
+        target: 'http://localhost/shrim_predict_api/backend/uploads',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/uploads/, ''),
+      },
+      '/backend/uploads': {
+        target: 'http://localhost/shrim_predict_api/backend/uploads',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/backend\/uploads/, ''),
+      },
     },
   },
 });

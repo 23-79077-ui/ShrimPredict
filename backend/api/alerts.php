@@ -84,10 +84,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// GET Handler: Fetch alerts + summary statistics
+// GET Handler: Fetch alerts + summary statistics (supports caretaker_id / user_id / pond_name filters)
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    $stmt = $conn->query('SELECT * FROM alerts ORDER BY id DESC');
-    $alerts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $caretakerId = isset($_GET['caretaker_id']) ? (int)$_GET['caretaker_id'] : (isset($_GET['user_id']) ? (int)$_GET['user_id'] : 0);
+    $pondNameFilter = isset($_GET['pond_name']) ? trim((string)$_GET['pond_name']) : '';
+
+    if ($caretakerId > 0) {
+        $uStmt = $conn->prepare('SELECT full_name, pond_id FROM users WHERE id = :id LIMIT 1');
+        $uStmt->execute([':id' => $caretakerId]);
+        $uRow = $uStmt->fetch(PDO::FETCH_ASSOC);
+        $ctName = $uRow ? trim((string)$uRow['full_name']) : '';
+
+        $pStmt = $conn->prepare('
+            SELECT DISTINCT p.id, p.pond_name
+            FROM ponds p
+            WHERE p.id IN (SELECT pond_id FROM caretaker_ponds WHERE user_id = :uid)
+               OR p.id = :legacy_pid
+               OR (:ct_name <> "" AND LOWER(TRIM(p.assigned_caretaker_name)) = LOWER(TRIM(:ct_name)))
+        ');
+        $pStmt->execute([
+            ':uid' => $caretakerId,
+            ':legacy_pid' => $uRow && !empty($uRow['pond_id']) ? (int)$uRow['pond_id'] : -1,
+            ':ct_name' => $ctName,
+        ]);
+        $assignedPonds = $pStmt->fetchAll(PDO::FETCH_ASSOC);
+        $assignedIds = array_map(fn($r) => (int)$r['id'], $assignedPonds);
+        $assignedNames = array_map(fn($r) => strtolower(trim((string)$r['pond_name'])), $assignedPonds);
+
+        $allStmt = $conn->query('SELECT * FROM alerts ORDER BY id DESC');
+        $rawAlerts = $allStmt->fetchAll(PDO::FETCH_ASSOC);
+        $alerts = array_values(array_filter($rawAlerts, function ($a) use ($assignedIds, $assignedNames, $ctName, $pondNameFilter) {
+            if ($pondNameFilter !== '' && strcasecmp(trim((string)($a['affected_pond_name'] ?? '')), $pondNameFilter) !== 0) {
+                return false;
+            }
+            $aPondId = isset($a['pond_id']) && $a['pond_id'] !== null ? (int)$a['pond_id'] : null;
+            $aPondName = strtolower(trim((string)($a['affected_pond_name'] ?? '')));
+            $aCtName = strtolower(trim((string)($a['assigned_caretaker_name'] ?? '')));
+            if ($aPondId !== null && in_array($aPondId, $assignedIds, true)) return true;
+            if ($aPondName !== '' && in_array($aPondName, $assignedNames, true)) return true;
+            if ($ctName !== '' && $aCtName === strtolower($ctName)) return true;
+            return false;
+        }));
+    } elseif ($pondNameFilter !== '') {
+        $stmt = $conn->prepare('SELECT * FROM alerts WHERE LOWER(TRIM(affected_pond_name)) = LOWER(TRIM(:pname)) ORDER BY id DESC');
+        $stmt->execute([':pname' => $pondNameFilter]);
+        $alerts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } else {
+        $stmt = $conn->query('SELECT * FROM alerts ORDER BY id DESC');
+        $alerts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 
     // Calculate Summary Metrics
     $criticalCount = 0;

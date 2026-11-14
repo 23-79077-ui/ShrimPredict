@@ -248,6 +248,10 @@ export default function CaretakerSettingsPage() {
       Swal.fire({ icon: 'warning', title: 'Invalid Password', text: 'New password must be at least 6 characters long.' });
       return;
     }
+    if (!/[A-Za-z]/.test(security.new_password) || !/[0-9!@#$%^&*()_+\-=\[\]{};:'"\\|,.<>/?]/.test(security.new_password)) {
+      Swal.fire({ icon: 'warning', title: 'Weak Password', text: 'Password must combine letters and numbers or symbols for complexity.' });
+      return;
+    }
     if (security.new_password !== security.confirm_password) {
       Swal.fire({ icon: 'error', title: 'Password Mismatch', text: 'New password and confirm password do not match.' });
       return;
