@@ -145,12 +145,12 @@ export default function CaretakerDashboard() {
   const [selectedPondFilter, setSelectedPondFilter] = useState('all');
   const [selectedDiseasePondFilter, setSelectedDiseasePondFilter] = useState('all');
   const [activeActivityTab, setActiveActivityTab] = useState('waterQuality'); // 'waterQuality' | 'ponds' | 'disease' | 'alerts'
-
+  const [pondsMissedInfo, setPondsMissedInfo] = useState({});
 
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [feedRes, diseaseRes, alertsRes, wqRes, pondsRes, actionsRes] = await Promise.allSettled([
+      const [feedRes, diseaseRes, alertsRes, wqRes, pondsRes, actionsRes, missedRes] = await Promise.allSettled([
         api.get('/feeding_records.php', {
           params: {
             user_id: user?.id || 0,
@@ -183,6 +183,11 @@ export default function CaretakerDashboard() {
             user_id: user?.id || 0,
           },
         }),
+        api.get('/feeding_records.php', {
+          params: {
+            action: 'check_missed_days',
+          },
+        }),
       ]);
 
       if (feedRes.status === 'fulfilled') {
@@ -206,6 +211,9 @@ export default function CaretakerDashboard() {
         setActionLoadError('');
       } else {
         setScanActions([]);
+      }
+      if (missedRes.status === 'fulfilled' && missedRes.value.data?.ponds_missed_info) {
+        setPondsMissedInfo(missedRes.value.data.ponds_missed_info);
       }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -351,40 +359,80 @@ export default function CaretakerDashboard() {
     });
 
     const feedTasks = runningPonds.flatMap((pond) => {
-      const pondFeeds = todaysFeeds.filter((record) => String(record.pond_id) === String(pond.id));
-      const loggedSlots = new Set(pondFeeds.map((record) => normalizeFeedingTime(record.feeding_time)));
-      const stockingDate = pond.stocking_date || '2000-01-01';
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = [
-        yesterday.getFullYear(),
-        String(yesterday.getMonth() + 1).padStart(2, '0'),
-        String(yesterday.getDate()).padStart(2, '0'),
-      ].join('-');
-      const hasYesterdayLog = records.some((record) => {
-        const recordDate = String(record.record_date || record.created_at || '').slice(0, 10);
-        return String(record.pond_id) === String(pond.id) && recordDate === yesterdayStr;
-      });
-      const isYesterdayMissed = stockingDate <= yesterdayStr && !hasYesterdayLog;
+      const pondMissed = pondsMissedInfo[pond.id] || pondsMissedInfo[String(pond.id)];
+      const hasMissed = Boolean(pondMissed?.has_missed_days && pondMissed?.first_missed_date);
+      const activeDate = hasMissed ? pondMissed.first_missed_date : todayStr;
 
-      return feedingTimes.map((slot) => ({
-        id: `feed-${pond.id}-${slot}`,
+      const activeFeeds = records.filter(
+        (record) => String(record.pond_id) === String(pond.id) &&
+          String(record.record_date || record.created_at || '').slice(0, 10) === activeDate
+      );
+      const loggedSlots = new Set(activeFeeds.map((record) => normalizeFeedingTime(record.feeding_time)));
+
+      // If hasMissed: caretaker must catch up on activeDate.
+      // Farm protocol establishes that the caretaker completes all 5 cycles in a single session.
+      // Only ONE task card is displayed for this pond for the earliest missed day.
+      if (hasMissed) {
+        const nextSlot = feedingTimes.find((t) => !loggedSlots.has(normalizeFeedingTime(t))) || '6:00 AM';
+        return [{
+          id: `feed-${pond.id}-${activeDate}`,
+          type: 'feeding',
+          pond,
+          slot: nextSlot,
+          isComplete: false,
+          isLocked: false,
+          isCatchUp: true,
+          missedDate: activeDate,
+          completedSlotsCount: loggedSlots.size,
+          totalSlotsCount: feedingTimes.length,
+          route: '/caretaker/my-pond',
+          title: `Log scheduled feeding (Catch Up: ${activeDate})`,
+          detail: `Missed feeding on ${activeDate} (${pondMissed.total_missed_count} missed days total). All 5 cycles must be logged sequentially (${loggedSlots.size} of 5 completed).`,
+        }];
+      }
+
+      // Fresh routine logs for today (all past missed days caught up):
+      // Only ONE active feeding task per pond is shown at a time.
+      // Once 6:00 AM is logged, it is replaced by 9:00 AM, then 12:00 PM, 3:00 PM, 6:00 PM.
+      const nextSlot = feedingTimes.find((t) => !loggedSlots.has(normalizeFeedingTime(t)));
+      if (nextSlot) {
+        return [{
+          id: `feed-${pond.id}-${activeDate}-${nextSlot}`,
+          type: 'feeding',
+          pond,
+          slot: nextSlot,
+          isComplete: false,
+          isLocked: false,
+          isCatchUp: false,
+          missedDate: null,
+          completedSlotsCount: loggedSlots.size,
+          totalSlotsCount: feedingTimes.length,
+          route: '/caretaker/my-pond',
+          title: t('myTasks.feedTitle', 'Log the scheduled feeding'),
+          detail: `${t('myTasks.feedDesc', 'Verify ration and record feed tray consumption.')} (${loggedSlots.size} of 5 completed)`,
+        }];
+      }
+
+      // All 5 feeding slots logged for today!
+      return [{
+        id: `feed-${pond.id}-${activeDate}-done`,
         type: 'feeding',
         pond,
-        slot,
-        isComplete: loggedSlots.has(slot),
-        isLocked: isYesterdayMissed && !loggedSlots.has(slot),
-        missedDate: isYesterdayMissed ? yesterdayStr : null,
+        slot: 'All sessions recorded',
+        isComplete: true,
+        isLocked: false,
+        isCatchUp: false,
+        missedDate: null,
+        completedSlotsCount: 5,
+        totalSlotsCount: 5,
         route: '/caretaker/my-pond',
-        title: t('myTasks.feedTitle', 'Log the scheduled feeding'),
-        detail: isYesterdayMissed && !loggedSlots.has(slot)
-          ? `Locked: Missed feeding logs on ${yesterdayStr}. Catch up past day first.`
-          : t('myTasks.feedDesc', 'Verify ration and record feed tray consumption.'),
-      }));
+        title: t('myTasks.feedCompletedTitle', 'Daily feedings complete'),
+        detail: `${pond.pond_name || `Pond #${pond.id}`}: All 5 scheduled feeding sessions for today are verified.`,
+      }];
     });
 
     return [...adminActionTasks, ...waterTasks, ...feedTasks];
-  }, [runningPonds, records, scanActions, t, todayStr, waterQualityChecklist]);
+  }, [runningPonds, records, scanActions, t, todayStr, waterQualityChecklist, pondsMissedInfo]);
 
   const completedTasksCount = tasks.filter((task) => task.isComplete).length;
   const allTasksComplete = tasks.length > 0 && completedTasksCount === tasks.length;
@@ -598,10 +646,10 @@ export default function CaretakerDashboard() {
                   {allPondsHarvesting
                     ? `${assignedPonds[0]?.pond_name || 'Assigned Pond'} in Harvest`
                     : selectedPondFilter === 'all'
-                    ? (harvestingPonds.length > 0
+                      ? (harvestingPonds.length > 0
                         ? `${runningPonds.length} Active • ${harvestingPonds.length} Harvest`
                         : t('All ponds active'))
-                    : (selectedPondObj?.pond_name || t('Active'))}
+                      : (selectedPondObj?.pond_name || t('Active'))}
                 </span>
                 <span
                   className="badge rounded-pill px-2.5 py-1 extra-small"
@@ -747,21 +795,21 @@ export default function CaretakerDashboard() {
                     backgroundColor: allPondsHarvesting
                       ? '#FEF3C7'
                       : feedingCompletion === 100
-                      ? '#ECFDF5'
-                      : '#FFFBEB',
+                        ? '#ECFDF5'
+                        : '#FFFBEB',
                     color: allPondsHarvesting
                       ? '#92400E'
                       : feedingCompletion === 100
-                      ? '#059669'
-                      : '#D97706',
+                        ? '#059669'
+                        : '#D97706',
                     fontWeight: 600,
                   }}
                 >
                   {allPondsHarvesting
                     ? t('Awaiting Restock')
                     : feedingCompletion === 100
-                    ? t('Complete')
-                    : t('In Progress')}
+                      ? t('Complete')
+                      : t('In Progress')}
                 </span>
               </div>
             </div>
@@ -781,1192 +829,1237 @@ export default function CaretakerDashboard() {
               boxShadow: '0 2px 10px -2px rgba(15, 23, 42, 0.04)'
             }}
           >
-        {/* Header & Minimalist Tab Switcher Bar */}
-        <div
-          className="p-3 p-md-4 d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 border-bottom"
-          style={{ borderColor: isDark ? '#334155' : '#E2E8F0' }}
-        >
-          <div>
-            <h5 className="fw-extrabold mb-0 tracking-tight text-dark" style={{ fontSize: '1.2rem', letterSpacing: '-0.02em' }}>
-              {t('Field Operations & Daily Tasks')}
-            </h5>
-            <p className="text-muted mb-0 extra-small" style={{ fontSize: '0.78rem' }}>
-              {t('Pre-stock water quality verification, assigned ponds live status, disease scans, and incidents.')}
-            </p>
-          </div>
-
-          {/* Status Filter Tabs with individual borders for clean separation */}
-          <div className="d-flex align-items-center gap-2 flex-wrap">
-            <button
-              type="button"
-              className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all shadow-2xs d-inline-flex align-items-center ${
-                activeActivityTab === 'waterQuality' ? 'text-white shadow-xs' : ''
-              }`}
-              style={
-                activeActivityTab === 'waterQuality'
-                  ? { backgroundColor: '#FC563C', borderColor: '#FC563C', color: '#FFFFFF', border: '1.5px solid #FC563C', boxShadow: '0 2px 8px rgba(252, 86, 60, 0.35)' }
-                  : {
-                      backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                      borderColor: isDark ? '#334155' : '#CBD5E1',
-                      color: isDark ? '#CBD5E1' : '#475569',
-                      border: isDark ? '1.5px solid #334155' : '1.5px solid #CBD5E1',
-                    }
-              }
-              onClick={() => setActiveActivityTab('waterQuality')}
-            >
-              <FaCamera className="me-1.5" size={11} />
-              {t('Water Quality')} ({waterQualityChecklist.verified_count}/{assignedPonds.length})
-            </button>
-            <button
-              type="button"
-              className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all shadow-2xs d-inline-flex align-items-center ${
-                activeActivityTab === 'ponds' ? 'text-white shadow-xs' : ''
-              }`}
-              style={
-                activeActivityTab === 'ponds'
-                  ? { backgroundColor: '#FC563C', borderColor: '#FC563C', color: '#FFFFFF', border: '1.5px solid #FC563C', boxShadow: '0 2px 8px rgba(252, 86, 60, 0.35)' }
-                  : {
-                      backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                      borderColor: isDark ? '#334155' : '#CBD5E1',
-                      color: isDark ? '#CBD5E1' : '#475569',
-                      border: isDark ? '1.5px solid #334155' : '1.5px solid #CBD5E1',
-                    }
-              }
-              onClick={() => setActiveActivityTab('ponds')}
-            >
-              <FaWater className="me-1.5" size={11} />
-              {t('Ponds Live')} ({assignedPonds.length})
-            </button>
-            <button
-              type="button"
-              className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all shadow-2xs d-inline-flex align-items-center ${
-                activeActivityTab === 'disease' ? 'text-white shadow-xs' : ''
-              }`}
-              style={
-                activeActivityTab === 'disease'
-                  ? { backgroundColor: '#FC563C', borderColor: '#FC563C', color: '#FFFFFF', border: '1.5px solid #FC563C', boxShadow: '0 2px 8px rgba(252, 86, 60, 0.35)' }
-                  : {
-                      backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                      borderColor: isDark ? '#334155' : '#CBD5E1',
-                      color: isDark ? '#CBD5E1' : '#475569',
-                      border: isDark ? '1.5px solid #334155' : '1.5px solid #CBD5E1',
-                    }
-              }
-              onClick={() => setActiveActivityTab('disease')}
-            >
-              <FaStethoscope className="me-1.5" size={11} />
-              {t('Health Scans')} ({filteredDiseaseScans.length})
-            </button>
-            <button
-              type="button"
-              className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all shadow-2xs d-inline-flex align-items-center ${
-                activeActivityTab === 'alerts' ? 'text-white shadow-xs' : ''
-              }`}
-              style={
-                activeActivityTab === 'alerts'
-                  ? { backgroundColor: '#FC563C', borderColor: '#FC563C', color: '#FFFFFF', border: '1.5px solid #FC563C', boxShadow: '0 2px 8px rgba(252, 86, 60, 0.35)' }
-                  : {
-                      backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                      borderColor: isDark ? '#334155' : '#CBD5E1',
-                      color: isDark ? '#CBD5E1' : '#475569',
-                      border: isDark ? '1.5px solid #334155' : '1.5px solid #CBD5E1',
-                    }
-              }
-              onClick={() => setActiveActivityTab('alerts')}
-            >
-              <FaExclamationTriangle className="me-1.5" size={11} />
-              {t('Alerts')} ({alerts.length})
-            </button>
-          </div>
-        </div>
-
-        {/* Left Column Scrollable Body (Desktop has 720px internal scroll; Mobile expands naturally) */}
-        <div className="flex-grow-1 custom-scrollbar caretaker-scrollable-body">
-        {/* Tab 1: Water Quality Protocol Verification */}
-        {activeActivityTab === 'waterQuality' && (
-          <div>
+            {/* Header & Minimalist Tab Switcher Bar */}
             <div
-              className="p-3 p-md-4 d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3 border-bottom"
-              style={{
-                backgroundColor: isDark ? 'rgba(15, 23, 42, 0.65)' : '#F8FAFC',
-                borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#E2E8F0'
-              }}
+              className="p-3 p-md-4 d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 border-bottom"
+              style={{ borderColor: isDark ? '#334155' : '#E2E8F0' }}
             >
-              <div className="d-flex align-items-start gap-2.5 min-w-0 flex-grow-1">
-                <div
-                  className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0 shadow-xs mt-0.5"
-                  style={{
-                    width: 38,
-                    height: 38,
-                    background: waterQualityChecklist.is_all_completed
-                      ? (isDark ? 'rgba(16, 185, 129, 0.2)' : '#DCFCE7')
-                      : (isDark ? 'rgba(252, 86, 60, 0.2)' : 'rgba(252, 86, 60, 0.1)'),
-                    border: waterQualityChecklist.is_all_completed
-                      ? (isDark ? '1px solid rgba(52, 211, 153, 0.35)' : '1px solid #86EFAC')
-                      : (isDark ? '1px solid rgba(252, 86, 60, 0.35)' : '1px solid #FECDD3'),
-                    color: waterQualityChecklist.is_all_completed
-                      ? (isDark ? '#34D399' : '#16A34A')
-                      : (isDark ? '#FF8A75' : '#FC563C'),
-                    fontSize: '0.95rem',
-                  }}
-                >
-                  {waterQualityChecklist.is_all_completed ? <FaCheckCircle /> : <FaCamera />}
-                </div>
-                <div className="min-w-0 flex-grow-1">
-                  <div className="d-flex align-items-center gap-2 flex-wrap mb-1">
-                    <h6 className="fw-bold mb-0" style={{ color: isDark ? '#FFFFFF' : '#0B2C5F', fontSize: '0.98rem' }}>
-                      Water Quality Check
-                    </h6>
-                    <span
-                      className="d-inline-flex align-items-center gap-1.5 px-2.5 py-0.5 rounded-pill text-nowrap"
-                      style={{
-                        background: isDark
-                          ? (waterQualityChecklist.is_all_completed ? 'rgba(16, 185, 129, 0.18)' : 'rgba(244, 63, 94, 0.18)')
-                          : (waterQualityChecklist.is_all_completed ? '#F0FDF4' : '#FFF5F2'),
-                        border: isDark
-                          ? (waterQualityChecklist.is_all_completed ? '1px solid rgba(52, 211, 153, 0.35)' : '1px solid rgba(251, 113, 133, 0.35)')
-                          : (waterQualityChecklist.is_all_completed ? '1.5px solid #86EFAC' : '1.5px solid #FECDD3'),
-                        color: isDark
-                          ? (waterQualityChecklist.is_all_completed ? '#34D399' : '#FB7185')
-                          : (waterQualityChecklist.is_all_completed ? '#16A34A' : '#E11D48'),
-                        fontSize: '0.72rem',
-                        fontWeight: 700,
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      <span
-                        className="rounded-circle flex-shrink-0"
-                        style={{
-                          width: 6,
-                          height: 6,
-                          backgroundColor: waterQualityChecklist.is_all_completed ? (isDark ? '#34D399' : '#16A34A') : (isDark ? '#FB7185' : '#FC563C'),
-                        }}
-                      />
-                      {waterQualityChecklist.verified_count} / {assignedPonds.length} Ponds Checked
-                    </span>
-                  </div>
-                  <p className="extra-small mb-0 mt-1" style={{ color: isDark ? '#CBD5E1' : '#64748B', maxWidth: 640, fontSize: '0.76rem' }}>
-                    {waterQualityChecklist.is_all_completed
-                      ? 'All assigned ponds have verified water readings on record. Daily monitoring and feeding logs are active.'
-                      : 'O&B Aqua Farm Guide: Check DO, Temp, pH, and Salinity once with your meter or paper test.'}
-                  </p>
-                </div>
+              <div>
+                <h5 className="fw-extrabold mb-0 tracking-tight text-dark" style={{ fontSize: '1.2rem', letterSpacing: '-0.02em' }}>
+                  {t('Field Operations & Daily Tasks')}
+                </h5>
+                <p className="text-muted mb-0 extra-small" style={{ fontSize: '0.78rem' }}>
+                  {t('Pre-stock water quality verification, assigned ponds live status, disease scans, and incidents.')}
+                </p>
               </div>
 
-              <div className="d-flex align-items-center gap-2 ms-md-auto flex-shrink-0 w-100 w-md-auto mt-2 mt-md-0">
+              {/* Status Filter Tabs with individual borders for clean separation */}
+              <div className="d-flex align-items-center gap-2 flex-wrap">
                 <button
                   type="button"
-                  className="btn btn-sm btn-tri-orange px-3.5 py-2 shadow-xs fw-bold w-100 w-md-auto justify-content-center text-nowrap"
-                  style={{ fontSize: '0.82rem' }}
-                  onClick={() => {
-                    const firstUnverified = waterQualityChecklist.checklist?.find((p) => !p.is_verified_today);
-                    setOcrTargetPondId(
-                      firstUnverified
-                        ? String(firstUnverified.pond_id)
-                        : assignedPonds[0]?.id
-                          ? String(assignedPonds[0].id)
-                          : ''
-                    );
-                    setIsOcrModalOpen(true);
-                  }}
+                  className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all shadow-2xs d-inline-flex align-items-center ${activeActivityTab === 'waterQuality' ? 'text-white shadow-xs' : ''
+                    }`}
+                  style={
+                    activeActivityTab === 'waterQuality'
+                      ? { backgroundColor: '#FC563C', borderColor: '#FC563C', color: '#FFFFFF', border: '1.5px solid #FC563C', boxShadow: '0 2px 8px rgba(252, 86, 60, 0.35)' }
+                      : {
+                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                        borderColor: isDark ? '#334155' : '#CBD5E1',
+                        color: isDark ? '#CBD5E1' : '#475569',
+                        border: isDark ? '1.5px solid #334155' : '1.5px solid #CBD5E1',
+                      }
+                  }
+                  onClick={() => setActiveActivityTab('waterQuality')}
                 >
-                  <FaCamera size={13} className="me-1.5" /> Scan Water Quality
+                  <FaCamera className="me-1.5" size={11} />
+                  {t('Water Quality')} ({waterQualityChecklist.verified_count}/{assignedPonds.length})
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all shadow-2xs d-inline-flex align-items-center ${activeActivityTab === 'ponds' ? 'text-white shadow-xs' : ''
+                    }`}
+                  style={
+                    activeActivityTab === 'ponds'
+                      ? { backgroundColor: '#FC563C', borderColor: '#FC563C', color: '#FFFFFF', border: '1.5px solid #FC563C', boxShadow: '0 2px 8px rgba(252, 86, 60, 0.35)' }
+                      : {
+                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                        borderColor: isDark ? '#334155' : '#CBD5E1',
+                        color: isDark ? '#CBD5E1' : '#475569',
+                        border: isDark ? '1.5px solid #334155' : '1.5px solid #CBD5E1',
+                      }
+                  }
+                  onClick={() => setActiveActivityTab('ponds')}
+                >
+                  <FaWater className="me-1.5" size={11} />
+                  {t('Ponds Live')} ({assignedPonds.length})
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all shadow-2xs d-inline-flex align-items-center ${activeActivityTab === 'disease' ? 'text-white shadow-xs' : ''
+                    }`}
+                  style={
+                    activeActivityTab === 'disease'
+                      ? { backgroundColor: '#FC563C', borderColor: '#FC563C', color: '#FFFFFF', border: '1.5px solid #FC563C', boxShadow: '0 2px 8px rgba(252, 86, 60, 0.35)' }
+                      : {
+                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                        borderColor: isDark ? '#334155' : '#CBD5E1',
+                        color: isDark ? '#CBD5E1' : '#475569',
+                        border: isDark ? '1.5px solid #334155' : '1.5px solid #CBD5E1',
+                      }
+                  }
+                  onClick={() => setActiveActivityTab('disease')}
+                >
+                  <FaStethoscope className="me-1.5" size={11} />
+                  {t('Health Scans')} ({filteredDiseaseScans.length})
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all shadow-2xs d-inline-flex align-items-center ${activeActivityTab === 'alerts' ? 'text-white shadow-xs' : ''
+                    }`}
+                  style={
+                    activeActivityTab === 'alerts'
+                      ? { backgroundColor: '#FC563C', borderColor: '#FC563C', color: '#FFFFFF', border: '1.5px solid #FC563C', boxShadow: '0 2px 8px rgba(252, 86, 60, 0.35)' }
+                      : {
+                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                        borderColor: isDark ? '#334155' : '#CBD5E1',
+                        color: isDark ? '#CBD5E1' : '#475569',
+                        border: isDark ? '1.5px solid #334155' : '1.5px solid #CBD5E1',
+                      }
+                  }
+                  onClick={() => setActiveActivityTab('alerts')}
+                >
+                  <FaExclamationTriangle className="me-1.5" size={11} />
+                  {t('Alerts')} ({alerts.length})
                 </button>
               </div>
             </div>
 
-            {/* Assigned Ponds Checklist Strip */}
-            <div className="p-3 p-md-4 caretaker-prestock-strip">
-              <div className="row g-3 g-xl-3.5">
-                {assignedPonds.map((pond) => {
-                  const checkItem = waterQualityChecklist.checklist?.find((c) => c.pond_id === pond.id);
-                  const isVerified = Boolean(checkItem?.is_verified_today);
-                  const readings = checkItem?.latest_readings;
-
-                  return (
-                    <div key={pond.id} className="col-12 col-sm-6 col-xxl-4">
+            {/* Left Column Scrollable Body (Desktop has 720px internal scroll; Mobile expands naturally) */}
+            <div className="flex-grow-1 custom-scrollbar caretaker-scrollable-body">
+              {/* Tab 1: Water Quality Protocol Verification */}
+              {activeActivityTab === 'waterQuality' && (
+                <div>
+                  <div
+                    className="p-3 p-md-4 d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3 border-bottom"
+                    style={{
+                      backgroundColor: isDark ? 'rgba(15, 23, 42, 0.65)' : '#F8FAFC',
+                      borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#E2E8F0'
+                    }}
+                  >
+                    <div className="d-flex align-items-start gap-2.5 min-w-0 flex-grow-1">
                       <div
-                        className="p-3.5 rounded-3 d-flex flex-column justify-content-between h-100 transition-all hover-shadow"
+                        className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0 shadow-xs mt-0.5"
                         style={{
-                          backgroundColor: isDark ? '#253549' : '#FFFFFF',
-                          border: isDark ? '1px solid rgba(255, 255, 255, 0.14)' : '1px solid #CBD5E1',
-                          borderLeft: isVerified ? '4px solid #10B981' : '4px solid #FC563C',
-                          boxShadow: isDark ? '0 2px 8px rgba(0, 0, 0, 0.25)' : '0 1px 4px rgba(15, 23, 42, 0.03)',
-                          minHeight: 220,
+                          width: 38,
+                          height: 38,
+                          background: waterQualityChecklist.is_all_completed
+                            ? (isDark ? 'rgba(16, 185, 129, 0.2)' : '#DCFCE7')
+                            : (isDark ? 'rgba(252, 86, 60, 0.2)' : 'rgba(252, 86, 60, 0.1)'),
+                          border: waterQualityChecklist.is_all_completed
+                            ? (isDark ? '1px solid rgba(52, 211, 153, 0.35)' : '1px solid #86EFAC')
+                            : (isDark ? '1px solid rgba(252, 86, 60, 0.35)' : '1px solid #FECDD3'),
+                          color: waterQualityChecklist.is_all_completed
+                            ? (isDark ? '#34D399' : '#16A34A')
+                            : (isDark ? '#FF8A75' : '#FC563C'),
+                          fontSize: '0.95rem',
                         }}
                       >
-                        <div>
-                          {/* Tier 1: Pond Name & Status Badge */}
-                          <div className="d-flex align-items-center justify-content-between gap-2 mb-3 flex-wrap">
-                            <div className="d-flex align-items-center gap-2.5 min-w-0">
-                              <div
-                                className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                                style={{
-                                  width: 34,
-                                  height: 34,
-                                  backgroundColor: isVerified ? '#ECFDF5' : '#FFF5F3',
-                                  color: isVerified ? '#059669' : '#FC563C',
-                                  fontSize: '0.85rem',
-                                }}
-                              >
-                                <FaWater />
-                              </div>
-                              <div className="min-w-0">
-                                <strong className="d-block text-dark fw-bold text-truncate" style={{ fontSize: '0.98rem', lineHeight: 1.2 }}>
-                                  {pond.pond_name}
-                                </strong>
-                                <span className="text-muted extra-small">Pond</span>
-                              </div>
-                            </div>
-
-                            {/* Status badge */}
-                            {isVerified ? (
-                              <span
-                                className="badge rounded-pill extra-small fw-bold px-2.5 py-1 flex-shrink-0"
-                                style={{
-                                  backgroundColor: '#ECFDF5',
-                                  border: '1px solid #A7F3D0',
-                                  color: '#059669',
-                                  fontSize: '0.72rem',
-                                  whiteSpace: 'nowrap'
-                                }}
-                              >
-                                <FaCheckCircle size={10} className="me-1" />
-                                {t('Verified')}
-                              </span>
-                            ) : (
-                              <span
-                                className="badge rounded-pill extra-small fw-bold px-2.5 py-1"
-                                style={{
-                                  backgroundColor: '#FEF2F2',
-                                  border: '1px solid #FECACA',
-                                  color: '#DC2626',
-                                  fontSize: '0.72rem',
-                                }}
-                              >
-                                {t('Needs Test')}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Tier 2: Culture Stage / DOC Pill */}
-                          {pond.stocking_date && (() => {
-                            const isHarvestReady = pond.harvest_readiness_status === 'Ready to Harvest' ||
-                              Number(pond.harvest_readiness) >= 100 ||
-                              (Number(pond.total_feed_kg) >= 15000 && Number(pond.shrimp_weight_g) >= 23.0);
-                            const targetDate = isHarvestReady && pond.expected_harvest_date ? pond.expected_harvest_date : selectedDate;
-                            const doc = computeDoc(pond.stocking_date, targetDate);
-                            if (!doc) return null;
-                            const isNursery = doc >= 1 && doc <= 19;
-                            return (
-                              <div className="mb-3">
-                                <span
-                                  className="badge rounded-pill px-2.5 py-1 extra-small fw-bold"
-                                  style={{
-                                    backgroundColor: isHarvestReady ? '#FEF3C7' : (isNursery ? '#ECFDF5' : '#EFF6FF'),
-                                    color: isHarvestReady ? '#D97706' : (isNursery ? '#047857' : '#1D4ED8'),
-                                    border: isHarvestReady ? '1px solid #FCD34D' : (isNursery ? '1px solid #A7F3D0' : '1px solid #BFDBFE'),
-                                    fontSize: '0.72rem',
-                                  }}
-                                >
-                                  {isHarvestReady ? `DOC #${doc} Ready to Harvest` : (isNursery ? `DOC #${doc} Nursery` : `DOC #${doc} Grow-out`)}
-                                </span>
-                              </div>
-                            );
-                          })()}
-
-                          {/* Tier 3: Telemetry Cluster Strip */}
-                          <div
-                            className="p-2.5 rounded-3 mb-3"
+                        {waterQualityChecklist.is_all_completed ? <FaCheckCircle /> : <FaCamera />}
+                      </div>
+                      <div className="min-w-0 flex-grow-1">
+                        <div className="d-flex align-items-center gap-2 flex-wrap mb-1">
+                          <h6 className="fw-bold mb-0" style={{ color: isDark ? '#FFFFFF' : '#0B2C5F', fontSize: '0.98rem' }}>
+                            Water Quality Check
+                          </h6>
+                          <span
+                            className="d-inline-flex align-items-center gap-1.5 px-2.5 py-0.5 rounded-pill text-nowrap"
                             style={{
-                              backgroundColor: isDark ? 'rgba(15, 23, 42, 0.55)' : '#F8FAFC',
-                              border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #CBD5E1',
+                              background: isDark
+                                ? (waterQualityChecklist.is_all_completed ? 'rgba(16, 185, 129, 0.18)' : 'rgba(244, 63, 94, 0.18)')
+                                : (waterQualityChecklist.is_all_completed ? '#F0FDF4' : '#FFF5F2'),
+                              border: isDark
+                                ? (waterQualityChecklist.is_all_completed ? '1px solid rgba(52, 211, 153, 0.35)' : '1px solid rgba(251, 113, 133, 0.35)')
+                                : (waterQualityChecklist.is_all_completed ? '1.5px solid #86EFAC' : '1.5px solid #FECDD3'),
+                              color: isDark
+                                ? (waterQualityChecklist.is_all_completed ? '#34D399' : '#FB7185')
+                                : (waterQualityChecklist.is_all_completed ? '#16A34A' : '#E11D48'),
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              whiteSpace: 'nowrap',
                             }}
                           >
-                            {isVerified ? (
-                              <div className="d-flex align-items-center justify-content-between text-center px-1">
-                                <div>
-                                  <span className="extra-small d-block fw-bold text-muted text-uppercase" style={{ fontSize: '0.66rem' }}>DO</span>
-                                  <strong className="text-dark" style={{ fontSize: '0.92rem' }}>{readings?.dissolved_oxygen ?? '—'}</strong>
-                                  <small className="text-muted" style={{ fontSize: '0.62rem' }}> mg/L</small>
-                                </div>
-                                <div style={{ width: 1, height: 20, backgroundColor: isDark ? '#334155' : '#CBD5E1' }} />
-                                <div>
-                                  <span className="extra-small d-block fw-bold text-muted text-uppercase" style={{ fontSize: '0.66rem' }}>Temp</span>
-                                  <strong className="text-dark" style={{ fontSize: '0.92rem' }}>{readings?.temperature ?? '—'}</strong>
-                                  <small className="text-muted" style={{ fontSize: '0.62rem' }}> °C</small>
-                                </div>
-                                <div style={{ width: 1, height: 20, backgroundColor: isDark ? '#334155' : '#CBD5E1' }} />
-                                <div>
-                                  <span className="extra-small d-block fw-bold text-muted text-uppercase" style={{ fontSize: '0.66rem' }}>pH</span>
-                                  <strong className="text-dark" style={{ fontSize: '0.92rem' }}>{readings?.ph_level ?? '—'}</strong>
-                                </div>
-                                <div style={{ width: 1, height: 20, backgroundColor: isDark ? '#334155' : '#CBD5E1' }} />
-                                <div>
-                                  <span className="extra-small d-block fw-bold text-muted text-uppercase" style={{ fontSize: '0.66rem' }}>Salinity</span>
-                                  <strong className="text-dark" style={{ fontSize: '0.92rem' }}>{readings?.salinity ?? '—'}</strong>
-                                  <small className="text-muted" style={{ fontSize: '0.62rem' }}> ppt</small>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="d-flex align-items-center gap-2 extra-small py-0.5 px-1">
-                                <FaLock size={11} className="text-danger flex-shrink-0" />
-                                <span className="text-danger fw-bold" style={{ fontSize: '0.76rem' }}>
-                                  {t('Water quality check required')}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Tier 4: Action Buttons Footer */}
-                        <div className="d-flex align-items-center justify-content-between gap-2 pt-2.5 mt-auto border-top" style={{ borderColor: isDark ? '#334155' : '#E2E8F0' }}>
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-understated-view px-3 py-1.5 extra-small fw-bold d-inline-flex align-items-center gap-1.5"
-                            onClick={() => {
-                              setHistoryTargetPond(pond);
-                              setIsHistoryModalOpen(true);
-                            }}
-                            title="View Water Quality Log History"
-                          >
-                            <FaHistory size={11} className="text-secondary" />
-                            <span>{t('History')}</span>
-                          </button>
-
-                          {!isVerified ? (
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-understated-feed px-3 py-1.5 extra-small fw-bold d-inline-flex align-items-center gap-1.5"
-                              onClick={() => {
-                                setEditingWqRecord(null);
-                                setOcrTargetPondId(String(pond.id));
-                                setOcrTargetDate(todayStr);
-                                setIsOcrModalOpen(true);
+                            <span
+                              className="rounded-circle flex-shrink-0"
+                              style={{
+                                width: 6,
+                                height: 6,
+                                backgroundColor: waterQualityChecklist.is_all_completed ? (isDark ? '#34D399' : '#16A34A') : (isDark ? '#FB7185' : '#FC563C'),
                               }}
-                            >
-                              <FaCamera size={11} />
-                              <span>{t('Scan Readings')}</span>
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-understated-view px-3 py-1.5 extra-small fw-bold d-inline-flex align-items-center gap-1.5"
-                              onClick={() => {
-                                setEditingWqRecord(checkItem?.today_record || null);
-                                setOcrTargetPondId(String(pond.id));
-                                setOcrTargetDate(todayStr);
-                                setIsOcrModalOpen(true);
-                              }}
-                              title="Re-scan / Update Today's Readings"
-                            >
-                              <FaSync size={11} />
-                              <span>{t('Re-test (OCR)')}</span>
-                            </button>
-                          )}
+                            />
+                            {waterQualityChecklist.verified_count} / {assignedPonds.length} Ponds Checked
+                          </span>
                         </div>
+                        <p className="extra-small mb-0 mt-1" style={{ color: isDark ? '#CBD5E1' : '#64748B', maxWidth: 640, fontSize: '0.76rem' }}>
+                          {waterQualityChecklist.is_all_completed
+                            ? 'All assigned ponds have verified water readings on record. Daily monitoring and feeding logs are active.'
+                            : 'O&B Aqua Farm Guide: Check DO, Temp, pH, and Salinity once with your meter or paper test.'}
+                        </p>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
 
-        {/* Tab 2: Assigned Ponds Live Overview & Quick Actions */}
-        {activeActivityTab === 'ponds' && (
-          <div className="p-3.5 p-md-4">
-            <div className="d-flex align-items-center justify-content-between mb-3.5 flex-wrap gap-2">
-              <div>
-                <h6 className="fw-bold mb-0 tracking-tight" style={{ color: isDark ? '#FFFFFF' : '#0B2C5F', fontSize: '1.05rem' }}>
-                  Assigned Ponds Live Overview &amp; Quick Actions
-                </h6>
-                <small className="text-muted">Instant pond status monitoring, today's feeding logs, and one-touch caretaker actions</small>
-              </div>
-              <span className="badge rounded-pill extra-small px-3 py-1.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.06)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.15)' }}>
-                {assignedPonds.length} Active Ponds
-              </span>
-            </div>
+                    <div className="d-flex align-items-center gap-2 ms-md-auto flex-shrink-0 w-100 w-md-auto mt-2 mt-md-0">
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-tri-orange px-3.5 py-2 shadow-xs fw-bold w-100 w-md-auto justify-content-center text-nowrap"
+                        style={{ fontSize: '0.82rem' }}
+                        onClick={() => {
+                          const firstUnverified = waterQualityChecklist.checklist?.find((p) => !p.is_verified_today);
+                          setOcrTargetPondId(
+                            firstUnverified
+                              ? String(firstUnverified.pond_id)
+                              : assignedPonds[0]?.id
+                                ? String(assignedPonds[0].id)
+                                : ''
+                          );
+                          setIsOcrModalOpen(true);
+                        }}
+                      >
+                        <FaCamera size={13} className="me-1.5" /> Scan Water Quality
+                      </button>
+                    </div>
+                  </div>
 
-            <div className="row g-3 g-xl-3.5">
-              {assignedPonds.map((pond) => {
-                const pondLogs = todayRecords.filter((r) => String(r.pond_id) === String(pond.id));
-                const pondSlots = new Set(pondLogs.map((r) => normalizeFeedingTime(r.feeding_time)).filter(Boolean));
-                const pondCompletedCount = feedingTimes.filter((time) => pondSlots.has(normalizeFeedingTime(time))).length;
-                const pondPct = Math.round((pondCompletedCount / feedingTimes.length) * 100);
+                  {/* Assigned Ponds Checklist Strip */}
+                  <div className="p-3 p-md-4 caretaker-prestock-strip">
+                    <div className="row g-3 g-xl-3.5">
+                      {assignedPonds.map((pond) => {
+                        const checkItem = waterQualityChecklist.checklist?.find((c) => c.pond_id === pond.id);
+                        const isVerified = Boolean(checkItem?.is_verified_today);
+                        const readings = checkItem?.latest_readings;
 
-                return (
-                  <div key={pond.id} className="col-12 col-sm-6 col-xxl-4">
-                    <div className="compact-pond-card">
-                      <div>
-                        <div className="d-flex align-items-center justify-content-between mb-3">
-                          <div className="d-flex align-items-center gap-2.5">
+                        return (
+                          <div key={pond.id} className="col-12 col-sm-6 col-xxl-4">
                             <div
-                              className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                              style={{ width: 36, height: 36, backgroundColor: '#F1F5F9', color: '#172A39' }}
+                              className="p-3.5 rounded-3 d-flex flex-column justify-content-between h-100 transition-all hover-shadow"
+                              style={{
+                                backgroundColor: isDark ? '#253549' : '#FFFFFF',
+                                border: isDark ? '1px solid rgba(255, 255, 255, 0.14)' : '1px solid #CBD5E1',
+                                borderLeft: isVerified ? '4px solid #10B981' : '4px solid #FC563C',
+                                boxShadow: isDark ? '0 2px 8px rgba(0, 0, 0, 0.25)' : '0 1px 4px rgba(15, 23, 42, 0.03)',
+                                minHeight: 220,
+                              }}
                             >
-                              <FaWater size={15} />
-                            </div>
-                            <div>
-                              <strong className="d-block text-dark fw-bold" style={{ fontSize: '1rem', lineHeight: 1.2 }}>{pond.pond_name}</strong>
-                              <div className="d-flex align-items-center gap-1.5 flex-wrap extra-small text-muted">
-                                <span>Pond</span>
+                              <div>
+                                {/* Tier 1: Pond Name & Status Badge */}
+                                <div className="d-flex align-items-center justify-content-between gap-2 mb-3 flex-wrap">
+                                  <div className="d-flex align-items-center gap-2.5 min-w-0">
+                                    <div
+                                      className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                                      style={{
+                                        width: 34,
+                                        height: 34,
+                                        backgroundColor: isVerified ? '#ECFDF5' : '#FFF5F3',
+                                        color: isVerified ? '#059669' : '#FC563C',
+                                        fontSize: '0.85rem',
+                                      }}
+                                    >
+                                      <FaWater />
+                                    </div>
+                                    <div className="min-w-0">
+                                      <strong className="d-block text-dark fw-bold text-truncate" style={{ fontSize: '0.98rem', lineHeight: 1.2 }}>
+                                        {pond.pond_name}
+                                      </strong>
+                                      <span className="text-muted extra-small">Pond</span>
+                                    </div>
+                                  </div>
+
+                                  {/* Status badge */}
+                                  {isVerified ? (
+                                    <span
+                                      className="badge rounded-pill extra-small fw-bold px-2.5 py-1 flex-shrink-0"
+                                      style={{
+                                        backgroundColor: '#ECFDF5',
+                                        border: '1px solid #A7F3D0',
+                                        color: '#059669',
+                                        fontSize: '0.72rem',
+                                        whiteSpace: 'nowrap'
+                                      }}
+                                    >
+                                      <FaCheckCircle size={10} className="me-1" />
+                                      {t('Verified')}
+                                    </span>
+                                  ) : (
+                                    <span
+                                      className="badge rounded-pill extra-small fw-bold px-2.5 py-1"
+                                      style={{
+                                        backgroundColor: '#FEF2F2',
+                                        border: '1px solid #FECACA',
+                                        color: '#DC2626',
+                                        fontSize: '0.72rem',
+                                      }}
+                                    >
+                                      {t('Needs Test')}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Tier 2: Culture Stage / DOC Pill */}
                                 {pond.stocking_date && (() => {
                                   const isHarvestReady = pond.harvest_readiness_status === 'Ready to Harvest' ||
                                     Number(pond.harvest_readiness) >= 100 ||
                                     (Number(pond.total_feed_kg) >= 15000 && Number(pond.shrimp_weight_g) >= 23.0);
                                   const targetDate = isHarvestReady && pond.expected_harvest_date ? pond.expected_harvest_date : selectedDate;
                                   const doc = computeDoc(pond.stocking_date, targetDate);
-                                  return doc ? (
-                                    <span>
-                                      • <strong className="text-dark">DOC #{doc}</strong>
-                                      {isHarvestReady && (
-                                        <span className="ms-1 badge rounded-pill px-1.5 py-0.5 text-warning-emphasis bg-warning-subtle border border-warning-subtle" style={{ fontSize: '0.65rem' }}>
-                                          Ready to Harvest
-                                        </span>
-                                      )}
-                                    </span>
-                                  ) : null;
+                                  if (!doc) return null;
+                                  const isNursery = doc >= 1 && doc <= 19;
+                                  return (
+                                    <div className="mb-3">
+                                      <span
+                                        className="badge rounded-pill px-2.5 py-1 extra-small fw-bold"
+                                        style={{
+                                          backgroundColor: isHarvestReady ? '#FEF3C7' : (isNursery ? '#ECFDF5' : '#EFF6FF'),
+                                          color: isHarvestReady ? '#D97706' : (isNursery ? '#047857' : '#1D4ED8'),
+                                          border: isHarvestReady ? '1px solid #FCD34D' : (isNursery ? '1px solid #A7F3D0' : '1px solid #BFDBFE'),
+                                          fontSize: '0.72rem',
+                                        }}
+                                      >
+                                        {isHarvestReady ? `DOC #${doc} Ready to Harvest` : (isNursery ? `DOC #${doc} Nursery` : `DOC #${doc} Grow-out`)}
+                                      </span>
+                                    </div>
+                                  );
                                 })()}
-                              </div>
-                            </div>
-                          </div>
-                          {isPondHarvesting(pond) ? (
-                            <span
-                              className="badge rounded-pill px-2.5 py-1 extra-small fw-bold"
-                              style={{ backgroundColor: '#FEF3C7', color: '#B45309', border: '1px solid #FCD34D' }}
-                            >
-                              🌾 {t('Harvesting in Progress')}
-                            </span>
-                          ) : (
-                            <span
-                              className="badge rounded-pill px-2.5 py-1 extra-small fw-bold"
-                              style={{ backgroundColor: '#ECFDF5', color: '#059669', border: '1px solid #A7F3D0' }}
-                            >
-                              ● {t('Healthy')}
-                            </span>
-                          )}
-                        </div>
 
-                        {/* Today's Feeding Progress or Harvest Protocol State */}
-                        {isPondHarvesting(pond) ? (
-                          <div className="my-2 py-1">
-                            <div className="p-3 rounded-3" style={{ backgroundColor: '#FEF9C3', border: '1px solid #FDE68A' }}>
-                              <div className="extra-small fw-bold text-dark d-flex align-items-center gap-1.5 mb-1">
-                                <span>🌾</span>
-                                <span>Pre-Harvest Protocol Active</span>
-                              </div>
-                              <div className="extra-small text-secondary mb-2" style={{ lineHeight: 1.45 }}>
-                                Daily feeding schedule is suspended for gut evacuation and site netting. Awaiting restocking or new cycle assignment from Admin.
-                              </div>
-                              <div className="badge rounded-pill extra-small px-2 py-0.5 fw-bold" style={{ backgroundColor: '#FDE68A', color: '#78350F' }}>
-                                Feeding: 0 kg (Fasting Phase)
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="my-2 py-1">
-                            <div className="d-flex align-items-center justify-content-between extra-small text-muted mb-1.5">
-                              <span className="fw-semibold">Today's Feeding Progress</span>
-                              <span className="fw-bold font-mono text-dark">{pondCompletedCount}/5 ({pondPct}%)</span>
-                            </div>
-                            <div className="progress rounded-pill mb-3" style={{ height: 6, backgroundColor: isDark ? 'rgba(15, 23, 42, 0.65)' : '#E2E8F0' }}>
-                              <div
-                                className="progress-bar rounded-pill"
-                                role="progressbar"
-                                style={{
-                                  width: `${pondPct}%`,
-                                  background: 'linear-gradient(90deg, #FC563C 0%, #FF8A75 100%)',
-                                  boxShadow: '0 0 8px rgba(252, 86, 60, 0.5)',
-                                }}
-                              />
-                            </div>
-
-                            {/* Embedded Today's Feeding Records */}
-                            <div
-                              className="p-2.5 rounded-3"
-                              style={{
-                                backgroundColor: isDark ? 'rgba(15, 23, 42, 0.55)' : '#FFFFFF',
-                                border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #CBD5E1',
-                              }}
-                            >
-                              <div className="d-flex align-items-center justify-content-between mb-2">
-                                <span className="extra-small fw-bold text-uppercase text-muted" style={{ fontSize: '0.68rem', letterSpacing: '0.03em' }}>
-                                  Today's Logged Feeds ({pondLogs.length})
-                                </span>
-                                {pondLogs.length > 0 && (
-                                  <span className="extra-small font-mono fw-bold text-dark">
-                                    Total: {(pondLogs.reduce((sum, r) => sum + (parseFloat(r.amount_kg) || 0), 0)).toFixed(2)} kg
-                                  </span>
-                                )}
-                              </div>
-
-                              {pondLogs.length > 0 ? (
-                                <div className="d-flex flex-column gap-1.5" style={{ maxHeight: 155, overflowY: 'auto' }}>
-                                  {pondLogs.map((log) => (
-                                    <div
-                                      key={log.id}
-                                      className="d-flex align-items-center justify-content-between p-2 rounded-2"
-                                      style={{
-                                        backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#F8FAFC',
-                                        border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
-                                        fontSize: '0.74rem',
-                                      }}
-                                    >
-                                      <div className="d-flex align-items-center gap-1.5 flex-wrap">
-                                        <span
-                                          className="badge rounded-pill px-2 py-0.5 extra-small fw-bold"
-                                          style={{ backgroundColor: isDark ? 'rgba(252, 86, 60, 0.15)' : '#FFF5F3', border: '1px solid rgba(252, 86, 60, 0.25)', color: '#FC563C', fontSize: '0.68rem' }}
-                                        >
-                                          {log.feeding_time || 'Slot'}
-                                        </span>
-                                        <strong style={{ color: isDark ? '#FFFFFF' : '#0F172A' }}>
-                                          {parseFloat(log.amount_kg) > 0 ? `${parseFloat(log.amount_kg).toFixed(2)} kg` : '0 kg'}
-                                        </strong>
-                                        <span className="text-muted extra-small">({log.feed_type || log.product_code || 'Tateh'})</span>
+                                {/* Tier 3: Telemetry Cluster Strip */}
+                                <div
+                                  className="p-2.5 rounded-3 mb-3"
+                                  style={{
+                                    backgroundColor: isDark ? 'rgba(15, 23, 42, 0.55)' : '#F8FAFC',
+                                    border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #CBD5E1',
+                                  }}
+                                >
+                                  {isVerified ? (
+                                    <div className="d-flex align-items-center justify-content-between text-center px-1">
+                                      <div>
+                                        <span className="extra-small d-block fw-bold text-muted text-uppercase" style={{ fontSize: '0.66rem' }}>DO</span>
+                                        <strong className="text-dark" style={{ fontSize: '0.92rem' }}>{readings?.dissolved_oxygen ?? '—'}</strong>
+                                        <small className="text-muted" style={{ fontSize: '0.62rem' }}> mg/L</small>
                                       </div>
-                                      <div className="d-flex align-items-center gap-1.5">
-                                        {log.vitamin_name && log.vitamin_name !== 'None' && (
-                                          <span className="badge rounded-pill px-1.5 py-0.5 extra-small" style={{ backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9', color: isDark ? '#CBD5E1' : '#475569', fontSize: '0.65rem' }}>
-                                            {log.vitamin_name}
-                                          </span>
-                                        )}
-                                        <span className="text-muted extra-small font-mono">
-                                          {log.created_at ? new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                                        </span>
+                                      <div style={{ width: 1, height: 20, backgroundColor: isDark ? '#334155' : '#CBD5E1' }} />
+                                      <div>
+                                        <span className="extra-small d-block fw-bold text-muted text-uppercase" style={{ fontSize: '0.66rem' }}>Temp</span>
+                                        <strong className="text-dark" style={{ fontSize: '0.92rem' }}>{readings?.temperature ?? '—'}</strong>
+                                        <small className="text-muted" style={{ fontSize: '0.62rem' }}> °C</small>
+                                      </div>
+                                      <div style={{ width: 1, height: 20, backgroundColor: isDark ? '#334155' : '#CBD5E1' }} />
+                                      <div>
+                                        <span className="extra-small d-block fw-bold text-muted text-uppercase" style={{ fontSize: '0.66rem' }}>pH</span>
+                                        <strong className="text-dark" style={{ fontSize: '0.92rem' }}>{readings?.ph_level ?? '—'}</strong>
+                                      </div>
+                                      <div style={{ width: 1, height: 20, backgroundColor: isDark ? '#334155' : '#CBD5E1' }} />
+                                      <div>
+                                        <span className="extra-small d-block fw-bold text-muted text-uppercase" style={{ fontSize: '0.66rem' }}>Salinity</span>
+                                        <strong className="text-dark" style={{ fontSize: '0.92rem' }}>{readings?.salinity ?? '—'}</strong>
+                                        <small className="text-muted" style={{ fontSize: '0.62rem' }}> ppt</small>
                                       </div>
                                     </div>
-                                  ))}
+                                  ) : (
+                                    <div className="d-flex align-items-center gap-2 extra-small py-0.5 px-1">
+                                      <FaLock size={11} className="text-danger flex-shrink-0" />
+                                      <span className="text-danger fw-bold" style={{ fontSize: '0.76rem' }}>
+                                        {t('Water quality check required')}
+                                      </span>
+                                    </div>
+                                  )}
                                 </div>
-                              ) : (
-                                <div className="text-center py-2 text-muted extra-small">
-                                  No feeds logged for this pond today.
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </div>
+                              </div>
 
-                      {/* Guaranteed 3-Column Single-Row Buttons (50% / 25% / 25%) */}
-                      <div className="row g-2 mt-3 pt-3 border-top" style={{ borderColor: isDark ? '#334155' : '#E2E8F0' }}>
-                        <div className="col-6">
-                          {isPondHarvesting(pond) ? (
-                            <button
-                              type="button"
-                              className="btn btn-sm w-100 py-1.5 extra-small fw-bold d-inline-flex align-items-center justify-content-center gap-1.5"
-                              style={{ backgroundColor: '#FEF3C7', color: '#B45309', border: '1px solid #FCD34D' }}
-                              onClick={() => navigate('/caretaker/my-pond')}
-                            >
-                              <span>🌾</span> {t('View Harvest')}
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-understated-feed w-100 py-1.5 extra-small fw-bold d-inline-flex align-items-center justify-content-center gap-1.5"
-                              onClick={() => navigate('/caretaker/my-pond')}
-                            >
-                              <FaPlus size={10} /> {t('Log Feed')}
-                            </button>
-                          )}
-                        </div>
-                        <div className="col-3">
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-understated-view w-100 py-1.5 extra-small fw-bold d-inline-flex align-items-center justify-content-center gap-1"
-                            onClick={() => navigate('/caretaker/disease-scan')}
-                            title="Disease Scan"
-                          >
-                            <FaStethoscope size={10} /> {t('Scan')}
-                          </button>
-                        </div>
-                        <div className="col-3">
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-understated-view w-100 py-1.5 extra-small fw-bold d-inline-flex align-items-center justify-content-center gap-1"
-                            onClick={() => navigate('/caretaker/reports')}
-                            title="Report Pond Concern"
-                          >
-                            <FaExclamationTriangle size={10} className="text-danger" /> {t('Report')}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+                              {/* Tier 4: Action Buttons Footer */}
+                              <div className="d-flex align-items-center justify-content-between gap-2 pt-2.5 mt-auto border-top" style={{ borderColor: isDark ? '#334155' : '#E2E8F0' }}>
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-understated-view px-3 py-1.5 extra-small fw-bold d-inline-flex align-items-center gap-1.5"
+                                  onClick={() => {
+                                    setHistoryTargetPond(pond);
+                                    setIsHistoryModalOpen(true);
+                                  }}
+                                  title="View Water Quality Log History"
+                                >
+                                  <FaHistory size={11} className="text-secondary" />
+                                  <span>{t('History')}</span>
+                                </button>
 
-        {/* Tab 3: Disease Scan Telemetry */}
-        {activeActivityTab === 'disease' && (
-          <div className="p-3.5 p-md-4">
-            <div className="d-flex align-items-center justify-content-between mb-3.5 gap-2 flex-wrap">
-              <div>
-                <h6 className="fw-bold mb-0 tracking-tight text-dark" style={{ fontSize: '1.05rem' }}>{t('Shrimp Health & Disease Scans')}</h6>
-                <small className="text-muted">{t('Recent AI health diagnostics submitted for assigned ponds.')}</small>
-              </div>
-
-              <div className="d-flex align-items-center gap-2 ms-auto">
-                <select
-                  className="form-select form-select-sm minimal-filter-control px-2.5"
-                  style={{ width: 'auto', minWidth: 160 }}
-                  value={selectedDiseasePondFilter}
-                  onChange={(event) => setSelectedDiseasePondFilter(event.target.value)}
-                >
-                  <option value="all">{t('All Assigned Ponds')}</option>
-                  {assignedPonds.map((pond) => (
-                    <option key={pond.id} value={pond.pond_name}>
-                      {pond.pond_name}
-                    </option>
-                  ))}
-                </select>
-                <span className="badge rounded-pill extra-small px-2.5 py-1.5" style={{ backgroundColor: '#F1F5F9', color: '#475569', fontWeight: 600 }}>
-                  {filteredDiseaseScans.length} Scans
-                </span>
-              </div>
-            </div>
-
-            {latestDisease ? (
-              <div className="d-flex align-items-center p-3 rounded-3 mb-3" style={{ minHeight: 90, backgroundColor: isDark ? '#253549' : '#FFFFFF', border: isDark ? '1px solid rgba(255, 255, 255, 0.14)' : '1px solid #CBD5E1', boxShadow: isDark ? '0 2px 8px rgba(0, 0, 0, 0.25)' : '0 1px 4px rgba(15, 23, 42, 0.04)' }}>
-                {latestDisease.image_path && (
-                  <img
-                    src={resolveImageUrl(latestDisease.image_path)}
-                    alt="Latest disease scan"
-                    className="rounded-3 me-3 flex-shrink-0"
-                    style={{ width: 60, height: 60, objectFit: 'cover', border: isDark ? '1px solid #334155' : '1px solid #E2E8F0' }}
-                  />
-                )}
-                <div>
-                  <div className="fw-bold mb-1 text-dark fs-6">{latestDisease.disease_name}</div>
-                  <div className="d-flex align-items-center gap-2 flex-wrap extra-small text-muted">
-                    <span>Risk:</span>
-                    <span className="badge rounded-pill" style={{ backgroundColor: latestDisease.risk_level === 'High' ? '#DC2626' : '#10B981', color: '#FFFFFF' }}>
-                      {latestDisease.risk_level || 'Safe'}
-                    </span>
-                    <span>•</span>
-                    <span>Confidence: <strong className="text-dark">{latestDisease.confidence_score}%</strong></span>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-4 rounded-3 text-muted small mb-3" style={{ backgroundColor: isDark ? '#253549' : '#FFFFFF', border: isDark ? '1px solid rgba(255, 255, 255, 0.14)' : '1px solid #CBD5E1' }}>
-                <FaStethoscope size={22} className="mb-2 opacity-40 text-secondary" />
-                <p className="mb-0 fw-semibold text-dark">{t('No disease scans recorded yet')}</p>
-                <small className="extra-small text-muted">{t('All scans look healthy and normal.')}</small>
-              </div>
-            )}
-
-            <div className="pt-2 border-top d-flex justify-content-end" style={{ borderColor: isDark ? '#334155' : '#E2E8F0' }}>
-              <button
-                type="button"
-                className="btn btn-sm btn-understated-feed px-3.5 py-1.5 extra-small fw-bold d-inline-flex align-items-center gap-1.5"
-                onClick={() => navigate('/caretaker/disease-scan')}
-              >
-                <span>{t('Scan Shrimp Health')}</span> <FaChevronRight size={10} />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Tab 4: System Incident Alerts */}
-        {activeActivityTab === 'alerts' && (
-          <div className="p-3.5 p-md-4">
-            <div className="d-flex align-items-center justify-content-between mb-3.5 gap-2">
-              <div>
-                <h6 className="fw-bold mb-0 tracking-tight text-dark" style={{ fontSize: '1.05rem' }}>{t('System Incident Alerts')}</h6>
-                <small className="text-muted">{t('Live incidents and biosecurity warnings for assigned ponds.')}</small>
-              </div>
-              <span className="badge rounded-pill extra-small px-2.5 py-1.5" style={{ backgroundColor: alerts.length > 0 ? '#FEF2F2' : '#F1F5F9', color: alerts.length > 0 ? '#DC2626' : '#475569', border: alerts.length > 0 ? '1px solid #FECACA' : '1px solid #E2E8F0', fontWeight: 600 }}>
-                {alerts.length} Active
-              </span>
-            </div>
-
-            {alerts.length > 0 ? (
-              <div className="d-flex flex-column gap-2 mb-3">
-                {alerts.slice(0, 3).map((alertItem, idx) => {
-                  const isHarvestAlert = String(alertItem.alert_type || '').toLowerCase() === 'harvest_ready'
-                    || String(alertItem.category || '').toLowerCase() === 'harvest';
-                  return (
-                    <div
-                      key={alertItem.id || idx}
-                      className="d-flex flex-column justify-content-center p-3 rounded-3"
-                      style={{
-                        minHeight: 80,
-                        backgroundColor: isDark ? '#253549' : (isHarvestAlert ? '#F0FDF4' : '#FFFFFF'),
-                        border: isDark
-                          ? (isHarvestAlert ? '1px solid rgba(34, 197, 94, 0.45)' : '1px solid rgba(252, 86, 60, 0.35)')
-                          : (isHarvestAlert ? '1px solid #BBF7D0' : '1px solid #FECACA'),
-                        boxShadow: isDark ? '0 2px 8px rgba(0, 0, 0, 0.25)' : '0 1px 4px rgba(15, 23, 42, 0.04)'
-                      }}
-                    >
-                      <div className={`fw-bold d-flex align-items-center gap-2 mb-1 fs-6 ${isHarvestAlert ? 'text-success' : 'text-danger'}`}>
-                        {isHarvestAlert ? <FaSeedling size={13} /> : <FaExclamationTriangle size={13} />}
-                        <span>{alertItem.title}</span>
-                      </div>
-                      <small className="text-muted" style={{ lineHeight: 1.45 }}>{alertItem.message}</small>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-4 rounded-3 text-muted small mb-3" style={{ backgroundColor: isDark ? '#253549' : '#FFFFFF', border: isDark ? '1px solid rgba(255, 255, 255, 0.14)' : '1px solid #CBD5E1' }}>
-                <FaShieldAlt size={22} className="mb-2 opacity-40 text-secondary" />
-                <p className="mb-0 fw-semibold text-dark">{t('No active alerts for your ponds')}</p>
-                <small className="extra-small text-muted">{t('All ponds and water readings are in safe range.')}</small>
-              </div>
-            )}
-
-            <div className="pt-2 border-top d-flex justify-content-end" style={{ borderColor: isDark ? '#334155' : '#E2E8F0' }}>
-              <button
-                type="button"
-                className="btn btn-sm btn-understated-view px-3.5 py-1.5 extra-small fw-bold text-danger d-inline-flex align-items-center gap-1.5"
-                onClick={() => navigate('/caretaker/reports')}
-              >
-                <span>{t('Submit Incident Report')}</span> <FaChevronRight size={10} />
-              </button>
-            </div>
-          </div>
-        )}
-        </div>
-        </div>
-      </div>
-
-      {/* 4B. RIGHT COLUMN: MY TASKS SECTION (40%) */}
-      <div className="col-12 caretaker-col-40 d-flex flex-column" id="my-tasks">
-        <div
-          className="rounded-4 overflow-hidden bg-white border h-100 d-flex flex-column"
-          style={{
-            borderColor: isDark ? '#334155' : '#E2E8F0',
-            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-            boxShadow: '0 2px 10px -2px rgba(15, 23, 42, 0.04)'
-          }}
-        >
-          {/* My Tasks Header */}
-          <div
-            className="p-3 px-md-3.5 py-md-3 d-flex align-items-center justify-content-between gap-3 border-bottom"
-            style={{ borderColor: isDark ? '#334155' : '#E2E8F0' }}
-          >
-            <div className="d-flex align-items-center gap-2.5">
-              <div
-                className="rounded-3 d-flex align-items-center justify-content-center shadow-xs flex-shrink-0"
-                style={{
-                  width: 36,
-                  height: 36,
-                  backgroundColor: 'rgba(252, 86, 60, 0.1)',
-                  color: '#FC563C',
-                  border: '1px solid rgba(252, 86, 60, 0.25)'
-                }}
-              >
-                <FaClipboardList size={15} />
-              </div>
-              <div>
-                <h5 className="fw-extrabold mb-0.5 tracking-tight text-dark" style={{ fontSize: '1.08rem', letterSpacing: '-0.02em', lineHeight: 1.25 }}>
-                  {t('myTasks.title', 'My Tasks')}
-                </h5>
-                <p className="text-muted mb-0 extra-small" style={{ fontSize: '0.74rem', lineHeight: 1.3 }}>
-                  {t('myTasks.subtitle', 'Follow the checklist in order. Completion updates from your saved pond records.')}
-                </p>
-              </div>
-            </div>
-
-            <div className="d-flex align-items-center gap-2 flex-shrink-0">
-              <button
-                type="button"
-                className="btn btn-outline-secondary btn-sm rounded-pill px-2.5 py-1 extra-small fw-semibold d-inline-flex align-items-center gap-1.5"
-                onClick={loadData}
-                disabled={loading}
-                title={t('myTasks.refresh', 'Refresh tasks')}
-              >
-                {loading ? <FaSpinner className="fa-spin" size={11} /> : <FaRedo size={11} />}
-                <span>{t('myTasks.refresh', 'Refresh')}</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Action error hint if any */}
-          {actionLoadError && (
-            <div className="alert alert-warning m-3 mb-0 d-flex align-items-start gap-2 extra-small py-2 px-3 rounded-3" role="alert">
-              <FaExclamationCircle className="mt-0.5 flex-shrink-0" />
-              <div>{actionLoadError}</div>
-            </div>
-          )}
-
-          {/* Today's Progress Strip */}
-          <div
-            className="px-3.5 py-2 px-md-3.5 py-md-2 border-bottom"
-            style={{
-              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : '#F8FAFC',
-              borderColor: isDark ? '#334155' : '#E2E8F0'
-            }}
-          >
-            <div className="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-1">
-              <div>
-                <span className="fw-bold extra-small text-dark text-uppercase tracking-wider" style={{ fontSize: '0.7rem' }}>
-                  {t('myTasks.progress', "Today's Progress")}
-                </span>
-                <span className="text-muted extra-small ms-2" style={{ fontSize: '0.72rem' }}>
-                  {allPondsHarvesting
-                    ? 'Harvesting in Progress (Tasks Suspended)'
-                    : allTasksComplete
-                    ? t('myTasks.allComplete', 'All listed tasks are complete. Great work!')
-                    : t('myTasks.progressCount', '{done} of {total} tasks complete')
-                        .replace('{done}', String(completedTasksCount))
-                        .replace('{total}', String(tasks.length))}
-                </span>
-              </div>
-              <span
-                className="badge rounded-pill extra-small px-2 py-0.5 fw-bold"
-                style={{
-                  backgroundColor: allPondsHarvesting
-                    ? '#FEF3C7'
-                    : allTasksComplete
-                    ? '#ECFDF5'
-                    : isDark
-                    ? 'rgba(255,255,255,0.08)'
-                    : '#F1F5F9',
-                  color: allPondsHarvesting
-                    ? '#92400E'
-                    : allTasksComplete
-                    ? '#059669'
-                    : isDark
-                    ? '#CBD5E1'
-                    : '#334155',
-                  border: allPondsHarvesting
-                    ? '1px solid #FCD34D'
-                    : allTasksComplete
-                    ? '1px solid #A7F3D0'
-                    : isDark
-                    ? '1px solid rgba(255,255,255,0.1)'
-                    : '1px solid #E2E8F0',
-                  fontSize: '0.66rem'
-                }}
-              >
-                {allPondsHarvesting ? 'Harvest' : tasks.length ? `${Math.round((completedTasksCount / tasks.length) * 100)}%` : '0%'}
-              </span>
-            </div>
-            <div
-              className="progress rounded-pill overflow-hidden"
-              role="progressbar"
-              aria-valuenow={completedTasksCount}
-              aria-valuemin="0"
-              aria-valuemax={tasks.length || 1}
-              style={{ height: 6, backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0' }}
-            >
-              <div
-                className="progress-bar rounded-pill transition-all"
-                style={{
-                  width: `${allPondsHarvesting ? 100 : tasks.length ? (completedTasksCount / tasks.length) * 100 : 0}%`,
-                  backgroundColor: allPondsHarvesting ? '#D97706' : allTasksComplete ? '#10B981' : '#FC563C'
-                }}
-              />
-            </div>
-          </div>
-
-          {/* Tasks Scrollable List */}
-          <div
-            className="p-2.5 p-md-3 flex-grow-1 caretaker-tasks-scroll-3items"
-          >
-            {loading && tasks.length === 0 ? (
-              <div className="text-center text-muted py-5">
-                <FaSpinner className="fa-spin me-2" />
-                <span className="extra-small">{t('myTasks.loading', 'Loading your tasks…')}</span>
-              </div>
-            ) : assignedPonds.length === 0 && tasks.length === 0 ? (
-              <div className="text-center py-5">
-                <FaWater className="fs-2 mb-3 text-muted opacity-40" />
-                <h6 className="fw-bold">{t('myTasks.noPondsTitle', 'No ponds assigned')}</h6>
-                <p className="text-muted extra-small mb-0">{t('myTasks.noPonds', 'Ask your farm administrator to assign a pond to your caretaker account.')}</p>
-              </div>
-            ) : allPondsHarvesting && tasks.length === 0 ? (
-              <div
-                className="p-4 text-center rounded-4 border my-2"
-                style={{
-                  backgroundColor: isDark ? 'rgba(254, 243, 199, 0.05)' : '#FFFBEB',
-                  borderColor: isDark ? 'rgba(253, 230, 138, 0.25)' : '#FDE68A',
-                }}
-              >
-                <div
-                  className="rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3 shadow-xs"
-                  style={{ width: 48, height: 48, backgroundColor: '#FEF3C7', color: '#D97706', fontSize: '1.4rem' }}
-                >
-                  🌾
-                </div>
-                <h6 className="fw-extrabold text-dark mb-1">
-                  {harvestingPonds.map((p) => p.pond_name).join(', ')} — Harvest Underway
-                </h6>
-                <span
-                  className="badge rounded-pill fw-bold mb-2.5 px-3 py-1"
-                  style={{ backgroundColor: '#FDE68A', color: '#78350F', fontSize: '0.72rem' }}
-                >
-                  Pre-Harvest Protocol • Routine Tasks Suspended
-                </span>
-                <p className="extra-small text-secondary mb-3" style={{ lineHeight: 1.5, maxWidth: 360, margin: '0 auto' }}>
-                  Routine 5-slot daily feeding tasks for this pond are suspended while pre-harvest gut evacuation and harvest netting are underway. Awaiting pond harvest completion and restocking/assignment from Farm Administration.
-                </p>
-                <div className="d-flex justify-content-center gap-2 flex-wrap">
-                  <button
-                    type="button"
-                    className="btn btn-sm fw-bold shadow-xs d-inline-flex align-items-center gap-1.5"
-                    style={{ backgroundColor: '#D97706', color: '#FFFFFF', borderRadius: 8, fontSize: '0.78rem' }}
-                    onClick={() => navigate('/caretaker/my-pond')}
-                  >
-                    View Harvest in My Pond →
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline-secondary fw-semibold extra-small"
-                    style={{ borderRadius: 8 }}
-                    onClick={() => navigate('/caretaker/reports')}
-                  >
-                    Submit Report
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="d-flex flex-column caretaker-tasks-list">
-                {harvestingPonds.length > 0 && !allPondsHarvesting && (
-                  <div
-                    className="p-2.5 mb-2.5 rounded-3 border d-flex align-items-center justify-content-between gap-2"
-                    style={{
-                      backgroundColor: isDark ? 'rgba(254, 243, 199, 0.08)' : '#FFFBEB',
-                      borderColor: isDark ? 'rgba(253, 230, 138, 0.25)' : '#FDE68A',
-                    }}
-                  >
-                    <div className="extra-small d-flex align-items-center gap-2" style={{ color: isDark ? '#FDE68A' : '#92400E' }}>
-                      <span>🌾</span>
-                      <span>
-                        <strong>{harvestingPonds.map((p) => p.pond_name).join(', ')}</strong> is in harvest (feeding paused). Active tasks below apply to running ponds.
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-link p-0 extra-small fw-bold text-decoration-none text-nowrap"
-                      style={{ color: '#D97706' }}
-                      onClick={() => navigate('/caretaker/my-pond')}
-                    >
-                      View →
-                    </button>
-                  </div>
-                )}
-                {tasks.map((task, index) => {
-                  const isNext = index === firstIncompleteTaskIndex;
-                  return (
-                    <article
-                      key={task.id}
-                      className={`rounded-3 p-3 transition-all shadow-xs ${isNext ? 'border-2' : ''}`}
-                      style={{
-                        backgroundColor: isDark ? '#253549' : '#FFFFFF',
-                        border: isNext
-                          ? '1.5px solid #FC563C'
-                          : (isDark ? '1.5px solid rgba(255, 255, 255, 0.14)' : '1.5px solid #CBD5E1'),
-                        boxShadow: isNext ? '0 2px 8px rgba(252, 86, 60, 0.25)' : (isDark ? '0 2px 6px rgba(0, 0, 0, 0.25)' : '0 1px 4px rgba(15, 23, 42, 0.04)')
-                      }}
-                    >
-                      <div className="d-flex flex-column gap-2">
-                        <div className="d-flex align-items-start gap-3">
-                          <div
-                            className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                            style={{
-                              width: 32,
-                              height: 32,
-                              backgroundColor: task.isComplete
-                                ? (isDark ? 'rgba(34, 197, 94, 0.2)' : '#DCFCE7')
-                                : isNext
-                                  ? (isDark ? 'rgba(252, 86, 60, 0.2)' : '#FFF1ED')
-                                  : (isDark ? 'rgba(255,255,255,0.08)' : '#F1F5F9'),
-                              color: task.isComplete
-                                ? (isDark ? '#4ADE80' : '#15803D')
-                                : isNext
-                                  ? (isDark ? '#FF8A75' : '#FC563C')
-                                  : (isDark ? '#94A3B8' : '#64748B'),
-                              border: task.isComplete
-                                ? (isDark ? '1px solid rgba(74, 222, 128, 0.35)' : '1px solid #86EFAC')
-                                : isNext
-                                  ? (isDark ? '1px solid rgba(252, 86, 60, 0.35)' : '1px solid #FECDD3')
-                                  : (isDark ? '1px solid rgba(255, 255, 255, 0.1)' : 'none'),
-                              fontSize: '0.82rem'
-                            }}
-                            aria-label={task.isComplete ? t('myTasks.completed', 'Completed') : t('myTasks.notCompleted', 'Not completed')}
-                          >
-                            {task.isComplete ? <FaCheck /> : task.type === 'admin-action' ? <FaTools /> : task.type === 'water' ? <FaWater /> : <FaClock />}
-                          </div>
-
-                          <div className="flex-grow-1 min-w-0">
-                            <div className="d-flex align-items-center justify-content-between gap-2 mb-1">
-                              <h6 className="fw-bold mb-0 text-break" style={{ fontSize: '0.88rem', lineHeight: 1.35, color: isDark ? '#FFFFFF' : '#0F172A' }}>
-                                {task.title}
-                              </h6>
-                              <div className="d-flex align-items-center gap-1.5 flex-shrink-0">
-                                {isNext && (
-                                  <span
-                                    className="badge rounded-pill extra-small fw-bold px-2 py-0.5"
-                                    style={{
-                                      backgroundColor: isDark ? 'rgba(252, 86, 60, 0.22)' : '#FFF1ED',
-                                      color: isDark ? '#FF8A75' : '#C2410C',
-                                      border: isDark ? '1px solid rgba(252, 86, 60, 0.4)' : '1px solid #FECDD3',
-                                      fontSize: '0.64rem'
+                                {!isVerified ? (
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-understated-feed px-3 py-1.5 extra-small fw-bold d-inline-flex align-items-center gap-1.5"
+                                    onClick={() => {
+                                      setEditingWqRecord(null);
+                                      setOcrTargetPondId(String(pond.id));
+                                      setOcrTargetDate(todayStr);
+                                      setIsOcrModalOpen(true);
                                     }}
                                   >
-                                    {t('myTasks.next', 'NEXT')}
-                                  </span>
-                                )}
-                                {task.type === 'admin-action' ? (
-                                  <span
-                                    className="badge rounded-pill extra-small fw-bold px-2 py-0.5"
-                                    style={{
-                                      backgroundColor: task.action.status === 'Done'
-                                        ? (isDark ? 'rgba(34, 197, 94, 0.2)' : '#DCFCE7')
-                                        : task.action.status === 'In Progress'
-                                          ? (isDark ? 'rgba(56, 189, 248, 0.2)' : '#E0F2FE')
-                                          : (isDark ? 'rgba(245, 158, 11, 0.2)' : '#FEF3C7'),
-                                      color: task.action.status === 'Done'
-                                        ? (isDark ? '#4ADE80' : '#15803D')
-                                        : task.action.status === 'In Progress'
-                                          ? (isDark ? '#38BDF8' : '#0369A1')
-                                          : (isDark ? '#FBBF24' : '#B45309'),
-                                      border: isDark ? '1px solid rgba(255, 255, 255, 0.12)' : 'none',
-                                      fontSize: '0.66rem'
+                                    <FaCamera size={11} />
+                                    <span>{t('Scan Readings')}</span>
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-understated-view px-3 py-1.5 extra-small fw-bold d-inline-flex align-items-center gap-1.5"
+                                    onClick={() => {
+                                      setEditingWqRecord(checkItem?.today_record || null);
+                                      setOcrTargetPondId(String(pond.id));
+                                      setOcrTargetDate(todayStr);
+                                      setIsOcrModalOpen(true);
                                     }}
+                                    title="Re-scan / Update Today's Readings"
                                   >
-                                    {t(task.action.status)}
-                                  </span>
-                                ) : task.isComplete && (
-                                  <span
-                                    className="badge rounded-pill extra-small fw-bold px-2 py-0.5"
-                                    style={{
-                                      backgroundColor: isDark ? 'rgba(34, 197, 94, 0.2)' : '#DCFCE7',
-                                      color: isDark ? '#4ADE80' : '#15803D',
-                                      border: isDark ? '1px solid rgba(74, 222, 128, 0.35)' : '1px solid #86EFAC',
-                                      fontSize: '0.66rem'
-                                    }}
-                                  >
-                                    {t('myTasks.done', 'Done')}
-                                  </span>
+                                    <FaSync size={11} />
+                                    <span>{t('Re-test (OCR)')}</span>
+                                  </button>
                                 )}
                               </div>
                             </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
 
-                            <div className="extra-small fw-semibold mb-1" style={{ color: '#FC563C', fontSize: '0.76rem' }}>
-                              {task.type === 'admin-action' && `${t('myTasks.adminDecision', 'Admin decision')} · `}
-                              {task.pond.pond_name || task.pond.name || `${t('myTasks.pond', 'Pond')} #${task.pond.id}`}
-                              {task.slot ? ` · ${task.slot}` : ''}
+              {/* Tab 2: Assigned Ponds Live Overview & Quick Actions */}
+              {activeActivityTab === 'ponds' && (
+                <div className="p-3.5 p-md-4">
+                  <div className="d-flex align-items-center justify-content-between mb-3.5 flex-wrap gap-2">
+                    <div>
+                      <h6 className="fw-bold mb-0 tracking-tight" style={{ color: isDark ? '#FFFFFF' : '#0B2C5F', fontSize: '1.05rem' }}>
+                        Assigned Ponds Live Overview &amp; Quick Actions
+                      </h6>
+                      <small className="text-muted">Instant pond status monitoring, today's feeding logs, and one-touch caretaker actions</small>
+                    </div>
+                    <span className="badge rounded-pill extra-small px-3 py-1.5" style={{ backgroundColor: 'rgba(252, 86, 60, 0.06)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.15)' }}>
+                      {assignedPonds.length} Active Ponds
+                    </span>
+                  </div>
+
+                  <div className="row g-3 g-xl-3.5">
+                    {assignedPonds.map((pond) => {
+                      const pondLogs = todayRecords.filter((r) => String(r.pond_id) === String(pond.id));
+                      const pondSlots = new Set(pondLogs.map((r) => normalizeFeedingTime(r.feeding_time)).filter(Boolean));
+                      const pondCompletedCount = feedingTimes.filter((time) => pondSlots.has(normalizeFeedingTime(time))).length;
+                      const pondPct = Math.round((pondCompletedCount / feedingTimes.length) * 100);
+
+                      return (
+                        <div key={pond.id} className="col-12 col-sm-6 col-xxl-4">
+                          <div className="compact-pond-card">
+                            <div>
+                              <div className="d-flex align-items-center justify-content-between mb-3">
+                                <div className="d-flex align-items-center gap-2.5">
+                                  <div
+                                    className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                                    style={{ width: 36, height: 36, backgroundColor: '#F1F5F9', color: '#172A39' }}
+                                  >
+                                    <FaWater size={15} />
+                                  </div>
+                                  <div>
+                                    <strong className="d-block text-dark fw-bold" style={{ fontSize: '1rem', lineHeight: 1.2 }}>{pond.pond_name}</strong>
+                                    <div className="d-flex align-items-center gap-1.5 flex-wrap extra-small text-muted">
+                                      <span>Pond</span>
+                                      {pond.stocking_date && (() => {
+                                        const isHarvestReady = pond.harvest_readiness_status === 'Ready to Harvest' ||
+                                          Number(pond.harvest_readiness) >= 100 ||
+                                          (Number(pond.total_feed_kg) >= 15000 && Number(pond.shrimp_weight_g) >= 23.0);
+                                        const targetDate = isHarvestReady && pond.expected_harvest_date ? pond.expected_harvest_date : selectedDate;
+                                        const doc = computeDoc(pond.stocking_date, targetDate);
+                                        return doc ? (
+                                          <span>
+                                            • <strong className="text-dark">DOC #{doc}</strong>
+                                            {isHarvestReady && (
+                                              <span className="ms-1 badge rounded-pill px-1.5 py-0.5 text-warning-emphasis bg-warning-subtle border border-warning-subtle" style={{ fontSize: '0.65rem' }}>
+                                                Ready to Harvest
+                                              </span>
+                                            )}
+                                          </span>
+                                        ) : null;
+                                      })()}
+                                    </div>
+                                  </div>
+                                </div>
+                                {isPondHarvesting(pond) ? (
+                                  <span
+                                    className="badge rounded-pill px-2.5 py-1 extra-small fw-bold"
+                                    style={{ backgroundColor: '#FEF3C7', color: '#B45309', border: '1px solid #FCD34D' }}
+                                  >
+                                    🌾 {t('Harvesting in Progress')}
+                                  </span>
+                                ) : (
+                                  <span
+                                    className="badge rounded-pill px-2.5 py-1 extra-small fw-bold"
+                                    style={{ backgroundColor: '#ECFDF5', color: '#059669', border: '1px solid #A7F3D0' }}
+                                  >
+                                    ● {t('Healthy')}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Today's Feeding Progress or Harvest Protocol State */}
+                              {isPondHarvesting(pond) ? (
+                                <div className="my-2 py-1">
+                                  <div className="p-3 rounded-3" style={{ backgroundColor: '#FEF9C3', border: '1px solid #FDE68A' }}>
+                                    <div className="extra-small fw-bold text-dark d-flex align-items-center gap-1.5 mb-1">
+                                      <span>🌾</span>
+                                      <span>Pre-Harvest Protocol Active</span>
+                                    </div>
+                                    <div className="extra-small text-secondary mb-2" style={{ lineHeight: 1.45 }}>
+                                      Daily feeding schedule is suspended for gut evacuation and site netting. Awaiting restocking or new cycle assignment from Admin.
+                                    </div>
+                                    <div className="badge rounded-pill extra-small px-2 py-0.5 fw-bold" style={{ backgroundColor: '#FDE68A', color: '#78350F' }}>
+                                      Feeding: 0 kg (Fasting Phase)
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="my-2 py-1">
+                                  <div className="d-flex align-items-center justify-content-between extra-small text-muted mb-1.5">
+                                    <span className="fw-semibold">Today's Feeding Progress</span>
+                                    <span className="fw-bold font-mono text-dark">{pondCompletedCount}/5 ({pondPct}%)</span>
+                                  </div>
+                                  <div className="progress rounded-pill mb-3" style={{ height: 6, backgroundColor: isDark ? 'rgba(15, 23, 42, 0.65)' : '#E2E8F0' }}>
+                                    <div
+                                      className="progress-bar rounded-pill"
+                                      role="progressbar"
+                                      style={{
+                                        width: `${pondPct}%`,
+                                        background: 'linear-gradient(90deg, #FC563C 0%, #FF8A75 100%)',
+                                        boxShadow: '0 0 8px rgba(252, 86, 60, 0.5)',
+                                      }}
+                                    />
+                                  </div>
+
+                                  {/* Embedded Today's Feeding Records */}
+                                  <div
+                                    className="p-2.5 rounded-3"
+                                    style={{
+                                      backgroundColor: isDark ? 'rgba(15, 23, 42, 0.55)' : '#FFFFFF',
+                                      border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #CBD5E1',
+                                    }}
+                                  >
+                                    <div className="d-flex align-items-center justify-content-between mb-2">
+                                      <span className="extra-small fw-bold text-uppercase text-muted" style={{ fontSize: '0.68rem', letterSpacing: '0.03em' }}>
+                                        Today's Logged Feeds ({pondLogs.length})
+                                      </span>
+                                      {pondLogs.length > 0 && (
+                                        <span className="extra-small font-mono fw-bold text-dark">
+                                          Total: {(pondLogs.reduce((sum, r) => sum + (parseFloat(r.amount_kg) || 0), 0)).toFixed(2)} kg
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    {pondLogs.length > 0 ? (
+                                      <div className="d-flex flex-column gap-1.5" style={{ maxHeight: 155, overflowY: 'auto' }}>
+                                        {pondLogs.map((log) => (
+                                          <div
+                                            key={log.id}
+                                            className="d-flex align-items-center justify-content-between p-2 rounded-2"
+                                            style={{
+                                              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#F8FAFC',
+                                              border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+                                              fontSize: '0.74rem',
+                                            }}
+                                          >
+                                            <div className="d-flex align-items-center gap-1.5 flex-wrap">
+                                              <span
+                                                className="badge rounded-pill px-2 py-0.5 extra-small fw-bold"
+                                                style={{ backgroundColor: isDark ? 'rgba(252, 86, 60, 0.15)' : '#FFF5F3', border: '1px solid rgba(252, 86, 60, 0.25)', color: '#FC563C', fontSize: '0.68rem' }}
+                                              >
+                                                {log.feeding_time || 'Slot'}
+                                              </span>
+                                              <strong style={{ color: isDark ? '#FFFFFF' : '#0F172A' }}>
+                                                {parseFloat(log.amount_kg) > 0 ? `${parseFloat(log.amount_kg).toFixed(2)} kg` : '0 kg'}
+                                              </strong>
+                                              <span className="text-muted extra-small">({log.feed_type || log.product_code || 'Tateh'})</span>
+                                            </div>
+                                            <div className="d-flex align-items-center gap-1.5">
+                                              {log.vitamin_name && log.vitamin_name !== 'None' && (
+                                                <span className="badge rounded-pill px-1.5 py-0.5 extra-small" style={{ backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9', color: isDark ? '#CBD5E1' : '#475569', fontSize: '0.65rem' }}>
+                                                  {log.vitamin_name}
+                                                </span>
+                                              )}
+                                              <span className="text-muted extra-small font-mono">
+                                                {log.created_at ? new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                                              </span>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <div className="text-center py-2 text-muted extra-small">
+                                        No feeds logged for this pond today.
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
                             </div>
-                            <p className="extra-small mb-0" style={{ color: isDark ? '#CBD5E1' : '#64748B', fontSize: '0.75rem', lineHeight: 1.4 }}>{task.detail}</p>
+
+                            {/* Missed days alert for this pond */}
+                            {(() => {
+                              const pondMissed = pondsMissedInfo[pond.id] || pondsMissedInfo[String(pond.id)];
+                              if (!pondMissed?.has_missed_days) return null;
+                              return (
+                                <div
+                                  className="alert alert-danger p-2 mb-0 mt-2.5 rounded-3 d-flex align-items-center justify-content-between flex-wrap gap-1"
+                                  style={{ fontSize: '0.74rem' }}
+                                >
+                                  <div className="d-flex align-items-center gap-1.5">
+                                    <FaLock className="text-danger flex-shrink-0" size={11} />
+                                    <span>
+                                      <strong>{pondMissed.total_missed_count} Missed Days:</strong> Catching up {pondMissed.first_missed_date}
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+
+                            {/* Guaranteed 3-Column Single-Row Buttons (50% / 25% / 25%) */}
+                            <div className="row g-2 mt-3 pt-3 border-top" style={{ borderColor: isDark ? '#334155' : '#E2E8F0' }}>
+                              <div className="col-6">
+                                {isPondHarvesting(pond) ? (
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm w-100 py-1.5 extra-small fw-bold d-inline-flex align-items-center justify-content-center gap-1.5"
+                                    style={{ backgroundColor: '#FEF3C7', color: '#B45309', border: '1px solid #FCD34D' }}
+                                    onClick={() => navigate('/caretaker/my-pond')}
+                                  >
+                                    <span>🌾</span> {t('View Harvest')}
+                                  </button>
+                                ) : (() => {
+                                  const pondMissed = pondsMissedInfo[pond.id] || pondsMissedInfo[String(pond.id)];
+                                  if (pondMissed?.has_missed_days) {
+                                    return (
+                                      <button
+                                        type="button"
+                                        className="btn btn-sm btn-danger w-100 py-1.5 extra-small fw-bold d-inline-flex align-items-center justify-content-center gap-1.5 shadow-2xs"
+                                        onClick={() => navigate('/caretaker/my-pond', {
+                                          state: {
+                                            feedingTask: {
+                                              pondId: pond.id,
+                                              targetDate: pondMissed.first_missed_date,
+                                            },
+                                          },
+                                        })}
+                                        title={`Catch up ${pondMissed.total_missed_count} missed days starting on ${pondMissed.first_missed_date}`}
+                                      >
+                                        <FaCalendarAlt size={10} /> Catch Up ({pondMissed.first_missed_date})
+                                      </button>
+                                    );
+                                  }
+                                  return (
+                                    <button
+                                      type="button"
+                                      className="btn btn-sm btn-understated-feed w-100 py-1.5 extra-small fw-bold d-inline-flex align-items-center justify-content-center gap-1.5"
+                                      onClick={() => navigate('/caretaker/my-pond')}
+                                    >
+                                      <FaPlus size={10} /> {t('Log Feed')}
+                                    </button>
+                                  );
+                                })()}
+                              </div>
+                              <div className="col-3">
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-understated-view w-100 py-1.5 extra-small fw-bold d-inline-flex align-items-center justify-content-center gap-1"
+                                  onClick={() => navigate('/caretaker/disease-scan')}
+                                  title="Disease Scan"
+                                >
+                                  <FaStethoscope size={10} /> {t('Scan')}
+                                </button>
+                              </div>
+                              <div className="col-3">
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-understated-view w-100 py-1.5 extra-small fw-bold d-inline-flex align-items-center justify-content-center gap-1"
+                                  onClick={() => navigate('/caretaker/reports')}
+                                  title="Report Pond Concern"
+                                >
+                                  <FaExclamationTriangle size={10} className="text-danger" /> {t('Report')}
+                                </button>
+                              </div>
+                            </div>
                           </div>
                         </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
-                        {/* Dedicated Action Button Row */}
-                        <div className="d-flex justify-content-end align-items-center gap-2 pt-2 border-top mt-2" style={{ borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9' }}>
-                          {task.type === 'admin-action' ? (
-                            <div className="d-flex gap-1.5 flex-wrap w-100 justify-content-end">
-                              {task.action.status !== 'In Progress' && !task.isComplete && (
-                                <button
-                                  type="button"
-                                  className={isNext ? 'btn btn-tri-orange btn-sm extra-small fw-bold px-3 py-1' : 'btn btn-outline-primary btn-sm extra-small fw-semibold px-3 py-1'}
-                                  disabled={updatingActionId === task.action.id}
-                                  onClick={() => updateAdminAction(task, 'In Progress')}
-                                >
-                                  {updatingActionId === task.action.id ? <FaSpinner className="fa-spin me-1" size={10} /> : <FaPlay className="me-1" size={9} />}
-                                  {t('myTasks.doingNow', 'Doing now')}
-                                </button>
-                              )}
-                              {!task.isComplete && (
-                                <button
-                                  type="button"
-                                  className="btn btn-success btn-sm extra-small fw-bold px-3 py-1"
-                                  disabled={updatingActionId === task.action.id}
-                                  onClick={() => updateAdminAction(task, 'Done')}
-                                >
-                                  {updatingActionId === task.action.id ? <FaSpinner className="fa-spin me-1" size={10} /> : <FaCheckCircle className="me-1" size={10} />}
-                                  {t('myTasks.markDone', 'Mark done')}
-                                </button>
-                              )}
-                            </div>
-                          ) : (
-                            <button
-                              type="button"
-                              className={
-                                task.isComplete
-                                  ? 'btn btn-outline-secondary btn-sm extra-small fw-semibold px-3 py-1'
-                                  : task.isLocked
-                                    ? 'btn btn-danger btn-sm extra-small fw-bold px-3 py-1 shadow-xs'
-                                    : isNext
-                                      ? 'btn btn-tri-orange btn-sm extra-small fw-bold px-3 py-1'
-                                      : 'btn btn-outline-secondary btn-sm extra-small fw-semibold px-3 py-1'
-                              }
-                              onClick={() => {
-                                if (task.type === 'water') {
-                                  setActiveActivityTab('waterQuality');
-                                  setOcrTargetPondId(String(task.pond.id));
-                                  setIsOcrModalOpen(true);
-                                  return;
-                                }
-                                if (task.type === 'feeding' && !task.isComplete) {
-                                  navigate('/caretaker/my-pond', {
-                                    state: {
-                                      feedingTask: {
-                                        pondId: task.pond.id,
-                                        slot: task.slot,
-                                        targetDate: task.missedDate,
-                                      },
-                                    },
-                                  });
-                                  return;
-                                }
-                                navigate(task.type === 'feeding' ? '/caretaker/feeding-history' : task.route);
-                              }}
-                            >
-                              {task.isComplete
-                                ? t('myTasks.view', 'View')
-                                : task.isLocked
-                                  ? (
-                                    <>
-                                      <FaLock className="me-1" size={9} /> Catch Up
-                                    </>
-                                  )
-                                  : t('myTasks.proceed', 'Proceed')}
-                            </button>
-                          )}
+              {/* Tab 3: Disease Scan Telemetry */}
+              {activeActivityTab === 'disease' && (
+                <div className="p-3.5 p-md-4">
+                  <div className="d-flex align-items-center justify-content-between mb-3.5 gap-2 flex-wrap">
+                    <div>
+                      <h6 className="fw-bold mb-0 tracking-tight text-dark" style={{ fontSize: '1.05rem' }}>{t('Shrimp Health & Disease Scans')}</h6>
+                      <small className="text-muted">{t('Recent AI health diagnostics submitted for assigned ponds.')}</small>
+                    </div>
+
+                    <div className="d-flex align-items-center gap-2 ms-auto">
+                      <select
+                        className="form-select form-select-sm minimal-filter-control px-2.5"
+                        style={{ width: 'auto', minWidth: 160 }}
+                        value={selectedDiseasePondFilter}
+                        onChange={(event) => setSelectedDiseasePondFilter(event.target.value)}
+                      >
+                        <option value="all">{t('All Assigned Ponds')}</option>
+                        {assignedPonds.map((pond) => (
+                          <option key={pond.id} value={pond.pond_name}>
+                            {pond.pond_name}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="badge rounded-pill extra-small px-2.5 py-1.5" style={{ backgroundColor: '#F1F5F9', color: '#475569', fontWeight: 600 }}>
+                        {filteredDiseaseScans.length} Scans
+                      </span>
+                    </div>
+                  </div>
+
+                  {latestDisease ? (
+                    <div className="d-flex align-items-center p-3 rounded-3 mb-3" style={{ minHeight: 90, backgroundColor: isDark ? '#253549' : '#FFFFFF', border: isDark ? '1px solid rgba(255, 255, 255, 0.14)' : '1px solid #CBD5E1', boxShadow: isDark ? '0 2px 8px rgba(0, 0, 0, 0.25)' : '0 1px 4px rgba(15, 23, 42, 0.04)' }}>
+                      {latestDisease.image_path && (
+                        <img
+                          src={resolveImageUrl(latestDisease.image_path)}
+                          alt="Latest disease scan"
+                          className="rounded-3 me-3 flex-shrink-0"
+                          style={{ width: 60, height: 60, objectFit: 'cover', border: isDark ? '1px solid #334155' : '1px solid #E2E8F0' }}
+                        />
+                      )}
+                      <div>
+                        <div className="fw-bold mb-1 text-dark fs-6">{latestDisease.disease_name}</div>
+                        <div className="d-flex align-items-center gap-2 flex-wrap extra-small text-muted">
+                          <span>Risk:</span>
+                          <span className="badge rounded-pill" style={{ backgroundColor: latestDisease.risk_level === 'High' ? '#DC2626' : '#10B981', color: '#FFFFFF' }}>
+                            {latestDisease.risk_level || 'Safe'}
+                          </span>
+                          <span>•</span>
+                          <span>Confidence: <strong className="text-dark">{latestDisease.confidence_score}%</strong></span>
                         </div>
                       </div>
-                    </article>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-4 rounded-3 text-muted small mb-3" style={{ backgroundColor: isDark ? '#253549' : '#FFFFFF', border: isDark ? '1px solid rgba(255, 255, 255, 0.14)' : '1px solid #CBD5E1' }}>
+                      <FaStethoscope size={22} className="mb-2 opacity-40 text-secondary" />
+                      <p className="mb-0 fw-semibold text-dark">{t('No disease scans recorded yet')}</p>
+                      <small className="extra-small text-muted">{t('All scans look healthy and normal.')}</small>
+                    </div>
+                  )}
 
-          {/* My Tasks Clean Bottom Status Strip */}
+                  <div className="pt-2 border-top d-flex justify-content-end" style={{ borderColor: isDark ? '#334155' : '#E2E8F0' }}>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-understated-feed px-3.5 py-1.5 extra-small fw-bold d-inline-flex align-items-center gap-1.5"
+                      onClick={() => navigate('/caretaker/disease-scan')}
+                    >
+                      <span>{t('Scan Shrimp Health')}</span> <FaChevronRight size={10} />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Tab 4: System Incident Alerts */}
+              {activeActivityTab === 'alerts' && (
+                <div className="p-3.5 p-md-4">
+                  <div className="d-flex align-items-center justify-content-between mb-3.5 gap-2">
+                    <div>
+                      <h6 className="fw-bold mb-0 tracking-tight text-dark" style={{ fontSize: '1.05rem' }}>{t('System Incident Alerts')}</h6>
+                      <small className="text-muted">{t('Live incidents and biosecurity warnings for assigned ponds.')}</small>
+                    </div>
+                    <span className="badge rounded-pill extra-small px-2.5 py-1.5" style={{ backgroundColor: alerts.length > 0 ? '#FEF2F2' : '#F1F5F9', color: alerts.length > 0 ? '#DC2626' : '#475569', border: alerts.length > 0 ? '1px solid #FECACA' : '1px solid #E2E8F0', fontWeight: 600 }}>
+                      {alerts.length} Active
+                    </span>
+                  </div>
+
+                  {alerts.length > 0 ? (
+                    <div className="d-flex flex-column gap-2 mb-3">
+                      {alerts.slice(0, 3).map((alertItem, idx) => {
+                        const isHarvestAlert = String(alertItem.alert_type || '').toLowerCase() === 'harvest_ready'
+                          || String(alertItem.category || '').toLowerCase() === 'harvest';
+                        return (
+                          <div
+                            key={alertItem.id || idx}
+                            className="d-flex flex-column justify-content-center p-3 rounded-3"
+                            style={{
+                              minHeight: 80,
+                              backgroundColor: isDark ? '#253549' : (isHarvestAlert ? '#F0FDF4' : '#FFFFFF'),
+                              border: isDark
+                                ? (isHarvestAlert ? '1px solid rgba(34, 197, 94, 0.45)' : '1px solid rgba(252, 86, 60, 0.35)')
+                                : (isHarvestAlert ? '1px solid #BBF7D0' : '1px solid #FECACA'),
+                              boxShadow: isDark ? '0 2px 8px rgba(0, 0, 0, 0.25)' : '0 1px 4px rgba(15, 23, 42, 0.04)'
+                            }}
+                          >
+                            <div className={`fw-bold d-flex align-items-center gap-2 mb-1 fs-6 ${isHarvestAlert ? 'text-success' : 'text-danger'}`}>
+                              {isHarvestAlert ? <FaSeedling size={13} /> : <FaExclamationTriangle size={13} />}
+                              <span>{alertItem.title}</span>
+                            </div>
+                            <small className="text-muted" style={{ lineHeight: 1.45 }}>{alertItem.message}</small>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-4 rounded-3 text-muted small mb-3" style={{ backgroundColor: isDark ? '#253549' : '#FFFFFF', border: isDark ? '1px solid rgba(255, 255, 255, 0.14)' : '1px solid #CBD5E1' }}>
+                      <FaShieldAlt size={22} className="mb-2 opacity-40 text-secondary" />
+                      <p className="mb-0 fw-semibold text-dark">{t('No active alerts for your ponds')}</p>
+                      <small className="extra-small text-muted">{t('All ponds and water readings are in safe range.')}</small>
+                    </div>
+                  )}
+
+                  <div className="pt-2 border-top d-flex justify-content-end" style={{ borderColor: isDark ? '#334155' : '#E2E8F0' }}>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-understated-view px-3.5 py-1.5 extra-small fw-bold text-danger d-inline-flex align-items-center gap-1.5"
+                      onClick={() => navigate('/caretaker/reports')}
+                    >
+                      <span>{t('Submit Incident Report')}</span> <FaChevronRight size={10} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* 4B. RIGHT COLUMN: MY TASKS SECTION (40%) */}
+        <div className="col-12 caretaker-col-40 d-flex flex-column" id="my-tasks">
           <div
-            className={`px-3.5 py-2.5 border-top d-flex align-items-center ${allTasksComplete ? 'justify-content-between' : 'justify-content-end'} extra-small text-muted mt-auto`}
+            className="rounded-4 overflow-hidden bg-white border h-100 d-flex flex-column"
             style={{
               borderColor: isDark ? '#334155' : '#E2E8F0',
-              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : '#F8FAFC'
+              backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+              boxShadow: '0 2px 10px -2px rgba(15, 23, 42, 0.04)'
             }}
           >
-            {allTasksComplete && (
-              <span className="fw-semibold">
-                {t('myTasks.allDoneStatus', '✓ All daily tasks completed')}
-              </span>
+            {/* My Tasks Header */}
+            <div
+              className="p-3 px-md-3.5 py-md-3 d-flex align-items-center justify-content-between gap-3 border-bottom"
+              style={{ borderColor: isDark ? '#334155' : '#E2E8F0' }}
+            >
+              <div className="d-flex align-items-center gap-2.5">
+                <div
+                  className="rounded-3 d-flex align-items-center justify-content-center shadow-xs flex-shrink-0"
+                  style={{
+                    width: 36,
+                    height: 36,
+                    backgroundColor: 'rgba(252, 86, 60, 0.1)',
+                    color: '#FC563C',
+                    border: '1px solid rgba(252, 86, 60, 0.25)'
+                  }}
+                >
+                  <FaClipboardList size={15} />
+                </div>
+                <div>
+                  <h5 className="fw-extrabold mb-0.5 tracking-tight text-dark" style={{ fontSize: '1.08rem', letterSpacing: '-0.02em', lineHeight: 1.25 }}>
+                    {t('myTasks.title', 'My Tasks')}
+                  </h5>
+                  <p className="text-muted mb-0 extra-small" style={{ fontSize: '0.74rem', lineHeight: 1.3 }}>
+                    {t('myTasks.subtitle', 'Follow the checklist in order. Completion updates from your saved pond records.')}
+                  </p>
+                </div>
+              </div>
+
+              <div className="d-flex align-items-center gap-2 flex-shrink-0">
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary btn-sm rounded-pill px-2.5 py-1 extra-small fw-semibold d-inline-flex align-items-center gap-1.5"
+                  onClick={loadData}
+                  disabled={loading}
+                  title={t('myTasks.refresh', 'Refresh tasks')}
+                >
+                  {loading ? <FaSpinner className="fa-spin" size={11} /> : <FaRedo size={11} />}
+                  <span>{t('myTasks.refresh', 'Refresh')}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Action error hint if any */}
+            {actionLoadError && (
+              <div className="alert alert-warning m-3 mb-0 d-flex align-items-start gap-2 extra-small py-2 px-3 rounded-3" role="alert">
+                <FaExclamationCircle className="mt-0.5 flex-shrink-0" />
+                <div>{actionLoadError}</div>
+              </div>
             )}
-            <span
-              className="badge rounded-pill fw-bold extra-small"
+
+            {/* Today's Progress Strip */}
+            <div
+              className="px-3.5 py-2 px-md-3.5 py-md-2 border-bottom"
               style={{
-                backgroundColor: allTasksComplete ? '#DCFCE7' : (isDark ? 'rgba(252, 86, 60, 0.15)' : '#FFF1ED'),
-                color: allTasksComplete ? '#15803D' : '#FC563C',
-                border: allTasksComplete ? '1px solid #86EFAC' : '1px solid #FECDD3',
-                fontSize: '0.68rem'
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : '#F8FAFC',
+                borderColor: isDark ? '#334155' : '#E2E8F0'
               }}
             >
-              {allTasksComplete ? t('myTasks.statusComplete', 'Complete') : t('myTasks.statusActive', 'Active Today')}
-            </span>
+              <div className="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-1">
+                <div>
+                  <span className="fw-bold extra-small text-dark text-uppercase tracking-wider" style={{ fontSize: '0.7rem' }}>
+                    {t('myTasks.progress', "Today's Progress")}
+                  </span>
+                  <span className="text-muted extra-small ms-2" style={{ fontSize: '0.72rem' }}>
+                    {allPondsHarvesting
+                      ? 'Harvesting in Progress (Tasks Suspended)'
+                      : allTasksComplete
+                        ? t('myTasks.allComplete', 'All listed tasks are complete. Great work!')
+                        : t('myTasks.progressCount', '{done} of {total} tasks complete')
+                          .replace('{done}', String(completedTasksCount))
+                          .replace('{total}', String(tasks.length))}
+                  </span>
+                </div>
+                <span
+                  className="badge rounded-pill extra-small px-2 py-0.5 fw-bold"
+                  style={{
+                    backgroundColor: allPondsHarvesting
+                      ? '#FEF3C7'
+                      : allTasksComplete
+                        ? '#ECFDF5'
+                        : isDark
+                          ? 'rgba(255,255,255,0.08)'
+                          : '#F1F5F9',
+                    color: allPondsHarvesting
+                      ? '#92400E'
+                      : allTasksComplete
+                        ? '#059669'
+                        : isDark
+                          ? '#CBD5E1'
+                          : '#334155',
+                    border: allPondsHarvesting
+                      ? '1px solid #FCD34D'
+                      : allTasksComplete
+                        ? '1px solid #A7F3D0'
+                        : isDark
+                          ? '1px solid rgba(255,255,255,0.1)'
+                          : '1px solid #E2E8F0',
+                    fontSize: '0.66rem'
+                  }}
+                >
+                  {allPondsHarvesting ? 'Harvest' : tasks.length ? `${Math.round((completedTasksCount / tasks.length) * 100)}%` : '0%'}
+                </span>
+              </div>
+              <div
+                className="progress rounded-pill overflow-hidden"
+                role="progressbar"
+                aria-valuenow={completedTasksCount}
+                aria-valuemin="0"
+                aria-valuemax={tasks.length || 1}
+                style={{ height: 6, backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0' }}
+              >
+                <div
+                  className="progress-bar rounded-pill transition-all"
+                  style={{
+                    width: `${allPondsHarvesting ? 100 : tasks.length ? (completedTasksCount / tasks.length) * 100 : 0}%`,
+                    backgroundColor: allPondsHarvesting ? '#D97706' : allTasksComplete ? '#10B981' : '#FC563C'
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Tasks Scrollable List */}
+            <div
+              className="p-2.5 p-md-3 flex-grow-1 caretaker-tasks-scroll-3items"
+            >
+              {loading && tasks.length === 0 ? (
+                <div className="text-center text-muted py-5">
+                  <FaSpinner className="fa-spin me-2" />
+                  <span className="extra-small">{t('myTasks.loading', 'Loading your tasks…')}</span>
+                </div>
+              ) : assignedPonds.length === 0 && tasks.length === 0 ? (
+                <div className="text-center py-5">
+                  <FaWater className="fs-2 mb-3 text-muted opacity-40" />
+                  <h6 className="fw-bold">{t('myTasks.noPondsTitle', 'No ponds assigned')}</h6>
+                  <p className="text-muted extra-small mb-0">{t('myTasks.noPonds', 'Ask your farm administrator to assign a pond to your caretaker account.')}</p>
+                </div>
+              ) : allPondsHarvesting && tasks.length === 0 ? (
+                <div
+                  className="p-4 text-center rounded-4 border my-2"
+                  style={{
+                    backgroundColor: isDark ? 'rgba(254, 243, 199, 0.05)' : '#FFFBEB',
+                    borderColor: isDark ? 'rgba(253, 230, 138, 0.25)' : '#FDE68A',
+                  }}
+                >
+                  <div
+                    className="rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3 shadow-xs"
+                    style={{ width: 48, height: 48, backgroundColor: '#FEF3C7', color: '#D97706', fontSize: '1.4rem' }}
+                  >
+                    🌾
+                  </div>
+                  <h6 className="fw-extrabold text-dark mb-1">
+                    {harvestingPonds.map((p) => p.pond_name).join(', ')} — Harvest Underway
+                  </h6>
+                  <span
+                    className="badge rounded-pill fw-bold mb-2.5 px-3 py-1"
+                    style={{ backgroundColor: '#FDE68A', color: '#78350F', fontSize: '0.72rem' }}
+                  >
+                    Pre-Harvest Protocol • Routine Tasks Suspended
+                  </span>
+                  <p className="extra-small text-secondary mb-3" style={{ lineHeight: 1.5, maxWidth: 360, margin: '0 auto' }}>
+                    Routine 5-slot daily feeding tasks for this pond are suspended while pre-harvest gut evacuation and harvest netting are underway. Awaiting pond harvest completion and restocking/assignment from Farm Administration.
+                  </p>
+                  <div className="d-flex justify-content-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      className="btn btn-sm fw-bold shadow-xs d-inline-flex align-items-center gap-1.5"
+                      style={{ backgroundColor: '#D97706', color: '#FFFFFF', borderRadius: 8, fontSize: '0.78rem' }}
+                      onClick={() => navigate('/caretaker/my-pond')}
+                    >
+                      View Harvest in My Pond →
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-secondary fw-semibold extra-small"
+                      style={{ borderRadius: 8 }}
+                      onClick={() => navigate('/caretaker/reports')}
+                    >
+                      Submit Report
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="d-flex flex-column caretaker-tasks-list">
+                  {harvestingPonds.length > 0 && !allPondsHarvesting && (
+                    <div
+                      className="p-2.5 mb-2.5 rounded-3 border d-flex align-items-center justify-content-between gap-2"
+                      style={{
+                        backgroundColor: isDark ? 'rgba(254, 243, 199, 0.08)' : '#FFFBEB',
+                        borderColor: isDark ? 'rgba(253, 230, 138, 0.25)' : '#FDE68A',
+                      }}
+                    >
+                      <div className="extra-small d-flex align-items-center gap-2" style={{ color: isDark ? '#FDE68A' : '#92400E' }}>
+                        <span>🌾</span>
+                        <span>
+                          <strong>{harvestingPonds.map((p) => p.pond_name).join(', ')}</strong> is in harvest (feeding paused). Active tasks below apply to running ponds.
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-link p-0 extra-small fw-bold text-decoration-none text-nowrap"
+                        style={{ color: '#D97706' }}
+                        onClick={() => navigate('/caretaker/my-pond')}
+                      >
+                        View →
+                      </button>
+                    </div>
+                  )}
+                  {tasks.map((task, index) => {
+                    const isNext = index === firstIncompleteTaskIndex;
+                    return (
+                      <article
+                        key={task.id}
+                        className={`rounded-3 p-3 transition-all shadow-xs ${isNext ? 'border-2' : ''}`}
+                        style={{
+                          backgroundColor: isDark ? '#253549' : '#FFFFFF',
+                          border: isNext
+                            ? '1.5px solid #FC563C'
+                            : (isDark ? '1.5px solid rgba(255, 255, 255, 0.14)' : '1.5px solid #CBD5E1'),
+                          boxShadow: isNext ? '0 2px 8px rgba(252, 86, 60, 0.25)' : (isDark ? '0 2px 6px rgba(0, 0, 0, 0.25)' : '0 1px 4px rgba(15, 23, 42, 0.04)')
+                        }}
+                      >
+                        <div className="d-flex flex-column gap-2">
+                          <div className="d-flex align-items-start gap-3">
+                            <div
+                              className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                              style={{
+                                width: 32,
+                                height: 32,
+                                backgroundColor: task.isComplete
+                                  ? (isDark ? 'rgba(34, 197, 94, 0.2)' : '#DCFCE7')
+                                  : isNext
+                                    ? (isDark ? 'rgba(252, 86, 60, 0.2)' : '#FFF1ED')
+                                    : (isDark ? 'rgba(255,255,255,0.08)' : '#F1F5F9'),
+                                color: task.isComplete
+                                  ? (isDark ? '#4ADE80' : '#15803D')
+                                  : isNext
+                                    ? (isDark ? '#FF8A75' : '#FC563C')
+                                    : (isDark ? '#94A3B8' : '#64748B'),
+                                border: task.isComplete
+                                  ? (isDark ? '1px solid rgba(74, 222, 128, 0.35)' : '1px solid #86EFAC')
+                                  : isNext
+                                    ? (isDark ? '1px solid rgba(252, 86, 60, 0.35)' : '1px solid #FECDD3')
+                                    : (isDark ? '1px solid rgba(255, 255, 255, 0.1)' : 'none'),
+                                fontSize: '0.82rem'
+                              }}
+                              aria-label={task.isComplete ? t('myTasks.completed', 'Completed') : t('myTasks.notCompleted', 'Not completed')}
+                            >
+                              {task.isComplete ? <FaCheck /> : task.type === 'admin-action' ? <FaTools /> : task.type === 'water' ? <FaWater /> : <FaClock />}
+                            </div>
+
+                            <div className="flex-grow-1 min-w-0">
+                              <div className="d-flex align-items-center justify-content-between gap-2 mb-1">
+                                <h6 className="fw-bold mb-0 text-break" style={{ fontSize: '0.88rem', lineHeight: 1.35, color: isDark ? '#FFFFFF' : '#0F172A' }}>
+                                  {task.title}
+                                </h6>
+                                <div className="d-flex align-items-center gap-1.5 flex-shrink-0">
+                                  {isNext && (
+                                    <span
+                                      className="badge rounded-pill extra-small fw-bold px-2 py-0.5"
+                                      style={{
+                                        backgroundColor: isDark ? 'rgba(252, 86, 60, 0.22)' : '#FFF1ED',
+                                        color: isDark ? '#FF8A75' : '#C2410C',
+                                        border: isDark ? '1px solid rgba(252, 86, 60, 0.4)' : '1px solid #FECDD3',
+                                        fontSize: '0.64rem'
+                                      }}
+                                    >
+                                      {t('myTasks.next', 'NEXT')}
+                                    </span>
+                                  )}
+                                  {task.type === 'admin-action' ? (
+                                    <span
+                                      className="badge rounded-pill extra-small fw-bold px-2 py-0.5"
+                                      style={{
+                                        backgroundColor: task.action.status === 'Done'
+                                          ? (isDark ? 'rgba(34, 197, 94, 0.2)' : '#DCFCE7')
+                                          : task.action.status === 'In Progress'
+                                            ? (isDark ? 'rgba(56, 189, 248, 0.2)' : '#E0F2FE')
+                                            : (isDark ? 'rgba(245, 158, 11, 0.2)' : '#FEF3C7'),
+                                        color: task.action.status === 'Done'
+                                          ? (isDark ? '#4ADE80' : '#15803D')
+                                          : task.action.status === 'In Progress'
+                                            ? (isDark ? '#38BDF8' : '#0369A1')
+                                            : (isDark ? '#FBBF24' : '#B45309'),
+                                        border: isDark ? '1px solid rgba(255, 255, 255, 0.12)' : 'none',
+                                        fontSize: '0.66rem'
+                                      }}
+                                    >
+                                      {t(task.action.status)}
+                                    </span>
+                                  ) : task.isComplete && (
+                                    <span
+                                      className="badge rounded-pill extra-small fw-bold px-2 py-0.5"
+                                      style={{
+                                        backgroundColor: isDark ? 'rgba(34, 197, 94, 0.2)' : '#DCFCE7',
+                                        color: isDark ? '#4ADE80' : '#15803D',
+                                        border: isDark ? '1px solid rgba(74, 222, 128, 0.35)' : '1px solid #86EFAC',
+                                        fontSize: '0.66rem'
+                                      }}
+                                    >
+                                      {t('myTasks.done', 'Done')}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="extra-small fw-semibold mb-1" style={{ color: '#FC563C', fontSize: '0.76rem' }}>
+                                {task.type === 'admin-action' && `${t('myTasks.adminDecision', 'Admin decision')} · `}
+                                {task.pond.pond_name || task.pond.name || `${t('myTasks.pond', 'Pond')} #${task.pond.id}`}
+                                {task.slot ? ` · ${task.slot}` : ''}
+                                {task.isCatchUp && (
+                                  <span
+                                    className="badge rounded-pill extra-small ms-1.5 fw-bold"
+                                    style={{ backgroundColor: '#FEE2E2', color: '#DC2626', border: '1px solid #FCA5A5' }}
+                                  >
+                                    Catch-Up ({task.missedDate})
+                                  </span>
+                                )}
+                              </div>
+                              <p className="extra-small mb-0" style={{ color: isDark ? '#CBD5E1' : '#64748B', fontSize: '0.75rem', lineHeight: 1.4 }}>{task.detail}</p>
+                            </div>
+                          </div>
+
+                          {/* Dedicated Action Button Row */}
+                          <div className="d-flex justify-content-end align-items-center gap-2 pt-2 border-top mt-2" style={{ borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9' }}>
+                            {task.type === 'admin-action' ? (
+                              <div className="d-flex gap-1.5 flex-wrap w-100 justify-content-end">
+                                {task.action.status !== 'In Progress' && !task.isComplete && (
+                                  <button
+                                    type="button"
+                                    className={isNext ? 'btn btn-tri-orange btn-sm extra-small fw-bold px-3 py-1' : 'btn btn-outline-primary btn-sm extra-small fw-semibold px-3 py-1'}
+                                    disabled={updatingActionId === task.action.id}
+                                    onClick={() => updateAdminAction(task, 'In Progress')}
+                                  >
+                                    {updatingActionId === task.action.id ? <FaSpinner className="fa-spin me-1" size={10} /> : <FaPlay className="me-1" size={9} />}
+                                    {t('myTasks.doingNow', 'Doing now')}
+                                  </button>
+                                )}
+                                {!task.isComplete && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-success btn-sm extra-small fw-bold px-3 py-1"
+                                    disabled={updatingActionId === task.action.id}
+                                    onClick={() => updateAdminAction(task, 'Done')}
+                                  >
+                                    {updatingActionId === task.action.id ? <FaSpinner className="fa-spin me-1" size={10} /> : <FaCheckCircle className="me-1" size={10} />}
+                                    {t('myTasks.markDone', 'Mark done')}
+                                  </button>
+                                )}
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                className={
+                                  task.isComplete
+                                    ? 'btn btn-outline-secondary btn-sm extra-small fw-semibold px-3 py-1'
+                                    : task.isLocked
+                                      ? 'btn btn-danger btn-sm extra-small fw-bold px-3 py-1 shadow-xs'
+                                      : isNext
+                                        ? 'btn btn-tri-orange btn-sm extra-small fw-bold px-3 py-1'
+                                        : 'btn btn-outline-secondary btn-sm extra-small fw-semibold px-3 py-1'
+                                }
+                                onClick={() => {
+                                  if (task.type === 'water') {
+                                    setActiveActivityTab('waterQuality');
+                                    setOcrTargetPondId(String(task.pond.id));
+                                    setIsOcrModalOpen(true);
+                                    return;
+                                  }
+                                  if (task.type === 'feeding' && !task.isComplete) {
+                                    navigate('/caretaker/my-pond', {
+                                      state: {
+                                        feedingTask: {
+                                          pondId: task.pond.id,
+                                          slot: task.slot,
+                                          targetDate: task.missedDate,
+                                        },
+                                      },
+                                    });
+                                    return;
+                                  }
+                                  navigate(task.type === 'feeding' ? '/caretaker/feeding-history' : task.route);
+                                }}
+                              >
+                                {task.isComplete
+                                  ? t('myTasks.view', 'View')
+                                  : task.isLocked
+                                    ? (
+                                      <>
+                                        <FaLock className="me-1" size={9} /> Catch Up
+                                      </>
+                                    )
+                                    : t('myTasks.proceed', 'Proceed')}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* My Tasks Clean Bottom Status Strip */}
+            <div
+              className={`px-3.5 py-2.5 border-top d-flex align-items-center ${allTasksComplete ? 'justify-content-between' : 'justify-content-end'} extra-small text-muted mt-auto`}
+              style={{
+                borderColor: isDark ? '#334155' : '#E2E8F0',
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : '#F8FAFC'
+              }}
+            >
+              {allTasksComplete && (
+                <span className="fw-semibold">
+                  {t('myTasks.allDoneStatus', '✓ All daily tasks completed')}
+                </span>
+              )}
+              <span
+                className="badge rounded-pill fw-bold extra-small"
+                style={{
+                  backgroundColor: allTasksComplete ? '#DCFCE7' : (isDark ? 'rgba(252, 86, 60, 0.15)' : '#FFF1ED'),
+                  color: allTasksComplete ? '#15803D' : '#FC563C',
+                  border: allTasksComplete ? '1px solid #86EFAC' : '1px solid #FECDD3',
+                  fontSize: '0.68rem'
+                }}
+              >
+                {allTasksComplete ? t('myTasks.statusComplete', 'Complete') : t('myTasks.statusActive', 'Active Today')}
+              </span>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
 
       {/* DUAL-MODE OCR WATER QUALITY MODAL */}

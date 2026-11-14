@@ -128,11 +128,26 @@ export default function MyPondPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [currentTheme, setCurrentTheme] = useState(() => getEffectiveTheme());
+  const [currentTheme, setCurrentTheme] = useState(() => (typeof document !== 'undefined' ? document.documentElement.getAttribute('data-theme') || getEffectiveTheme() : getEffectiveTheme()));
   useEffect(() => {
-    const handleThemeChange = () => setCurrentTheme(getEffectiveTheme());
+    const readTheme = () => (typeof document !== 'undefined' ? document.documentElement.getAttribute('data-theme') || getEffectiveTheme() : getEffectiveTheme());
+    const handleThemeChange = (e) => {
+      const t = e?.detail?.theme || readTheme();
+      setCurrentTheme(t);
+    };
+    window.addEventListener('shrim-theme-changed', handleThemeChange);
     window.addEventListener('themeChanged', handleThemeChange);
-    return () => window.removeEventListener('themeChanged', handleThemeChange);
+
+    const observer = new MutationObserver(() => setCurrentTheme(readTheme()));
+    if (typeof document !== 'undefined' && document.documentElement) {
+      observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] });
+    }
+
+    return () => {
+      window.removeEventListener('shrim-theme-changed', handleThemeChange);
+      window.removeEventListener('themeChanged', handleThemeChange);
+      observer.disconnect();
+    };
   }, []);
   const isDark = currentTheme === 'dark';
 
@@ -191,7 +206,11 @@ export default function MyPondPage() {
     }
   }, [defaultDateStr]);
 
-  const isLockedByMissedDays = !isPastDate && missedDaysInfo.hasMissedDays;
+  const isLockedByMissedDays = Boolean(
+    missedDaysInfo.hasMissedDays &&
+    missedDaysInfo.firstMissedDate &&
+    todayDateStr !== missedDaysInfo.firstMissedDate
+  );
 
   // Filter ponds by culture stage relative to selected date: 'all' | 'nursery' | 'growout'
   const [stageFilter, setStageFilter] = useState('all');
@@ -295,10 +314,10 @@ export default function MyPondPage() {
 
       const newData = res.data && typeof res.data === 'object'
         ? {
-            ...res.data,
-            is_verified: Boolean(res.data.is_verified ?? res.data.record),
-            record: res.data.record || null,
-          }
+          ...res.data,
+          is_verified: Boolean(res.data.is_verified ?? res.data.record),
+          record: res.data.record || null,
+        }
         : { is_verified: false, record: null };
 
       setWaterQualityStatus((prev) => ({
@@ -358,7 +377,7 @@ export default function MyPondPage() {
           }
         }
       }
-    } catch (e) {}
+    } catch (e) { }
 
     // 2. Check feeding records from database on or before targetDateStr
     if (Array.isArray(allRecords) && allRecords.length > 0) {
@@ -400,7 +419,7 @@ export default function MyPondPage() {
       if (stored?.shrimpWeightGrams && (!stored.sampledDate || stored.sampledDate <= targetDateStr)) {
         return stored;
       }
-    } catch (e) {}
+    } catch (e) { }
 
     return null;
   }, []);
@@ -462,6 +481,24 @@ export default function MyPondPage() {
       });
       if (Array.isArray(res.data)) {
         setTodayLogs(res.data);
+        const loggedTimes = res.data.map((r) => normalizeTime(r.feeding_time));
+        // Auto-advance away from any already-logged slot so completed slots can never be selected
+        const availableSlot = feedingTimes.find((time) => !loggedTimes.includes(normalizeTime(time)));
+        if (availableSlot) {
+          setFormState((prev) => {
+            const current = prev[pondId] || emptyForm;
+            if (loggedTimes.includes(normalizeTime(current.feedingTime))) {
+              return {
+                ...prev,
+                [pondId]: {
+                  ...current,
+                  feedingTime: availableSlot,
+                },
+              };
+            }
+            return prev;
+          });
+        }
       } else {
         setTodayLogs([]);
       }
@@ -620,8 +657,8 @@ export default function MyPondPage() {
 
   const selectedSlotRequiresMonitoring = Boolean(
     !isNurseryStage
-      && previousFeedingLogForSelectedSlot
-      && !loggedTimesForPond.some((logged) => normalizeTime(logged) === normalizeTime(currentForm.feedingTime))
+    && previousFeedingLogForSelectedSlot
+    && !loggedTimesForPond.some((logged) => normalizeTime(logged) === normalizeTime(currentForm.feedingTime))
   );
 
   const trayMonitoringKey = selectedPondId && currentForm.feedingTime
@@ -815,7 +852,7 @@ export default function MyPondPage() {
       const updatedHistory = Array.isArray(history) ? history.filter((s) => s.sampledDate !== todayDateStr) : [];
       updatedHistory.push(nextSampling);
       localStorage.setItem(historyKey, JSON.stringify(updatedHistory));
-    } catch (e) {}
+    } catch (e) { }
     setWeeklySampling(nextSampling);
 
     Swal.fire({
@@ -831,81 +868,58 @@ export default function MyPondPage() {
 
   const handleSelectSlot = async (time) => {
     const matchingLog = todayLogs.find((log) => normalizeTime(log.feeding_time) === normalizeTime(time));
+    // Once a time slot is logged (e.g. 6:00 AM), it is crossed out and can NEVER be chosen as an option
     if (matchingLog) {
-      setEditingRecord(matchingLog);
-      const gramsVal = matchingLog.amount_grams !== undefined && matchingLog.amount_grams !== null
-        ? String(matchingLog.amount_grams)
-        : String(Math.round((parseFloat(matchingLog.amount_kg) || 0) * 1000));
-      setFormState((prev) => ({
-        ...prev,
-        [selectedPondId]: {
-          amountGrams: gramsVal,
-          amountKg: String(matchingLog.amount_kg || ''),
-          feedingTime: matchingLog.feeding_time,
-          productCode: matchingLog.product_code || autoProductCode,
-          vitaminName: matchingLog.vitamin_name || defaultVitamins,
-          notes: (matchingLog.notes || '')
-            .replace(/Scheduled:\s*[\d\.]+\s*kg/gi, '')
-            .replace(/Trays?\s*(\(\d+\))?:\s*[^|]+/gi, '')
-            .replace(/Broadcast:\s*[\d\.]+\s*kg/gi, '')
-            .replace(/Tray check:\s*[^|]+/gi, '')
-            .replace(/Tray monitoring[^\n|]+/gi, '')
-            .replace(/\d+(st|nd|rd|th)\s*feeding session[^\n|]*/gi, '')
-            .split('|')
-            .map((s) => s.trim())
-            .filter(Boolean)
-            .join(' | '),
-        },
-      }));
+      return;
+    }
+
+    // If DOC >= 35 and sampling is due (not set or >= 7 days), prompt for ABW sample before selecting slot
+    if (isDoc35Plus && isSamplingDue) {
+      const sample = await requestWeeklySampling(true);
+      if (!sample) return;
+    }
+
+    setEditingRecord(null);
+    suppressAutoTrayPromptRef.current = false;
+
+    // If selecting 6:00 AM (first feeding of the day) and unlogged, auto-fill from previous day's 6:00 PM feed
+    if (normalizeTime(time) === '6:00 AM' && previousDayLastFeed) {
+      const rawG = previousDayLastFeed.amount_grams !== null && previousDayLastFeed.amount_grams !== undefined
+        ? parseFloat(previousDayLastFeed.amount_grams)
+        : Math.round((parseFloat(previousDayLastFeed.amount_kg) || 0) * 1000);
+      const prevG = String(rawG);
+      const prevK = String(previousDayLastFeed.amount_kg || (rawG / 1000).toFixed(3));
+      setFormState((prev) => {
+        const current = prev[selectedPondId] || emptyForm;
+        return {
+          ...prev,
+          [selectedPondId]: {
+            ...current,
+            feedingTime: '6:00 AM',
+            amountGrams: prevG,
+            amountKg: prevK,
+          },
+        };
+      });
     } else {
-      // If DOC >= 35 and sampling is due (not set or >= 7 days), prompt for ABW sample before selecting slot
-      if (isDoc35Plus && isSamplingDue) {
-        const sample = await requestWeeklySampling(true);
-        if (!sample) return;
-      }
+      setFormState((prev) => {
+        const current = prev[selectedPondId] || emptyForm;
+        return {
+          ...prev,
+          [selectedPondId]: {
+            ...current,
+            feedingTime: time,
+            amountKg: '',
+            amountGrams: '',
+          },
+        };
+      });
 
-      setEditingRecord(null);
-      suppressAutoTrayPromptRef.current = false;
-
-      // If selecting 6:00 AM (first feeding of the day) and unlogged, auto-fill from previous day's 6:00 PM feed
-      if (normalizeTime(time) === '6:00 AM' && previousDayLastFeed) {
-        const rawG = previousDayLastFeed.amount_grams !== null && previousDayLastFeed.amount_grams !== undefined
-          ? parseFloat(previousDayLastFeed.amount_grams)
-          : Math.round((parseFloat(previousDayLastFeed.amount_kg) || 0) * 1000);
-        const prevG = String(rawG);
-        const prevK = String(previousDayLastFeed.amount_kg || (rawG / 1000).toFixed(3));
-        setFormState((prev) => {
-          const current = prev[selectedPondId] || emptyForm;
-          return {
-            ...prev,
-            [selectedPondId]: {
-              ...current,
-              feedingTime: '6:00 AM',
-              amountGrams: prevG,
-              amountKg: prevK,
-            },
-          };
-        });
-      } else {
-        setFormState((prev) => {
-          const current = prev[selectedPondId] || emptyForm;
-          return {
-            ...prev,
-            [selectedPondId]: {
-              ...current,
-              feedingTime: time,
-              amountKg: '',
-              amountGrams: '',
-            },
-          };
-        });
-
-        // Prompt tray inspection immediately when clicking an unlogged grow-out slot
-        if (!isNurseryStage && normalizeTime(time) !== '6:00 AM') {
-          setTimeout(() => {
-            requestTrayMonitoring(true, time);
-          }, 60);
-        }
+      // Prompt tray inspection immediately when clicking an unlogged grow-out slot
+      if (!isNurseryStage && normalizeTime(time) !== '6:00 AM') {
+        setTimeout(() => {
+          requestTrayMonitoring(true, time);
+        }, 60);
       }
     }
   };
@@ -1390,25 +1404,122 @@ export default function MyPondPage() {
         window.dispatchEvent(new Event('shrim-notification-updated'));
       }
 
-      await Swal.fire({
-        icon: 'success',
-        title: editingRecord ? 'Feeding Log Updated!' : 'Feeding Logged Successfully!',
-        text: `${amount.toFixed(2)}kg recorded for ${selectedPond.pond_name} on ${todayDateStr} (${form.feedingTime}). Returning to My Tasks...`,
-        timer: 1400,
-        showConfirmButton: false,
-        customClass: {
-          popup: 'shrim-swal-popup',
-          title: 'shrim-swal-title',
-        },
-      });
-
-      // Close all modals and reset edit state before navigating
-      Swal.close();
+      const wasEditing = Boolean(editingRecord);
       setEditingRecord(null);
 
-      pendingTaskSlotRef.current = null;
-      setShowFeedingModal(false);
-      navigate('/caretaker/my-tasks', { replace: true });
+      // Re-fetch today's logs so todayLogs immediately contains this new record
+      if (selectedPond?.id) {
+        await fetchTodayLogs(selectedPond.id);
+      }
+
+      if (wasEditing) {
+        await Swal.fire({
+          icon: 'success',
+          title: `${form.feedingTime} Updated!`,
+          text: `Feeding entry for ${selectedPond.pond_name || 'Pond'} on ${todayDateStr} has been successfully updated.`,
+          confirmButtonText: 'OK',
+          confirmButtonColor: '#FC563C',
+          showCancelButton: false,
+          customClass: {
+            popup: 'shrim-swal-popup',
+            title: 'shrim-swal-title',
+          },
+        });
+        return;
+      }
+
+      // Check whether all slots for this date have now been completed
+      const updatedLoggedTimes = Array.from(new Set([...loggedTimesForPond, form.feedingTime]));
+      const nextUnloggedSlot = feedingTimes.find((time) => !updatedLoggedTimes.includes(time));
+      const isFullDayComplete = !nextUnloggedSlot || updatedLoggedTimes.length >= feedingTimes.length;
+
+      if (!isFullDayComplete) {
+        // Pop-up notification like in Picture 2 for each intermediate time entry
+        // No additional options (no cancel / return buttons), just the notification before doing the next time log entry
+        await Swal.fire({
+          icon: 'success',
+          title: `${form.feedingTime} Feeding Recorded!`,
+          text: `The ${form.feedingTime} feeding session for ${todayDateStr} has been successfully saved for ${selectedPond.pond_name || 'Pond'} (${updatedLoggedTimes.length} of ${feedingTimes.length} completed). Ready to record the next scheduled feeding entry.`,
+          confirmButtonText: nextUnloggedSlot ? `Continue to ${nextUnloggedSlot}` : 'Continue',
+          confirmButtonColor: '#FC563C',
+          showCancelButton: false,
+          allowOutsideClick: false,
+          customClass: {
+            popup: 'shrim-swal-popup',
+            title: 'shrim-swal-title',
+          },
+        });
+
+        // Advance to next time slot in the modal
+        if (nextUnloggedSlot) {
+          handleSelectSlot(nextUnloggedSlot);
+        }
+      } else {
+        // All scheduled slots for this day are finished
+        const missedCheck = await api.get('/feeding_records.php', {
+          params: {
+            action: 'check_missed_days',
+            pond_id: selectedPond.id,
+            target_date: defaultDateStr,
+          },
+        }).catch(() => null);
+
+        if (missedCheck?.data?.success) {
+          setMissedDaysInfo({
+            hasMissedDays: Boolean(missedCheck.data.has_missed_days),
+            missedDaysCount: missedCheck.data.total_missed_count || 0,
+            missedDates: Array.isArray(missedCheck.data.missed_dates) ? missedCheck.data.missed_dates : [],
+            firstMissedDate: missedCheck.data.first_missed_date || null,
+          });
+        }
+
+        const stillHasMissed = Boolean(missedCheck?.data?.has_missed_days);
+        const nextMissed = missedCheck?.data?.first_missed_date;
+
+        if (isPastDate && stillHasMissed && nextMissed) {
+          await Swal.fire({
+            icon: 'success',
+            title: `Full Day Completed for ${todayDateStr}!`,
+            text: `All ${feedingTimes.length} feeding sessions for ${todayDateStr} have been recorded! Next missed day is ${nextMissed}. Would you like to continue logging for ${nextMissed}?`,
+            showCancelButton: true,
+            confirmButtonText: `Continue to ${nextMissed}`,
+            cancelButtonText: 'Return to My Tasks',
+            confirmButtonColor: '#FC563C',
+            cancelButtonColor: '#64748B',
+            customClass: {
+              popup: 'shrim-swal-popup',
+              title: 'shrim-swal-title',
+            },
+          }).then((dialogRes) => {
+            if (dialogRes.isConfirmed) {
+              setRecordDate(nextMissed);
+              handleSelectSlot('6:00 AM');
+            } else {
+              pendingTaskSlotRef.current = null;
+              setShowFeedingModal(false);
+              navigate('/caretaker/my-tasks', { replace: true });
+            }
+          });
+        } else {
+          await Swal.fire({
+            icon: 'success',
+            title: isPastDate ? 'Missed Days Caught Up!' : 'Full Day Completed!',
+            text: isPastDate
+              ? `All past missed feeding records have been successfully logged! Today's routine logs are now unlocked.`
+              : `All ${feedingTimes.length} scheduled feeding logs for ${todayDateStr} have been recorded for ${selectedPond.pond_name || 'Pond'}.`,
+            confirmButtonText: 'Return to My Tasks',
+            confirmButtonColor: '#FC563C',
+            showCancelButton: false,
+            customClass: {
+              popup: 'shrim-swal-popup',
+              title: 'shrim-swal-title',
+            },
+          });
+          pendingTaskSlotRef.current = null;
+          setShowFeedingModal(false);
+          navigate('/caretaker/my-tasks', { replace: true });
+        }
+      }
 
     } catch (error) {
       const backendMessage = error.response?.data?.message || error.response?.data?.error || error.message || 'Unable to save feeding record.';
@@ -1572,8 +1683,8 @@ export default function MyPondPage() {
                     {pond.operational_status === 'Harvesting in Progress'
                       ? `🌾 Day ${pond.doc} • Harvesting in Progress`
                       : pond.operational_status === 'Ready for Harvest'
-                      ? `🟡 Day ${pond.doc} • Ready for Harvest`
-                      : (isNursery ? `Day ${pond.doc} • Nursery` : `Day ${pond.doc} • Grow-out`)}
+                        ? `🟡 Day ${pond.doc} • Ready for Harvest`
+                        : (isNursery ? `Day ${pond.doc} • Nursery` : `Day ${pond.doc} • Grow-out`)}
                   </span>
 
                   {isVerified ? (
@@ -1930,10 +2041,15 @@ export default function MyPondPage() {
                 type="button"
                 className="btn btn-sm text-white px-3.5 py-1.5 extra-small fw-bold shadow-2xs rounded-3 d-flex align-items-center gap-1.5"
                 style={{ backgroundColor: isLockedByMissedDays ? '#DC2626' : '#FC563C' }}
-                onClick={() => setShowFeedingModal(true)}
+                onClick={() => {
+                  if (missedDaysInfo.hasMissedDays && missedDaysInfo.firstMissedDate) {
+                    setRecordDate(missedDaysInfo.firstMissedDate);
+                  }
+                  setShowFeedingModal(true);
+                }}
               >
                 {isLockedByMissedDays ? <FaLock size={11} /> : <FaUtensils size={11} />}
-                {isLockedByMissedDays ? 'Today Locked (Catch Up)' : 'Log Feeding'}
+                {isLockedByMissedDays ? `Catch Up (${missedDaysInfo.firstMissedDate})` : 'Log Feeding'}
               </button>
             </div>
           </div>
@@ -2041,664 +2157,717 @@ export default function MyPondPage() {
         >
           <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl scan-report-modal-dialog" role="dialog" aria-modal="true">
             <div className="modal-content border-0 rounded-4">
-              <div className="modal-header">
+              <div className="modal-header d-flex justify-content-between align-items-center">
                 <div>
                   <h5 className="modal-title fw-bold">{t('myTasks.feedingModalTitle', 'Complete Feeding Task')}</h5>
                   <p className="small text-muted mb-0">{t('myTasks.feedingModalSubtitle', 'Enter and save the feeding record for the selected pond and time slot.')}</p>
                 </div>
-                <button
-                  type="button"
-                  className="btn-close"
-                  aria-label={t('myTasks.closeFeedingModal', 'Close feeding task')}
-                  disabled={submitting}
-                  onClick={() => {
-                    pendingTaskSlotRef.current = null;
-                    setShowFeedingModal(false);
-                    navigate('/caretaker/my-tasks');
-                  }}
-                />
+                <div className="d-flex align-items-center gap-2">
+                  <button
+                    type="button"
+                    className="btn-pond-nav-action shadow-xs"
+                    style={{
+                      backgroundColor: isDark ? '#0284C7' : '#0B2C5F',
+                      color: '#FFFFFF',
+                      border: isDark ? '1.5px solid #38BDF8' : '1.5px solid #0B2C5F',
+                    }}
+                    onClick={() => {
+                      setShowFeedingModal(false);
+                      setShowCycleCalendar(true);
+                    }}
+                    title="View Pond Culture Cycle Calendar"
+                  >
+                    <FaCalendarAlt size={12} color="#FFFFFF" /> <span style={{ color: '#FFFFFF' }}>Pond Calendar</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-close"
+                    aria-label={t('myTasks.closeFeedingModal', 'Close feeding task')}
+                    disabled={submitting}
+                    onClick={() => {
+                      pendingTaskSlotRef.current = null;
+                      setShowFeedingModal(false);
+                      navigate('/caretaker/my-tasks');
+                    }}
+                  />
+                </div>
               </div>
               <div className="modal-body p-2 p-md-3">
-      {/* MISSED DAYS ALERT INSIDE MODAL */}
-      {isLockedByMissedDays && (
-        <div
-          className="alert alert-danger border border-danger-subtle rounded-3 p-3 mb-3 d-flex align-items-center justify-content-between flex-wrap gap-2"
-          role="alert"
-        >
-          <div className="d-flex align-items-center gap-2">
-            <FaLock className="text-danger flex-shrink-0" size={18} />
-            <span className="extra-small">
-              <strong>Today's logs are locked:</strong> You missed logging on <strong>{missedDaysInfo.firstMissedDate}</strong>. Daily feeding logs must be completed sequentially before recording today.
-            </span>
-          </div>
-          <button
-            type="button"
-            className="btn btn-sm btn-danger fw-bold extra-small"
-            onClick={() => setRecordDate(missedDaysInfo.firstMissedDate)}
-          >
-            Switch to {missedDaysInfo.firstMissedDate}
-          </button>
-        </div>
-      )}
-      {/* Main Feeding Form Panel Card */}
-      <div className="bg-white border rounded-4 p-4 p-md-4.5 mb-4 shadow-2xs" style={{ borderColor: '#E2E8F0' }}>
-        <div>
-          <div className="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
-            <div>
-              <h5 className="fw-extrabold text-dark mb-1 tracking-tight">Log Feeding Entry</h5>
-              <p className="text-muted small mb-0">
-                Save a verified feeding record for <strong className="text-dark">{selectedPond?.pond_name || 'this pond'}</strong>.
-              </p>
-            </div>
-            <div
-              className="d-flex align-items-center gap-2 px-3 py-1.5 rounded-pill extra-small fw-bold bg-light border text-secondary"
-            >
-              <FaClipboardList />
-              <span>{loggedTimesForPond.length} of 5 scheduled times completed today</span>
-            </div>
-          </div>
-
-          {/* FEEDING PROTOCOL PREREQUISITES & COMPUTATION BAR */}
-          <div className="row g-3 mb-4">
-            {/* Weekly shrimp sample */}
-            <div className="col-12 col-lg-4">
-              <div
-                className="p-3.5 rounded-4 h-100 caretaker-sample-box d-flex flex-column justify-content-between"
-                style={{
-                  border: isDark ? '1px solid rgba(56, 189, 248, 0.25)' : '1.5px solid #CBD5E1',
-                  backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                  boxShadow: '0 2px 10px rgba(11, 44, 95, 0.04)'
-                }}
-              >
-                <div>
-                  <div className="d-flex align-items-center justify-content-between gap-2 mb-2.5 pb-2 border-bottom" style={{ borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#F1F5F9' }}>
+                {/* MISSED DAYS ALERT INSIDE MODAL */}
+                {isLockedByMissedDays && (
+                  <div
+                    className="alert alert-danger border border-danger-subtle rounded-3 p-3 mb-3 d-flex align-items-center justify-content-between flex-wrap gap-2"
+                    role="alert"
+                  >
                     <div className="d-flex align-items-center gap-2">
-                      <div
-                        className="rounded-circle d-flex align-items-center justify-content-center"
-                        style={{ width: 28, height: 28, backgroundColor: 'rgba(252, 86, 60, 0.1)', color: '#FC563C' }}
-                      >
-                        <FaBalanceScale size={13} />
-                      </div>
-                      <span className="small fw-bold text-dark">Weekly Shrimp Sample</span>
-                    </div>
-                    {!isDoc35Plus ? (
-                      <span
-                        className="badge rounded-pill extra-small fw-bold px-2.5 py-1"
-                        style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#F1F5F9', color: '#64748B', border: '1px solid #CBD5E1' }}
-                      >
-                        DOC {currentDoc} • Excluded
-                      </span>
-                    ) : isSamplingDue ? (
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-tri-orange px-3 py-1 extra-small fw-bold shadow-xs"
-                        onClick={() => requestWeeklySampling(false)}
-                        disabled={!selectedPondId || allSlotsCompleted}
-                      >
-                        Sample Now
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-tri-outline px-3 py-1 extra-small fw-bold"
-                        onClick={() => requestWeeklySampling(false)}
-                        disabled={!selectedPondId || allSlotsCompleted}
-                      >
-                        Update
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="p-3 rounded-3 mt-1" style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#F8FAFC', border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #E2E8F0' }}>
-                    {!isDoc35Plus ? (
-                      <>
-                        <h6 className="fw-bold text-secondary mb-1">Not Required (DOC &lt; 35)</h6>
-                        <p className="extra-small text-muted mb-0">
-                          Weekly sampling protocol begins at DOC 35.
-                        </p>
-                      </>
-                    ) : isSamplingDue ? (
-                      <>
-                        <div className="d-flex align-items-center gap-2 mb-1">
-                          <span className="badge rounded-pill bg-danger text-white extra-small px-2 py-0.5 fw-bold">Required</span>
-                          <h6 className="fw-bold mb-0 text-danger">Sampling Due</h6>
-                        </div>
-                        <p className="extra-small text-muted mb-0">
-                          Record average shrimp weight in grams before logging today's feed.
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <div className="d-flex align-items-baseline gap-2 mb-1">
-                          <h4 className="fw-extrabold mb-0 font-mono" style={{ color: '#FC563C' }}>
-                            {weeklySampling?.shrimpWeightGrams ? `${weeklySampling.shrimpWeightGrams}g` : '-'}
-                          </h4>
-                          <span
-                            className="badge rounded-pill extra-small fw-bold"
-                            style={{ backgroundColor: '#DCFCE7', color: '#166534', border: '1px solid #86EFAC' }}
-                          >
-                            Active • {Math.max(0, 7 - daysSinceSample)}d remaining
-                          </span>
-                        </div>
-                        <p className="extra-small text-muted mb-0">
-                          Verified average shrimp weight sample.
-                        </p>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Feeding tray computation */}
-            <div className="col-12 col-lg-8">
-              <div
-                className="p-3.5 rounded-4 h-100 caretaker-computation-box d-flex flex-column justify-content-between"
-                style={{
-                  border: isDark ? '1px solid rgba(56, 189, 248, 0.25)' : '1.5px solid #CBD5E1',
-                  backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                  boxShadow: '0 2px 10px rgba(11, 44, 95, 0.04)'
-                }}
-              >
-                <div>
-                  <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2.5 pb-2 border-bottom" style={{ borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#F1F5F9' }}>
-                    <div className="d-flex align-items-center gap-2">
-                      <div
-                        className="rounded-circle d-flex align-items-center justify-content-center"
-                        style={{ width: 28, height: 28, backgroundColor: 'rgba(252, 86, 60, 0.1)', color: '#FC563C' }}
-                      >
-                        <FaUtensils size={13} />
-                      </div>
-                      <div>
-                        <span className="small fw-bold text-dark">
-                          {isNurseryStage ? 'Nursery Feed Broadcasting (100% Broadcast)' : 'Feeding Tray Computation'}
-                        </span>
-                        <p className="extra-small text-muted mb-0">
-                          {isNurseryStage
-                            ? 'In nursery ponds, all feed is spread evenly across the pond.'
-                            : 'Feed is placed in 4 feeding trays first; remainder is spread across the pond.'}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="d-flex align-items-center gap-2">
-                      {!isNurseryStage && selectedSlotRequiresMonitoring && (
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline-primary rounded-pill px-2.5 py-1 extra-small fw-bold d-inline-flex align-items-center gap-1 shadow-xs"
-                          onClick={() => requestTrayMonitoring(true)}
-                          title="Click to re-open tray inspection and recalculate feed"
-                        >
-                          <FaClipboardCheck size={11} />
-                          <span>Re-inspect Trays</span>
-                        </button>
-                      )}
-                      <span
-                        className="badge rounded-pill extra-small fw-bold px-2.5 py-1"
-                        style={{ backgroundColor: 'rgba(252, 86, 60, 0.08)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.2)' }}
-                      >
-                        {isNurseryStage ? 'Trays: None (Nursery)' : `Tray Count: ${feedingTrayCount}`}
+                      <FaLock className="text-danger flex-shrink-0" size={18} />
+                      <span className="extra-small">
+                        <strong>Logs for {todayDateStr} are locked:</strong> You have uncompleted feeding cycles on <strong>{missedDaysInfo.firstMissedDate}</strong>. Daily feeding logs must be completed sequentially before recording this date.
                       </span>
                     </div>
-                  </div>
-
-                  {isNurseryStage ? (
-                    <div className="row g-2 mb-2">
-                      <div className="col-6 col-md-4">
-                        <div className="p-2.5 rounded-3" style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#F8FAFC', border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #E2E8F0' }}>
-                          <small className="text-muted d-block extra-small fw-semibold">Scheduled Feed</small>
-                          <strong className="fs-6 font-mono" style={{ color: '#FC563C' }}>{feedingPlan ? `${feedingPlan.amountKg.toFixed(2)} kg` : '0.00 kg'}</strong>
-                        </div>
-                      </div>
-                      <div className="col-6 col-md-4">
-                        <div className="p-2.5 rounded-3" style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#F8FAFC', border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #E2E8F0' }}>
-                          <small className="text-muted d-block extra-small fw-semibold">Equivalent in Grams</small>
-                          <strong className="fs-6 font-mono">{feedingPlan ? `${Math.round(feedingPlan.amountKg * 1000).toLocaleString()} g` : '0 g'}</strong>
-                        </div>
-                      </div>
-                      <div className="col-12 col-md-4">
-                        <div className="p-2.5 rounded-3" style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#F8FAFC', border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #E2E8F0' }}>
-                          <small className="text-muted d-block extra-small fw-semibold">Broadcast Mode</small>
-                          <span className="badge rounded-pill extra-small fw-bold px-2 py-0.5" style={{ backgroundColor: '#DCFCE7', color: '#166534', border: '1px solid #86EFAC' }}>
-                            100% Direct Broadcast
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div>
-                      <div className="row g-2 align-items-center mb-2.5">
-                        <div className="col-4">
-                          <div className="p-2.5 rounded-3" style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#F8FAFC', border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #E2E8F0' }}>
-                            <small className="text-muted d-block extra-small fw-semibold">Scheduled Feed</small>
-                            <strong className="fs-6 font-mono text-dark">{feedingPlan ? `${feedingPlan.amountKg.toFixed(2)} kg` : '-'}</strong>
-                          </div>
-                        </div>
-                        <div className="col-4">
-                          <div className="p-2.5 rounded-3" style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#F8FAFC', border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #E2E8F0' }}>
-                            <small className="text-muted d-block extra-small fw-semibold">Tray Feed (4 Trays)</small>
-                            <strong className="fs-6 font-mono">{feedingPlan ? `${feedingPlan.totalTrayFeedGrams}g / ${feedingPlan.totalTrayFeedKg.toFixed(2)} kg` : '-'}</strong>
-                          </div>
-                        </div>
-                        <div className="col-4">
-                          <div className="p-2.5 rounded-3" style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#F8FAFC', border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #E2E8F0' }}>
-                            <small className="text-muted d-block extra-small fw-semibold">Broadcast Feed</small>
-                            <strong className="fs-6 font-mono" style={{ color: '#FC563C' }}>{feedingPlan ? `${feedingPlan.broadcastFeedKg.toFixed(2)} kg` : '-'}</strong>
-                          </div>
-                        </div>
-                      </div>
-                      <div
-                        className="px-3 py-2 rounded-3 d-flex align-items-center justify-content-between flex-wrap gap-2 caretaker-formula-box"
-                        style={{
-                          backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#FFFFFF',
-                          border: '1.5px solid rgba(252, 86, 60, 0.22)'
+                    <div className="d-flex align-items-center gap-2 flex-wrap">
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-danger fw-bold extra-small"
+                        onClick={() => setRecordDate(missedDaysInfo.firstMissedDate)}
+                      >
+                        Switch to {missedDaysInfo.firstMissedDate}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-danger fw-bold extra-small d-inline-flex align-items-center gap-1"
+                        onClick={() => {
+                          setShowFeedingModal(false);
+                          setShowCycleCalendar(true);
                         }}
                       >
-                        <div className="d-flex align-items-center gap-2">
-                          <span className="badge rounded-pill px-2.5 py-1 extra-small fw-bold" style={{ backgroundColor: '#FC563C', color: '#FFFFFF' }}>
-                            Formula Text Display
-                          </span>
-                          <span className="extra-small text-muted fw-semibold">
-                            (Scheduled Feed − 4 Trays = Broadcast Feed):
-                          </span>
-                        </div>
-                        <strong
-                          className="fs-6 font-mono fw-extrabold"
-                          style={{ color: '#FC563C', letterSpacing: '0.2px' }}
-                        >
-                          {feedingPlan ? feedingPlan.formulaText : '-'}
-                        </strong>
+                        <FaCalendarAlt size={11} /> See Missed Days in Calendar
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {/* Main Feeding Form Panel Card */}
+                <div className="bg-white border rounded-4 p-4 p-md-4.5 mb-4 shadow-2xs" style={{ borderColor: '#E2E8F0' }}>
+                  <div>
+                    <div className="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+                      <div>
+                        <h5 className="fw-extrabold text-dark mb-1 tracking-tight d-flex align-items-center gap-2 flex-wrap">
+                          <span>Log Feeding Entry</span>
+                          {isPastDate && (
+                            <span className="badge rounded-pill extra-small fw-bold px-2.5 py-1" style={{ backgroundColor: '#FEE2E2', color: '#DC2626', border: '1px solid #FCA5A5' }}>
+                              Catching up missed date: {todayDateStr}
+                            </span>
+                          )}
+                        </h5>
+                        <p className="text-muted small mb-0">
+                          Save a verified feeding record for <strong className="text-dark">{selectedPond?.pond_name || 'this pond'}</strong> on <strong className="text-primary">{todayDateStr}</strong>.
+                        </p>
+                      </div>
+                      <div
+                        className="d-flex align-items-center gap-2 px-3 py-1.5 rounded-pill extra-small fw-bold bg-light border text-secondary"
+                      >
+                        <FaClipboardList />
+                        <span>{loggedTimesForPond.length} of 5 scheduled times completed today</span>
                       </div>
                     </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
 
-          {/* Time Slot Buttons with Crisp Visible Borders and Clear Visual Indicators */}
-          <div className="caretaker-feeding-time-grid mb-4">
-            {feedingTimes.map((time) => {
-              const matchingLog = todayLogs.find((log) => normalizeTime(log.feeding_time) === normalizeTime(time));
-              const isLoggedToday = Boolean(matchingLog);
-              const isSelected = currentForm.feedingTime === time;
-              const isBeingEdited = editingRecord && normalizeTime(editingRecord.feeding_time) === normalizeTime(time);
-
-              return (
-                <button
-                  type="button"
-                  key={time}
-                  className={`btn-time-slot ${isSelected ? 'active' : ''}`}
-                  style={{
-                    cursor: 'pointer',
-                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                    border: isBeingEdited
-                      ? '2px solid #FC563C'
-                      : (isSelected
-                        ? '2px solid #FC563C'
-                        : (isLoggedToday
-                          ? '2px solid #FC563C'
-                          : (isDark ? '1.5px solid rgba(255, 255, 255, 0.25)' : '1.5px solid #94A3B8'))),
-                    borderRadius: '1rem',
-                    backgroundColor: isSelected
-                      ? '#FC563C'
-                      : (isLoggedToday
-                        ? (isDark ? 'rgba(252, 86, 60, 0.1)' : '#FFF5F2')
-                        : (isDark ? '#1E293B' : '#FFFFFF')),
-                    color: isSelected ? '#FFFFFF' : (isLoggedToday ? '#FC563C' : (isDark ? '#F1F5F9' : '#1E293B')),
-                    boxShadow: isSelected ? '0 6px 16px rgba(252, 86, 60, 0.35)' : '0 2px 6px rgba(0,0,0,0.03)',
-                  }}
-                  onClick={() => handleSelectSlot(time)}
-                  title={isLoggedToday ? `${time} is logged (${matchingLog.amount_kg}kg) - Click to edit or review` : `Select ${time}`}
-                >
-                  <div className="d-flex align-items-center gap-1.5">
-                    {isBeingEdited ? (
-                      <FaEdit style={{ color: isSelected ? '#FFFFFF' : '#FC563C' }} />
-                    ) : isLoggedToday ? (
-                      <FaCheckCircle style={{ color: isSelected ? '#FFFFFF' : '#FC563C' }} />
-                    ) : (
-                      <FaClock className="opacity-75" />
-                    )}
-                    <span className="fw-bold">{time}</span>
-                  </div>
-                  {isLoggedToday && (
-                    <span
-                      className="badge rounded-pill extra-small px-2 py-0.5"
-                      style={{
-                        fontSize: '0.67rem',
-                        backgroundColor: isSelected ? 'rgba(255,255,255,0.25)' : (isDark ? 'rgba(255,255,255,0.1)' : '#FFFFFF'),
-                        color: isSelected ? '#FFFFFF' : '#FC563C',
-                        fontWeight: 700,
-                        border: isSelected ? 'none' : '1px solid rgba(252, 86, 60, 0.25)',
-                      }}
-                    >
-                      {parseFloat(matchingLog.amount_kg) === 0
-                        ? '0 kg (No Feed)'
-                        : `${parseFloat(matchingLog.amount_kg).toFixed(2)} kg`}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Active Edit Mode Notification Banner */}
-          {editingRecord && (
-            <div
-              className="d-flex align-items-center justify-content-between p-3.5 mb-4 rounded-3 shadow-xs"
-              style={{
-                backgroundColor: isDark ? '#172A39' : '#FFF5F2',
-                border: isDark ? '1px solid rgba(252, 86, 60, 0.3)' : '1.5px solid #FECDD3',
-                borderLeft: '4px solid #FC563C',
-              }}
-            >
-              <div className="d-flex align-items-center gap-2.5">
-                <div
-                  className="rounded-circle d-flex align-items-center justify-content-center"
-                  style={{ width: 34, height: 34, backgroundColor: isDark ? 'rgba(252, 86, 60, 0.2)' : '#FFE4E6', color: '#FC563C' }}
-                >
-                  <FaEdit size={14} />
-                </div>
-                <div>
-                  <strong className="text-dark d-block">Editing Feeding Record #{editingRecord.id} ({editingRecord.feeding_time})</strong>
-                  <span className="small text-muted">
-                    Modifying existing feeding record on {todayDateStr} for {selectedPond?.pond_name}. Adjust values below and click Update.
-                  </span>
-                </div>
-              </div>
-              <button
-                type="button"
-                className="btn btn-sm btn-tri-outline-orange rounded-pill px-3 py-1.5 extra-small fw-bold d-flex align-items-center gap-1"
-                onClick={handleCancelEdit}
-              >
-                <FaTimes size={11} /> Cancel Edit
-              </button>
-            </div>
-          )}
-
-          {allSlotsCompleted && !editingRecord && (
-            <div
-              className="d-flex align-items-center justify-content-between gap-2 p-3.5 mb-4 rounded-3"
-              style={{
-                backgroundColor: isDark ? '#172A39' : '#F0FDF4',
-                border: isDark ? '1px solid rgba(22, 163, 74, 0.3)' : '1.5px solid #BBF7D0',
-                borderLeft: '4px solid #16A34A',
-              }}
-            >
-              <div className="d-flex align-items-center gap-2.5">
-                <div
-                  className="rounded-circle d-flex align-items-center justify-content-center"
-                  style={{ width: 32, height: 32, backgroundColor: isDark ? 'rgba(22, 163, 74, 0.2)' : '#DCFCE7', color: '#16A34A' }}
-                >
-                  <FaCheckCircle size={15} />
-                </div>
-                <div>
-                  <strong className="d-block" style={{ color: '#15803D' }}>All 5 Daily Feeding Slots Logged!</strong>
-                  <span className="small text-muted">All scheduled daily feeding times for {selectedPond?.pond_name} have been recorded for this date. Click any time slot above or the table below to edit a record.</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Clean 2-Row Form Grid: Amount + Product in Row 1, Vitamins + Notes in Row 2 */}
-          <div className="row g-3 mb-3">
-            <div className="col-12 col-md-6">
-              <label className="form-label fw-semibold text-dark mb-1">
-                Feed Amount (kg)
-              </label>
-              <div className="input-group">
-                <input
-                  type="number"
-                  min="0"
-                  step="0.05"
-                  className="form-control fw-bold"
-                  value={currentForm.amountKg ?? ''}
-                  onChange={(event) => handleChange('amountKg', event.target.value)}
-                  placeholder="e.g. 4.0 (kg)"
-                  disabled={submitting || (allSlotsCompleted && !editingRecord)}
-                  style={{ fontSize: '1rem' }}
-                />
-                <span className="input-group-text bg-light text-muted fw-semibold px-3">
-                  kg
-                </span>
-              </div>
-              <div className="d-flex justify-content-between align-items-center mt-1 extra-small">
-                <span className="text-muted">Equivalent in grams:</span>
-                <strong className="font-mono" style={{ color: '#FC563C' }}>
-                  {currentForm.amountKg !== '' && !isNaN(parseFloat(currentForm.amountKg))
-                    ? `${Math.round(parseFloat(currentForm.amountKg) * 1000).toLocaleString()} g`
-                    : (currentForm.amountGrams ? `${parseFloat(currentForm.amountGrams)} g` : '0 g')}
-                </strong>
-              </div>
-              {normalizeTime(currentForm.feedingTime) === '6:00 AM' && previousDayLastFeed && !editingRecord && (
-                <div className="mt-1 extra-small fw-semibold d-flex align-items-center gap-1" style={{ color: '#FC563C' }}>
-                  <span>Auto-carried from previous 6:00 PM feed ({parseFloat(previousDayLastFeed.amount_kg || 0).toFixed(2)} kg)</span>
-                </div>
-              )}
-            </div>
-
-            <div className="col-12 col-md-6">
-              <div className="d-flex justify-content-between align-items-center mb-1">
-                <label className="form-label fw-semibold text-dark mb-0">Feed Product</label>
-                <span
-                  className="badge rounded-pill extra-small px-2 py-0.5"
-                  style={{
-                    backgroundColor: currentDoc >= 20 ? 'rgba(252, 86, 60, 0.08)' : (isDark ? 'rgba(255,255,255,0.08)' : '#F1F5F9'),
-                    color: currentDoc >= 20 ? '#FC563C' : (isDark ? '#CBD5E1' : '#1E293B'),
-                    border: `1px solid ${currentDoc >= 20 ? 'rgba(252, 86, 60, 0.18)' : (isDark ? 'rgba(255,255,255,0.15)' : '#CBD5E1')}`,
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                  }}
-                >
-                  {currentDoc >= 20 ? 'Grow-out • Day 20+' : 'Nursery • Days 1–19'}
-                </span>
-              </div>
-              <select
-                className="form-select fw-semibold"
-                value={currentForm.productCode || autoProductCode}
-                onChange={(event) => handleChange('productCode', event.target.value)}
-                disabled={submitting || (allSlotsCompleted && !editingRecord)}
-                style={{ fontSize: '0.95rem' }}
-              >
-                {productCodes.map((code) => (
-                  <option key={code} value={code}>
-                    {code}
-                  </option>
-                ))}
-              </select>
-              <small className="extra-small text-muted d-block mt-1">
-                Standard Tateh formulation for current pond culture stage.
-              </small>
-            </div>
-
-            <div className="col-12 col-md-6">
-              <div className="d-flex justify-content-between align-items-center mb-1">
-                <label className="form-label fw-semibold text-dark mb-0">Vitamins &amp; Additives</label>
-                <span
-                  className="badge rounded-pill extra-small px-2 py-0.5"
-                  style={{
-                    backgroundColor: '#E9E4E0',
-                    color: '#FC563C',
-                    border: '1px solid rgba(252, 86, 60, 0.18)',
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                  }}
-                >
-                  Protocol
-                </span>
-              </div>
-              <select
-                className="form-select fw-semibold"
-                value={currentForm.vitaminName || defaultVitamins}
-                onChange={(event) => handleChange('vitaminName', event.target.value)}
-                disabled={submitting || (allSlotsCompleted && !editingRecord)}
-                style={{ fontSize: '0.95rem' }}
-              >
-                {vitaminOptions.map((vit) => (
-                  <option key={vit} value={vit}>
-                    {vit === 'None' ? 'None (No Vitamin)' : vit}
-                  </option>
-                ))}
-              </select>
-              <small className="text-muted extra-small d-block mt-1">
-                Administered with feed across daily schedules.
-              </small>
-            </div>
-
-            <div className="col-12 col-md-6">
-              <label className="form-label fw-semibold text-dark mb-1">Pond Observations &amp; Notes (optional)</label>
-              <input
-                type="text"
-                className="form-control"
-                value={currentForm.notes}
-                onChange={(event) => handleChange('notes', event.target.value)}
-                placeholder="Turbidity observations, shrimp appetite, weather notes..."
-                disabled={submitting || (allSlotsCompleted && !editingRecord)}
-                style={{ fontSize: '0.95rem' }}
-              />
-              <small className="text-muted extra-small d-block mt-1">
-                Optional note attached to this feeding slot.
-              </small>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="mt-4">
-            {editingRecord ? (
-              <div className="d-flex gap-2">
-                <button
-                  type="button"
-                  className="btn btn-tri-orange btn-lg flex-grow-1 py-2.5 fw-bold d-flex align-items-center justify-content-center gap-2 shadow-sm"
-                  disabled={submitting}
-                  onClick={handleSubmit}
-                >
-                  <FaEdit /> {submitting ? 'Updating...' : `Update Feeding Record #${editingRecord.id} (${currentForm.feedingTime})`}
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-tri-outline btn-lg px-4 fw-semibold shadow-sm"
-                  onClick={handleCancelEdit}
-                >
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                className={`btn btn-lg w-100 py-2.5 fw-bold d-flex align-items-center justify-content-center gap-2 shadow-sm ${isLockedByMissedDays ? 'btn-danger' : 'btn-tri-navy'}`}
-                disabled={submitting || (allSlotsCompleted && !editingRecord) || isLockedByMissedDays}
-                onClick={handleSubmit}
-              >
-                {submitting ? (
-                  'Saving...'
-                ) : isLockedByMissedDays ? (
-                  <>
-                    <FaLock /> Logs Locked — Complete {missedDaysInfo.firstMissedDate} First
-                  </>
-                ) : (
-                  <>
-                    <FaPlus /> {isPastDate ? `Save Past Feeding Entry (${todayDateStr} • ${currentForm.feedingTime})` : `Log Feeding for ${selectedPond?.pond_name || 'Selected Pond'} (${currentForm.feedingTime})`}
-                  </>
-                )}
-              </button>
-            )}
-          </div>
-
-          {/* LOGGED FEEDS LIST FOR SELECTED DATE (With Edit & Delete) */}
-          {todayLogs.length > 0 && (
-            <div className="mt-4 pt-4 border-top">
-              <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-                <div>
-                  <h6 className="fw-extrabold text-dark mb-0 d-flex align-items-center gap-2">
-                    <FaClipboardList style={{ color: '#FC563C' }} />
-                    Logged Feeds for {new Date(todayDateStr + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    <span
-                      className="badge rounded-pill extra-small ms-1"
-                      style={{ backgroundColor: '#FC563C', color: '#FFFFFF' }}
-                    >
-                      {todayLogs.length} of 5 Logged
-                    </span>
-                  </h6>
-                  <small className="text-muted">
-                    Total feed: <strong style={{ color: '#FC563C' }}>{todayLogs.reduce((acc, l) => acc + Number(l.amount_kg || 0), 0).toFixed(2)} kg</strong> on this date.
-                  </small>
-                </div>
-              </div>
-
-              <div className="table-responsive admin-scrollable-table-4rows rounded-3 bg-white border" style={{ maxHeight: 290, overflowY: 'auto', borderColor: '#E2E8F0' }}>
-                <table className="table table-hover align-middle mb-0">
-                  <thead className="table-light">
-                    <tr>
-                      <th className="py-2.5 px-3 text-uppercase extra-small fw-bold text-muted border-0">Time Slot</th>
-                      <th className="py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Feed Amount</th>
-                      <th className="py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Product Code</th>
-                      <th className="py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Vitamins</th>
-                      <th className="py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Logged By</th>
-                      <th className="py-2.5 pe-3 text-end text-uppercase extra-small fw-bold text-muted border-0" style={{ width: 140 }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {todayLogs.map((log) => {
-                      const isCurrentEditing = editingRecord && editingRecord.id === log.id;
-                      return (
-                        <tr key={log.id} style={isCurrentEditing ? { backgroundColor: 'rgba(252, 86, 60, 0.08)' } : {}}>
-                          <td className="ps-3 fw-bold text-dark font-mono">
-                            <FaClock className="me-1 extra-small text-muted" /> {log.feeding_time}
-                          </td>
-                          <td>
-                            <strong className="text-dark">{Number(log.amount_kg || 0).toFixed(2)} kg</strong>
-                          </td>
-                          <td>
-                            <span
-                              className="badge rounded-pill extra-small fw-bold bg-light border text-secondary"
-                            >
-                              {log.product_code || log.feed_type || 'Starter'}
-                            </span>
-                          </td>
-                          <td>
-                            {log.has_vitamin && log.vitamin_name && log.vitamin_name !== 'None' ? (
-                              <span
-                                className="badge rounded-pill extra-small fw-bold"
-                                style={{ backgroundColor: '#FFF5F2', color: '#FC563C', border: '1px solid #FECDD3' }}
-                              >
-                                +{log.vitamin_name}
-                              </span>
-                            ) : (
-                              <span className="text-muted extra-small">None</span>
-                            )}
-                          </td>
-                          <td className="extra-small text-muted">
-                            {log.recorded_by_name || 'Caretaker'}
-                          </td>
-                          <td className="pe-3 text-end">
-                            <div className="d-inline-flex align-items-center gap-1.5">
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-understated-view px-2.5 py-1 extra-small fw-bold d-inline-flex align-items-center gap-1 shadow-2xs"
-                                onClick={() => handleSelectSlot(log.feeding_time)}
-                                title="Edit this feeding log"
-                              >
-                                <FaEdit size={11} /> Edit
-                              </button>
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-outline-danger px-2.5 py-1 extra-small fw-bold d-inline-flex align-items-center gap-1 shadow-2xs rounded-2"
-                                onClick={() => handleDeleteRecord(log)}
-                                title="Delete this feeding log"
-                              >
-                                <FaTrash size={11} /> Delete
-                              </button>
+                    {/* FEEDING PROTOCOL PREREQUISITES & COMPUTATION BAR */}
+                    <div className="row g-3 mb-4">
+                      {/* Weekly shrimp sample */}
+                      <div className="col-12 col-lg-4">
+                        <div
+                          className="p-3.5 rounded-4 h-100 caretaker-sample-box d-flex flex-column justify-content-between"
+                          style={{
+                            border: isDark ? '1px solid rgba(56, 189, 248, 0.25)' : '1.5px solid #CBD5E1',
+                            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                            boxShadow: '0 2px 10px rgba(11, 44, 95, 0.04)'
+                          }}
+                        >
+                          <div>
+                            <div className="d-flex align-items-center justify-content-between gap-2 mb-2.5 pb-2 border-bottom" style={{ borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#F1F5F9' }}>
+                              <div className="d-flex align-items-center gap-2">
+                                <div
+                                  className="rounded-circle d-flex align-items-center justify-content-center"
+                                  style={{ width: 28, height: 28, backgroundColor: 'rgba(252, 86, 60, 0.1)', color: '#FC563C' }}
+                                >
+                                  <FaBalanceScale size={13} />
+                                </div>
+                                <span className="small fw-bold text-dark">Weekly Shrimp Sample</span>
+                              </div>
+                              {!isDoc35Plus ? (
+                                <span
+                                  className="badge rounded-pill extra-small fw-bold px-2.5 py-1"
+                                  style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#F1F5F9', color: '#64748B', border: '1px solid #CBD5E1' }}
+                                >
+                                  DOC {currentDoc} • Excluded
+                                </span>
+                              ) : isSamplingDue ? (
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-tri-orange px-3 py-1 extra-small fw-bold shadow-xs"
+                                  onClick={() => requestWeeklySampling(false)}
+                                  disabled={!selectedPondId || allSlotsCompleted}
+                                >
+                                  Sample Now
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-tri-outline px-3 py-1 extra-small fw-bold"
+                                  onClick={() => requestWeeklySampling(false)}
+                                  disabled={!selectedPondId || allSlotsCompleted}
+                                >
+                                  Update
+                                </button>
+                              )}
                             </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+
+                            <div className="p-3 rounded-3 mt-1" style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#F8FAFC', border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #E2E8F0' }}>
+                              {!isDoc35Plus ? (
+                                <>
+                                  <h6 className="fw-bold text-secondary mb-1">Not Required (DOC &lt; 35)</h6>
+                                  <p className="extra-small text-muted mb-0">
+                                    Weekly sampling protocol begins at DOC 35.
+                                  </p>
+                                </>
+                              ) : isSamplingDue ? (
+                                <>
+                                  <div className="d-flex align-items-center gap-2 mb-1">
+                                    <span className="badge rounded-pill bg-danger text-white extra-small px-2 py-0.5 fw-bold">Required</span>
+                                    <h6 className="fw-bold mb-0 text-danger">Sampling Due</h6>
+                                  </div>
+                                  <p className="extra-small text-muted mb-0">
+                                    Record average shrimp weight in grams before logging today's feed.
+                                  </p>
+                                </>
+                              ) : (
+                                <>
+                                  <div className="d-flex align-items-baseline gap-2 mb-1">
+                                    <h4 className="fw-extrabold mb-0 font-mono" style={{ color: '#FC563C' }}>
+                                      {weeklySampling?.shrimpWeightGrams ? `${weeklySampling.shrimpWeightGrams}g` : '-'}
+                                    </h4>
+                                    <span
+                                      className="badge rounded-pill extra-small fw-bold"
+                                      style={{ backgroundColor: '#DCFCE7', color: '#166534', border: '1px solid #86EFAC' }}
+                                    >
+                                      Active • {Math.max(0, 7 - daysSinceSample)}d remaining
+                                    </span>
+                                  </div>
+                                  <p className="extra-small text-muted mb-0">
+                                    Verified average shrimp weight sample.
+                                  </p>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Feeding tray computation */}
+                      <div className="col-12 col-lg-8">
+                        <div
+                          className="p-3.5 rounded-4 h-100 caretaker-computation-box d-flex flex-column justify-content-between"
+                          style={{
+                            border: isDark ? '1px solid rgba(56, 189, 248, 0.25)' : '1.5px solid #CBD5E1',
+                            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                            boxShadow: '0 2px 10px rgba(11, 44, 95, 0.04)'
+                          }}
+                        >
+                          <div>
+                            <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2.5 pb-2 border-bottom" style={{ borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#F1F5F9' }}>
+                              <div className="d-flex align-items-center gap-2">
+                                <div
+                                  className="rounded-circle d-flex align-items-center justify-content-center"
+                                  style={{ width: 28, height: 28, backgroundColor: 'rgba(252, 86, 60, 0.1)', color: '#FC563C' }}
+                                >
+                                  <FaUtensils size={13} />
+                                </div>
+                                <div>
+                                  <span className="small fw-bold text-dark">
+                                    {isNurseryStage ? 'Nursery Feed Broadcasting (100% Broadcast)' : 'Feeding Tray Computation'}
+                                  </span>
+                                  <p className="extra-small text-muted mb-0">
+                                    {isNurseryStage
+                                      ? 'In nursery ponds, all feed is spread evenly across the pond.'
+                                      : 'Feed is placed in 4 feeding trays first; remainder is spread across the pond.'}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="d-flex align-items-center gap-2">
+                                {!isNurseryStage && selectedSlotRequiresMonitoring && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-primary rounded-pill px-2.5 py-1 extra-small fw-bold d-inline-flex align-items-center gap-1 shadow-xs"
+                                    onClick={() => requestTrayMonitoring(true)}
+                                    title="Click to re-open tray inspection and recalculate feed"
+                                  >
+                                    <FaClipboardCheck size={11} />
+                                    <span>Re-inspect Trays</span>
+                                  </button>
+                                )}
+                                <span
+                                  className="badge rounded-pill extra-small fw-bold px-2.5 py-1"
+                                  style={{ backgroundColor: 'rgba(252, 86, 60, 0.08)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.2)' }}
+                                >
+                                  {isNurseryStage ? 'Trays: None (Nursery)' : `Tray Count: ${feedingTrayCount}`}
+                                </span>
+                              </div>
+                            </div>
+
+                            {isNurseryStage ? (
+                              <div className="row g-2 mb-2">
+                                <div className="col-6 col-md-4">
+                                  <div className="p-2.5 rounded-3" style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#F8FAFC', border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #E2E8F0' }}>
+                                    <small className="text-muted d-block extra-small fw-semibold">Scheduled Feed</small>
+                                    <strong className="fs-6 font-mono" style={{ color: '#FC563C' }}>{feedingPlan ? `${feedingPlan.amountKg.toFixed(2)} kg` : '0.00 kg'}</strong>
+                                  </div>
+                                </div>
+                                <div className="col-6 col-md-4">
+                                  <div className="p-2.5 rounded-3" style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#F8FAFC', border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #E2E8F0' }}>
+                                    <small className="text-muted d-block extra-small fw-semibold">Equivalent in Grams</small>
+                                    <strong className="fs-6 font-mono">{feedingPlan ? `${Math.round(feedingPlan.amountKg * 1000).toLocaleString()} g` : '0 g'}</strong>
+                                  </div>
+                                </div>
+                                <div className="col-12 col-md-4">
+                                  <div className="p-2.5 rounded-3" style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#F8FAFC', border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #E2E8F0' }}>
+                                    <small className="text-muted d-block extra-small fw-semibold">Broadcast Mode</small>
+                                    <span className="badge rounded-pill extra-small fw-bold px-2 py-0.5" style={{ backgroundColor: '#DCFCE7', color: '#166534', border: '1px solid #86EFAC' }}>
+                                      100% Direct Broadcast
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <div>
+                                <div className="row g-2 align-items-center mb-2.5">
+                                  <div className="col-4">
+                                    <div className="p-2.5 rounded-3" style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#F8FAFC', border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #E2E8F0' }}>
+                                      <small className="text-muted d-block extra-small fw-semibold">Scheduled Feed</small>
+                                      <strong className="fs-6 font-mono text-dark">{feedingPlan ? `${feedingPlan.amountKg.toFixed(2)} kg` : '-'}</strong>
+                                    </div>
+                                  </div>
+                                  <div className="col-4">
+                                    <div className="p-2.5 rounded-3" style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#F8FAFC', border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #E2E8F0' }}>
+                                      <small className="text-muted d-block extra-small fw-semibold">Tray Feed (4 Trays)</small>
+                                      <strong className="fs-6 font-mono">{feedingPlan ? `${feedingPlan.totalTrayFeedGrams}g / ${feedingPlan.totalTrayFeedKg.toFixed(2)} kg` : '-'}</strong>
+                                    </div>
+                                  </div>
+                                  <div className="col-4">
+                                    <div className="p-2.5 rounded-3" style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#F8FAFC', border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #E2E8F0' }}>
+                                      <small className="text-muted d-block extra-small fw-semibold">Broadcast Feed</small>
+                                      <strong className="fs-6 font-mono" style={{ color: '#FC563C' }}>{feedingPlan ? `${feedingPlan.broadcastFeedKg.toFixed(2)} kg` : '-'}</strong>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div
+                                  className="px-3 py-2 rounded-3 d-flex align-items-center justify-content-between flex-wrap gap-2 caretaker-formula-box"
+                                  style={{
+                                    backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#FFFFFF',
+                                    border: '1.5px solid rgba(252, 86, 60, 0.22)'
+                                  }}
+                                >
+                                  <div className="d-flex align-items-center gap-2">
+                                    <span className="badge rounded-pill px-2.5 py-1 extra-small fw-bold" style={{ backgroundColor: '#FC563C', color: '#FFFFFF' }}>
+                                      Formula Text Display
+                                    </span>
+                                    <span className="extra-small text-muted fw-semibold">
+                                      (Scheduled Feed − 4 Trays = Broadcast Feed):
+                                    </span>
+                                  </div>
+                                  <strong
+                                    className="fs-6 font-mono fw-extrabold"
+                                    style={{ color: '#FC563C', letterSpacing: '0.2px' }}
+                                  >
+                                    {feedingPlan ? feedingPlan.formulaText : '-'}
+                                  </strong>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Time Slot Buttons with Crisp Visible Borders and Clear Visual Indicators */}
+                    <div className="caretaker-feeding-time-grid mb-4">
+                      {feedingTimes.map((time) => {
+                        const matchingLog = todayLogs.find((log) => normalizeTime(log.feeding_time) === normalizeTime(time));
+                        const isLoggedToday = Boolean(matchingLog);
+                        const isBeingEdited = editingRecord && normalizeTime(editingRecord.feeding_time) === normalizeTime(time);
+                        const isCrossedOut = isLoggedToday && !isBeingEdited;
+                        const isSelected = currentForm.feedingTime === time && !isCrossedOut;
+
+                        return (
+                          <button
+                            type="button"
+                            key={time}
+                            disabled={isCrossedOut}
+                            className={`btn-time-slot ${isSelected ? 'active' : ''} ${isCrossedOut ? 'crossed-out disabled' : ''}`}
+                            style={{
+                              cursor: isCrossedOut ? 'not-allowed' : 'pointer',
+                              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                              border: isCrossedOut
+                                ? (isDark ? '1.5px solid rgba(255, 255, 255, 0.12)' : '1.5px solid #CBD5E1')
+                                : isBeingEdited
+                                  ? '2px solid #FC563C'
+                                  : (isSelected
+                                    ? '2px solid #FC563C'
+                                    : (isDark ? '1.5px solid rgba(255, 255, 255, 0.25)' : '1.5px solid #94A3B8')),
+                              borderRadius: '1rem',
+                              backgroundColor: isCrossedOut
+                                ? (isDark ? 'rgba(255, 255, 255, 0.04)' : '#F1F5F9')
+                                : isSelected
+                                  ? '#FC563C'
+                                  : (isDark ? '#1E293B' : '#FFFFFF'),
+                              color: isCrossedOut
+                                ? (isDark ? '#64748B' : '#94A3B8')
+                                : isSelected
+                                  ? '#FFFFFF'
+                                  : (isDark ? '#F1F5F9' : '#1E293B'),
+                              opacity: isCrossedOut ? 0.6 : 1,
+                              boxShadow: isSelected ? '0 6px 16px rgba(252, 86, 60, 0.35)' : 'none',
+                              position: 'relative',
+                            }}
+                            onClick={() => !isCrossedOut && handleSelectSlot(time)}
+                            title={isCrossedOut ? `${time} has already been logged (${matchingLog.amount_kg}kg). Completed slots cannot be selected.` : `Select ${time}`}
+                          >
+                            <div className="d-flex align-items-center gap-1.5">
+                              {isBeingEdited ? (
+                                <FaEdit style={{ color: isSelected ? '#FFFFFF' : '#FC563C' }} />
+                              ) : isCrossedOut ? (
+                                <FaCheckCircle className="text-secondary opacity-50" />
+                              ) : (
+                                <FaClock className="opacity-75" />
+                              )}
+                              <span
+                                className="fw-bold"
+                                style={{
+                                  textDecoration: isCrossedOut ? 'line-through' : 'none',
+                                  textDecorationThickness: '2px',
+                                  textDecorationColor: isDark ? '#EF4444' : '#DC2626',
+                                }}
+                              >
+                                {time}
+                              </span>
+                            </div>
+                            {isCrossedOut && (
+                              <span
+                                className="badge rounded-pill extra-small px-2 py-0.5"
+                                style={{
+                                  fontSize: '0.65rem',
+                                  backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2',
+                                  color: isDark ? '#FCA5A5' : '#DC2626',
+                                  fontWeight: 700,
+                                  border: isDark ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid #FECACA',
+                                  textDecoration: 'line-through',
+                                }}
+                              >
+                                Completed
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Active Edit Mode Notification Banner */}
+                    {editingRecord && (
+                      <div
+                        className="d-flex align-items-center justify-content-between p-3.5 mb-4 rounded-3 shadow-xs"
+                        style={{
+                          backgroundColor: isDark ? '#172A39' : '#FFF5F2',
+                          border: isDark ? '1px solid rgba(252, 86, 60, 0.3)' : '1.5px solid #FECDD3',
+                          borderLeft: '4px solid #FC563C',
+                        }}
+                      >
+                        <div className="d-flex align-items-center gap-2.5">
+                          <div
+                            className="rounded-circle d-flex align-items-center justify-content-center"
+                            style={{ width: 34, height: 34, backgroundColor: isDark ? 'rgba(252, 86, 60, 0.2)' : '#FFE4E6', color: '#FC563C' }}
+                          >
+                            <FaEdit size={14} />
+                          </div>
+                          <div>
+                            <strong className="text-dark d-block">Editing Feeding Record #{editingRecord.id} ({editingRecord.feeding_time})</strong>
+                            <span className="small text-muted">
+                              Modifying existing feeding record on {todayDateStr} for {selectedPond?.pond_name}. Adjust values below and click Update.
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-tri-outline-orange rounded-pill px-3 py-1.5 extra-small fw-bold d-flex align-items-center gap-1"
+                          onClick={handleCancelEdit}
+                        >
+                          <FaTimes size={11} /> Cancel Edit
+                        </button>
+                      </div>
+                    )}
+
+                    {allSlotsCompleted && !editingRecord && (
+                      <div
+                        className="d-flex align-items-center justify-content-between gap-2 p-3.5 mb-4 rounded-3"
+                        style={{
+                          backgroundColor: isDark ? '#172A39' : '#F0FDF4',
+                          border: isDark ? '1px solid rgba(22, 163, 74, 0.3)' : '1.5px solid #BBF7D0',
+                          borderLeft: '4px solid #16A34A',
+                        }}
+                      >
+                        <div className="d-flex align-items-center gap-2.5">
+                          <div
+                            className="rounded-circle d-flex align-items-center justify-content-center"
+                            style={{ width: 32, height: 32, backgroundColor: isDark ? 'rgba(22, 163, 74, 0.2)' : '#DCFCE7', color: '#16A34A' }}
+                          >
+                            <FaCheckCircle size={15} />
+                          </div>
+                          <div>
+                            <strong className="d-block" style={{ color: '#15803D' }}>All 5 Daily Feeding Slots Logged!</strong>
+                            <span className="small text-muted">All scheduled daily feeding times for {selectedPond?.pond_name} have been recorded for this date. Click any time slot above or the table below to edit a record.</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Clean 2-Row Form Grid: Amount + Product in Row 1, Vitamins + Notes in Row 2 */}
+                    <div className="row g-3 mb-3">
+                      <div className="col-12 col-md-6">
+                        <label className="form-label fw-semibold text-dark mb-1">
+                          Feed Amount (kg)
+                        </label>
+                        <div className="input-group">
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.05"
+                            className="form-control fw-bold"
+                            value={currentForm.amountKg ?? ''}
+                            onChange={(event) => handleChange('amountKg', event.target.value)}
+                            placeholder="e.g. 4.0 (kg)"
+                            disabled={submitting || (allSlotsCompleted && !editingRecord)}
+                            style={{ fontSize: '1rem' }}
+                          />
+                          <span className="input-group-text bg-light text-muted fw-semibold px-3">
+                            kg
+                          </span>
+                        </div>
+                        <div className="d-flex justify-content-between align-items-center mt-1 extra-small">
+                          <span className="text-muted">Equivalent in grams:</span>
+                          <strong className="font-mono" style={{ color: '#FC563C' }}>
+                            {currentForm.amountKg !== '' && !isNaN(parseFloat(currentForm.amountKg))
+                              ? `${Math.round(parseFloat(currentForm.amountKg) * 1000).toLocaleString()} g`
+                              : (currentForm.amountGrams ? `${parseFloat(currentForm.amountGrams)} g` : '0 g')}
+                          </strong>
+                        </div>
+                        {normalizeTime(currentForm.feedingTime) === '6:00 AM' && previousDayLastFeed && !editingRecord && (
+                          <div className="mt-1 extra-small fw-semibold d-flex align-items-center gap-1" style={{ color: '#FC563C' }}>
+                            <span>Auto-carried from previous 6:00 PM feed ({parseFloat(previousDayLastFeed.amount_kg || 0).toFixed(2)} kg)</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="col-12 col-md-6">
+                        <div className="d-flex justify-content-between align-items-center mb-1">
+                          <label className="form-label fw-semibold text-dark mb-0">Feed Product</label>
+                          <span
+                            className="badge rounded-pill extra-small px-2 py-0.5"
+                            style={{
+                              backgroundColor: currentDoc >= 20 ? 'rgba(252, 86, 60, 0.08)' : (isDark ? 'rgba(255,255,255,0.08)' : '#F1F5F9'),
+                              color: currentDoc >= 20 ? '#FC563C' : (isDark ? '#CBD5E1' : '#1E293B'),
+                              border: `1px solid ${currentDoc >= 20 ? 'rgba(252, 86, 60, 0.18)' : (isDark ? 'rgba(255,255,255,0.15)' : '#CBD5E1')}`,
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                            }}
+                          >
+                            {currentDoc >= 20 ? 'Grow-out • Day 20+' : 'Nursery • Days 1–19'}
+                          </span>
+                        </div>
+                        <select
+                          className="form-select fw-semibold"
+                          value={currentForm.productCode || autoProductCode}
+                          onChange={(event) => handleChange('productCode', event.target.value)}
+                          disabled={submitting || (allSlotsCompleted && !editingRecord)}
+                          style={{ fontSize: '0.95rem' }}
+                        >
+                          {productCodes.map((code) => (
+                            <option key={code} value={code}>
+                              {code}
+                            </option>
+                          ))}
+                        </select>
+                        <small className="extra-small text-muted d-block mt-1">
+                          Standard Tateh formulation for current pond culture stage.
+                        </small>
+                      </div>
+
+                      <div className="col-12 col-md-6">
+                        <div className="d-flex justify-content-between align-items-center mb-1">
+                          <label className="form-label fw-semibold text-dark mb-0">Vitamins &amp; Additives</label>
+                          <span
+                            className="badge rounded-pill extra-small px-2 py-0.5"
+                            style={{
+                              backgroundColor: '#E9E4E0',
+                              color: '#FC563C',
+                              border: '1px solid rgba(252, 86, 60, 0.18)',
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                            }}
+                          >
+                            Protocol
+                          </span>
+                        </div>
+                        <select
+                          className="form-select fw-semibold"
+                          value={currentForm.vitaminName || defaultVitamins}
+                          onChange={(event) => handleChange('vitaminName', event.target.value)}
+                          disabled={submitting || (allSlotsCompleted && !editingRecord)}
+                          style={{ fontSize: '0.95rem' }}
+                        >
+                          {vitaminOptions.map((vit) => (
+                            <option key={vit} value={vit}>
+                              {vit === 'None' ? 'None (No Vitamin)' : vit}
+                            </option>
+                          ))}
+                        </select>
+                        <small className="text-muted extra-small d-block mt-1">
+                          Administered with feed across daily schedules.
+                        </small>
+                      </div>
+
+                      <div className="col-12 col-md-6">
+                        <label className="form-label fw-semibold text-dark mb-1">Pond Observations &amp; Notes (optional)</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={currentForm.notes}
+                          onChange={(event) => handleChange('notes', event.target.value)}
+                          placeholder="Turbidity observations, shrimp appetite, weather notes..."
+                          disabled={submitting || (allSlotsCompleted && !editingRecord)}
+                          style={{ fontSize: '0.95rem' }}
+                        />
+                        <small className="text-muted extra-small d-block mt-1">
+                          Optional note attached to this feeding slot.
+                        </small>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="mt-4">
+                      {editingRecord ? (
+                        <div className="d-flex gap-2">
+                          <button
+                            type="button"
+                            className="btn btn-tri-orange btn-lg flex-grow-1 py-2.5 fw-bold d-flex align-items-center justify-content-center gap-2 shadow-sm"
+                            disabled={submitting}
+                            onClick={handleSubmit}
+                          >
+                            <FaEdit /> {submitting ? 'Updating...' : `Update Feeding Record #${editingRecord.id} (${currentForm.feedingTime})`}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-tri-outline btn-lg px-4 fw-semibold shadow-sm"
+                            onClick={handleCancelEdit}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          className={`btn btn-lg w-100 py-2.5 fw-bold d-flex align-items-center justify-content-center gap-2 shadow-sm ${isLockedByMissedDays ? 'btn-danger' : 'btn-tri-navy'}`}
+                          disabled={submitting || (allSlotsCompleted && !editingRecord) || isLockedByMissedDays}
+                          onClick={handleSubmit}
+                        >
+                          {submitting ? (
+                            'Saving...'
+                          ) : isLockedByMissedDays ? (
+                            <>
+                              <FaLock /> Logs Locked — Complete {missedDaysInfo.firstMissedDate} First
+                            </>
+                          ) : (
+                            <>
+                              <FaPlus /> {isPastDate ? `Save Past Feeding Entry (${todayDateStr} • ${currentForm.feedingTime})` : `Log Feeding for ${selectedPond?.pond_name || 'Selected Pond'} (${currentForm.feedingTime})`}
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+
+                    {/* LOGGED FEEDS LIST FOR SELECTED DATE (With Edit & Delete) */}
+                    {todayLogs.length > 0 && (
+                      <div className="mt-4 pt-4 border-top">
+                        <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                          <div>
+                            <h6 className="fw-extrabold text-dark mb-0 d-flex align-items-center gap-2">
+                              <FaClipboardList style={{ color: '#FC563C' }} />
+                              Logged Feeds for {new Date(todayDateStr + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                              <span
+                                className="badge rounded-pill extra-small ms-1"
+                                style={{ backgroundColor: '#FC563C', color: '#FFFFFF' }}
+                              >
+                                {todayLogs.length} of 5 Logged
+                              </span>
+                            </h6>
+                            <small className="text-muted">
+                              Total feed: <strong style={{ color: '#FC563C' }}>{todayLogs.reduce((acc, l) => acc + Number(l.amount_kg || 0), 0).toFixed(2)} kg</strong> on this date.
+                            </small>
+                          </div>
+                        </div>
+
+                        <div className="table-responsive admin-scrollable-table-4rows rounded-3 bg-white border" style={{ maxHeight: 290, overflowY: 'auto', borderColor: '#E2E8F0' }}>
+                          <table className="table table-hover align-middle mb-0">
+                            <thead className="table-light">
+                              <tr>
+                                <th className="py-2.5 px-3 text-uppercase extra-small fw-bold text-muted border-0">Time Slot</th>
+                                <th className="py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Feed Amount</th>
+                                <th className="py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Product Code</th>
+                                <th className="py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Vitamins</th>
+                                <th className="py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Logged By</th>
+                                <th className="py-2.5 pe-3 text-end text-uppercase extra-small fw-bold text-muted border-0" style={{ width: 140 }}>Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {todayLogs.map((log) => {
+                                const isCurrentEditing = editingRecord && editingRecord.id === log.id;
+                                return (
+                                  <tr key={log.id} style={isCurrentEditing ? { backgroundColor: 'rgba(252, 86, 60, 0.08)' } : {}}>
+                                    <td className="ps-3 fw-bold text-dark font-mono">
+                                      <FaClock className="me-1 extra-small text-muted" /> {log.feeding_time}
+                                    </td>
+                                    <td>
+                                      <strong className="text-dark">{Number(log.amount_kg || 0).toFixed(2)} kg</strong>
+                                    </td>
+                                    <td>
+                                      <span
+                                        className="badge rounded-pill extra-small fw-bold bg-light border text-secondary"
+                                      >
+                                        {log.product_code || log.feed_type || 'Starter'}
+                                      </span>
+                                    </td>
+                                    <td>
+                                      {log.has_vitamin && log.vitamin_name && log.vitamin_name !== 'None' ? (
+                                        <span
+                                          className="badge rounded-pill extra-small fw-bold"
+                                          style={{ backgroundColor: '#FFF5F2', color: '#FC563C', border: '1px solid #FECDD3' }}
+                                        >
+                                          +{log.vitamin_name}
+                                        </span>
+                                      ) : (
+                                        <span className="text-muted extra-small">None</span>
+                                      )}
+                                    </td>
+                                    <td className="extra-small text-muted">
+                                      {log.recorded_by_name || 'Caretaker'}
+                                    </td>
+                                    <td className="pe-3 text-end">
+                                      <div className="d-inline-flex align-items-center gap-1.5">
+                                        <button
+                                          type="button"
+                                          className="btn btn-sm btn-understated-view px-2.5 py-1 extra-small fw-bold d-inline-flex align-items-center gap-1 shadow-2xs"
+                                          onClick={() => handleSelectSlot(log.feeding_time)}
+                                          title="Edit this feeding log"
+                                        >
+                                          <FaEdit size={11} /> Edit
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className="btn btn-sm btn-outline-danger px-2.5 py-1 extra-small fw-bold d-inline-flex align-items-center gap-1 shadow-2xs rounded-2"
+                                          onClick={() => handleDeleteRecord(log)}
+                                          title="Delete this feeding log"
+                                        >
+                                          <FaTrash size={11} /> Delete
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -2817,6 +2986,12 @@ export default function MyPondPage() {
                 records={todayLogs}
                 onSelectDate={(dateStr) => {
                   setRecordDate(dateStr);
+                  setShowCycleCalendar(false);
+                  setShowFeedingModal(true);
+                }}
+                onBackToFeeding={() => {
+                  setShowCycleCalendar(false);
+                  setShowFeedingModal(true);
                 }}
                 onClose={() => setShowCycleCalendar(false)}
               />

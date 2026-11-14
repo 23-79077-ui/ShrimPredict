@@ -269,29 +269,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'PUT
             $pondStmt->execute([':p' => $pondId]);
             $stockingDate = $pondStmt->fetchColumn() ?: '2000-01-01';
 
-            $missedDates = [];
-            for ($offset = 3; $offset >= 1; $offset--) {
-                $checkDate = date('Y-m-d', strtotime("-$offset day", strtotime($todayStr)));
-                if ($checkDate >= $stockingDate) {
-                    $checkStmt = $conn->prepare('SELECT COUNT(*) FROM feeding_records WHERE pond_id = :p AND record_date = :d');
-                    $checkStmt->execute([':p' => $pondId, ':d' => $checkDate]);
-                    if ((int)$checkStmt->fetchColumn() === 0) {
-                        $missedDates[] = $checkDate;
-                    }
-                }
-            }
+            if ($stockingDate < $todayStr) {
+                $recStmt = $conn->prepare('SELECT DISTINCT record_date FROM feeding_records WHERE pond_id = :p AND record_date >= :s AND record_date < :t');
+                $recStmt->execute([':p' => $pondId, ':s' => $stockingDate, ':t' => $todayStr]);
+                $recDates = $recStmt->fetchAll(PDO::FETCH_COLUMN);
+                $recMap = array_flip($recDates);
 
-            if (!empty($missedDates)) {
-                $earliestMissed = $missedDates[0];
-                http_response_code(400);
-                echo json_encode([
-                    'success' => false,
-                    'locked' => true,
-                    'message' => "Today's logs are locked because you missed logging on {$earliestMissed}. Please complete logs for missed days first.",
-                    'missed_date' => $earliestMissed,
-                    'missed_dates' => $missedDates
-                ]);
-                exit;
+                $missedDates = [];
+                $curr = strtotime($stockingDate);
+                $end = strtotime('-1 day', strtotime($todayStr));
+                while ($curr <= $end) {
+                    $dStr = date('Y-m-d', $curr);
+                    if (!isset($recMap[$dStr])) {
+                        $missedDates[] = $dStr;
+                    }
+                    $curr = strtotime('+1 day', $curr);
+                }
+
+                if (!empty($missedDates)) {
+                    $earliestMissed = $missedDates[0];
+                    http_response_code(400);
+                    echo json_encode([
+                        'success' => false,
+                        'locked' => true,
+                        'message' => "Today's logs are locked because you have missed feeding logs starting on {$earliestMissed}. Please make up for lost logged days first.",
+                        'missed_date' => $earliestMissed,
+                        'first_missed_date' => $earliestMissed,
+                        'missed_dates' => array_slice($missedDates, 0, 30),
+                        'total_missed_count' => count($missedDates)
+                    ]);
+                    exit;
+                }
             }
         } catch (Throwable $e) {}
     }
@@ -616,8 +624,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'PUT
 if (isset($_GET['action']) && $_GET['action'] === 'check_missed_days') {
     $pondId = (int)($_GET['pond_id'] ?? 0);
     $targetDate = !empty($_GET['target_date']) ? $_GET['target_date'] : date('Y-m-d');
+
     if ($pondId <= 0) {
-        echo json_encode(['success' => false, 'message' => 'Pond ID is required.']);
+        // Return missed days status for all active ponds
+        $pondsStmt = $conn->query("SELECT id, pond_name, stocking_date, status FROM ponds WHERE status != 'Archived' AND stocking_date IS NOT NULL");
+        $allPonds = $pondsStmt ? $pondsStmt->fetchAll(PDO::FETCH_ASSOC) : [];
+
+        $recStmt = $conn->prepare('SELECT pond_id, record_date, COUNT(DISTINCT feeding_time) as slot_count FROM feeding_records WHERE record_date < :t GROUP BY pond_id, record_date');
+        $recStmt->execute([':t' => $targetDate]);
+        $allRecs = $recStmt ? $recStmt->fetchAll(PDO::FETCH_ASSOC) : [];
+
+        $pondSlotCounts = [];
+        foreach ($allRecs as $r) {
+            $pId = (int)$r['pond_id'];
+            $rDate = $r['record_date'];
+            if (!isset($pondSlotCounts[$pId])) $pondSlotCounts[$pId] = [];
+            $pondSlotCounts[$pId][$rDate] = (int)$r['slot_count'];
+        }
+
+        $pondsMissedInfo = [];
+        foreach ($allPonds as $p) {
+            $pId = (int)$p['id'];
+            $sDate = $p['stocking_date'] ?? '2000-01-01';
+            $pMissed = [];
+            if ($sDate < $targetDate) {
+                $curr = strtotime($sDate);
+                $end = strtotime('-1 day', strtotime($targetDate));
+                $pSlots = $pondSlotCounts[$pId] ?? [];
+                while ($curr <= $end) {
+                    $dStr = date('Y-m-d', $curr);
+                    $count = $pSlots[$dStr] ?? 0;
+                    // A day is incomplete until all 5 feeding cycle sessions are logged!
+                    if ($count < 5) {
+                        $pMissed[] = $dStr;
+                    }
+                    $curr = strtotime('+1 day', $curr);
+                }
+            }
+            $firstMissed = !empty($pMissed) ? $pMissed[0] : null;
+            $firstMissedSlots = $firstMissed && isset($pondSlotCounts[$pId][$firstMissed]) ? $pondSlotCounts[$pId][$firstMissed] : 0;
+            $pondsMissedInfo[$pId] = [
+                'pond_id' => $pId,
+                'pond_name' => $p['pond_name'],
+                'has_missed_days' => !empty($pMissed),
+                'first_missed_date' => $firstMissed,
+                'first_missed_slots_logged' => $firstMissedSlots,
+                'total_missed_count' => count($pMissed),
+                'missed_dates' => array_slice($pMissed, 0, 50),
+            ];
+        }
+
+        echo json_encode([
+            'success' => true,
+            'target_date' => $targetDate,
+            'ponds_missed_info' => $pondsMissedInfo,
+        ]);
         exit;
     }
 
@@ -627,16 +688,29 @@ if (isset($_GET['action']) && $_GET['action'] === 'check_missed_days') {
     $stockingDate = $pondInfo['stocking_date'] ?? '2000-01-01';
 
     $missedDates = [];
-    for ($offset = 3; $offset >= 1; $offset--) {
-        $checkDate = date('Y-m-d', strtotime("-$offset day", strtotime($targetDate)));
-        if ($checkDate >= $stockingDate) {
-            $cntStmt = $conn->prepare('SELECT COUNT(*) FROM feeding_records WHERE pond_id = :p AND record_date = :d');
-            $cntStmt->execute([':p' => $pondId, ':d' => $checkDate]);
-            if ((int)$cntStmt->fetchColumn() === 0) {
-                $missedDates[] = $checkDate;
+    $recSlots = [];
+    if ($stockingDate < $targetDate) {
+        $recStmt = $conn->prepare('SELECT record_date, COUNT(DISTINCT feeding_time) as slot_count FROM feeding_records WHERE pond_id = :p AND record_date >= :s AND record_date < :t GROUP BY record_date');
+        $recStmt->execute([':p' => $pondId, ':s' => $stockingDate, ':t' => $targetDate]);
+        $rows = $recStmt ? $recStmt->fetchAll(PDO::FETCH_ASSOC) : [];
+        foreach ($rows as $row) {
+            $recSlots[$row['record_date']] = (int)$row['slot_count'];
+        }
+
+        $curr = strtotime($stockingDate);
+        $end = strtotime('-1 day', strtotime($targetDate));
+        while ($curr <= $end) {
+            $dStr = date('Y-m-d', $curr);
+            $count = (int)($recSlots[$dStr] ?? 0);
+            if ($count < 5) {
+                $missedDates[] = $dStr;
             }
+            $curr = strtotime('+1 day', $curr);
         }
     }
+
+    $firstMissed = !empty($missedDates) ? $missedDates[0] : null;
+    $firstMissedSlots = $firstMissed && isset($recSlots[$firstMissed]) ? (int)$recSlots[$firstMissed] : 0;
 
     echo json_encode([
         'success' => true,
@@ -644,8 +718,10 @@ if (isset($_GET['action']) && $_GET['action'] === 'check_missed_days') {
         'target_date' => $targetDate,
         'stocking_date' => $stockingDate,
         'has_missed_days' => !empty($missedDates),
-        'missed_dates' => $missedDates,
-        'first_missed_date' => !empty($missedDates) ? $missedDates[0] : null
+        'missed_dates' => array_slice($missedDates, 0, 50),
+        'total_missed_count' => count($missedDates),
+        'first_missed_date' => $firstMissed,
+        'first_missed_slots_logged' => $firstMissedSlots,
     ]);
     exit;
 }

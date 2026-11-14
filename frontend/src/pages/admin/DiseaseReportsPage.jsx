@@ -142,10 +142,20 @@ export default function DiseaseReportsPage() {
           const el = document.getElementById(`disease-report-${matched.id}`);
           if (el) {
             el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            el.classList.add('flash-row-highlight');
+            setTimeout(() => el.classList.remove('flash-row-highlight'), 3500);
+          } else {
+            const sec = document.getElementById('caretaker-scan-history-section');
+            if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }
         }, 350);
 
         setSelectedReport(matched);
+      } else {
+        setTimeout(() => {
+          const sec = document.getElementById('caretaker-scan-history-section');
+          if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 350);
       }
     }
   }, [targetId, targetIssue, targetPond, reports, checkIsHighlighted]);
@@ -543,7 +553,7 @@ export default function DiseaseReportsPage() {
       </div>
 
       {/* 4. CARETAKER SCAN HISTORY MATRIX TABLE & INTEGRATED SEARCH TOOLBAR */}
-      <div className="bg-white border rounded-4 p-4 mb-4 shadow-2xs" style={{ borderColor: '#E2E8F0' }}>
+      <div id="caretaker-scan-history-section" className="bg-white border rounded-4 p-4 mb-4 shadow-2xs" style={{ borderColor: '#E2E8F0' }}>
         <div className="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom flex-wrap gap-2" style={{ borderColor: '#E2E8F0' }}>
           <div>
             <h5 className="fw-extrabold mb-1 tracking-tight text-dark" style={{ fontSize: '1.1rem' }}>

@@ -11,6 +11,9 @@ import {
   FaClock,
   FaCapsules,
   FaSpinner,
+  FaLock,
+  FaExclamationTriangle,
+  FaClipboardList,
 } from 'react-icons/fa';
 import api, { safeArray } from '../services/api';
 import { getEffectiveTheme } from '../utils/theme';
@@ -73,6 +76,7 @@ export default function PondCycleCalendar({
   pondName: propPondName,
   onSelectDate,
   onClose,
+  onBackToFeeding,
   records: initialRecords = [],
   isOpen = true,
 }) {
@@ -209,40 +213,74 @@ export default function PondCycleCalendar({
     return new Date().toISOString().split('T')[0];
   }, [internalRecords, stockingDate]);
 
-  // Selected date state (focus on latest recorded date if selectedDate is in the future)
+  // Selected date state
   const [currentSelectedDate, setCurrentSelectedDate] = useState(() => {
-    if (selectedDate && stockingParsed) {
-      const parts = selectedDate.split('-');
-      if (parts.length === 3) {
-        const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-        const doc = computeDoc(d);
-        if (doc !== null && doc <= 34) return selectedDate;
-      }
-    }
     return selectedDate || (stockingDate ? stockingDate : new Date().toISOString().split('T')[0]);
   });
-
-  // Clamp selection to latest recorded date if the selected date exceeds maxRecordedDoc
-  useEffect(() => {
-    if (stockingParsed && currentSelectedDate) {
-      const parts = currentSelectedDate.split('-');
-      if (parts.length === 3) {
-        const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-        const doc = computeDoc(d);
-        if (doc !== null && doc > maxRecordedDoc && latestRecordedDate) {
-          setCurrentSelectedDate(latestRecordedDate);
-        }
-      }
-    }
-  }, [maxRecordedDoc, latestRecordedDate, stockingParsed]);
 
   useEffect(() => {
     if (selectedDate) {
       setCurrentSelectedDate(selectedDate);
+      const parts = selectedDate.split('-');
+      if (parts.length === 3) {
+        setViewDate(new Date(Number(parts[0]), Number(parts[1]) - 1, 1));
+      }
     }
   }, [selectedDate]);
 
   const activeSelectedDateStr = currentSelectedDate || selectedDate || new Date().toISOString().split('T')[0];
+
+  const todayStr = useMemo(() => {
+    const d = new Date();
+    return [
+      d.getFullYear(),
+      String(d.getMonth() + 1).padStart(2, '0'),
+      String(d.getDate()).padStart(2, '0'),
+    ].join('-');
+  }, []);
+
+  // Records map for quick lookup
+  const recordsByDate = useMemo(() => {
+    const map = {};
+    if (Array.isArray(internalRecords)) {
+      internalRecords.forEach((r) => {
+        const rDate = (r.record_date || r.created_at || '').slice(0, 10);
+        if (rDate) {
+          if (!map[rDate]) map[rDate] = [];
+          map[rDate].push(r);
+        }
+      });
+    }
+    return map;
+  }, [internalRecords]);
+
+  const allMissedDates = useMemo(() => {
+    if (!stockingParsed) return [];
+    const missed = [];
+    const curr = new Date(stockingParsed.getFullYear(), stockingParsed.getMonth(), stockingParsed.getDate());
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayClean = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
+
+    while (curr <= yesterdayClean) {
+      const dStr = [
+        curr.getFullYear(),
+        String(curr.getMonth() + 1).padStart(2, '0'),
+        String(curr.getDate()).padStart(2, '0'),
+      ].join('-');
+      const dayLogs = recordsByDate[dStr] || [];
+      const distinctSlots = new Set(dayLogs.map((l) => (l.feeding_time || '').trim().toUpperCase())).size;
+      // Day is incomplete until all 5 feeding cycle slots are recorded!
+      if (distinctSlots < 5) {
+        missed.push(dStr);
+      }
+      curr.setDate(curr.getDate() + 1);
+    }
+    return missed;
+  }, [stockingParsed, recordsByDate]);
+
+  const hasUnloggedMissedDays = allMissedDates.length > 0;
+  const earliestMissedDate = hasUnloggedMissedDays ? allMissedDates[0] : null;
 
   // Current view month (year, monthIndex 0-11)
   const [viewDate, setViewDate] = useState(() => {
@@ -339,21 +377,6 @@ export default function PondCycleCalendar({
     return cells;
   }, [year, month, stockingParsed]);
 
-  // Records map for quick lookup
-  const recordsByDate = useMemo(() => {
-    const map = {};
-    if (Array.isArray(internalRecords)) {
-      internalRecords.forEach((r) => {
-        const rDate = (r.record_date || r.created_at || '').slice(0, 10);
-        if (rDate) {
-          if (!map[rDate]) map[rDate] = [];
-          map[rDate].push(r);
-        }
-      });
-    }
-    return map;
-  }, [internalRecords]);
-
   // Selected date info
   const selectedInfo = useMemo(() => {
     if (!activeSelectedDateStr) return null;
@@ -362,17 +385,31 @@ export default function PondCycleCalendar({
     const sDate = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
     const doc = computeDoc(sDate);
 
+    const dayLogs = recordsByDate[activeSelectedDateStr] || [];
+    const distinctSlots = new Set(dayLogs.map((l) => (l.feeding_time || '').trim().toUpperCase())).size;
+    const isFullyLogged = distinctSlots >= 5;
+    const hasLogs = dayLogs.length > 0;
+    const isPast = activeSelectedDateStr < todayStr;
+    const isToday = activeSelectedDateStr === todayStr;
+    const isFuture = activeSelectedDateStr > todayStr;
+    const isMissed = Boolean(doc !== null && doc >= 1 && isPast && !isFullyLogged);
+
     let stage = 'Pre-Stocking';
     let stageTone = 'secondary';
     let feedType = 'None';
     let feedDesc = 'Awaiting Post-larvae stocking';
 
     if (doc !== null) {
-      if (doc > maxRecordedDoc) {
+      if (isMissed) {
+        stage = doc <= 19 ? 'Nursery (Missed Log)' : doc === 20 ? 'Transfer Day (Missed Log)' : 'Grow-out (Missed Log)';
+        stageTone = 'missed';
+        feedType = doc <= 19 ? 'Starter' : 'Grower';
+        feedDesc = `Day ${doc}: Incomplete past cycle date (${activeSelectedDateStr}) with ${distinctSlots} of 5 scheduled times recorded. All 5 cycles must be logged sequentially before proceeding.`;
+      } else if (isFuture) {
         stage = 'Upcoming Cycle Day';
         stageTone = 'upcoming';
         feedType = 'Upcoming';
-        feedDesc = `Day ${doc}: Projected culture timeline. Records currently logged up to Day ${maxRecordedDoc}. No feeding records logged yet for this date.`;
+        feedDesc = `Day ${doc}: Projected future culture timeline. Feeding records not yet scheduled for this date.`;
       } else if (doc >= 1 && doc <= 19) {
         stage = 'Nursery Phase';
         stageTone = 'nursery';
@@ -391,7 +428,6 @@ export default function PondCycleCalendar({
       }
     }
 
-    const dayLogs = recordsByDate[activeSelectedDateStr] || [];
     const totalDayKg = dayLogs.reduce((sum, r) => sum + (parseFloat(r.amount_kg) || 0), 0);
     const totalDayGrams = dayLogs.reduce((sum, r) => sum + (parseFloat(r.amount_grams) || ((parseFloat(r.amount_kg) || 0) * 1000)), 0);
 
@@ -403,14 +439,34 @@ export default function PondCycleCalendar({
       feedType,
       feedDesc,
       logs: dayLogs,
+      distinctSlots,
+      isFullyLogged,
       totalDayKg,
       totalDayGrams,
+      isMissed,
+      isToday,
+      isFuture,
     };
-  }, [activeSelectedDateStr, stockingParsed, recordsByDate, maxRecordedDoc]);
+  }, [activeSelectedDateStr, stockingParsed, recordsByDate, todayStr]);
 
   const handleCellClick = (cell) => {
     setCurrentSelectedDate(cell.dateStr);
-    if (onSelectDate) {
+
+    // If there are missed past days, strictly lock logging to the earliest incomplete day
+    if (hasUnloggedMissedDays) {
+      if (cell.dateStr === earliestMissedDate && onSelectDate) {
+        const parts = cell.dateStr.split('-');
+        const sDate = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+        const doc = computeDoc(sDate);
+        const stage = doc <= 19 ? 'Nursery' : doc === 20 ? 'Transfer Day' : 'Grow-out';
+        const feedType = doc <= 19 ? 'Starter' : 'Grower';
+        onSelectDate(cell.dateStr, { doc, stage, feedType });
+      }
+      return;
+    }
+
+    // No missed days: allow selecting today or viewing past records
+    if (onSelectDate && cell.dateStr <= todayStr) {
       const parts = cell.dateStr.split('-');
       const sDate = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
       const doc = computeDoc(sDate);
@@ -418,10 +474,7 @@ export default function PondCycleCalendar({
       let stage = 'Pre-Stocking';
       let feedType = 'None';
       if (doc !== null) {
-        if (doc > maxRecordedDoc) {
-          stage = 'Upcoming';
-          feedType = 'None';
-        } else if (doc >= 1 && doc <= 19) {
+        if (doc >= 1 && doc <= 19) {
           stage = 'Nursery';
           feedType = 'Starter';
         } else if (doc === 20) {
@@ -482,22 +535,40 @@ export default function PondCycleCalendar({
           </p>
         </div>
 
-        {onClose && (
-          <button
-            type="button"
-            className="btn btn-sm border rounded-circle d-flex align-items-center justify-content-center transition-all"
-            style={{
-              width: 34,
-              height: 34,
-              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9',
-              color: isDark ? '#FFFFFF' : '#1E293B',
-              borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : '#E2E8F0',
-            }}
-            onClick={onClose}
-          >
-            <FaTimes />
-          </button>
-        )}
+        <div className="d-flex align-items-center gap-2">
+          {onBackToFeeding && (
+            <button
+              type="button"
+              className="btn-pond-nav-action shadow-xs"
+              style={{
+                backgroundColor: isDark ? '#0284C7' : '#0B2C5F',
+                color: '#FFFFFF',
+                border: isDark ? '1.5px solid #38BDF8' : '1.5px solid #0B2C5F',
+              }}
+              onClick={onBackToFeeding}
+              title="Return to the feeding entry task"
+            >
+              <FaClipboardList size={13} color="#FFFFFF" /> <span style={{ color: '#FFFFFF' }}>Back to Feeding Task</span>
+            </button>
+          )}
+          {onClose && (
+            <button
+              type="button"
+              className="btn btn-sm border rounded-circle d-flex align-items-center justify-content-center transition-all"
+              style={{
+                width: 34,
+                height: 34,
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9',
+                color: isDark ? '#FFFFFF' : '#1E293B',
+                borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : '#E2E8F0',
+              }}
+              onClick={onClose}
+              title="Close calendar"
+            >
+              <FaTimes />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Legend strip */}
@@ -529,7 +600,7 @@ export default function PondCycleCalendar({
           }}
         >
           <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#F59E0B', display: 'inline-block' }}></span>
-          Day 20: Transfer Day to Grow-out
+          Day 20: Transfer Day
         </span>
         <span
           className="badge px-2 py-1.5 fw-semibold d-inline-flex align-items-center gap-1"
@@ -540,7 +611,29 @@ export default function PondCycleCalendar({
           }}
         >
           <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#3B82F6', display: 'inline-block' }}></span>
-          Days 21–{maxRecordedDoc}: Active Grow-out
+          Days 21+: Active Grow-out
+        </span>
+        <span
+          className="badge px-2 py-1.5 fw-semibold d-inline-flex align-items-center gap-1"
+          style={{
+            background: isDark ? 'rgba(252, 86, 60, 0.18)' : '#FFF1EE',
+            color: isDark ? '#FF8A75' : '#FC563C',
+            border: isDark ? '1px solid rgba(252, 86, 60, 0.35)' : '1px solid #FFD0C7',
+          }}
+        >
+          <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#FC563C', display: 'inline-block' }}></span>
+          Logged
+        </span>
+        <span
+          className="badge px-2 py-1.5 fw-semibold d-inline-flex align-items-center gap-1"
+          style={{
+            background: isDark ? 'rgba(239, 68, 68, 0.18)' : '#FEF2F2',
+            color: isDark ? '#FCA5A5' : '#DC2626',
+            border: isDark ? '1px solid rgba(239, 68, 68, 0.35)' : '1px solid #FCA5A5',
+          }}
+        >
+          <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#EF4444', display: 'inline-block' }}></span>
+          Missed Log
         </span>
         <span
           className="badge px-2 py-1.5 fw-semibold d-inline-flex align-items-center gap-1"
@@ -551,9 +644,46 @@ export default function PondCycleCalendar({
           }}
         >
           <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#9CA3AF', display: 'inline-block' }}></span>
-          Day {maxRecordedDoc + 1}+: Upcoming (No Records Yet)
+          Upcoming / Future
         </span>
       </div>
+
+      {/* Missed Logs Sequential Lockout Alert */}
+      {hasUnloggedMissedDays && (
+        <div
+          className="alert alert-danger border border-danger-subtle rounded-3 p-3 mb-3 d-flex align-items-center justify-content-between flex-wrap gap-2 shadow-xs"
+          role="alert"
+        >
+          <div className="d-flex align-items-center gap-2.5">
+            <div
+              className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+              style={{ width: 34, height: 34, backgroundColor: isDark ? 'rgba(239, 68, 68, 0.25)' : '#FEE2E2', color: '#EF4444' }}
+            >
+              <FaExclamationTriangle size={16} />
+            </div>
+            <div>
+              <div className="fw-bold extra-small text-uppercase" style={{ color: isDark ? '#FCA5A5' : '#B91C1C' }}>
+                FEEDING LOGS LOCKED — {allMissedDates.length} MISSED PAST DAY{allMissedDates.length > 1 ? 'S' : ''}
+              </div>
+              <div className="extra-small" style={{ color: isDark ? '#CBD5E1' : '#475569' }}>
+                You have unlogged past cycle days starting from <strong>{earliestMissedDate}</strong>. Caretakers cannot log for today until missed days are completed in sequential order.
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn btn-sm btn-danger fw-bold d-flex align-items-center gap-1.5 shadow-xs px-3 py-1.5 rounded-3"
+            onClick={() => {
+              setCurrentSelectedDate(earliestMissedDate);
+              const parts = earliestMissedDate.split('-');
+              const s = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+              setViewDate(new Date(s.getFullYear(), s.getMonth(), 1));
+            }}
+          >
+            <FaLock size={10} /> View First Missed Day ({earliestMissedDate})
+          </button>
+        </div>
+      )}
 
       {/* Month Navigation */}
       <div className="d-flex justify-content-between align-items-center mb-3">
@@ -642,12 +772,22 @@ export default function PondCycleCalendar({
       >
         {calendarCells.map((cell, idx) => {
           const isSelected = cell.dateStr === activeSelectedDateStr;
-          const isWithinCycle = cell.doc !== null && cell.doc >= 1 && cell.doc <= maxRecordedDoc;
-          const isFutureDoc = cell.doc !== null && cell.doc > maxRecordedDoc;
-          const isNursery = isWithinCycle && cell.doc <= 19;
-          const isTransferDay = isWithinCycle && cell.doc === 20;
-          const isGrowout = isWithinCycle && cell.doc > 20;
-          const hasLogs = Boolean(recordsByDate[cell.dateStr]?.length);
+          const isInCycle = cell.doc !== null && cell.doc >= 1;
+          const isPast = cell.dateStr < todayStr;
+          const isToday = cell.dateStr === todayStr;
+          const isFuture = cell.dateStr > todayStr;
+          const cellLogs = recordsByDate[cell.dateStr] || [];
+          const distinctSlots = new Set(cellLogs.map((l) => (l.feeding_time || '').trim().toUpperCase())).size;
+          const isFullyLogged = distinctSlots >= 5;
+          const hasLogs = cellLogs.length > 0;
+          const isMissedLog = Boolean(isInCycle && isPast && !isFullyLogged);
+          const isLockedToday = Boolean(isToday && hasUnloggedMissedDays);
+          const isEarliestMissed = Boolean(hasUnloggedMissedDays && cell.dateStr === earliestMissedDate);
+          const isSubsequentLockedMissed = Boolean(hasUnloggedMissedDays && isMissedLog && cell.dateStr > earliestMissedDate);
+
+          const isNursery = isInCycle && cell.doc <= 19;
+          const isTransferDay = isInCycle && cell.doc === 20;
+          const isGrowout = isInCycle && cell.doc > 20;
 
           let bg = isDark ? '#172A39' : '#FAFAFA';
           let border = isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E5E7EB';
@@ -657,7 +797,31 @@ export default function PondCycleCalendar({
           let docBadgeBg = isDark ? 'rgba(255, 255, 255, 0.08)' : '#E5E7EB';
           let docBadgeText = isDark ? '#CBD5E1' : '#4B5563';
 
-          if (isNursery) {
+          if (isEarliestMissed) {
+            bg = isDark ? 'rgba(239, 68, 68, 0.22)' : '#FEF2F2';
+            border = '2px solid #EF4444';
+            textColor = isDark ? '#FCA5A5' : '#DC2626';
+            docBadgeBg = '#EF4444';
+            docBadgeText = '#FFFFFF';
+          } else if (isSubsequentLockedMissed) {
+            bg = isDark ? 'rgba(239, 68, 68, 0.10)' : '#FFF5F5';
+            border = isDark ? '1px dashed rgba(239, 68, 68, 0.35)' : '1px dashed #FCA5A5';
+            textColor = isDark ? '#F87171' : '#DC2626';
+            docBadgeBg = isDark ? 'rgba(239, 68, 68, 0.2)' : '#FEE2E2';
+            docBadgeText = isDark ? '#FCA5A5' : '#DC2626';
+          } else if (isMissedLog) {
+            bg = isDark ? 'rgba(239, 68, 68, 0.12)' : '#FEF2F2';
+            border = isDark ? '1.5px solid rgba(239, 68, 68, 0.45)' : '1.5px solid #FCA5A5';
+            textColor = isDark ? '#FCA5A5' : '#DC2626';
+            docBadgeBg = isDark ? 'rgba(239, 68, 68, 0.28)' : '#FEE2E2';
+            docBadgeText = isDark ? '#FCA5A5' : '#DC2626';
+          } else if (isLockedToday) {
+            bg = isDark ? 'rgba(245, 158, 11, 0.12)' : '#FFFBEB';
+            border = isDark ? '2px dashed rgba(245, 158, 11, 0.65)' : '2px dashed #F59E0B';
+            textColor = isDark ? '#FCD34D' : '#B45309';
+            docBadgeBg = isDark ? 'rgba(245, 158, 11, 0.25)' : '#FEF3C7';
+            docBadgeText = isDark ? '#FCD34D' : '#B45309';
+          } else if (isNursery) {
             bg = isDark ? 'rgba(16, 185, 129, 0.15)' : '#F0FDF4';
             border = isDark ? '1px solid rgba(52, 211, 153, 0.35)' : '1px solid #BBF7D0';
             textColor = isDark ? '#34D399' : '#166534';
@@ -665,7 +829,7 @@ export default function PondCycleCalendar({
             docBadgeText = isDark ? '#4ADE80' : '#15803D';
           } else if (isTransferDay) {
             bg = isDark ? 'rgba(245, 158, 11, 0.2)' : '#FFFBEB';
-            border = isDark ? '2px solid #F59E0B' : '2px solid #F59E0B';
+            border = '2px solid #F59E0B';
             textColor = isDark ? '#FBBF24' : '#92400E';
             docBadgeBg = isDark ? 'rgba(245, 158, 11, 0.35)' : '#FEF3C7';
             docBadgeText = isDark ? '#FCD34D' : '#B45309';
@@ -675,7 +839,7 @@ export default function PondCycleCalendar({
             textColor = isDark ? '#60A5FA' : '#1E40AF';
             docBadgeBg = isDark ? 'rgba(59, 130, 246, 0.28)' : '#DBEAFE';
             docBadgeText = isDark ? '#93C5FD' : '#1D4ED8';
-          } else if (isFutureDoc) {
+          } else if (isFuture) {
             bg = isDark ? 'rgba(255, 255, 255, 0.03)' : '#FAFAFA';
             border = isDark ? '1px dashed rgba(255, 255, 255, 0.14)' : '1px dashed #D1D5DB';
             textColor = cell.isCurrentMonth
@@ -687,13 +851,17 @@ export default function PondCycleCalendar({
 
           if (isSelected) {
             border = '2.5px solid #FC563C';
-            bg = isTransferDay
-              ? (isDark ? 'rgba(245, 158, 11, 0.35)' : '#FEF3C7')
-              : isNursery
-              ? (isDark ? 'rgba(16, 185, 129, 0.3)' : '#DCFCE7')
-              : isGrowout
-              ? (isDark ? 'rgba(59, 130, 246, 0.3)' : '#DBEAFE')
-              : (isDark ? 'rgba(255, 255, 255, 0.12)' : '#F3F4F6');
+            bg = isMissedLog
+              ? (isDark ? 'rgba(239, 68, 68, 0.25)' : '#FEE2E2')
+              : isLockedToday
+                ? (isDark ? 'rgba(245, 158, 11, 0.28)' : '#FEF3C7')
+                : isTransferDay
+                  ? (isDark ? 'rgba(245, 158, 11, 0.35)' : '#FEF3C7')
+                  : isNursery
+                    ? (isDark ? 'rgba(16, 185, 129, 0.3)' : '#DCFCE7')
+                    : isGrowout
+                      ? (isDark ? 'rgba(59, 130, 246, 0.3)' : '#DBEAFE')
+                      : (isDark ? 'rgba(255, 255, 255, 0.12)' : '#F3F4F6');
           }
 
           return (
@@ -712,16 +880,42 @@ export default function PondCycleCalendar({
               }}
               title={
                 cell.doc !== null
-                  ? `Date: ${cell.dateStr} | Day of Culture: ${cell.doc} | ${isNursery ? 'Nursery' : isTransferDay ? 'TRANSFER DAY' : isGrowout ? 'Grow-out' : isFutureDoc ? 'Upcoming (No records yet)' : 'Pre-stocking'}`
+                  ? `Date: ${cell.dateStr} | Day of Culture: ${cell.doc} | ${isEarliestMissed ? 'ACTIVE MISSED DAY (LOG NEXT)' : isSubsequentLockedMissed ? 'LOCKED MISSED DAY' : isMissedLog ? 'MISSED LOG' : isLockedToday ? 'LOCKED TODAY' : isNursery ? 'Nursery' : isTransferDay ? 'TRANSFER DAY' : isGrowout ? 'Grow-out' : 'Upcoming'}`
                   : cell.dateStr
               }
             >
-              {/* Day Number */}
+              {/* Day Number and Status Badge */}
               <div className="d-flex justify-content-between align-items-center mb-1">
                 <span className="fw-extrabold" style={{ fontSize: '0.95rem', color: textColor }}>
                   {cell.dayNum}
                 </span>
-                {hasLogs && (
+                {isEarliestMissed ? (
+                  <span
+                    className="d-inline-flex align-items-center gap-1 px-1.5 py-0.5 rounded-pill shadow-xs"
+                    style={{
+                      backgroundColor: '#EF4444',
+                      color: '#FFFFFF',
+                      fontSize: '0.62rem',
+                      fontWeight: 800,
+                    }}
+                    title="Active missed day to log next"
+                  >
+                    Active
+                  </span>
+                ) : isSubsequentLockedMissed ? (
+                  <span
+                    className="d-inline-flex align-items-center gap-1 px-1.5 py-0.5 rounded-pill"
+                    style={{
+                      backgroundColor: isDark ? 'rgba(239, 68, 68, 0.2)' : '#FEE2E2',
+                      color: isDark ? '#FCA5A5' : '#DC2626',
+                      fontSize: '0.62rem',
+                      fontWeight: 700,
+                    }}
+                    title={`Locked: Must complete ${earliestMissedDate} first`}
+                  >
+                    <FaLock size={6} /> Locked
+                  </span>
+                ) : isFullyLogged ? (
                   <span
                     className="d-inline-flex align-items-center gap-1 px-1.5 py-0.5 rounded-pill"
                     style={{
@@ -730,12 +924,39 @@ export default function PondCycleCalendar({
                       fontSize: '0.65rem',
                       fontWeight: 700,
                     }}
-                    title="Feeding records logged on this date"
+                    title="All scheduled feeding records logged on this date"
                   >
                     <span className="rounded-circle" style={{ width: 6, height: 6, backgroundColor: '#FC563C' }}></span>
                     Logged
                   </span>
-                )}
+                ) : isMissedLog ? (
+                  <span
+                    className="d-inline-flex align-items-center gap-1 px-1.5 py-0.5 rounded-pill"
+                    style={{
+                      backgroundColor: isDark ? 'rgba(239, 68, 68, 0.24)' : '#FEE2E2',
+                      color: isDark ? '#FCA5A5' : '#DC2626',
+                      fontSize: '0.65rem',
+                      fontWeight: 700,
+                    }}
+                    title="Incomplete feeding log for this culture day"
+                  >
+                    <span className="rounded-circle" style={{ width: 6, height: 6, backgroundColor: '#EF4444' }}></span>
+                    Missed Log
+                  </span>
+                ) : isLockedToday ? (
+                  <span
+                    className="d-inline-flex align-items-center gap-1 px-1.5 py-0.5 rounded-pill"
+                    style={{
+                      backgroundColor: isDark ? 'rgba(245, 158, 11, 0.25)' : '#FEF3C7',
+                      color: isDark ? '#FCD34D' : '#B45309',
+                      fontSize: '0.65rem',
+                      fontWeight: 700,
+                    }}
+                    title="Today is locked until missed days are logged"
+                  >
+                    <FaLock size={7} /> Locked
+                  </span>
+                ) : null}
               </div>
 
               {/* DOC Tag or Phase Tag */}
@@ -758,16 +979,34 @@ export default function PondCycleCalendar({
                     className="extra-small fw-bold mt-1 d-none d-sm-block text-truncate"
                     style={{
                       fontSize: '0.68rem',
-                      color: isTransferDay
-                        ? (isDark ? '#FBBF24' : '#B45309')
-                        : isNursery
-                        ? (isDark ? '#34D399' : '#047857')
-                        : isGrowout
-                        ? (isDark ? '#60A5FA' : '#1D4ED8')
-                        : (isDark ? '#94A3B8' : '#9CA3AF'),
+                      color: isEarliestMissed || isMissedLog
+                        ? (isDark ? '#F87171' : '#DC2626')
+                        : isLockedToday
+                          ? (isDark ? '#FCD34D' : '#B45309')
+                          : isTransferDay
+                            ? (isDark ? '#FBBF24' : '#B45309')
+                            : isNursery
+                              ? (isDark ? '#34D399' : '#047857')
+                              : isGrowout
+                                ? (isDark ? '#60A5FA' : '#1D4ED8')
+                                : (isDark ? '#94A3B8' : '#9CA3AF'),
                     }}
                   >
-                    {isTransferDay ? 'TRANSFER DAY' : isNursery ? 'Nursery Feed' : (isGrowout ? 'Grower Feed' : 'Upcoming')}
+                    {isEarliestMissed
+                      ? 'Active Missed Day'
+                      : isSubsequentLockedMissed
+                        ? 'Locked Missed Log'
+                        : isMissedLog
+                          ? 'Missed Log'
+                          : isLockedToday
+                            ? 'Locked Today'
+                            : isTransferDay
+                              ? 'TRANSFER DAY'
+                              : isNursery
+                                ? 'Nursery Feed'
+                                : isGrowout
+                                  ? 'Grower Feed'
+                                  : 'Upcoming'}
                   </div>
                 </div>
               )}
@@ -782,25 +1021,29 @@ export default function PondCycleCalendar({
           className={`pond-cycle-calendar-card pond-cycle-calendar-card-${selectedInfo.stageTone} p-3 p-md-3.5 rounded-3 border transition-all mb-2`}
           style={{
             backgroundColor:
-              selectedInfo.stageTone === 'transfer'
-                ? (isDark ? 'rgba(245, 158, 11, 0.18)' : '#FFFBEB')
-                : selectedInfo.stageTone === 'nursery'
-                ? (isDark ? 'rgba(16, 185, 129, 0.18)' : '#F0FDF4')
-                : selectedInfo.stageTone === 'growout'
-                ? (isDark ? 'rgba(59, 130, 246, 0.18)' : '#EFF6FF')
-                : selectedInfo.stageTone === 'upcoming'
-                ? (isDark ? 'rgba(255, 255, 255, 0.04)' : '#F9FAFB')
-                : (isDark ? '#172A39' : '#F8FAFC'),
+              selectedInfo.stageTone === 'missed'
+                ? (isDark ? 'rgba(239, 68, 68, 0.16)' : '#FEF2F2')
+                : selectedInfo.stageTone === 'transfer'
+                  ? (isDark ? 'rgba(245, 158, 11, 0.18)' : '#FFFBEB')
+                  : selectedInfo.stageTone === 'nursery'
+                    ? (isDark ? 'rgba(16, 185, 129, 0.18)' : '#F0FDF4')
+                    : selectedInfo.stageTone === 'growout'
+                      ? (isDark ? 'rgba(59, 130, 246, 0.18)' : '#EFF6FF')
+                      : selectedInfo.stageTone === 'upcoming'
+                        ? (isDark ? 'rgba(255, 255, 255, 0.04)' : '#F9FAFB')
+                        : (isDark ? '#172A39' : '#F8FAFC'),
             borderColor:
-              selectedInfo.stageTone === 'transfer'
-                ? (isDark ? 'rgba(245, 158, 11, 0.45)' : '#FDE68A')
-                : selectedInfo.stageTone === 'nursery'
-                ? (isDark ? 'rgba(52, 211, 153, 0.45)' : '#BBF7D0')
-                : selectedInfo.stageTone === 'growout'
-                ? (isDark ? 'rgba(96, 165, 250, 0.45)' : '#BFDBFE')
-                : selectedInfo.stageTone === 'upcoming'
-                ? (isDark ? 'rgba(255, 255, 255, 0.15)' : '#E5E7EB')
-                : (isDark ? 'rgba(255, 255, 255, 0.12)' : '#CBD5E1'),
+              selectedInfo.stageTone === 'missed'
+                ? (isDark ? 'rgba(239, 68, 68, 0.45)' : '#FCA5A5')
+                : selectedInfo.stageTone === 'transfer'
+                  ? (isDark ? 'rgba(245, 158, 11, 0.45)' : '#FDE68A')
+                  : selectedInfo.stageTone === 'nursery'
+                    ? (isDark ? 'rgba(52, 211, 153, 0.45)' : '#BBF7D0')
+                    : selectedInfo.stageTone === 'growout'
+                      ? (isDark ? 'rgba(96, 165, 250, 0.45)' : '#BFDBFE')
+                      : selectedInfo.stageTone === 'upcoming'
+                        ? (isDark ? 'rgba(255, 255, 255, 0.15)' : '#E5E7EB')
+                        : (isDark ? 'rgba(255, 255, 255, 0.12)' : '#CBD5E1'),
             boxShadow: isDark ? '0 4px 16px rgba(0, 0, 0, 0.3)' : '0 2px 8px rgba(15, 23, 42, 0.04)',
           }}
         >
@@ -820,21 +1063,25 @@ export default function PondCycleCalendar({
                     className="badge rounded-pill px-2.5 py-1 fw-extrabold"
                     style={{
                       backgroundColor:
-                        selectedInfo.stageTone === 'transfer'
-                          ? (isDark ? 'rgba(245, 158, 11, 0.28)' : '#FEF3C7')
-                          : selectedInfo.stageTone === 'nursery'
-                          ? (isDark ? 'rgba(16, 185, 129, 0.28)' : '#DCFCE7')
-                          : selectedInfo.stageTone === 'growout'
-                          ? (isDark ? 'rgba(59, 130, 246, 0.28)' : '#DBEAFE')
-                          : (isDark ? 'rgba(255, 255, 255, 0.1)' : '#F3F4F6'),
+                        selectedInfo.stageTone === 'missed'
+                          ? (isDark ? 'rgba(239, 68, 68, 0.28)' : '#FEE2E2')
+                          : selectedInfo.stageTone === 'transfer'
+                            ? (isDark ? 'rgba(245, 158, 11, 0.28)' : '#FEF3C7')
+                            : selectedInfo.stageTone === 'nursery'
+                              ? (isDark ? 'rgba(16, 185, 129, 0.28)' : '#DCFCE7')
+                              : selectedInfo.stageTone === 'growout'
+                                ? (isDark ? 'rgba(59, 130, 246, 0.28)' : '#DBEAFE')
+                                : (isDark ? 'rgba(255, 255, 255, 0.1)' : '#F3F4F6'),
                       color:
-                        selectedInfo.stageTone === 'transfer'
-                          ? (isDark ? '#FCD34D' : '#92400E')
-                          : selectedInfo.stageTone === 'nursery'
-                          ? (isDark ? '#4ADE80' : '#14532D')
-                          : selectedInfo.stageTone === 'growout'
-                          ? (isDark ? '#93C5FD' : '#1E40AF')
-                          : (isDark ? '#CBD5E1' : '#334155'),
+                        selectedInfo.stageTone === 'missed'
+                          ? (isDark ? '#FCA5A5' : '#DC2626')
+                          : selectedInfo.stageTone === 'transfer'
+                            ? (isDark ? '#FCD34D' : '#92400E')
+                            : selectedInfo.stageTone === 'nursery'
+                              ? (isDark ? '#4ADE80' : '#14532D')
+                              : selectedInfo.stageTone === 'growout'
+                                ? (isDark ? '#93C5FD' : '#1E40AF')
+                                : (isDark ? '#CBD5E1' : '#334155'),
                       border: isDark ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid rgba(0, 0, 0, 0.06)',
                       fontSize: '0.78rem',
                     }}
@@ -846,13 +1093,15 @@ export default function PondCycleCalendar({
                   className="badge rounded-pill px-2.5 py-1 fw-bold text-uppercase"
                   style={{
                     backgroundColor:
-                      selectedInfo.stageTone === 'transfer'
-                        ? '#D97706'
-                        : selectedInfo.stageTone === 'nursery'
-                        ? '#059669'
-                        : selectedInfo.stageTone === 'growout'
-                        ? '#2563EB'
-                        : '#4B5563',
+                      selectedInfo.stageTone === 'missed'
+                        ? '#DC2626'
+                        : selectedInfo.stageTone === 'transfer'
+                          ? '#D97706'
+                          : selectedInfo.stageTone === 'nursery'
+                            ? '#059669'
+                            : selectedInfo.stageTone === 'growout'
+                              ? '#2563EB'
+                              : '#4B5563',
                     color: '#ffffff',
                     fontSize: '0.72rem',
                     letterSpacing: '0.03em',
@@ -877,21 +1126,21 @@ export default function PondCycleCalendar({
                     selectedInfo.feedType === 'Starter'
                       ? (isDark ? '#34D399' : '#047857')
                       : selectedInfo.feedType === 'Grower'
-                      ? (isDark ? '#60A5FA' : '#1D4ED8')
-                      : (isDark ? '#94A3B8' : '#475569'),
+                        ? (isDark ? '#60A5FA' : '#1D4ED8')
+                        : (isDark ? '#94A3B8' : '#475569'),
                 }}
               >
                 {selectedInfo.stageTone === 'upcoming'
                   ? 'Upcoming (No Records Yet)'
                   : selectedInfo.feedType !== 'None' && selectedInfo.feedType !== 'Upcoming'
-                  ? `Tateh – ${selectedInfo.feedType}`
-                  : 'No Feed Scheduled'}
+                    ? `Tateh – ${selectedInfo.feedType}`
+                    : 'No Feed Scheduled'}
               </strong>
             </div>
           </div>
 
           {/* Detailed Feeding Slots Breakdown on this Date */}
-          {selectedInfo.logs && selectedInfo.logs.length > 0 ? (
+          {selectedInfo.logs && selectedInfo.logs.length > 0 && (
             <div className="mt-3 pt-3 border-top" style={{ borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.1)' }}>
               <div className="d-flex justify-content-between align-items-center mb-2.5 flex-wrap gap-2">
                 <div className="extra-small fw-bold text-uppercase d-flex align-items-center gap-1.5" style={{ color: isDark ? '#CBD5E1' : '#334155', letterSpacing: '0.04em' }}>
@@ -1039,11 +1288,234 @@ export default function PondCycleCalendar({
                 </table>
               </div>
             </div>
+          )}
+
+          {/* Action / Lock / Status Card for the Selected Date */}
+          {selectedInfo.isMissed ? (
+            <div
+              className="p-3.5 rounded-3 mt-3 border d-flex align-items-center justify-content-between flex-wrap gap-3 shadow-xs"
+              style={{
+                backgroundColor: isDark ? 'rgba(239, 68, 68, 0.16)' : '#FEF2F2',
+                borderColor: isDark ? 'rgba(239, 68, 68, 0.45)' : '#FCA5A5',
+              }}
+            >
+              {selectedInfo.dateStr === earliestMissedDate ? (
+                <>
+                  <div className="d-flex align-items-center gap-3">
+                    <div
+                      className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                      style={{ width: 42, height: 42, backgroundColor: isDark ? 'rgba(239, 68, 68, 0.3)' : '#FEE2E2', color: '#EF4444' }}
+                    >
+                      <FaExclamationTriangle size={20} />
+                    </div>
+                    <div>
+                      <h6 className="fw-bold mb-1" style={{ color: isDark ? '#FCA5A5' : '#B91C1C' }}>
+                        Active Missed Day to Log (Day {selectedInfo.doc} • {selectedInfo.dateStr})
+                      </h6>
+                      <p className="extra-small mb-0" style={{ color: isDark ? '#CBD5E1' : '#475569' }}>
+                        This is your earliest incomplete cycle day ({selectedInfo.distinctSlots || 0} of 5 scheduled times recorded). You must complete all 5 feeding cycles for this day to unlock subsequent days.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-danger fw-bold px-3.5 py-2 rounded-3 d-flex align-items-center gap-2 shadow-xs hover-lift"
+                    onClick={() => {
+                      if (onSelectDate) {
+                        onSelectDate(selectedInfo.dateStr, {
+                          doc: selectedInfo.doc,
+                          stage: selectedInfo.stage,
+                          feedType: selectedInfo.feedType,
+                        });
+                      }
+                      if (onClose) onClose();
+                    }}
+                  >
+                    <FaCalendarAlt /> Log Active Day ({selectedInfo.dateStr}) {selectedInfo.distinctSlots > 0 ? `(${5 - selectedInfo.distinctSlots} slots left)` : ''}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div className="d-flex align-items-center gap-3">
+                    <div
+                      className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                      style={{ width: 42, height: 42, backgroundColor: isDark ? 'rgba(245, 158, 11, 0.25)' : '#FEF3C7', color: '#D97706' }}
+                    >
+                      <FaLock size={20} />
+                    </div>
+                    <div>
+                      <h6 className="fw-bold mb-1" style={{ color: isDark ? '#FCD34D' : '#B45309' }}>
+                        Day Locked — Complete {earliestMissedDate} First
+                      </h6>
+                      <p className="extra-small mb-0" style={{ color: isDark ? '#CBD5E1' : '#475569' }}>
+                        Farm protocol requires strict sequential logging. You cannot log for {selectedInfo.dateStr} until you have completed all 5 feeding cycles for <strong>{earliestMissedDate}</strong>.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-danger fw-bold px-3.5 py-2 rounded-3 d-flex align-items-center gap-2 shadow-xs hover-lift"
+                    onClick={() => {
+                      setCurrentSelectedDate(earliestMissedDate);
+                      const parts = earliestMissedDate.split('-');
+                      const s = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+                      setViewDate(new Date(s.getFullYear(), s.getMonth(), 1));
+                      if (onSelectDate) {
+                        const doc = computeDoc(s);
+                        const stage = doc <= 19 ? 'Nursery' : doc === 20 ? 'Transfer Day' : 'Grow-out';
+                        const feedType = doc <= 19 ? 'Starter' : 'Grower';
+                        onSelectDate(earliestMissedDate, { doc, stage, feedType });
+                      }
+                      if (onClose) onClose();
+                    }}
+                  >
+                    <FaLock size={12} /> Go to Active Missed Day ({earliestMissedDate})
+                  </button>
+                </>
+              )}
+            </div>
+          ) : (selectedInfo.isToday && hasUnloggedMissedDays) ? (
+            <div
+              className="p-3.5 rounded-3 mt-3 border d-flex align-items-center justify-content-between flex-wrap gap-3 shadow-xs"
+              style={{
+                backgroundColor: isDark ? 'rgba(245, 158, 11, 0.16)' : '#FFFBEB',
+                borderColor: isDark ? 'rgba(245, 158, 11, 0.45)' : '#FDE68A',
+              }}
+            >
+              <div className="d-flex align-items-center gap-3">
+                <div
+                  className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                  style={{ width: 42, height: 42, backgroundColor: isDark ? 'rgba(245, 158, 11, 0.3)' : '#FEF3C7', color: '#F59E0B' }}
+                >
+                  <FaLock size={20} />
+                </div>
+                <div>
+                  <h6 className="fw-bold mb-1" style={{ color: isDark ? '#FCD34D' : '#92400E' }}>
+                    Today's Feeding Logs are Locked
+                  </h6>
+                  <p className="extra-small mb-0" style={{ color: isDark ? '#CBD5E1' : '#475569' }}>
+                    You have {allMissedDates.length} missed past day(s) in this culture cycle starting from <strong>{earliestMissedDate}</strong>. Feeding records must be completed sequentially before logging for today.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn btn-danger fw-bold px-3.5 py-2 rounded-3 d-flex align-items-center gap-2 shadow-xs hover-lift"
+                onClick={() => {
+                  setCurrentSelectedDate(earliestMissedDate);
+                  const parts = earliestMissedDate.split('-');
+                  const s = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+                  setViewDate(new Date(s.getFullYear(), s.getMonth(), 1));
+                  if (onSelectDate) {
+                    const doc = computeDoc(s);
+                    const stage = doc <= 19 ? 'Nursery' : doc === 20 ? 'Transfer Day' : 'Grow-out';
+                    const feedType = doc <= 19 ? 'Starter' : 'Grower';
+                    onSelectDate(earliestMissedDate, { doc, stage, feedType });
+                  }
+                  if (onClose) onClose();
+                }}
+              >
+                <FaLock size={12} /> Go to First Missed Day ({earliestMissedDate})
+              </button>
+            </div>
+          ) : (selectedInfo.isToday && !hasUnloggedMissedDays) ? (
+            !selectedInfo.isFullyLogged ? (
+              <div
+                className="p-3 rounded-3 mt-3 border d-flex align-items-center justify-content-between flex-wrap gap-2 shadow-xs"
+                style={{
+                  backgroundColor: isDark ? 'rgba(252, 86, 60, 0.12)' : '#FFF1ED',
+                  borderColor: isDark ? 'rgba(252, 86, 60, 0.35)' : '#FECDD3',
+                }}
+              >
+                <div>
+                  <h6 className="fw-bold mb-0.5" style={{ color: '#FC563C' }}>
+                    Today's Active Feeding ({selectedInfo.distinctSlots || 0} of 5 Completed)
+                  </h6>
+                  <p className="extra-small mb-0" style={{ color: isDark ? '#CBD5E1' : '#64748B' }}>
+                    Ready to record the next scheduled feeding slot for {selectedInfo.dateStr}.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-tri-orange btn-sm fw-bold px-3.5 py-2 rounded-3 shadow-xs hover-lift d-flex align-items-center gap-2"
+                  onClick={() => {
+                    if (onSelectDate) {
+                      const parts = selectedInfo.dateStr.split('-');
+                      const s = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+                      const doc = computeDoc(s);
+                      const stage = doc <= 19 ? 'Nursery' : doc === 20 ? 'Transfer Day' : 'Grow-out';
+                      const feedType = doc <= 19 ? 'Starter' : 'Grower';
+                      onSelectDate(selectedInfo.dateStr, { doc, stage, feedType });
+                    }
+                    if (onClose) onClose();
+                  }}
+                >
+                  <FaUtensils size={12} /> Continue Logging Today
+                </button>
+              </div>
+            ) : (
+              <div
+                className="p-3 rounded-3 mt-3 border d-flex align-items-center justify-content-between flex-wrap gap-2 shadow-xs"
+                style={{
+                  backgroundColor: isDark ? 'rgba(34, 197, 94, 0.12)' : '#F0FDF4',
+                  borderColor: isDark ? 'rgba(34, 197, 94, 0.35)' : '#BBF7D0',
+                }}
+              >
+                <div className="d-flex align-items-center gap-2">
+                  <FaCheckCircle className="text-success" size={18} />
+                  <div>
+                    <h6 className="fw-bold mb-0 text-success">All Feeding Sessions Completed Today</h6>
+                    <span className="extra-small text-muted">All 5 scheduled times recorded and verified.</span>
+                  </div>
+                </div>
+              </div>
+            )
+          ) : selectedInfo.isFullyLogged ? (
+            <div
+              className="p-3 rounded-3 mt-3 border d-flex align-items-center justify-content-between flex-wrap gap-2 shadow-xs"
+              style={{
+                backgroundColor: isDark ? 'rgba(34, 197, 94, 0.12)' : '#F0FDF4',
+                borderColor: isDark ? 'rgba(34, 197, 94, 0.35)' : '#BBF7D0',
+              }}
+            >
+              <div className="d-flex align-items-center gap-2">
+                <FaCheckCircle className="text-success" size={18} />
+                <div>
+                  <h6 className="fw-bold mb-0 text-success">All Feeding Sessions Completed</h6>
+                  <span className="extra-small text-muted">All 5 scheduled times recorded for {selectedInfo.dateStr}.</span>
+                </div>
+              </div>
+            </div>
+          ) : selectedInfo.isFuture ? (
+            <div className="mt-3 pt-2 border-top text-center extra-small py-2" style={{ borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#E2E8F0', color: isDark ? '#94A3B8' : '#64748B' }}>
+              Projected future culture timeline. Feeding records not yet scheduled for this date.
+            </div>
           ) : (
             <div className="mt-3 pt-2 border-top text-center extra-small py-2" style={{ borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#E2E8F0', color: isDark ? '#94A3B8' : '#64748B' }}>
               No feeding records logged for {selectedInfo.dateStr} yet.
             </div>
           )}
+        </div>
+      )}
+
+      {/* Footer shortcut to return to Feeding Task */}
+      {onBackToFeeding && (
+        <div
+          className="d-flex justify-content-end align-items-center mt-3 pt-3 border-top flex-wrap gap-2"
+          style={{ borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#E2E8F0' }}
+        >
+          <button
+            type="button"
+            className="btn-pond-nav-action shadow-xs"
+            style={{
+              backgroundColor: isDark ? '#0284C7' : '#0B2C5F',
+              color: '#FFFFFF',
+              border: isDark ? '1.5px solid #38BDF8' : '1.5px solid #0B2C5F',
+            }}
+            onClick={onBackToFeeding}
+          >
+            <FaClipboardList size={13} color="#FFFFFF" /> <span style={{ color: '#FFFFFF' }}>Return to Feeding Task</span>
+          </button>
         </div>
       )}
     </div>

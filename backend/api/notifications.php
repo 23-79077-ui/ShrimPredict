@@ -169,12 +169,13 @@ if ($method === 'POST') {
     if ($action === 'mark_all_read') {
         try {
             $targetUserId = isset($payload['user_id']) ? (int)$payload['user_id'] : (isset($_GET['user_id']) ? (int)$_GET['user_id'] : 0);
-            if ($targetUserId > 0) {
+            $scope = isset($payload['scope']) ? trim((string)$payload['scope']) : '';
+            if ($scope === 'all' || !isset($payload['user_id'])) {
+                $stmt = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE is_read = 0 AND status != 'deleted'");
+                $stmt->execute();
+            } else {
                 $stmt = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = :uid AND is_read = 0 AND status != 'deleted'");
                 $stmt->execute([':uid' => $targetUserId]);
-            } else {
-                $stmt = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE (user_id IS NULL OR user_id = 0) AND is_read = 0 AND status != 'deleted'");
-                $stmt->execute();
             }
             echo json_encode(['success' => true, 'message' => 'All notifications marked as read.']);
         } catch (Throwable $e) {

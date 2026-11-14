@@ -315,13 +315,24 @@ export default function CaretakerLayout() {
 
   const handleLogout = (e) => {
     if (e && typeof e.preventDefault === 'function') e.preventDefault();
+    const savedTheme = localStorage.getItem('shrim_theme');
+    const savedPref = localStorage.getItem('shrim_theme_preference');
+    const savedLang = localStorage.getItem('shrim_language');
+
     try {
       logout();
     } catch (err) {
       console.error('Logout error:', err);
     }
-    localStorage.clear();
+
+    localStorage.removeItem('shrim_user');
+    localStorage.removeItem('user');
     sessionStorage.clear();
+
+    if (savedTheme) localStorage.setItem('shrim_theme', savedTheme);
+    if (savedPref) localStorage.setItem('shrim_theme_preference', savedPref);
+    if (savedLang) localStorage.setItem('shrim_language', savedLang);
+
     window.location.href = '/login';
   };
 

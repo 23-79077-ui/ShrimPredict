@@ -39,6 +39,7 @@ import Swal from 'sweetalert2';
 import api, { safeArray } from '../../services/api';
 import PondCycleCalendar from '../../components/PondCycleCalendar';
 import { useLanguage } from '../../context/LanguageContext';
+import { getEffectiveTheme } from '../../utils/theme';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend);
 
@@ -82,7 +83,30 @@ function isDiseaseAlert(value) {
 }
 
 export default function PondMonitoringPage() {
-  const { t, isDark } = useLanguage();
+  const { t } = useLanguage();
+
+  const [currentTheme, setCurrentTheme] = useState(() => (typeof document !== 'undefined' ? document.documentElement.getAttribute('data-theme') || getEffectiveTheme() : getEffectiveTheme()));
+  useEffect(() => {
+    const readTheme = () => (typeof document !== 'undefined' ? document.documentElement.getAttribute('data-theme') || getEffectiveTheme() : getEffectiveTheme());
+    const handleThemeChange = (e) => {
+      const t = e?.detail?.theme || readTheme();
+      setCurrentTheme(t);
+    };
+    window.addEventListener('shrim-theme-changed', handleThemeChange);
+    window.addEventListener('themeChanged', handleThemeChange);
+
+    const observer = new MutationObserver(() => setCurrentTheme(readTheme()));
+    if (typeof document !== 'undefined' && document.documentElement) {
+      observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] });
+    }
+
+    return () => {
+      window.removeEventListener('shrim-theme-changed', handleThemeChange);
+      window.removeEventListener('themeChanged', handleThemeChange);
+      observer.disconnect();
+    };
+  }, []);
+  const isDark = currentTheme === 'dark';
 
   const [ponds, setPonds] = useState([]);
   const [caretakers, setCaretakers] = useState([]);
@@ -977,148 +1001,172 @@ export default function PondMonitoringPage() {
 
                     {/* 3, 4, 5, 6. The 4 Core Metrics: Day of Culture, Shrimp Weight, Feeding Consumption, Remaining Feed */}
                     <div className="row gx-3 gy-3" style={{ rowGap: '12px' }}>
-                      {/* 3. Day of Culture (DOC) */}
+                      {/* 3. Day of Culture (DOC) - Emerald Bio-Growth */}
                       <div className="col-6">
                         <div
                           className="pond-metric-card pond-metric-card-doc rounded-3 p-3 h-100 d-flex flex-column justify-content-between"
                           style={{
-                            backgroundColor: '#F0FDF4',
-                            border: '1.5px solid #86EFAC',
+                            backgroundColor: isDark ? 'rgba(16, 185, 129, 0.14)' : '#ECFDF5',
+                            border: isDark ? '1.5px solid rgba(52, 211, 153, 0.4)' : '1.5px solid #86EFAC',
                             borderRadius: '14px',
                             minHeight: '88px',
-                            boxShadow: '0 1px 3px rgba(16, 185, 129, 0.06)',
+                            boxShadow: isDark ? '0 2px 8px rgba(0, 0, 0, 0.25)' : '0 1px 3px rgba(16, 185, 129, 0.08)',
                           }}
                         >
                           <div className="d-flex align-items-center justify-content-between mb-2">
                             <span
                               className="fw-bold text-uppercase"
-                              style={{ fontSize: '0.68rem', letterSpacing: '0.03em', color: '#047857' }}
+                              style={{ fontSize: '0.68rem', letterSpacing: '0.03em', color: isDark ? '#6EE7B7' : '#047857' }}
                             >
                               {t('Day of Culture')}
                             </span>
                             <div
                               className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                              style={{ width: 26, height: 26, color: '#059669', backgroundColor: '#DCFCE7', border: '1.5px solid #86EFAC' }}
+                              style={{
+                                width: 26,
+                                height: 26,
+                                color: isDark ? '#34D399' : '#059669',
+                                backgroundColor: isDark ? 'rgba(16, 185, 129, 0.28)' : '#D1FAE5',
+                                border: isDark ? '1.5px solid rgba(52, 211, 153, 0.35)' : '1.5px solid #86EFAC',
+                              }}
                             >
                               <FaCalendarAlt size={11} />
                             </div>
                           </div>
                           <div className="d-flex align-items-baseline gap-1 mt-1">
-                            <span className="fw-extrabold" style={{ color: '#047857', fontSize: '1.45rem', lineHeight: 1.1 }}>
+                            <span className="fw-extrabold" style={{ color: isDark ? '#10B981' : '#047857', fontSize: '1.45rem', lineHeight: 1.1 }}>
                               {pond.doc !== null ? pond.doc : '-'}
                             </span>
-                            <span className="fw-bold extra-small" style={{ color: '#059669' }}>
+                            <span className="fw-bold extra-small" style={{ color: isDark ? '#6EE7B7' : '#059669' }}>
                               {t('days')}
                             </span>
                           </div>
                         </div>
                       </div>
 
-                      {/* 6. Shrimp Weight in Grams */}
+                      {/* 6. Shrimp Weight in Grams - Royal Violet/Purple */}
                       <div className="col-6">
                         <div
                           className="pond-metric-card pond-metric-card-weight rounded-3 p-3 h-100 d-flex flex-column justify-content-between"
                           style={{
-                            backgroundColor: '#FAF5FF',
-                            border: '1.5px solid #D8B4FE',
+                            backgroundColor: isDark ? 'rgba(124, 58, 237, 0.16)' : '#FAF5FF',
+                            border: isDark ? '1.5px solid rgba(167, 139, 250, 0.45)' : '1.5px solid #DDD6FE',
                             borderRadius: '14px',
                             minHeight: '88px',
-                            boxShadow: '0 1px 3px rgba(139, 92, 246, 0.06)',
+                            boxShadow: isDark ? '0 2px 8px rgba(0, 0, 0, 0.25)' : '0 1px 3px rgba(124, 58, 237, 0.08)',
                           }}
                         >
                           <div className="d-flex align-items-center justify-content-between mb-2">
                             <span
                               className="fw-bold text-uppercase"
-                              style={{ fontSize: '0.68rem', letterSpacing: '0.03em', color: '#6B21A8' }}
+                              style={{ fontSize: '0.68rem', letterSpacing: '0.03em', color: isDark ? '#C4B5FD' : '#6D28D9' }}
                             >
                               {t('Shrimp Weight')}
                             </span>
                             <div
                               className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                              style={{ width: 26, height: 26, color: '#7C3AED', backgroundColor: '#F3E8FF', border: '1.5px solid #D8B4FE' }}
+                              style={{
+                                width: 26,
+                                height: 26,
+                                color: isDark ? '#C4B5FD' : '#7C3AED',
+                                backgroundColor: isDark ? 'rgba(124, 58, 237, 0.28)' : '#EDE9FE',
+                                border: isDark ? '1.5px solid rgba(167, 139, 250, 0.4)' : '1.5px solid #C4B5FD',
+                              }}
                             >
                               <FaWeightHanging size={11} />
                             </div>
                           </div>
                           <div className="d-flex align-items-baseline gap-1 mt-1">
-                            <span className="fw-extrabold" style={{ color: '#6B21A8', fontSize: '1.45rem', lineHeight: 1.1 }}>
+                            <span className="fw-extrabold" style={{ color: isDark ? '#A78BFA' : '#6D28D9', fontSize: '1.45rem', lineHeight: 1.1 }}>
                               {pond.weightG > 0 ? formatNumber(pond.weightG, 1) : '—'}
                             </span>
-                            <span className="fw-bold extra-small" style={{ color: '#7C3AED' }}>
+                            <span className="fw-bold extra-small" style={{ color: isDark ? '#C4B5FD' : '#7C3AED' }}>
                               {pond.weightG > 0 ? 'grams' : ''}
                             </span>
                           </div>
                         </div>
                       </div>
 
-                      {/* 4. Feeding Consumption */}
+                      {/* 4. Feeding Consumption - Signature Shrimp Coral Orange */}
                       <div className="col-6">
                         <div
                           className="pond-metric-card pond-metric-card-feeding rounded-3 p-3 h-100 d-flex flex-column justify-content-between"
                           style={{
-                            backgroundColor: '#FFF7ED',
-                            border: '1.5px solid #FDBA74',
+                            backgroundColor: isDark ? 'rgba(252, 86, 60, 0.16)' : '#FFF1EE',
+                            border: isDark ? '1.5px solid rgba(252, 86, 60, 0.45)' : '1.5px solid #FFAB9D',
                             borderRadius: '14px',
                             minHeight: '88px',
-                            boxShadow: '0 1px 3px rgba(249, 115, 22, 0.06)',
+                            boxShadow: isDark ? '0 2px 8px rgba(0, 0, 0, 0.25)' : '0 1px 3px rgba(252, 86, 60, 0.08)',
                           }}
                         >
                           <div className="d-flex align-items-center justify-content-between mb-2">
                             <span
                               className="fw-bold text-uppercase"
-                              style={{ fontSize: '0.68rem', letterSpacing: '0.03em', color: '#C2410C' }}
+                              style={{ fontSize: '0.68rem', letterSpacing: '0.03em', color: isDark ? '#FF8A75' : '#C2410C' }}
                             >
                               {t('Feeding Consumption')}
                             </span>
                             <div
                               className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                              style={{ width: 26, height: 26, color: '#EA580C', backgroundColor: '#FFEDD5', border: '1.5px solid #FDBA74' }}
+                              style={{
+                                width: 26,
+                                height: 26,
+                                color: isDark ? '#FF8A75' : '#FC563C',
+                                backgroundColor: isDark ? 'rgba(252, 86, 60, 0.28)' : '#FFE2DC',
+                                border: isDark ? '1.5px solid rgba(252, 86, 60, 0.4)' : '1.5px solid #FFAB9D',
+                              }}
                             >
                               <FaUtensils size={11} />
                             </div>
                           </div>
                           <div className="d-flex align-items-baseline gap-1 mt-1">
-                            <span className="fw-extrabold" style={{ color: '#C2410C', fontSize: '1.45rem', lineHeight: 1.1 }}>
+                            <span className="fw-extrabold" style={{ color: isDark ? '#FC563C' : '#FC563C', fontSize: '1.45rem', lineHeight: 1.1 }}>
                               {formatNumber(pond.consumedKg, 0)}
                             </span>
-                            <span className="fw-bold extra-small" style={{ color: '#EA580C' }}>
+                            <span className="fw-bold extra-small" style={{ color: isDark ? '#FF8A75' : '#C2410C' }}>
                               kg
                             </span>
                           </div>
                         </div>
                       </div>
 
-                      {/* 5. Remaining Feed */}
+                      {/* 5. Remaining Feed - Ocean Azure Blue */}
                       <div className="col-6">
                         <div
                           className="pond-metric-card pond-metric-card-remaining rounded-3 p-3 h-100 d-flex flex-column justify-content-between"
                           style={{
-                            backgroundColor: '#F0F9FF',
-                            border: '1.5px solid #7DD3FC',
+                            backgroundColor: isDark ? 'rgba(2, 132, 199, 0.16)' : '#F0F9FF',
+                            border: isDark ? '1.5px solid rgba(56, 189, 248, 0.45)' : '1.5px solid #7DD3FC',
                             borderRadius: '14px',
                             minHeight: '88px',
-                            boxShadow: '0 1px 3px rgba(2, 132, 199, 0.06)',
+                            boxShadow: isDark ? '0 2px 8px rgba(0, 0, 0, 0.25)' : '0 1px 3px rgba(2, 132, 199, 0.08)',
                           }}
                         >
                           <div className="d-flex align-items-center justify-content-between mb-2">
                             <span
                               className="fw-bold text-uppercase"
-                              style={{ fontSize: '0.68rem', letterSpacing: '0.03em', color: '#0369A1' }}
+                              style={{ fontSize: '0.68rem', letterSpacing: '0.03em', color: isDark ? '#7DD3FC' : '#0369A1' }}
                             >
                               {t('Remaining Feed')}
                             </span>
                             <div
                               className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                              style={{ width: 26, height: 26, color: '#0284C7', backgroundColor: '#E0F2FE', border: '1.5px solid #7DD3FC' }}
+                              style={{
+                                width: 26,
+                                height: 26,
+                                color: isDark ? '#38BDF8' : '#0284C7',
+                                backgroundColor: isDark ? 'rgba(2, 132, 199, 0.28)' : '#E0F2FE',
+                                border: isDark ? '1.5px solid rgba(56, 189, 248, 0.4)' : '1.5px solid #7DD3FC',
+                              }}
                             >
                               <FaBalanceScale size={11} />
                             </div>
                           </div>
                           <div className="d-flex align-items-baseline gap-1 mt-1">
-                            <span className="fw-extrabold" style={{ color: '#0369A1', fontSize: '1.45rem', lineHeight: 1.1 }}>
+                            <span className="fw-extrabold" style={{ color: isDark ? '#38BDF8' : '#0284C7', fontSize: '1.45rem', lineHeight: 1.1 }}>
                               {formatNumber(pond.remainingKg, 0)}
                             </span>
-                            <span className="fw-bold extra-small" style={{ color: '#0284C7' }}>
+                            <span className="fw-bold extra-small" style={{ color: isDark ? '#7DD3FC' : '#0369A1' }}>
                               kg
                             </span>
                           </div>
