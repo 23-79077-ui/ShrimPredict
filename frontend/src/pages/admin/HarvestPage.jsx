@@ -563,10 +563,12 @@ export default function HarvestPage() {
                           {(() => {
                             const statusText = String(item.readiness_status || '').trim();
                             const statusLower = statusText.toLowerCase();
-                            const isReadyToHarvest = Boolean(item.is_ready_to_harvest)
-                              || Number(item.feed_progress_percentage || 0) >= 100
-                              || statusLower === 'ready to harvest'
-                              || statusLower === 'feed reference reached';
+                            // Strict harvest criteria: must reach 15,000 kg feed consumption AND 23g+ average shrimp weight
+                            const isReadyToHarvest = (
+                              (Boolean(item.is_ready_to_harvest) || Number(item.feed_progress_percentage || 0) >= 100 || statusLower === 'ready to harvest') &&
+                              Number(item.total_feed_consumed_kg || 0) >= 15000 &&
+                              Number(item.average_weight || 0) >= 23.0
+                            );
                             const isAlerted = Boolean(notifiedPonds[item.pond_id] || item.harvest_alert_sent);
 
                             if (isReadyToHarvest) {

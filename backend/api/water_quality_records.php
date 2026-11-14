@@ -203,8 +203,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
         // Mode A: Fetch single pond's status (One-time pre-stocking baseline check)
         if ($pondId > 0 && !$fetchAll) {
-            $hasStrictDate = isset($_GET['strict_date']) && $_GET['strict_date'] == '1';
-            if ($hasStrictDate) {
+            $hasDateFilter = isset($_GET['date']) || (isset($_GET['strict_date']) && $_GET['strict_date'] == '1');
+            if ($hasDateFilter) {
                 $stmt = $conn->prepare('
                     SELECT wqr.*, p.pond_name
                     FROM water_quality_records wqr

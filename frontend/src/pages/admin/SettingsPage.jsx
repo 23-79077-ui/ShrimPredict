@@ -1433,7 +1433,7 @@ export default function SettingsPage() {
                         <div>
                           <strong className="d-block text-dark mb-1 fs-6">{t('Harvest Readiness Rule Guidance')}</strong>
                           <p className="mb-0 text-dark small">
-                            <strong>Note:</strong> Reaching <strong>95%</strong> triggers <span className="badge bg-warning text-dark px-2.5 py-1 rounded-pill">{t('Upcoming Harvest')}</span>. Reaching <strong>100%</strong> triggers <span className="badge bg-success px-2.5 py-1 rounded-pill">{t('Ready to Harvest')}</span>.
+                            <strong>Note:</strong> Harvest readiness strictly requires reaching the <strong>15,000 kg</strong> feed consumption target and <strong>23.0 grams</strong> average body weight from weekly sampling regardless of DOC. Reaching <strong>100%</strong> (15,000 kg feed &amp; 23g+ ABW) triggers <span className="badge bg-success px-2.5 py-1 rounded-pill">{t('Ready to Harvest')}</span>.
                           </p>
                         </div>
                       </div>

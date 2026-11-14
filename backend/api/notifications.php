@@ -168,8 +168,14 @@ if ($method === 'POST') {
 
     if ($action === 'mark_all_read') {
         try {
-            $stmt = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE is_read = 0 AND status != 'deleted'");
-            $stmt->execute();
+            $targetUserId = isset($payload['user_id']) ? (int)$payload['user_id'] : (isset($_GET['user_id']) ? (int)$_GET['user_id'] : 0);
+            if ($targetUserId > 0) {
+                $stmt = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = :uid AND is_read = 0 AND status != 'deleted'");
+                $stmt->execute([':uid' => $targetUserId]);
+            } else {
+                $stmt = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE (user_id IS NULL OR user_id = 0) AND is_read = 0 AND status != 'deleted'");
+                $stmt->execute();
+            }
             echo json_encode(['success' => true, 'message' => 'All notifications marked as read.']);
         } catch (Throwable $e) {
             http_response_code(500);
@@ -215,7 +221,7 @@ if ($method === 'POST') {
     $caretakerName = isset($payload['caretaker_name']) ? trim((string)$payload['caretaker_name']) : (isset($payload['recorded_by']) ? trim((string)$payload['recorded_by']) : 'Caretaker');
     $actionType = isset($payload['action_type']) ? trim((string)$payload['action_type']) : 'general';
     $pondName = isset($payload['pond_name']) ? trim((string)$payload['pond_name']) : '';
-    $userId = isset($payload['user_id']) ? (int)$payload['user_id'] : null;
+    $rawUserId = isset($payload['user_id']) ? $payload['user_id'] : null;
     $targetId = isset($payload['target_id']) ? (int)$payload['target_id'] : (isset($payload['report_id']) ? (int)$payload['report_id'] : null);
 
     if (empty($message)) {
@@ -223,6 +229,39 @@ if ($method === 'POST') {
         echo json_encode(['success' => false, 'message' => 'Message is required.']);
         exit;
     }
+
+    $isBroadcast = (isset($payload['broadcast']) && $payload['broadcast']) || ($rawUserId === 'all') || ($action === 'broadcast_to_caretakers');
+    if ($isBroadcast) {
+        try {
+            $cStmt = $conn->query("SELECT id, full_name FROM users WHERE role = 'caretaker' AND COALESCE(status, 'Active') != 'Archived'");
+            $caretakers = $cStmt->fetchAll(PDO::FETCH_ASSOC);
+            $ids = [];
+            $stmt = $conn->prepare(
+                "INSERT INTO notifications (user_id, title, message, caretaker_name, action_type, pond_name, target_id, is_read, status, created_at)
+                 VALUES (:user_id, :title, :message, :caretaker_name, :action_type, :pond_name, :target_id, 0, 'active', NOW())"
+            );
+            foreach ($caretakers as $c) {
+                $stmt->execute([
+                    ':user_id' => $c['id'],
+                    ':title' => $title,
+                    ':message' => $message,
+                    ':caretaker_name' => $c['full_name'],
+                    ':action_type' => $actionType ?: 'admin_announcement',
+                    ':pond_name' => $pondName,
+                    ':target_id' => $targetId,
+                ]);
+                $ids[] = (int)$conn->lastInsertId();
+            }
+            http_response_code(201);
+            echo json_encode(['success' => true, 'message' => 'Notification broadcasted to all caretakers.', 'ids' => $ids]);
+        } catch (Throwable $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
+
+    $userId = $rawUserId !== null ? (int)$rawUserId : null;
 
     try {
         $stmt = $conn->prepare(

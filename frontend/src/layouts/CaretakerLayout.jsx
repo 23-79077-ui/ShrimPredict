@@ -21,6 +21,8 @@ import { getEffectiveTheme, getThemePreference, setManualTheme, resetThemeToAuto
 import { useLanguage } from '../context/LanguageContext';
 import LanguageToggle from '../components/LanguageToggle';
 import CaretakerAssistantChatHead from '../components/CaretakerAssistantChatHead';
+import { playNotificationSound, unlockAudio, initAudioUnlock } from '../utils/audioChime';
+import { CHIME_DATA_URI } from '../utils/chimeBase64';
 
 // Minimalist vector icons for the Floating Top Dock Tabs
 const dockIcons = {
@@ -97,10 +99,15 @@ export default function CaretakerLayout() {
   const [showNotifMenu, setShowNotifMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showMobileNav, setShowMobileNav] = useState(false);
+  const [activeLiveAlert, setActiveLiveAlert] = useState(null);
+  const [isAlertDismissing, setIsAlertDismissing] = useState(false);
 
   const bellRef = useRef(null);
   const userRef = useRef(null);
   const navRowRef = useRef(null);
+  const dismissedAlertIdsRef = useRef(new Set());
+  const chimedAlertIdsRef = useRef(new Set());
+  const dismissTimerRef = useRef(null);
 
   // Category Dock Horizontal Swipe State
   const [navScroll, setNavScroll] = useState({
@@ -200,13 +207,49 @@ export default function CaretakerLayout() {
     hour12: true,
   });
 
+  const handleDismissAlert = (alertId) => {
+    if (alertId) dismissedAlertIdsRef.current.add(alertId);
+    if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
+    setIsAlertDismissing(true);
+    setTimeout(() => {
+      setActiveLiveAlert(null);
+      setIsAlertDismissing(false);
+    }, 320);
+  };
+
   const fetchUnreadNotifications = async () => {
     if (!user?.id) return;
     try {
       const res = await api.get(`/notifications.php?user_id=${user.id}&status=active`);
       if (res.data?.success) {
+        const notifs = Array.isArray(res.data.notifications) ? res.data.notifications : [];
         setUnreadCount(res.data.counts?.unread || 0);
-        setRecentNotifs((res.data.notifications || []).slice(0, 6));
+        setRecentNotifs(notifs.slice(0, 6));
+
+        // Find unread notifications that haven't been dismissed by the caretaker in this session
+        const unreadAlerts = notifs.filter((n) => !n.is_read && !dismissedAlertIdsRef.current.has(n.id));
+
+        if (unreadAlerts.length > 0) {
+          const newest = unreadAlerts[0];
+
+          // Trigger live notification chime immediately on the first time this alert ID is detected
+          if (!chimedAlertIdsRef.current.has(newest.id)) {
+            chimedAlertIdsRef.current.add(newest.id);
+            const soundPref = localStorage.getItem('caretaker_sound_alerts');
+            if (soundPref !== 'OFF') {
+              playNotificationSound();
+            }
+          }
+
+          // Pop up the smooth live alert toast
+          setActiveLiveAlert(newest);
+          setIsAlertDismissing(false);
+
+          if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
+          dismissTimerRef.current = setTimeout(() => {
+            handleDismissAlert(newest.id);
+          }, 15000);
+        }
       }
     } catch (e) {
       // Silently catch fetch errors
@@ -214,8 +257,12 @@ export default function CaretakerLayout() {
   };
 
   useEffect(() => {
+    initAudioUnlock();
+  }, []);
+
+  useEffect(() => {
     fetchUnreadNotifications();
-    const interval = setInterval(fetchUnreadNotifications, 5000);
+    const interval = setInterval(fetchUnreadNotifications, 3000); // 3-second live polling
     const handleUpdate = () => fetchUnreadNotifications();
 
     window.addEventListener('shrim-feed-updated', handleUpdate);
@@ -223,11 +270,32 @@ export default function CaretakerLayout() {
     window.addEventListener('shrim-water-quality-updated', handleUpdate);
     window.addEventListener('storage', handleUpdate);
 
+    const handleCustomLiveAlert = (e) => {
+      if (e?.detail) {
+        setActiveLiveAlert({
+          id: 'custom-' + Date.now(),
+          title: e.detail.title || 'Report Submitted',
+          tag: e.detail.tag || 'Dispatched to Admin',
+          action_type: e.detail.action_type || 'report_submitted',
+          pond_name: e.detail.pond_name || '',
+        });
+        setIsAlertDismissing(false);
+        playNotificationSound();
+        if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
+        dismissTimerRef.current = setTimeout(() => {
+          handleDismissAlert();
+        }, 10000);
+      }
+    };
+    window.addEventListener('shrim-show-live-alert', handleCustomLiveAlert);
+
     return () => {
       clearInterval(interval);
+      if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
       window.removeEventListener('shrim-feed-updated', handleUpdate);
       window.removeEventListener('shrim-notification-updated', handleUpdate);
       window.removeEventListener('shrim-water-quality-updated', handleUpdate);
+      window.removeEventListener('shrim-show-live-alert', handleCustomLiveAlert);
       window.removeEventListener('storage', handleUpdate);
     };
   }, [user?.id]);
@@ -289,6 +357,14 @@ export default function CaretakerLayout() {
 
   return (
     <div className="saas-layout-canvas">
+      {/* Hidden in-DOM audio element with Base64 audio for zero-latency mobile playback */}
+      <audio
+        id="live-notification-sound"
+        src={CHIME_DATA_URI}
+        preload="auto"
+        playsInline
+        style={{ display: 'none' }}
+      />
       {/* TOP NAVIGATION HEADER (Floating Card Architecture with Zero Bleed-Through) */}
       <div className="top-dock-wrapper" style={{ position: 'sticky', top: 0, zIndex: 1050 }}>
         <header className="top-dock-bar">
@@ -860,6 +936,99 @@ export default function CaretakerLayout() {
 
       {/* Floating Caretaker AI Assistant */}
       <CaretakerAssistantChatHead />
+
+      {/* Real-time Live Admin Notification Toast with Sound Chime */}
+      {activeLiveAlert && (
+        <div className={`live-alert-toast-container ${isAlertDismissing ? 'live-alert-exiting' : ''}`}>
+          <div
+            className="card live-alert-toast-card border-0"
+            style={{
+              backgroundColor: theme === 'dark' ? '#1E293B' : '#FFFFFF',
+              boxShadow: '0 16px 36px -10px rgba(15, 23, 42, 0.22), 0 0 0 1px rgba(0, 0, 0, 0.08)',
+              borderRadius: '16px',
+            }}
+          >
+            <div className="p-3 px-sm-3.5 py-sm-3">
+              <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+                <div className="d-flex align-items-center gap-2.5 min-w-0">
+                  <div
+                    className={`rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 ${
+                      activeLiveAlert.action_type === 'harvest_ready' ? 'live-alert-pulse-harvest' : 'live-alert-pulse-admin'
+                    }`}
+                    style={{
+                      width: 40,
+                      height: 40,
+                      backgroundColor: activeLiveAlert.action_type === 'harvest_ready' ? '#FEF3C7' : '#FFF5F3',
+                      color: activeLiveAlert.action_type === 'harvest_ready' ? '#D97706' : '#FC563C',
+                    }}
+                  >
+                    <FaBell size={17} />
+                  </div>
+
+                  <div className="d-flex align-items-center gap-2 flex-wrap min-w-0">
+                    <h6 className="fw-bold mb-0 text-dark" style={{ fontSize: '0.98rem', letterSpacing: '-0.01em' }}>
+                      {activeLiveAlert.action_type === 'harvest_ready'
+                        ? `Ready for Harvest : ${activeLiveAlert.pond_name || 'Pond A1'}`
+                        : (activeLiveAlert.title || 'Ready for Harvest : Pond A1')}
+                    </h6>
+                    <span
+                      className="badge rounded-pill extra-small fw-semibold"
+                      style={{
+                        backgroundColor: '#F1F5F9',
+                        color: '#475569',
+                        border: '1px solid #E2E8F0',
+                        fontSize: '0.70rem',
+                        padding: '2.5px 8px',
+                        letterSpacing: '0.01em',
+                      }}
+                    >
+                      {activeLiveAlert.tag || 'From Admin'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="d-flex align-items-center gap-2 ms-auto flex-shrink-0">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-light extra-small px-3 py-1.5 rounded-pill fw-semibold text-secondary"
+                    onClick={() => handleDismissAlert(activeLiveAlert?.id)}
+                  >
+                    {t('Dismiss')}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm text-white extra-small px-3.5 py-1.5 rounded-pill fw-bold shadow-xs hover-lift"
+                    style={{
+                      backgroundColor: activeLiveAlert.action_type === 'harvest_ready' ? '#D97706' : '#FC563C',
+                    }}
+                    onClick={() => {
+                      handleDismissAlert(activeLiveAlert?.id);
+                      if (activeLiveAlert.action_type === 'report_submitted') {
+                        navigate('/caretaker/reports');
+                      } else {
+                        navigate('/caretaker/notifications');
+                      }
+                    }}
+                  >
+                    {activeLiveAlert.action_type === 'report_submitted'
+                      ? t('View Reports')
+                      : activeLiveAlert.action_type === 'harvest_ready'
+                      ? t('View & Acknowledge')
+                      : t('View Notification')} →
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-close p-1 opacity-60 hover-opacity-100 ms-1"
+                    style={{ fontSize: '0.65rem' }}
+                    onClick={() => handleDismissAlert(activeLiveAlert?.id)}
+                    aria-label="Close"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

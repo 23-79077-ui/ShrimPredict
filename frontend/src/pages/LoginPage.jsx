@@ -706,21 +706,6 @@ export default function LoginPage() {
                         : t('login.signInAsCaretaker', 'Sign In as Caretaker')
                     )}
                   </button>
-
-                  {/* DEMO AUTO-FILL CREDENTIALS LINK */}
-                  <div className="text-center">
-                    <span style={{ color: isDark ? '#CBD5E1' : '#6E7575', fontSize: '0.8rem' }}>
-                      {t('login.testingSystem', 'Testing system functions?')}
-                    </span>{' '}
-                    <button
-                      type="button"
-                      onClick={() => handleTabChange(activeTab)}
-                      className="btn btn-link p-0 fw-semibold text-decoration-none ms-1"
-                      style={{ color: '#FC563C', fontSize: '0.8rem' }}
-                    >
-                      {t('login.autoFillDemo', 'Auto-fill demo credentials')}
-                    </button>
-                  </div>
                 </form>
               </div>
             </motion.div>

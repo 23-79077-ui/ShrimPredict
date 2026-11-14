@@ -100,11 +100,48 @@ function ensureHarvestTables(PDO $conn): void {
     ");
 }
 
-function readinessStatus(float $progress): string {
-    if ($progress >= 100) return 'Ready to Harvest';
-    if ($progress >= 85) return 'Nearly Ready';
-    if ($progress >= 60) return 'Developing';
+function readinessStatus(float $progress, float $weight = 0.0): string {
+    // Both 15,000 kg feed consumption (progress >= 100%) AND 23g+ average body weight from sampling are required
+    if ($progress >= 100 && $weight >= 23.0) return 'Ready to Harvest';
+    if ($progress >= 85 && $weight >= 20.0) return 'Nearly Ready';
+    if ($progress >= 60 || $weight >= 15.0) return 'Developing';
     return 'Not Ready';
+}
+
+function ensureAlertsTable(PDO $conn): void {
+    try {
+        $conn->exec("
+            CREATE TABLE IF NOT EXISTS alerts (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                pond_id INT NULL,
+                alert_type VARCHAR(50) DEFAULT 'General',
+                title VARCHAR(150) NOT NULL,
+                message TEXT NOT NULL,
+                severity VARCHAR(20) DEFAULT 'Medium',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                category VARCHAR(50) DEFAULT 'General',
+                affected_pond_name VARCHAR(50) DEFAULT NULL,
+                assigned_caretaker_name VARCHAR(100) DEFAULT NULL,
+                confidence_pct INT DEFAULT 0,
+                recommended_action TEXT DEFAULT NULL,
+                status VARCHAR(30) DEFAULT 'Pending',
+                follow_up_notes TEXT DEFAULT NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+        $cols = $conn->query('SHOW COLUMNS FROM alerts')->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('pond_id', $cols, true)) {
+            try { $conn->exec('ALTER TABLE alerts ADD COLUMN pond_id INT NULL AFTER id'); } catch (Throwable $ignored) {}
+        }
+        if (!in_array('alert_type', $cols, true)) {
+            try { $conn->exec("ALTER TABLE alerts ADD COLUMN alert_type VARCHAR(50) NULL DEFAULT 'General' AFTER pond_id"); } catch (Throwable $ignored) {}
+        }
+        $idCol = $conn->query("SHOW COLUMNS FROM alerts WHERE Field = 'id'")->fetch(PDO::FETCH_ASSOC);
+        if ($idCol && strpos(strtolower($idCol['Extra'] ?? ''), 'auto_increment') === false) {
+            $maxId = (int)$conn->query("SELECT MAX(id) FROM alerts WHERE id > 0")->fetchColumn();
+            $conn->exec("UPDATE alerts SET id = " . ($maxId + 1) . " WHERE id = 0");
+            $conn->exec("ALTER TABLE alerts MODIFY id INT(11) NOT NULL AUTO_INCREMENT");
+        }
+    } catch (Throwable $e) {}
 }
 
 function ensureNotificationsTable(PDO $conn): void {
@@ -250,6 +287,12 @@ function savePrediction(PDO $conn, array $item): void {
 
 ensureHarvestTables($conn);
 ensureNotificationsTable($conn);
+// Auto-ensure operational_status column has sufficient width
+try {
+    $conn->exec("ALTER TABLE ponds MODIFY COLUMN operational_status VARCHAR(50) NOT NULL DEFAULT 'Active'");
+} catch (Throwable $e) {}
+
+ensureAlertsTable($conn);
 
 if ($requestMethod === 'POST') {
     $payload = json_decode(file_get_contents('php://input'), true);
@@ -258,6 +301,107 @@ if ($requestMethod === 'POST') {
     }
 
     $action = isset($payload['action']) ? trim((string)$payload['action']) : '';
+
+    if ($action === 'acknowledge_harvest_prep') {
+        $pondId = isset($payload['pond_id']) ? (int)$payload['pond_id'] : 0;
+        $pondNameParam = isset($payload['pond_name']) ? trim((string)$payload['pond_name']) : '';
+        $userId = isset($payload['user_id']) ? (int)$payload['user_id'] : 0;
+        $caretakerName = isset($payload['caretaker_name']) && trim((string)$payload['caretaker_name']) !== ''
+            ? trim((string)$payload['caretaker_name'])
+            : 'Caretaker';
+
+        // Robust pond resolution: by ID, by pond_name, or by caretaker assignment
+        $pondRow = null;
+        if ($pondId > 0) {
+            $pondStmt = $conn->prepare('SELECT id, pond_name FROM ponds WHERE id = :id LIMIT 1');
+            $pondStmt->execute([':id' => $pondId]);
+            $pondRow = $pondStmt->fetch(PDO::FETCH_ASSOC);
+        }
+        if (!$pondRow && $pondNameParam !== '') {
+            $pondStmt = $conn->prepare('SELECT id, pond_name FROM ponds WHERE pond_name = :pname LIMIT 1');
+            $pondStmt->execute([':pname' => $pondNameParam]);
+            $pondRow = $pondStmt->fetch(PDO::FETCH_ASSOC);
+        }
+        if (!$pondRow && $userId > 0) {
+            $pondStmt = $conn->prepare('
+                SELECT p.id, p.pond_name
+                FROM caretaker_ponds cp
+                JOIN ponds p ON cp.pond_id = p.id
+                WHERE cp.user_id = :uid
+                ORDER BY p.id ASC LIMIT 1
+            ');
+            $pondStmt->execute([':uid' => $userId]);
+            $pondRow = $pondStmt->fetch(PDO::FETCH_ASSOC);
+        }
+
+        if (!$pondRow) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'message' => 'Pond not found.']);
+            exit;
+        }
+
+        $resolvedPondId = (int)$pondRow['id'];
+        $pondName = (string)$pondRow['pond_name'];
+
+        try {
+            $conn->beginTransaction();
+
+            $updatePond = $conn->prepare("UPDATE ponds SET operational_status = 'Harvesting in Progress' WHERE id = :id");
+            $updatePond->execute([':id' => $resolvedPondId]);
+
+            // Mark caretaker's harvest notification as read
+            if ($userId > 0) {
+                $markRead = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = :uid AND action_type = 'harvest_ready' AND pond_name = :pname");
+                $markRead->execute([':uid' => $userId, ':pname' => $pondName]);
+            }
+
+            // Create real-time notification for Admin (user_id = null)
+            $notifTitle = "Harvest Prep Started : {$pondName}";
+            $notifMsg = "✓ Caretaker {$caretakerName} has acknowledged {$pondName} Harvest Alert and started site preparations.";
+            $adminNotif = $conn->prepare("
+                INSERT INTO notifications (
+                    user_id, title, message, caretaker_name, action_type,
+                    pond_name, target_id, is_read, status, created_at
+                ) VALUES (
+                    NULL, :title, :message, :caretaker_name, 'harvest_prep',
+                    :pond_name, :target_id, 0, 'active', NOW()
+                )
+            ");
+            $adminNotif->execute([
+                ':title' => $notifTitle,
+                ':message' => $notifMsg,
+                ':caretaker_name' => $caretakerName,
+                ':pond_name' => $pondName,
+                ':target_id' => $resolvedPondId,
+            ]);
+            $adminNotifId = (int)$conn->lastInsertId();
+
+            if ($conn->inTransaction()) {
+                $conn->commit();
+            }
+
+            echo json_encode([
+                'success' => true,
+                'message' => "Harvest preparation acknowledged for {$pondName}.",
+                'pond_id' => $resolvedPondId,
+                'pond_name' => $pondName,
+                'operational_status' => 'Harvesting in Progress',
+                'admin_notification_id' => $adminNotifId,
+            ]);
+            exit;
+        } catch (Throwable $e) {
+            if ($conn->inTransaction()) {
+                $conn->rollBack();
+            }
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Failed to acknowledge harvest preparation: ' . $e->getMessage(),
+            ]);
+            exit;
+        }
+    }
+
     if ($action !== 'notify_harvest_ready') {
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'Unsupported action for harvest_predictions.php.']);
@@ -327,25 +471,37 @@ if ($requestMethod === 'POST') {
     try {
         $conn->beginTransaction();
 
-        $alertInsert = $conn->prepare("
-            INSERT INTO alerts (
-                pond_id, alert_type, title, message, severity, category,
-                affected_pond_name, assigned_caretaker_name, confidence_pct,
-                recommended_action, status, created_at
-            ) VALUES (
-                :pond_id, 'harvest_ready', :title, :message, 'High', 'Harvest',
-                :pond_name, :caretaker_name, 100,
-                :recommended_action, 'Pending', NOW()
-            )
-        ");
-        $alertInsert->execute([
-            ':pond_id' => $pondId,
+        ensureAlertsTable($conn);
+        $alertCols = $conn->query('SHOW COLUMNS FROM alerts')->fetchAll(PDO::FETCH_COLUMN);
+        $hasPondId = in_array('pond_id', $alertCols, true);
+        $hasAlertType = in_array('alert_type', $alertCols, true);
+
+        $colsList = ['title', 'message', 'severity', 'category', 'affected_pond_name', 'assigned_caretaker_name', 'confidence_pct', 'recommended_action', 'status', 'created_at'];
+        $valList = [':title', ':message', "'High'", "'Harvest'", ':pond_name', ':caretaker_name', '100', ':recommended_action', "'Pending'", 'NOW()'];
+        $alertParams = [
             ':title' => $alertTitle,
             ':message' => $alertMsg,
             ':pond_name' => $pondName,
             ':caretaker_name' => $caretakerSummary,
             ':recommended_action' => $recommendedAction,
-        ]);
+        ];
+
+        if ($hasPondId) {
+            array_unshift($colsList, 'pond_id');
+            array_unshift($valList, ':pond_id');
+            $alertParams[':pond_id'] = $pondId;
+        }
+        if ($hasAlertType) {
+            $insertIdx = $hasPondId ? 1 : 0;
+            array_splice($colsList, $insertIdx, 0, 'alert_type');
+            array_splice($valList, $insertIdx, 0, "'harvest_ready'");
+        }
+
+        $alertInsert = $conn->prepare("
+            INSERT INTO alerts (" . implode(', ', $colsList) . ")
+            VALUES (" . implode(', ', $valList) . ")
+        ");
+        $alertInsert->execute($alertParams);
         $alertId = (int)$conn->lastInsertId();
 
         $notificationIds = [];
@@ -370,7 +526,12 @@ if ($requestMethod === 'POST') {
             $notificationIds[] = (int)$conn->lastInsertId();
         }
 
-        $conn->commit();
+        $updatePondStmt = $conn->prepare("UPDATE ponds SET operational_status = 'Ready for Harvest' WHERE id = :pond_id");
+        $updatePondStmt->execute([':pond_id' => $pondId]);
+
+        if ($conn->inTransaction()) {
+            $conn->commit();
+        }
 
         echo json_encode([
             'success' => true,
@@ -550,8 +711,8 @@ foreach ($feedStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
         'remaining_feed_kg' => round($remainingFeed, 2),
         'estimated_days_to_harvest' => $estimatedDaysRemaining,
         'predicted_harvest_date' => $predictedHarvestDate,
-        'readiness_status' => readinessStatus($progress),
-        'is_ready_to_harvest' => ($progress >= 100.0),
+        'readiness_status' => readinessStatus($progress, (float)($row['average_weight'] ?? 0)),
+        'is_ready_to_harvest' => ($progress >= 100.0 && (float)($row['average_weight'] ?? 0) >= 23.0),
         'harvest_alert_sent' => ($alertHist !== null && $alertHist['alert_count'] > 0),
         'last_harvest_alert_at' => $alertHist ? $alertHist['last_alerted_at'] : null,
         'prediction_method' => PREDICTION_METHOD,

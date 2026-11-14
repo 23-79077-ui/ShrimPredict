@@ -245,33 +245,83 @@ export default function CaretakerDashboard() {
     return Array.from(dateMap.values()).sort((a, b) => b.date.localeCompare(a.date));
   }, [records, assignedPonds]);
 
+  const isPondHarvesting = useCallback((pond) => {
+    if (!pond) return false;
+    const op = String(pond.operational_status || '').toLowerCase();
+    const hr = String(pond.harvest_readiness || '').toLowerCase();
+    return op.includes('harvest') || hr.includes('harvest');
+  }, []);
+
+  const runningPonds = useMemo(() => assignedPonds.filter((p) => !isPondHarvesting(p)), [assignedPonds, isPondHarvesting]);
+  const harvestingPonds = useMemo(() => assignedPonds.filter((p) => isPondHarvesting(p)), [assignedPonds, isPondHarvesting]);
+  const allPondsHarvesting = assignedPonds.length > 0 && runningPonds.length === 0;
+
   const selectedDateRecords = records.filter((r) => (r.record_date || r.created_at || '').slice(0, 10) === selectedDate);
   const todayRecords = selectedDateRecords;
-  const filteredTodayRecords = selectedDateRecords.filter((r) => {
-    if (selectedPondFilter === 'all') return true;
-    return String(r.pond_id) === String(selectedPondFilter);
-  });
 
+  const filteredTodayRecords = useMemo(() => {
+    return selectedDateRecords.filter((r) => {
+      if (selectedPondFilter !== 'all') {
+        return String(r.pond_id) === String(selectedPondFilter);
+      }
+      if (allPondsHarvesting) return false;
+      if (runningPonds.length > 0) {
+        return runningPonds.some((p) => String(p.id) === String(r.pond_id));
+      }
+      return true;
+    });
+  }, [selectedDateRecords, selectedPondFilter, allPondsHarvesting, runningPonds]);
 
   const totalAmountToday = filteredTodayRecords.reduce((sum, r) => sum + (parseFloat(r.amount_kg) || 0), 0);
   const totalGramsToday = filteredTodayRecords.reduce((sum, r) => sum + (parseFloat(r.amount_grams) || ((parseFloat(r.amount_kg) || 0) * 1000) || 0), 0);
   const selectedPondObj = assignedPonds.find((p) => String(p.id) === String(selectedPondFilter));
   const loggedFeedingSlots = new Set(filteredTodayRecords.map((r) => normalizeFeedingTime(r.feeding_time)).filter(Boolean));
-  const completedFeedingSlots = feedingTimes.filter((time) => loggedFeedingSlots.has(normalizeFeedingTime(time))).length;
-  const feedingCompletion = Math.round((completedFeedingSlots / feedingTimes.length) * 100);
-  const currentScope = selectedPondFilter === 'all' ? 'All assigned ponds' : selectedPondObj?.pond_name || 'Selected pond';
+  const completedFeedingSlots = allPondsHarvesting ? 0 : feedingTimes.filter((time) => loggedFeedingSlots.has(normalizeFeedingTime(time))).length;
+  const feedingCompletion = allPondsHarvesting ? 0 : Math.round((completedFeedingSlots / feedingTimes.length) * 100);
+  const currentScope = selectedPondFilter === 'all'
+    ? (allPondsHarvesting ? 'Harvesting in Progress' : (harvestingPonds.length > 0 ? `${runningPonds.length} Running Pond${runningPonds.length > 1 ? 's' : ''}` : 'All assigned ponds'))
+    : selectedPondObj?.pond_name || 'Selected pond';
+
+  // Total Cumulative Feed of the currently filtered pond (or running ponds for this caretaker)
+  const totalFeedKg = useMemo(() => {
+    if (selectedPondFilter !== 'all') {
+      const pond = assignedPonds.find((p) => String(p.id) === String(selectedPondFilter));
+      const fromRecords = records
+        .filter((r) => String(r.pond_id) === String(selectedPondFilter))
+        .reduce((sum, r) => sum + (parseFloat(r.amount_kg) || ((parseFloat(r.amount_grams) || 0) / 1000)), 0);
+      const fromPond = pond && !isNaN(parseFloat(pond.total_feed_kg)) ? parseFloat(pond.total_feed_kg) : 0;
+      return Math.max(fromPond, fromRecords);
+    }
+
+    if (allPondsHarvesting) {
+      return 0;
+    }
+
+    if (runningPonds.length > 0) {
+      return runningPonds.reduce((acc, p) => {
+        const fromRecords = records
+          .filter((r) => String(r.pond_id) === String(p.id))
+          .reduce((sum, r) => sum + (parseFloat(r.amount_kg) || ((parseFloat(r.amount_grams) || 0) / 1000)), 0);
+        const fromPond = !isNaN(parseFloat(p.total_feed_kg)) ? parseFloat(p.total_feed_kg) : 0;
+        return acc + Math.max(fromPond, fromRecords);
+      }, 0);
+    }
+
+    return 0;
+  }, [selectedPondFilter, assignedPonds, allPondsHarvesting, runningPonds, records]);
+
   const filteredDiseaseScans = diseaseScans.filter((scan) => {
     if (selectedDiseasePondFilter === 'all') return true;
     return String(scan.pond_name || '').trim().toLowerCase() === String(selectedDiseasePondFilter).trim().toLowerCase();
   });
   const latestDisease = filteredDiseaseScans[0];
 
-  // My Tasks Checklist computation derived from assigned ponds, today's logs, and admin actions
+  // My Tasks Checklist computation derived from running ponds, today's logs, and admin actions
   const tasks = useMemo(() => {
-    const pondIds = new Set(assignedPonds.map((pond) => String(pond.id)));
+    const runningPondIds = new Set(runningPonds.map((pond) => String(pond.id)));
     const todaysFeeds = records.filter((record) => {
       const recordDate = String(record.record_date || record.created_at || '').slice(0, 10);
-      return recordDate === todayStr && pondIds.has(String(record.pond_id));
+      return recordDate === todayStr && runningPondIds.has(String(record.pond_id));
     });
     const checklistItems = waterQualityChecklist.checklist || [];
     const waterByPond = new Map(checklistItems.map((item) => [String(item.pond_id), item]));
@@ -286,7 +336,7 @@ export default function CaretakerDashboard() {
       detail: action.decision,
     }));
 
-    const waterTasks = assignedPonds.map((pond) => {
+    const waterTasks = runningPonds.map((pond) => {
       const checklistItem = waterByPond.get(String(pond.id));
       const isComplete = Boolean(checklistItem?.is_verified || checklistItem?.is_verified_today || checklistItem?.record);
       return {
@@ -295,12 +345,12 @@ export default function CaretakerDashboard() {
         pond,
         isComplete,
         route: '/caretaker/dashboard',
-        title: t('myTasks.waterTitle', 'Complete the initial water-quality check'),
-        detail: t('myTasks.waterDetail', 'Verify dissolved oxygen, temperature, pH, and salinity before stocking shrimp.'),
+        title: t('myTasks.waterTitle', 'Complete the water-quality check'),
+        detail: t('myTasks.waterDetail', 'Verify dissolved oxygen, temperature, pH, and salinity.'),
       };
     });
 
-    const feedTasks = assignedPonds.flatMap((pond) => {
+    const feedTasks = runningPonds.flatMap((pond) => {
       const pondFeeds = todaysFeeds.filter((record) => String(record.pond_id) === String(pond.id));
       const loggedSlots = new Set(pondFeeds.map((record) => normalizeFeedingTime(record.feeding_time)));
       const stockingDate = pond.stocking_date || '2000-01-01';
@@ -328,13 +378,13 @@ export default function CaretakerDashboard() {
         route: '/caretaker/my-pond',
         title: t('myTasks.feedTitle', 'Log the scheduled feeding'),
         detail: isYesterdayMissed && !loggedSlots.has(slot)
-          ? `⚠️ Locked: Missed feeding logs on ${yesterdayStr}. Catch up past day first.`
+          ? `Locked: Missed feeding logs on ${yesterdayStr}. Catch up past day first.`
           : t('myTasks.feedDesc', 'Verify ration and record feed tray consumption.'),
       }));
     });
 
     return [...adminActionTasks, ...waterTasks, ...feedTasks];
-  }, [assignedPonds, records, scanActions, t, todayStr, waterQualityChecklist]);
+  }, [runningPonds, records, scanActions, t, todayStr, waterQualityChecklist]);
 
   const completedTasksCount = tasks.filter((task) => task.isComplete).length;
   const allTasksComplete = tasks.length > 0 && completedTasksCount === tasks.length;
@@ -433,10 +483,13 @@ export default function CaretakerDashboard() {
             value={selectedPondFilter}
             onChange={(e) => setSelectedPondFilter(e.target.value)}
           >
-            <option value="all">{t('All Assigned Ponds')} ({assignedPonds.length})</option>
+            <option value="all">
+              {t('All Assigned Ponds')} ({assignedPonds.length})
+              {harvestingPonds.length > 0 ? ` • ${harvestingPonds.length} in Harvest` : ''}
+            </option>
             {assignedPonds.map((pond) => (
               <option key={pond.id} value={String(pond.id)}>
-                {pond.pond_name}
+                {pond.pond_name} {isPondHarvesting(pond) ? `(Harvesting in Progress)` : ''}
               </option>
             ))}
           </select>
@@ -523,21 +576,42 @@ export default function CaretakerDashboard() {
                 <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">
                   {t('ASSIGNED PONDS')}
                 </span>
-                <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: 34, height: 34, backgroundColor: '#F1F5F9', color: '#172A39' }}>
+                <div
+                  className="rounded-circle d-flex align-items-center justify-content-center"
+                  style={{
+                    width: 34,
+                    height: 34,
+                    backgroundColor: allPondsHarvesting ? '#FEF3C7' : '#F1F5F9',
+                    color: allPondsHarvesting ? '#D97706' : '#172A39',
+                  }}
+                >
                   <FaWater size={15} />
                 </div>
               </div>
               <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.2rem', letterSpacing: '-0.03em' }}>
-                {assignedPonds.length}
+                {allPondsHarvesting ? 0 : runningPonds.length}
               </h2>
             </div>
             <div className="pt-2">
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
                 <span className="text-secondary small fw-medium">
-                  {selectedPondFilter === 'all' ? t('All ponds active') : (selectedPondObj?.pond_name || t('Active'))}
+                  {allPondsHarvesting
+                    ? `${assignedPonds[0]?.pond_name || 'Assigned Pond'} in Harvest`
+                    : selectedPondFilter === 'all'
+                    ? (harvestingPonds.length > 0
+                        ? `${runningPonds.length} Active • ${harvestingPonds.length} Harvest`
+                        : t('All ponds active'))
+                    : (selectedPondObj?.pond_name || t('Active'))}
                 </span>
-                <span className="badge rounded-pill px-2.5 py-1 extra-small" style={{ backgroundColor: '#F1F5F9', color: '#475569', fontWeight: 600 }}>
-                  {t('Active Fleet')}
+                <span
+                  className="badge rounded-pill px-2.5 py-1 extra-small"
+                  style={{
+                    backgroundColor: allPondsHarvesting ? '#FEF3C7' : '#F1F5F9',
+                    color: allPondsHarvesting ? '#92400E' : '#475569',
+                    fontWeight: 600,
+                  }}
+                >
+                  {allPondsHarvesting ? '🌾 Harvest Underway' : t('Active Fleet')}
                 </span>
               </div>
             </div>
@@ -552,50 +626,83 @@ export default function CaretakerDashboard() {
                 <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">
                   {t("TODAY'S LOGS")}
                 </span>
-                <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: 34, height: 34, backgroundColor: '#F1F5F9', color: '#172A39' }}>
+                <div
+                  className="rounded-circle d-flex align-items-center justify-content-center"
+                  style={{
+                    width: 34,
+                    height: 34,
+                    backgroundColor: allPondsHarvesting ? '#FEF3C7' : '#F1F5F9',
+                    color: allPondsHarvesting ? '#D97706' : '#172A39',
+                  }}
+                >
                   <FaUtensils size={15} />
                 </div>
               </div>
               <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.2rem', letterSpacing: '-0.03em' }}>
-                {filteredTodayRecords.length}
+                {allPondsHarvesting ? 0 : filteredTodayRecords.length}
               </h2>
             </div>
             <div className="pt-2">
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
                 <span className="text-secondary small fw-medium text-truncate" style={{ maxWidth: 140 }}>
-                  {currentScope}
+                  {allPondsHarvesting ? t('Feeding Paused') : currentScope}
                 </span>
-                <span className="badge rounded-pill px-2.5 py-1 extra-small" style={{ backgroundColor: '#F1F5F9', color: '#475569', fontWeight: 600 }}>
-                  {t('Logged')}
+                <span
+                  className="badge rounded-pill px-2.5 py-1 extra-small"
+                  style={{
+                    backgroundColor: allPondsHarvesting ? '#FEF3C7' : '#F1F5F9',
+                    color: allPondsHarvesting ? '#92400E' : '#475569',
+                    fontWeight: 600,
+                  }}
+                >
+                  {allPondsHarvesting ? t('Fasting Protocol') : t('Logged')}
                 </span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Card 3: TOTAL FEED TODAY */}
+        {/* Card 3: TOTAL FEED */}
         <div className="col-12 col-sm-6 col-xl-3">
           <div className="shrimp-kpi-card">
             <div>
               <div className="d-flex align-items-center justify-content-between mb-3">
                 <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">
-                  {t('TOTAL FEED TODAY')}
+                  {t('TOTAL FEED')}
                 </span>
-                <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: 34, height: 34, backgroundColor: '#FFF5F3', color: '#FC563C' }}>
+                <div
+                  className="rounded-circle d-flex align-items-center justify-content-center"
+                  style={{
+                    width: 34,
+                    height: 34,
+                    backgroundColor: allPondsHarvesting ? '#FEF3C7' : '#FFF5F3',
+                    color: allPondsHarvesting ? '#D97706' : '#FC563C',
+                  }}
+                >
                   <FaCheckCircle size={15} />
                 </div>
               </div>
               <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.2rem', letterSpacing: '-0.03em' }}>
-                {totalAmountToday.toFixed(2)} <small className="fs-6 text-muted fw-normal">kg</small>
+                {allPondsHarvesting
+                  ? '0.00'
+                  : totalFeedKg.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
+                <small className="fs-6 text-muted fw-normal">kg</small>
               </h2>
             </div>
             <div className="pt-2">
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-secondary small fw-medium">
-                  {Math.round(totalGramsToday).toLocaleString()} g • 5 Slots
+                <span className="text-secondary small fw-medium text-truncate" style={{ maxWidth: 140 }} title={currentScope}>
+                  {allPondsHarvesting ? t('Target Met • Fasting') : currentScope}
                 </span>
-                <span className="badge rounded-pill px-2.5 py-1 extra-small" style={{ backgroundColor: '#FFF5F3', color: '#FC563C', fontWeight: 600 }}>
-                  {t('Verified')}
+                <span
+                  className="badge rounded-pill px-2.5 py-1 extra-small"
+                  style={{
+                    backgroundColor: allPondsHarvesting ? '#FEF9C3' : '#FFF5F3',
+                    color: allPondsHarvesting ? '#854D0E' : '#FC563C',
+                    fontWeight: 600,
+                  }}
+                >
+                  {allPondsHarvesting ? t('Pre-Harvest Target') : t('Verified')}
                 </span>
               </div>
             </div>
@@ -610,28 +717,51 @@ export default function CaretakerDashboard() {
                 <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">
                   {t('SCHEDULE PROGRESS')}
                 </span>
-                <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: 34, height: 34, backgroundColor: '#F1F5F9', color: '#172A39' }}>
+                <div
+                  className="rounded-circle d-flex align-items-center justify-content-center"
+                  style={{
+                    width: 34,
+                    height: 34,
+                    backgroundColor: allPondsHarvesting ? '#FEF3C7' : '#F1F5F9',
+                    color: allPondsHarvesting ? '#D97706' : '#172A39',
+                  }}
+                >
                   <FaClock size={15} />
                 </div>
               </div>
-              <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.2rem', letterSpacing: '-0.03em' }}>
-                {feedingCompletion}%
+              <h2
+                className="fw-extrabold mb-1 text-dark"
+                style={{ fontSize: allPondsHarvesting ? '1.8rem' : '2.2rem', letterSpacing: '-0.03em' }}
+              >
+                {allPondsHarvesting ? 'Paused' : `${feedingCompletion}%`}
               </h2>
             </div>
             <div className="pt-2">
               <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
                 <span className="text-secondary small fw-medium font-mono">
-                  {completedFeedingSlots}/5 Slots Logged
+                  {allPondsHarvesting ? 'Feeding Suspended' : `${completedFeedingSlots}/5 Slots Logged`}
                 </span>
                 <span
                   className="badge rounded-pill px-2.5 py-1 extra-small"
                   style={{
-                    backgroundColor: feedingCompletion === 100 ? '#ECFDF5' : '#FFFBEB',
-                    color: feedingCompletion === 100 ? '#059669' : '#D97706',
-                    fontWeight: 600
+                    backgroundColor: allPondsHarvesting
+                      ? '#FEF3C7'
+                      : feedingCompletion === 100
+                      ? '#ECFDF5'
+                      : '#FFFBEB',
+                    color: allPondsHarvesting
+                      ? '#92400E'
+                      : feedingCompletion === 100
+                      ? '#059669'
+                      : '#D97706',
+                    fontWeight: 600,
                   }}
                 >
-                  {feedingCompletion === 100 ? t('Complete') : t('In Progress')}
+                  {allPondsHarvesting
+                    ? t('Awaiting Restock')
+                    : feedingCompletion === 100
+                    ? t('Complete')
+                    : t('In Progress')}
                 </span>
               </div>
             </div>
@@ -785,7 +915,7 @@ export default function CaretakerDashboard() {
                 <div className="min-w-0 flex-grow-1">
                   <div className="d-flex align-items-center gap-2 flex-wrap mb-1">
                     <h6 className="fw-bold mb-0" style={{ color: isDark ? '#FFFFFF' : '#0B2C5F', fontSize: '0.98rem' }}>
-                      Water Quality Check (Before Adding Shrimp)
+                      Water Quality Check
                     </h6>
                     <span
                       className="d-inline-flex align-items-center gap-1.5 px-2.5 py-0.5 rounded-pill text-nowrap"
@@ -812,13 +942,13 @@ export default function CaretakerDashboard() {
                           backgroundColor: waterQualityChecklist.is_all_completed ? (isDark ? '#34D399' : '#16A34A') : (isDark ? '#FB7185' : '#FC563C'),
                         }}
                       />
-                      {waterQualityChecklist.verified_count} / {assignedPonds.length} Ponds Checked (Initial)
+                      {waterQualityChecklist.verified_count} / {assignedPonds.length} Ponds Checked
                     </span>
                   </div>
                   <p className="extra-small mb-0 mt-1" style={{ color: isDark ? '#CBD5E1' : '#64748B', maxWidth: 640, fontSize: '0.76rem' }}>
                     {waterQualityChecklist.is_all_completed
                       ? 'All assigned ponds have verified water readings on record. Daily monitoring and feeding logs are active.'
-                      : 'O&B Aqua Farm Guide: Check DO, Temp, pH, and Salinity once with your meter or paper test before stocking shrimp.'}
+                      : 'O&B Aqua Farm Guide: Check DO, Temp, pH, and Salinity once with your meter or paper test.'}
                   </p>
                 </div>
               </div>
@@ -921,7 +1051,11 @@ export default function CaretakerDashboard() {
 
                           {/* Tier 2: Culture Stage / DOC Pill */}
                           {pond.stocking_date && (() => {
-                            const doc = computeDoc(pond.stocking_date, selectedDate);
+                            const isHarvestReady = pond.harvest_readiness_status === 'Ready to Harvest' ||
+                              Number(pond.harvest_readiness) >= 100 ||
+                              (Number(pond.total_feed_kg) >= 15000 && Number(pond.shrimp_weight_g) >= 23.0);
+                            const targetDate = isHarvestReady && pond.expected_harvest_date ? pond.expected_harvest_date : selectedDate;
+                            const doc = computeDoc(pond.stocking_date, targetDate);
                             if (!doc) return null;
                             const isNursery = doc >= 1 && doc <= 19;
                             return (
@@ -929,13 +1063,13 @@ export default function CaretakerDashboard() {
                                 <span
                                   className="badge rounded-pill px-2.5 py-1 extra-small fw-bold"
                                   style={{
-                                    backgroundColor: isNursery ? '#ECFDF5' : '#EFF6FF',
-                                    color: isNursery ? '#047857' : '#1D4ED8',
-                                    border: isNursery ? '1px solid #A7F3D0' : '1px solid #BFDBFE',
+                                    backgroundColor: isHarvestReady ? '#FEF3C7' : (isNursery ? '#ECFDF5' : '#EFF6FF'),
+                                    color: isHarvestReady ? '#D97706' : (isNursery ? '#047857' : '#1D4ED8'),
+                                    border: isHarvestReady ? '1px solid #FCD34D' : (isNursery ? '1px solid #A7F3D0' : '1px solid #BFDBFE'),
                                     fontSize: '0.72rem',
                                   }}
                                 >
-                                  {isNursery ? `DOC #${doc} Nursery` : `DOC #${doc} Grow-out`}
+                                  {isHarvestReady ? `DOC #${doc} Ready to Harvest` : (isNursery ? `DOC #${doc} Nursery` : `DOC #${doc} Grow-out`)}
                                 </span>
                               </div>
                             );
@@ -978,7 +1112,7 @@ export default function CaretakerDashboard() {
                               <div className="d-flex align-items-center gap-2 extra-small py-0.5 px-1">
                                 <FaLock size={11} className="text-danger flex-shrink-0" />
                                 <span className="text-danger fw-bold" style={{ fontSize: '0.76rem' }}>
-                                  {t('Initial water test required before adding shrimp')}
+                                  {t('Water quality check required')}
                                 </span>
                               </div>
                             )}
@@ -1079,110 +1213,163 @@ export default function CaretakerDashboard() {
                               <div className="d-flex align-items-center gap-1.5 flex-wrap extra-small text-muted">
                                 <span>Pond</span>
                                 {pond.stocking_date && (() => {
-                                  const doc = computeDoc(pond.stocking_date, selectedDate);
-                                  return doc ? <span>• <strong className="text-dark">DOC #{doc}</strong></span> : null;
+                                  const isHarvestReady = pond.harvest_readiness_status === 'Ready to Harvest' ||
+                                    Number(pond.harvest_readiness) >= 100 ||
+                                    (Number(pond.total_feed_kg) >= 15000 && Number(pond.shrimp_weight_g) >= 23.0);
+                                  const targetDate = isHarvestReady && pond.expected_harvest_date ? pond.expected_harvest_date : selectedDate;
+                                  const doc = computeDoc(pond.stocking_date, targetDate);
+                                  return doc ? (
+                                    <span>
+                                      • <strong className="text-dark">DOC #{doc}</strong>
+                                      {isHarvestReady && (
+                                        <span className="ms-1 badge rounded-pill px-1.5 py-0.5 text-warning-emphasis bg-warning-subtle border border-warning-subtle" style={{ fontSize: '0.65rem' }}>
+                                          Ready to Harvest
+                                        </span>
+                                      )}
+                                    </span>
+                                  ) : null;
                                 })()}
                               </div>
                             </div>
                           </div>
-                          <span className="badge rounded-pill px-2.5 py-1 extra-small fw-bold" style={{ backgroundColor: '#ECFDF5', color: '#059669', border: '1px solid #A7F3D0' }}>
-                            ● {t('Healthy')}
-                          </span>
+                          {isPondHarvesting(pond) ? (
+                            <span
+                              className="badge rounded-pill px-2.5 py-1 extra-small fw-bold"
+                              style={{ backgroundColor: '#FEF3C7', color: '#B45309', border: '1px solid #FCD34D' }}
+                            >
+                              🌾 {t('Harvesting in Progress')}
+                            </span>
+                          ) : (
+                            <span
+                              className="badge rounded-pill px-2.5 py-1 extra-small fw-bold"
+                              style={{ backgroundColor: '#ECFDF5', color: '#059669', border: '1px solid #A7F3D0' }}
+                            >
+                              ● {t('Healthy')}
+                            </span>
+                          )}
                         </div>
 
-                        {/* Today's Feeding Progress */}
-                        <div className="my-2 py-1">
-                          <div className="d-flex align-items-center justify-content-between extra-small text-muted mb-1.5">
-                            <span className="fw-semibold">Today's Feeding Progress</span>
-                            <span className="fw-bold font-mono text-dark">{pondCompletedCount}/5 ({pondPct}%)</span>
+                        {/* Today's Feeding Progress or Harvest Protocol State */}
+                        {isPondHarvesting(pond) ? (
+                          <div className="my-2 py-1">
+                            <div className="p-3 rounded-3" style={{ backgroundColor: '#FEF9C3', border: '1px solid #FDE68A' }}>
+                              <div className="extra-small fw-bold text-dark d-flex align-items-center gap-1.5 mb-1">
+                                <span>🌾</span>
+                                <span>Pre-Harvest Protocol Active</span>
+                              </div>
+                              <div className="extra-small text-secondary mb-2" style={{ lineHeight: 1.45 }}>
+                                Daily feeding schedule is suspended for gut evacuation and site netting. Awaiting restocking or new cycle assignment from Admin.
+                              </div>
+                              <div className="badge rounded-pill extra-small px-2 py-0.5 fw-bold" style={{ backgroundColor: '#FDE68A', color: '#78350F' }}>
+                                Feeding: 0 kg (Fasting Phase)
+                              </div>
+                            </div>
                           </div>
-                          <div className="progress rounded-pill mb-3" style={{ height: 6, backgroundColor: isDark ? 'rgba(15, 23, 42, 0.65)' : '#E2E8F0' }}>
-                            <div
-                              className="progress-bar rounded-pill"
-                              role="progressbar"
-                              style={{
-                                width: `${pondPct}%`,
-                                background: 'linear-gradient(90deg, #FC563C 0%, #FF8A75 100%)',
-                                boxShadow: '0 0 8px rgba(252, 86, 60, 0.5)',
-                              }}
-                            />
-                          </div>
-
-                          {/* Embedded Today's Feeding Records */}
-                          <div
-                            className="p-2.5 rounded-3"
-                            style={{
-                              backgroundColor: isDark ? 'rgba(15, 23, 42, 0.55)' : '#FFFFFF',
-                              border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #CBD5E1',
-                            }}
-                          >
-                            <div className="d-flex align-items-center justify-content-between mb-2">
-                              <span className="extra-small fw-bold text-uppercase text-muted" style={{ fontSize: '0.68rem', letterSpacing: '0.03em' }}>
-                                Today's Logged Feeds ({pondLogs.length})
-                              </span>
-                              {pondLogs.length > 0 && (
-                                <span className="extra-small font-mono fw-bold text-dark">
-                                  Total: {(pondLogs.reduce((sum, r) => sum + (parseFloat(r.amount_kg) || 0), 0)).toFixed(2)} kg
-                                </span>
-                              )}
+                        ) : (
+                          <div className="my-2 py-1">
+                            <div className="d-flex align-items-center justify-content-between extra-small text-muted mb-1.5">
+                              <span className="fw-semibold">Today's Feeding Progress</span>
+                              <span className="fw-bold font-mono text-dark">{pondCompletedCount}/5 ({pondPct}%)</span>
+                            </div>
+                            <div className="progress rounded-pill mb-3" style={{ height: 6, backgroundColor: isDark ? 'rgba(15, 23, 42, 0.65)' : '#E2E8F0' }}>
+                              <div
+                                className="progress-bar rounded-pill"
+                                role="progressbar"
+                                style={{
+                                  width: `${pondPct}%`,
+                                  background: 'linear-gradient(90deg, #FC563C 0%, #FF8A75 100%)',
+                                  boxShadow: '0 0 8px rgba(252, 86, 60, 0.5)',
+                                }}
+                              />
                             </div>
 
-                            {pondLogs.length > 0 ? (
-                              <div className="d-flex flex-column gap-1.5" style={{ maxHeight: 155, overflowY: 'auto' }}>
-                                {pondLogs.map((log) => (
-                                  <div
-                                    key={log.id}
-                                    className="d-flex align-items-center justify-content-between p-2 rounded-2"
-                                    style={{
-                                      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#F8FAFC',
-                                      border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
-                                      fontSize: '0.74rem',
-                                    }}
-                                  >
-                                    <div className="d-flex align-items-center gap-1.5 flex-wrap">
-                                      <span
-                                        className="badge rounded-pill px-2 py-0.5 extra-small fw-bold"
-                                        style={{ backgroundColor: isDark ? 'rgba(252, 86, 60, 0.15)' : '#FFF5F3', border: '1px solid rgba(252, 86, 60, 0.25)', color: '#FC563C', fontSize: '0.68rem' }}
-                                      >
-                                        {log.feeding_time || 'Slot'}
-                                      </span>
-                                      <strong style={{ color: isDark ? '#FFFFFF' : '#0F172A' }}>
-                                        {parseFloat(log.amount_kg) > 0 ? `${parseFloat(log.amount_kg).toFixed(2)} kg` : '0 kg'}
-                                      </strong>
-                                      <span className="text-muted extra-small">({log.feed_type || log.product_code || 'Tateh'})</span>
-                                    </div>
-                                    <div className="d-flex align-items-center gap-1.5">
-                                      {log.vitamin_name && log.vitamin_name !== 'None' && (
-                                        <span className="badge rounded-pill px-1.5 py-0.5 extra-small" style={{ backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9', color: isDark ? '#CBD5E1' : '#475569', fontSize: '0.65rem' }}>
-                                          {log.vitamin_name}
+                            {/* Embedded Today's Feeding Records */}
+                            <div
+                              className="p-2.5 rounded-3"
+                              style={{
+                                backgroundColor: isDark ? 'rgba(15, 23, 42, 0.55)' : '#FFFFFF',
+                                border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #CBD5E1',
+                              }}
+                            >
+                              <div className="d-flex align-items-center justify-content-between mb-2">
+                                <span className="extra-small fw-bold text-uppercase text-muted" style={{ fontSize: '0.68rem', letterSpacing: '0.03em' }}>
+                                  Today's Logged Feeds ({pondLogs.length})
+                                </span>
+                                {pondLogs.length > 0 && (
+                                  <span className="extra-small font-mono fw-bold text-dark">
+                                    Total: {(pondLogs.reduce((sum, r) => sum + (parseFloat(r.amount_kg) || 0), 0)).toFixed(2)} kg
+                                  </span>
+                                )}
+                              </div>
+
+                              {pondLogs.length > 0 ? (
+                                <div className="d-flex flex-column gap-1.5" style={{ maxHeight: 155, overflowY: 'auto' }}>
+                                  {pondLogs.map((log) => (
+                                    <div
+                                      key={log.id}
+                                      className="d-flex align-items-center justify-content-between p-2 rounded-2"
+                                      style={{
+                                        backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#F8FAFC',
+                                        border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+                                        fontSize: '0.74rem',
+                                      }}
+                                    >
+                                      <div className="d-flex align-items-center gap-1.5 flex-wrap">
+                                        <span
+                                          className="badge rounded-pill px-2 py-0.5 extra-small fw-bold"
+                                          style={{ backgroundColor: isDark ? 'rgba(252, 86, 60, 0.15)' : '#FFF5F3', border: '1px solid rgba(252, 86, 60, 0.25)', color: '#FC563C', fontSize: '0.68rem' }}
+                                        >
+                                          {log.feeding_time || 'Slot'}
                                         </span>
-                                      )}
-                                      <span className="text-muted extra-small font-mono">
-                                        {log.created_at ? new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                                      </span>
+                                        <strong style={{ color: isDark ? '#FFFFFF' : '#0F172A' }}>
+                                          {parseFloat(log.amount_kg) > 0 ? `${parseFloat(log.amount_kg).toFixed(2)} kg` : '0 kg'}
+                                        </strong>
+                                        <span className="text-muted extra-small">({log.feed_type || log.product_code || 'Tateh'})</span>
+                                      </div>
+                                      <div className="d-flex align-items-center gap-1.5">
+                                        {log.vitamin_name && log.vitamin_name !== 'None' && (
+                                          <span className="badge rounded-pill px-1.5 py-0.5 extra-small" style={{ backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9', color: isDark ? '#CBD5E1' : '#475569', fontSize: '0.65rem' }}>
+                                            {log.vitamin_name}
+                                          </span>
+                                        )}
+                                        <span className="text-muted extra-small font-mono">
+                                          {log.created_at ? new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                                        </span>
+                                      </div>
                                     </div>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="text-center py-2 text-muted extra-small">
-                                No feeds logged for this pond today.
-                              </div>
-                            )}
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="text-center py-2 text-muted extra-small">
+                                  No feeds logged for this pond today.
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
+                        )}
                       </div>
 
                       {/* Guaranteed 3-Column Single-Row Buttons (50% / 25% / 25%) */}
                       <div className="row g-2 mt-3 pt-3 border-top" style={{ borderColor: isDark ? '#334155' : '#E2E8F0' }}>
                         <div className="col-6">
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-understated-feed w-100 py-1.5 extra-small fw-bold d-inline-flex align-items-center justify-content-center gap-1.5"
-                            onClick={() => navigate('/caretaker/my-pond')}
-                          >
-                            <FaPlus size={10} /> {t('Log Feed')}
-                          </button>
+                          {isPondHarvesting(pond) ? (
+                            <button
+                              type="button"
+                              className="btn btn-sm w-100 py-1.5 extra-small fw-bold d-inline-flex align-items-center justify-content-center gap-1.5"
+                              style={{ backgroundColor: '#FEF3C7', color: '#B45309', border: '1px solid #FCD34D' }}
+                              onClick={() => navigate('/caretaker/my-pond')}
+                            >
+                              <span>🌾</span> {t('View Harvest')}
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-understated-feed w-100 py-1.5 extra-small fw-bold d-inline-flex align-items-center justify-content-center gap-1.5"
+                              onClick={() => navigate('/caretaker/my-pond')}
+                            >
+                              <FaPlus size={10} /> {t('Log Feed')}
+                            </button>
+                          )}
                         </div>
                         <div className="col-3">
                           <button
@@ -1421,7 +1608,9 @@ export default function CaretakerDashboard() {
                   {t('myTasks.progress', "Today's Progress")}
                 </span>
                 <span className="text-muted extra-small ms-2" style={{ fontSize: '0.72rem' }}>
-                  {allTasksComplete
+                  {allPondsHarvesting
+                    ? 'Harvesting in Progress (Tasks Suspended)'
+                    : allTasksComplete
                     ? t('myTasks.allComplete', 'All listed tasks are complete. Great work!')
                     : t('myTasks.progressCount', '{done} of {total} tasks complete')
                         .replace('{done}', String(completedTasksCount))
@@ -1431,13 +1620,31 @@ export default function CaretakerDashboard() {
               <span
                 className="badge rounded-pill extra-small px-2 py-0.5 fw-bold"
                 style={{
-                  backgroundColor: allTasksComplete ? '#ECFDF5' : (isDark ? 'rgba(255,255,255,0.08)' : '#F1F5F9'),
-                  color: allTasksComplete ? '#059669' : (isDark ? '#CBD5E1' : '#334155'),
-                  border: allTasksComplete ? '1px solid #A7F3D0' : (isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #E2E8F0'),
+                  backgroundColor: allPondsHarvesting
+                    ? '#FEF3C7'
+                    : allTasksComplete
+                    ? '#ECFDF5'
+                    : isDark
+                    ? 'rgba(255,255,255,0.08)'
+                    : '#F1F5F9',
+                  color: allPondsHarvesting
+                    ? '#92400E'
+                    : allTasksComplete
+                    ? '#059669'
+                    : isDark
+                    ? '#CBD5E1'
+                    : '#334155',
+                  border: allPondsHarvesting
+                    ? '1px solid #FCD34D'
+                    : allTasksComplete
+                    ? '1px solid #A7F3D0'
+                    : isDark
+                    ? '1px solid rgba(255,255,255,0.1)'
+                    : '1px solid #E2E8F0',
                   fontSize: '0.66rem'
                 }}
               >
-                {tasks.length ? `${Math.round((completedTasksCount / tasks.length) * 100)}%` : '0%'}
+                {allPondsHarvesting ? 'Harvest' : tasks.length ? `${Math.round((completedTasksCount / tasks.length) * 100)}%` : '0%'}
               </span>
             </div>
             <div
@@ -1451,8 +1658,8 @@ export default function CaretakerDashboard() {
               <div
                 className="progress-bar rounded-pill transition-all"
                 style={{
-                  width: `${tasks.length ? (completedTasksCount / tasks.length) * 100 : 0}%`,
-                  backgroundColor: allTasksComplete ? '#10B981' : '#FC563C'
+                  width: `${allPondsHarvesting ? 100 : tasks.length ? (completedTasksCount / tasks.length) * 100 : 0}%`,
+                  backgroundColor: allPondsHarvesting ? '#D97706' : allTasksComplete ? '#10B981' : '#FC563C'
                 }}
               />
             </div>
@@ -1473,14 +1680,83 @@ export default function CaretakerDashboard() {
                 <h6 className="fw-bold">{t('myTasks.noPondsTitle', 'No ponds assigned')}</h6>
                 <p className="text-muted extra-small mb-0">{t('myTasks.noPonds', 'Ask your farm administrator to assign a pond to your caretaker account.')}</p>
               </div>
+            ) : allPondsHarvesting && tasks.length === 0 ? (
+              <div
+                className="p-4 text-center rounded-4 border my-2"
+                style={{
+                  backgroundColor: isDark ? 'rgba(254, 243, 199, 0.05)' : '#FFFBEB',
+                  borderColor: isDark ? 'rgba(253, 230, 138, 0.25)' : '#FDE68A',
+                }}
+              >
+                <div
+                  className="rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3 shadow-xs"
+                  style={{ width: 48, height: 48, backgroundColor: '#FEF3C7', color: '#D97706', fontSize: '1.4rem' }}
+                >
+                  🌾
+                </div>
+                <h6 className="fw-extrabold text-dark mb-1">
+                  {harvestingPonds.map((p) => p.pond_name).join(', ')} — Harvest Underway
+                </h6>
+                <span
+                  className="badge rounded-pill fw-bold mb-2.5 px-3 py-1"
+                  style={{ backgroundColor: '#FDE68A', color: '#78350F', fontSize: '0.72rem' }}
+                >
+                  Pre-Harvest Protocol • Routine Tasks Suspended
+                </span>
+                <p className="extra-small text-secondary mb-3" style={{ lineHeight: 1.5, maxWidth: 360, margin: '0 auto' }}>
+                  Routine 5-slot daily feeding tasks for this pond are suspended while pre-harvest gut evacuation and harvest netting are underway. Awaiting pond harvest completion and restocking/assignment from Farm Administration.
+                </p>
+                <div className="d-flex justify-content-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    className="btn btn-sm fw-bold shadow-xs d-inline-flex align-items-center gap-1.5"
+                    style={{ backgroundColor: '#D97706', color: '#FFFFFF', borderRadius: 8, fontSize: '0.78rem' }}
+                    onClick={() => navigate('/caretaker/my-pond')}
+                  >
+                    View Harvest in My Pond →
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary fw-semibold extra-small"
+                    style={{ borderRadius: 8 }}
+                    onClick={() => navigate('/caretaker/reports')}
+                  >
+                    Submit Report
+                  </button>
+                </div>
+              </div>
             ) : (
               <div className="d-flex flex-column caretaker-tasks-list">
+                {harvestingPonds.length > 0 && !allPondsHarvesting && (
+                  <div
+                    className="p-2.5 mb-2.5 rounded-3 border d-flex align-items-center justify-content-between gap-2"
+                    style={{
+                      backgroundColor: isDark ? 'rgba(254, 243, 199, 0.08)' : '#FFFBEB',
+                      borderColor: isDark ? 'rgba(253, 230, 138, 0.25)' : '#FDE68A',
+                    }}
+                  >
+                    <div className="extra-small d-flex align-items-center gap-2" style={{ color: isDark ? '#FDE68A' : '#92400E' }}>
+                      <span>🌾</span>
+                      <span>
+                        <strong>{harvestingPonds.map((p) => p.pond_name).join(', ')}</strong> is in harvest (feeding paused). Active tasks below apply to running ponds.
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-link p-0 extra-small fw-bold text-decoration-none text-nowrap"
+                      style={{ color: '#D97706' }}
+                      onClick={() => navigate('/caretaker/my-pond')}
+                    >
+                      View →
+                    </button>
+                  </div>
+                )}
                 {tasks.map((task, index) => {
                   const isNext = index === firstIncompleteTaskIndex;
                   return (
                     <article
                       key={task.id}
-                      className={`rounded-3 p-2.5 transition-all shadow-xs ${isNext ? 'border-2' : ''}`}
+                      className={`rounded-3 p-3 transition-all shadow-xs ${isNext ? 'border-2' : ''}`}
                       style={{
                         backgroundColor: isDark ? '#253549' : '#FFFFFF',
                         border: isNext
@@ -1489,13 +1765,13 @@ export default function CaretakerDashboard() {
                         boxShadow: isNext ? '0 2px 8px rgba(252, 86, 60, 0.25)' : (isDark ? '0 2px 6px rgba(0, 0, 0, 0.25)' : '0 1px 4px rgba(15, 23, 42, 0.04)')
                       }}
                     >
-                      <div className="d-flex flex-column gap-1.5">
-                        <div className="d-flex align-items-start gap-2.5">
+                      <div className="d-flex flex-column gap-2">
+                        <div className="d-flex align-items-start gap-3">
                           <div
                             className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
                             style={{
-                              width: 30,
-                              height: 30,
+                              width: 32,
+                              height: 32,
                               backgroundColor: task.isComplete
                                 ? (isDark ? 'rgba(34, 197, 94, 0.2)' : '#DCFCE7')
                                 : isNext
@@ -1511,7 +1787,7 @@ export default function CaretakerDashboard() {
                                 : isNext
                                   ? (isDark ? '1px solid rgba(252, 86, 60, 0.35)' : '1px solid #FECDD3')
                                   : (isDark ? '1px solid rgba(255, 255, 255, 0.1)' : 'none'),
-                              fontSize: '0.78rem'
+                              fontSize: '0.82rem'
                             }}
                             aria-label={task.isComplete ? t('myTasks.completed', 'Completed') : t('myTasks.notCompleted', 'Not completed')}
                           >
@@ -1519,8 +1795,8 @@ export default function CaretakerDashboard() {
                           </div>
 
                           <div className="flex-grow-1 min-w-0">
-                            <div className="d-flex align-items-center justify-content-between gap-1.5 mb-0.5">
-                              <h6 className="fw-bold mb-0 text-break" style={{ fontSize: '0.86rem', lineHeight: 1.3, color: isDark ? '#FFFFFF' : '#0F172A' }}>
+                            <div className="d-flex align-items-center justify-content-between gap-2 mb-1">
+                              <h6 className="fw-bold mb-0 text-break" style={{ fontSize: '0.88rem', lineHeight: 1.35, color: isDark ? '#FFFFFF' : '#0F172A' }}>
                                 {task.title}
                               </h6>
                               <div className="d-flex align-items-center gap-1.5 flex-shrink-0">
@@ -1573,23 +1849,23 @@ export default function CaretakerDashboard() {
                               </div>
                             </div>
 
-                            <div className="extra-small fw-semibold mb-0.5" style={{ color: '#FC563C', fontSize: '0.74rem' }}>
+                            <div className="extra-small fw-semibold mb-1" style={{ color: '#FC563C', fontSize: '0.76rem' }}>
                               {task.type === 'admin-action' && `${t('myTasks.adminDecision', 'Admin decision')} · `}
                               {task.pond.pond_name || task.pond.name || `${t('myTasks.pond', 'Pond')} #${task.pond.id}`}
                               {task.slot ? ` · ${task.slot}` : ''}
                             </div>
-                            <p className="extra-small mb-0 text-truncate" style={{ color: isDark ? '#CBD5E1' : '#64748B', fontSize: '0.73rem', lineHeight: 1.3 }}>{task.detail}</p>
+                            <p className="extra-small mb-0" style={{ color: isDark ? '#CBD5E1' : '#64748B', fontSize: '0.75rem', lineHeight: 1.4 }}>{task.detail}</p>
                           </div>
                         </div>
 
                         {/* Dedicated Action Button Row */}
-                        <div className="d-flex justify-content-end align-items-center gap-2 pt-1.5 border-top mt-1" style={{ borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(226, 232, 240, 0.8)' }}>
+                        <div className="d-flex justify-content-end align-items-center gap-2 pt-2 border-top mt-2" style={{ borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9' }}>
                           {task.type === 'admin-action' ? (
                             <div className="d-flex gap-1.5 flex-wrap w-100 justify-content-end">
                               {task.action.status !== 'In Progress' && !task.isComplete && (
                                 <button
                                   type="button"
-                                  className={isNext ? 'btn btn-tri-orange btn-sm extra-small fw-bold px-2.5 py-1' : 'btn btn-outline-primary btn-sm extra-small fw-semibold px-2.5 py-1'}
+                                  className={isNext ? 'btn btn-tri-orange btn-sm extra-small fw-bold px-3 py-1' : 'btn btn-outline-primary btn-sm extra-small fw-semibold px-3 py-1'}
                                   disabled={updatingActionId === task.action.id}
                                   onClick={() => updateAdminAction(task, 'In Progress')}
                                 >
@@ -1600,7 +1876,7 @@ export default function CaretakerDashboard() {
                               {!task.isComplete && (
                                 <button
                                   type="button"
-                                  className="btn btn-success btn-sm extra-small fw-bold px-2.5 py-1"
+                                  className="btn btn-success btn-sm extra-small fw-bold px-3 py-1"
                                   disabled={updatingActionId === task.action.id}
                                   onClick={() => updateAdminAction(task, 'Done')}
                                 >
@@ -1665,17 +1941,17 @@ export default function CaretakerDashboard() {
 
           {/* My Tasks Clean Bottom Status Strip */}
           <div
-            className="px-3.5 py-2 border-top d-flex align-items-center justify-content-between extra-small text-muted mt-auto"
+            className={`px-3.5 py-2.5 border-top d-flex align-items-center ${allTasksComplete ? 'justify-content-between' : 'justify-content-end'} extra-small text-muted mt-auto`}
             style={{
               borderColor: isDark ? '#334155' : '#E2E8F0',
               backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : '#F8FAFC'
             }}
           >
-            <span className="fw-semibold">
-              {allTasksComplete
-                ? t('myTasks.allDoneStatus', '✓ All daily tasks completed')
-                : `${tasks.length - completedTasksCount} ${t('myTasks.pendingCount', 'pending operational tasks')}`}
-            </span>
+            {allTasksComplete && (
+              <span className="fw-semibold">
+                {t('myTasks.allDoneStatus', '✓ All daily tasks completed')}
+              </span>
+            )}
             <span
               className="badge rounded-pill fw-bold extra-small"
               style={{

@@ -276,22 +276,22 @@ export default function PondMonitoringPage() {
         rawOverride === 'Nursery State' ||
         (!isRecentlyHarvested && doc !== null && doc >= 1 && doc <= 19 && consumedKg < 1000);
 
-      const isHarvestReady =
-        rawOverride === 'Ready to Harvest' ||
-        (!isRecentlyHarvested && !isNursery && (
-          harvestReadinessStatus === 'Feed Reference Reached' ||
-          harvestReadinessStatus === 'Nearly Ready' ||
-          (feedProgressPct >= 85 && consumedKg > 0) ||
-          ((p.harvest_readiness || 0) >= 95 && consumedKg > 0)
-        ));
+      // STRICT HARVEST READINESS CRITERIA:
+      // 1. Feeding consumption must reach the target of 15,000 kg (consumedKg >= 15000 or feedProgressPct >= 100)
+      // 2. Average body weight from weekly sampling must reach 23.0 grams up (weightG >= 23.0g)
+      // Regardless of Day of Culture (even if DOC is 90+, 120+, 231, 239 days), a pond CANNOT be Ready to Harvest until both are satisfied!
+      const hasReachedTargetFeed = consumedKg >= 15000 || (targetKg > 0 && consumedKg >= targetKg && consumedKg >= 10000);
+      const hasReachedTargetWeight = weightG >= 23.0;
+      const isHarvestReady = !isRecentlyHarvested && !isNursery && hasReachedTargetFeed && hasReachedTargetWeight;
 
       const isGrowout =
         rawOverride === 'Grow-Out Phase' ||
         rawOverride === 'Grow-out' ||
         (!isRecentlyHarvested && !isNursery && !isHarvestReady && (
-          harvestReadinessStatus === 'Developing' ||
-          (consumedKg > 0 && doc !== null && doc >= 20) ||
-          feedProgressPct >= 20
+          (doc !== null && doc >= 20) ||
+          consumedKg > 0 ||
+          feedProgressPct > 0 ||
+          weightG > 0
         ));
 
       const isInactive =
@@ -345,9 +345,13 @@ export default function PondMonitoringPage() {
         statusBorder = '#CBD5E1';
       }
 
+      const finalDoc = isHarvestReady && (p.expected_harvest_date || p.latest_feed_date)
+        ? computeDoc(p.stocking_date, p.expected_harvest_date || p.latest_feed_date)
+        : (p.doc ?? doc);
+
       return {
         ...p,
-        doc,
+        doc: finalDoc,
         assigned_caretaker_name: assignedCaretaker,
         isRecentlyHarvested,
         isNursery,
@@ -642,6 +646,20 @@ export default function PondMonitoringPage() {
     if (!pondName) {
       Swal.fire({ icon: 'warning', title: t('Pond Name Required'), text: t('Please enter a pond name.') });
       return;
+    }
+
+    if (formOperationalStatus === 'Ready to Harvest') {
+      const currentFed = parseFloat(editingPond?.consumedKg ?? editingPond?.total_feed_kg ?? 0);
+      const currentWeight = parseFloat(formShrimpWeight || editingPond?.weightG || editingPond?.shrimp_weight_g || 0);
+      if (currentFed < 15000 || currentWeight < 23.0) {
+        Swal.fire({
+          icon: 'warning',
+          title: t('Harvest Criteria Not Met'),
+          text: t('Cannot mark pond as Ready to Harvest. The pond must reach at least 15,000 kg feed consumption and 23.0 grams average shrimp weight from sampling.'),
+          confirmButtonColor: '#FC563C',
+        });
+        return;
+      }
     }
 
     setSavingPond(true);

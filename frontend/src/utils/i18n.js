@@ -147,6 +147,7 @@ const phraseMapFil = {
   'Monitored Ponds': 'Binabantayang Palaisdaan',
   'Field Caretakers': 'Mga Tagapag-alaga',
   'Total Feed': 'Kabuuang Pakain',
+  'TOTAL FEED': 'KABUUANG PAKAIN',
   'Biosecurity Health': 'Kalusugan ng Biosecurity',
   'Optimal': 'Maayos',
   'optimal': 'maayos',

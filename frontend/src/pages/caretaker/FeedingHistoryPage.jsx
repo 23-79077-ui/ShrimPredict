@@ -93,6 +93,99 @@ function normalizeSlot(timeStr) {
   return s.replace(/^0(\d:)/, '$1');
 }
 
+function getPriorFeedingSlot(timeStr) {
+  const norm = normalizeSlot(timeStr);
+  if (norm === '6:00 AM') return '6:00 PM (Last Night)';
+  if (norm === '9:00 AM') return '6:00 AM';
+  if (norm === '12:00 PM') return '9:00 AM';
+  if (norm === '3:00 PM') return '12:00 PM';
+  if (norm === '6:00 PM') return '3:00 PM';
+  return 'previous';
+}
+
+function formatFeedingObservation(record) {
+  if (!record) return null;
+  const time = normalizeSlot(record.feeding_time) || record.feeding_time || '';
+  const rawStatus = String(record.tray_monitoring_status || '').trim();
+  const rawNotes = String(record.notes || '').trim();
+  const doc = record.doc ? Number(record.doc) : null;
+  const isNursery = (doc !== null && doc <= 19) || record.tray_count === 0 || /nursery/i.test(rawStatus) || /nursery/i.test(rawNotes);
+
+  // Clean out legacy mathematical formulas and system labels to expose real user remarks
+  const customRemarks = rawNotes
+    .replace(/Scheduled:\s*[\d\.]+\s*kg/gi, '')
+    .replace(/Trays?\s*(\(\d+\))?:\s*[^|]+/gi, '')
+    .replace(/Broadcast:\s*[\d\.]+\s*kg/gi, '')
+    .replace(/Tray check:\s*[^|]+/gi, '')
+    .replace(/Tray monitoring[^\n|]+/gi, '')
+    .replace(/Check tray monitoring[^\n|]+/gi, '')
+    .replace(/\d{1,2}:\d{2}\s*(AM|PM)\s*:\s*\d\/\d\s*Trays?[^\n|]*/gi, '')
+    .replace(/Unang pakain[^\n|]*/gi, '')
+    .replace(/First feeding[^\n|]*/gi, '')
+    .replace(/Nursery stage[^\n|]*/gi, '')
+    .split('|')
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .join(' | ');
+
+  if (isNursery) {
+    return {
+      statusText: `${time}: Nursery Stage (0/0 Trays)`,
+      badgeText: '0/0 Trays',
+      badgeStyle: { backgroundColor: '#E0F2FE', color: '#0369A1', border: '1px solid #BAE6FD' },
+      accentColor: '#0284C7',
+      boxBg: '#F0F9FF',
+      boxBorder: '#BAE6FD',
+      customRemarks,
+    };
+  }
+
+  // Detect tray consumption ratio: 4/4, 3/4, or 2/4
+  let fraction = '4/4';
+  if (/2\/4/i.test(rawStatus) || /2\/4/i.test(rawNotes) || /2\s*trays?/i.test(rawStatus) || /leftover/i.test(rawStatus) || /unconsumed/i.test(rawStatus)) {
+    fraction = '2/4';
+  } else if (/3\/4/i.test(rawStatus) || /3\/4/i.test(rawNotes) || /3\s*trays?/i.test(rawStatus)) {
+    fraction = '3/4';
+  } else if (/4\/4/i.test(rawStatus) || /4\/4/i.test(rawNotes) || /4\s*trays?/i.test(rawStatus) || /consumed/i.test(rawStatus)) {
+    fraction = '4/4';
+  }
+
+  if (fraction === '4/4') {
+    return {
+      statusText: `${time}: 4/4 Trays (+2kg in the next feeding)`,
+      badgeText: '4/4 Trays (+2kg)',
+      badgeStyle: { backgroundColor: '#DCFCE7', color: '#15803D', border: '1px solid #BBF7D0' },
+      accentColor: '#16A34A',
+      boxBg: '#F0FDF4',
+      boxBorder: '#BBF7D0',
+      customRemarks,
+    };
+  }
+
+  if (fraction === '3/4') {
+    return {
+      statusText: `${time}: 3/4 Trays (Maintain in the next feeding)`,
+      badgeText: '3/4 Trays (Maintain)',
+      badgeStyle: { backgroundColor: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE' },
+      accentColor: '#2563EB',
+      boxBg: '#F8FAFC',
+      boxBorder: '#BFDBFE',
+      customRemarks,
+    };
+  }
+
+  // 2/4
+  return {
+    statusText: `${time}: 2/4 Trays (-2kg in the next feeding)`,
+    badgeText: '2/4 Trays (-2kg)',
+    badgeStyle: { backgroundColor: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' },
+    accentColor: '#DC2626',
+    boxBg: '#FFF5F5',
+    boxBorder: '#FECACA',
+    customRemarks,
+  };
+}
+
 export default function FeedingHistoryPage() {
   const { t, isFilipino } = useLanguage();
   const { user } = useAuth();
@@ -645,7 +738,17 @@ export default function FeedingHistoryPage() {
         amount_kg: kg,
         product_code: recordToEdit.product_code || (String(recordToEdit.feed_type).toLowerCase().includes('grower') ? 'Grower' : 'Starter'),
         vitamin_name: recordToEdit.vitamin_name || 'Sanolife PRO-2, Sano Top-S',
-        notes: recordToEdit.notes || '',
+        notes: (recordToEdit.notes || '')
+          .replace(/Scheduled:\s*[\d\.]+\s*kg/gi, '')
+          .replace(/Trays?\s*(\(\d+\))?:\s*[^|]+/gi, '')
+          .replace(/Broadcast:\s*[\d\.]+\s*kg/gi, '')
+          .replace(/Tray check:\s*[^|]+/gi, '')
+          .replace(/Tray monitoring[^\n|]+/gi, '')
+          .replace(/\d+(st|nd|rd|th)\s*feeding session[^\n|]*/gi, '')
+          .split('|')
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .join(' | '),
       });
     } else {
       setEditingModalRecord(null);
@@ -691,6 +794,27 @@ export default function FeedingHistoryPage() {
     const totalTrayFeedKg = totalTrayFeedGrams / 1000;
     const broadcastFeedKg = isNursery ? amt : Math.max(0, parseFloat((amt - totalTrayFeedKg).toFixed(3)));
 
+    const priorSlot = getPriorFeedingSlot(backfillForm.feeding_time);
+    const cleanUserNote = (backfillForm.notes || '')
+      .replace(/Scheduled:\s*[\d\.]+\s*kg/gi, '')
+      .replace(/Trays?\s*(\(\d+\))?:\s*[^|]+/gi, '')
+      .replace(/Broadcast:\s*[\d\.]+\s*kg/gi, '')
+      .replace(/Tray check:\s*[^|]+/gi, '')
+      .replace(/Tray monitoring[^\n|]+/gi, '')
+      .replace(/\d+(st|nd|rd|th)\s*feeding session[^\n|]*/gi, '')
+      .split('|')
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .join(' | ');
+
+    const defaultObs = isNursery
+      ? `Nursery stage (0/0 check trays): 100% direct broadcast feeding, no check trays deployed`
+      : `Check tray monitoring prior to ${backfillForm.feeding_time} feeding (from ${priorSlot} feed): 4/4 check trays consumed (100% consumed / 0g leftover • +2.00 kg added to next feeding)`;
+
+    const finalNote = amt === 0
+      ? 'No feed logged (0 kg)'
+      : (cleanUserNote ? `${defaultObs} | ${cleanUserNote}` : defaultObs);
+
     setSavingBackfill(true);
     try {
       const payload = {
@@ -708,8 +832,9 @@ export default function FeedingHistoryPage() {
         tray_feed_grams: trayFeedGrams,
         total_tray_feed_grams: totalTrayFeedGrams,
         broadcast_feed_kg: broadcastFeedKg,
+        tray_monitoring_status: isNursery ? 'Nursery (100% Broadcast)' : 'Completely Consumed (Empty)',
         record_date: backfillForm.record_date,
-        notes: backfillForm.notes || (amt === 0 ? 'No feed logged (0 kg)' : ''),
+        notes: finalNote,
         recorded_by: user?.full_name || 'Caretaker',
         recorded_by_name: user?.full_name || 'Caretaker',
         user_id: Number(user?.id || 0),
@@ -1770,10 +1895,9 @@ export default function FeedingHistoryPage() {
           </div>
         ) : (
           <div
-            className="table-responsive admin-scrollable-table-4rows rounded-4 position-relative border"
+            className="feeding-history-table-container rounded-4 position-relative border"
             style={{
               maxHeight: 290,
-              overflowY: 'auto',
               borderColor: '#E2E8F0',
             }}
           >
@@ -1782,13 +1906,13 @@ export default function FeedingHistoryPage() {
                 <>
                   <thead className="table-light">
                     <tr>
-                      <th className="ps-3 py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Pond</th>
-                      <th className="py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Stage &amp; DOC</th>
-                      <th className="py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Log Date</th>
-                      <th className="py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Daily Feed Mass</th>
-                      <th className="py-2.5 text-uppercase extra-small fw-bold text-muted border-0">5-Slot Feeding Schedule</th>
-                      <th className="py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Feed Formulation &amp; Additives</th>
-                      <th className="pe-3 py-2.5 text-center text-uppercase extra-small fw-bold text-muted border-0" style={{ width: 180 }}>Actions</th>
+                      <th className="ps-3 py-2 text-uppercase extra-small fw-bold text-muted border-0 text-nowrap" style={{ width: '13%' }}>Pond</th>
+                      <th className="py-2 text-uppercase extra-small fw-bold text-muted border-0 text-nowrap" style={{ width: '14%' }}>Stage &amp; DOC</th>
+                      <th className="py-2 text-uppercase extra-small fw-bold text-muted border-0 text-nowrap" style={{ width: '11%' }}>Log Date</th>
+                      <th className="py-2 text-uppercase extra-small fw-bold text-muted border-0 text-nowrap" style={{ width: '14%' }}>Daily Feed Mass</th>
+                      <th className="py-2 text-uppercase extra-small fw-bold text-muted border-0 text-nowrap" style={{ width: '23%' }}>5-Slot Feeding Schedule</th>
+                      <th className="py-2 text-uppercase extra-small fw-bold text-muted border-0 text-nowrap" style={{ width: '15%' }}>Feed Formulation &amp; Additives</th>
+                      <th className="pe-3 py-2 text-center text-uppercase extra-small fw-bold text-muted border-0 text-nowrap" style={{ width: '10%', minWidth: 105 }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1803,57 +1927,64 @@ export default function FeedingHistoryPage() {
 
                       return (
                         <tr key={item.key}>
-                          <td className="ps-3 fw-bold text-dark">
+                          <td className="ps-3 fw-bold text-dark text-nowrap">
                             <div className="d-flex align-items-center gap-2">
                               <span
-                                className="rounded-circle d-inline-flex align-items-center justify-content-center"
-                                style={{ width: 30, height: 30, background: 'rgba(252, 86, 60, 0.07)', color: '#FC563C' }}
+                                className="rounded-circle d-inline-flex align-items-center justify-content-center flex-shrink-0"
+                                style={{ width: 28, height: 28, background: 'rgba(252, 86, 60, 0.08)', color: '#FC563C' }}
                               >
-                                <FaWater size={12} />
+                                <FaWater size={11} />
                               </span>
                               <div>
-                                <span className="d-block text-dark fw-bold" style={{ fontSize: '0.92rem' }}>
+                                <span className="d-block text-dark fw-bold" style={{ fontSize: '0.88rem' }}>
                                   {item.pond_name}
                                 </span>
-                                <small className="text-muted extra-small">Pond</small>
+                                <small className="text-muted extra-small" style={{ fontSize: '0.68rem' }}>Pond</small>
                               </div>
                             </div>
                           </td>
 
-                          <td>
-                            {item.isNursery ? (
+                          <td className="text-nowrap">
+                            {item.doc >= 93 ? (
                               <span
-                                className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1"
-                                style={{ background: '#E9E4E0', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.25)' }}
+                                className="badge rounded-pill px-2 py-0.5 extra-small fw-bold d-inline-flex align-items-center gap-1"
+                                style={{ background: '#FEF3C7', color: '#D97706', border: '1px solid #FCD34D', fontSize: '0.72rem' }}
+                              >
+                                Day {item.doc} • Ready to Harvest
+                              </span>
+                            ) : item.isNursery ? (
+                              <span
+                                className="badge rounded-pill px-2 py-0.5 extra-small fw-bold d-inline-flex align-items-center gap-1"
+                                style={{ background: '#E9E4E0', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.25)', fontSize: '0.72rem' }}
                               >
                                 {item.doc ? `Day ${item.doc}` : 'DOC 1-19'} • Nursery
                               </span>
                             ) : item.isGrowout ? (
                               <span
-                                className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1"
-                                style={{ background: 'rgba(252, 86, 60, 0.07)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.18)' }}
+                                className="badge rounded-pill px-2 py-0.5 extra-small fw-bold d-inline-flex align-items-center gap-1"
+                                style={{ background: 'rgba(252, 86, 60, 0.07)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.18)', fontSize: '0.72rem' }}
                               >
                                 {item.doc ? `Day ${item.doc}` : 'DOC 20+'} • Grow-out
                               </span>
                             ) : (
-                              <span className="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-2.5 py-1 extra-small fw-bold">
+                              <span className="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-2 py-0.5 extra-small fw-bold" style={{ fontSize: '0.72rem' }}>
                                 Pre-Stocking
                               </span>
                             )}
                           </td>
 
-                          <td>
-                            <strong className="text-dark font-mono" style={{ fontSize: '0.86rem' }}>
+                          <td className="text-nowrap">
+                            <strong className="text-dark font-mono text-nowrap" style={{ fontSize: '0.85rem' }}>
                               {item.date}
                             </strong>
                           </td>
 
-                          <td>
+                          <td className="text-nowrap">
                             <div>
-                              <strong className="text-dark font-mono" style={{ fontSize: '0.95rem', color: '#FC563C' }}>
+                              <strong className="text-dark font-mono text-nowrap" style={{ fontSize: '0.90rem', color: '#FC563C' }}>
                                 {item.total_kg.toFixed(2)} kg
                               </strong>
-                              <span className="extra-small text-muted font-mono d-block">
+                              <span className="extra-small text-muted font-mono d-block text-nowrap" style={{ fontSize: '0.70rem' }}>
                                 ({Math.round(item.total_grams).toLocaleString()} g)
                               </span>
                             </div>
@@ -1861,7 +1992,7 @@ export default function FeedingHistoryPage() {
 
                           {/* 5-Slot Visual Schedule Indicator */}
                           <td>
-                            <div className="d-flex flex-column gap-1.5">
+                            <div className="d-flex flex-column gap-1">
                               <div className="d-flex align-items-center gap-1 flex-wrap">
                                 {STANDARD_SLOTS.map((slot) => {
                                   const isLogged = Boolean(item.slotsMap[slot]);
@@ -1870,20 +2001,32 @@ export default function FeedingHistoryPage() {
                                     <span
                                       key={slot}
                                       className={`tri-slot-chip ${isLogged ? 'logged' : 'empty'}`}
+                                      style={{
+                                        fontSize: '0.67rem',
+                                        padding: '1px 5px',
+                                        borderRadius: '4px',
+                                        background: isLogged ? 'rgba(252, 86, 60, 0.08)' : '#F1F5F9',
+                                        border: isLogged ? '1px solid rgba(252, 86, 60, 0.25)' : '1px solid #E2E8F0',
+                                        color: isLogged ? '#FC563C' : '#94A3B8',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '2px',
+                                        whiteSpace: 'nowrap',
+                                      }}
                                       title={isLogged ? `${slot}: Logged (${item.slotsMap[slot]?.amount_kg}kg)` : `${slot}: Not yet logged`}
                                     >
-                                      {isLogged ? <FaCheck size={8} style={{ color: '#FC563C' }} /> : '○'}
+                                      {isLogged ? <FaCheck size={7} style={{ color: '#FC563C' }} /> : '○'}
                                       <span>{shortSlot}</span>
                                     </span>
                                   );
                                 })}
                               </div>
-                              <div className="d-flex align-items-center gap-1.5">
+                              <div className="d-flex align-items-center">
                                 <span
                                   className={`badge rounded-pill px-2 py-0.5 extra-small fw-bold ${
                                     isCompleteDay ? 'badge-tri-navy' : 'badge-tri-orange'
                                   }`}
-                                  style={{ fontSize: '0.67rem' }}
+                                  style={{ fontSize: '0.66rem' }}
                                 >
                                   {isCompleteDay ? '5/5 Slots Complete' : `${slotsLoggedCount}/5 Slots Logged`}
                                 </span>
@@ -1892,37 +2035,38 @@ export default function FeedingHistoryPage() {
                           </td>
 
                           <td>
-                            <div className="d-flex flex-column gap-1">
-                              <span className="fw-semibold text-dark extra-small">
+                            <div className="d-flex flex-column gap-0.5">
+                              <span className="fw-semibold text-dark extra-small text-truncate" style={{ fontSize: '0.78rem', maxWidth: 170 }} title={item.feed_types.join(', ') || 'Starter Feed'}>
                                 {item.feed_types.join(', ') || 'Starter Feed'}
                               </span>
                               {item.vitamins.length > 0 ? (
                                 <span
-                                  className="badge badge-tri-orange rounded-pill px-2 py-0.5 extra-small fw-bold"
-                                  style={{ width: 'fit-content' }}
+                                  className="badge badge-tri-orange rounded-pill px-2 py-0.5 extra-small fw-bold text-truncate"
+                                  style={{ width: 'fit-content', maxWidth: 170, fontSize: '0.67rem' }}
+                                  title={item.vitamins.join(', ')}
                                 >
                                   +{item.vitamins.join(', ')}
                                 </span>
                               ) : (
-                                <span className="text-muted extra-small">No Additives</span>
+                                <span className="text-muted extra-small" style={{ fontSize: '0.68rem' }}>No Additives</span>
                               )}
                             </div>
                           </td>
 
-                          <td className="pe-3 text-center">
-                            <div className="d-flex align-items-center justify-content-center gap-1.5">
+                          <td className="pe-3 text-center text-nowrap">
+                            <div className="d-flex align-items-center justify-content-center gap-1">
                               {/* Open in Cycle Calendar button */}
                               <button
                                 type="button"
-                                className="btn btn-sm btn-tri-outline rounded-pill px-2.5 py-1 extra-small shadow-xs hover-lift"
-                                style={{ fontSize: '0.72rem' }}
+                                className="btn btn-sm btn-tri-outline rounded-pill px-2 py-0.5 extra-small shadow-xs hover-lift"
+                                style={{ fontSize: '0.70rem' }}
                                 onClick={() => {
                                   setCalendarModalPond(matchedPond);
                                   setCustomDate(item.date);
                                 }}
                                 title="Inspect in Pond Cycle Calendar"
                               >
-                                <FaCalendarAlt size={10} style={{ color: '#FC563C' }} />
+                                <FaCalendarAlt size={9} style={{ color: '#FC563C' }} />
                                 <span>Calendar</span>
                               </button>
 
@@ -1930,11 +2074,11 @@ export default function FeedingHistoryPage() {
                               <button
                                 type="button"
                                 className="btn btn-sm btn-tri-outline rounded-circle d-inline-flex align-items-center justify-content-center p-0 shadow-xs hover-lift"
-                                style={{ width: 28, height: 28 }}
+                                style={{ width: 26, height: 26 }}
                                 onClick={() => setSelectedRecordDetails(item.records[0])}
                                 title="View Feeding Session Details"
                               >
-                                <FaEye size={11} style={{ color: '#FC563C' }} />
+                                <FaEye size={10} style={{ color: '#FC563C' }} />
                               </button>
 
                               {/* Add Missing Slot Button */}
@@ -1942,14 +2086,14 @@ export default function FeedingHistoryPage() {
                                 <button
                                   type="button"
                                   className="btn btn-sm btn-tri-orange rounded-circle d-inline-flex align-items-center justify-content-center p-0 shadow-xs hover-lift"
-                                  style={{ width: 28, height: 28 }}
+                                  style={{ width: 26, height: 26 }}
                                   onClick={() => {
                                     const missingSlot = STANDARD_SLOTS.find(s => !item.slotsMap[s]) || '6:00 AM';
                                     handleOpenBackfill(null, String(item.pond_id), item.date, missingSlot);
                                   }}
                                   title={`Log next missing feeding slot for ${item.date}`}
                                 >
-                                  <FaPlus size={10} />
+                                  <FaPlus size={9} />
                                 </button>
                               )}
                             </div>
@@ -1963,13 +2107,13 @@ export default function FeedingHistoryPage() {
                 <>
                   <thead className="table-light">
                     <tr>
-                      <th className="ps-3 py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Pond</th>
-                      <th className="py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Stage &amp; DOC</th>
-                      <th className="py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Feeding Slot</th>
-                      <th className="py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Feed Mass &amp; Formulation</th>
-                      <th className="py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Supplements Status</th>
-                      <th className="py-2.5 text-uppercase extra-small fw-bold text-muted border-0">Log Date &amp; Caretaker</th>
-                      <th className="pe-3 py-2.5 text-center text-uppercase extra-small fw-bold text-muted border-0" style={{ width: 160 }}>Actions</th>
+                      <th className="ps-3 py-2 text-uppercase extra-small fw-bold text-muted border-0 text-nowrap" style={{ width: '14%' }}>Pond</th>
+                      <th className="py-2 text-uppercase extra-small fw-bold text-muted border-0 text-nowrap" style={{ width: '14%' }}>Stage &amp; DOC</th>
+                      <th className="py-2 text-uppercase extra-small fw-bold text-muted border-0 text-nowrap" style={{ width: '12%' }}>Feeding Slot</th>
+                      <th className="py-2 text-uppercase extra-small fw-bold text-muted border-0 text-nowrap" style={{ width: '18%' }}>Feed Mass &amp; Formulation</th>
+                      <th className="py-2 text-uppercase extra-small fw-bold text-muted border-0 text-nowrap" style={{ width: '14%' }}>Supplements Status</th>
+                      <th className="py-2 text-uppercase extra-small fw-bold text-muted border-0 text-nowrap" style={{ width: '15%' }}>Log Date &amp; Caretaker</th>
+                      <th className="pe-3 py-2 text-center text-uppercase extra-small fw-bold text-muted border-0 text-nowrap" style={{ width: '13%', minWidth: 125 }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1979,48 +2123,55 @@ export default function FeedingHistoryPage() {
 
                       return (
                         <tr key={record.id}>
-                          <td className="ps-3 fw-bold text-dark">
+                          <td className="ps-3 fw-bold text-dark text-nowrap">
                             <div className="d-flex align-items-center gap-2">
                               <span
-                                className="rounded-circle d-inline-flex align-items-center justify-content-center"
-                                style={{ width: 30, height: 30, background: 'rgba(252, 86, 60, 0.07)', color: '#FC563C' }}
+                                className="rounded-circle d-inline-flex align-items-center justify-content-center flex-shrink-0"
+                                style={{ width: 28, height: 28, background: 'rgba(252, 86, 60, 0.07)', color: '#FC563C' }}
                               >
-                                <FaWater size={12} />
+                                <FaWater size={11} />
                               </span>
                               <div>
-                                <span className="d-block text-dark fw-bold" style={{ fontSize: '0.92rem' }}>
+                                <span className="d-block text-dark fw-bold" style={{ fontSize: '0.88rem' }}>
                                   {record.pond_name || `Pond #${record.pond_id}`}
                                 </span>
-                                <small className="text-muted extra-small">Log #{record.id}</small>
+                                <small className="text-muted extra-small" style={{ fontSize: '0.68rem' }}>Log #{record.id}</small>
                               </div>
                             </div>
                           </td>
 
-                          <td>
-                            {isNursery ? (
+                          <td className="text-nowrap">
+                            {record.doc >= 93 ? (
                               <span
-                                className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1"
-                                style={{ background: isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9', color: isDark ? '#CBD5E1' : '#1E293B', border: isDark ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid #CBD5E1' }}
+                                className="badge rounded-pill px-2 py-0.5 extra-small fw-bold d-inline-flex align-items-center gap-1"
+                                style={{ background: '#FEF3C7', color: '#D97706', border: '1px solid #FCD34D', fontSize: '0.72rem' }}
+                              >
+                                Day {record.doc} • Ready to Harvest
+                              </span>
+                            ) : isNursery ? (
+                              <span
+                                className="badge rounded-pill px-2 py-0.5 extra-small fw-bold d-inline-flex align-items-center gap-1"
+                                style={{ background: isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9', color: isDark ? '#CBD5E1' : '#1E293B', border: isDark ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid #CBD5E1', fontSize: '0.72rem' }}
                               >
                                 {record.doc ? `Day ${record.doc}` : 'DOC 1-19'} • Nursery
                               </span>
                             ) : isGrowout ? (
                               <span
-                                className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1"
-                                style={{ background: 'rgba(252, 86, 60, 0.07)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.18)' }}
+                                className="badge rounded-pill px-2 py-0.5 extra-small fw-bold d-inline-flex align-items-center gap-1"
+                                style={{ background: 'rgba(252, 86, 60, 0.07)', color: '#FC563C', border: '1px solid rgba(252, 86, 60, 0.18)', fontSize: '0.72rem' }}
                               >
                                 {record.doc ? `Day ${record.doc}` : 'DOC 20+'} • Grow-out
                               </span>
                             ) : (
-                              <span className="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-2.5 py-1 extra-small fw-bold">
+                              <span className="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-2 py-0.5 extra-small fw-bold" style={{ fontSize: '0.72rem' }}>
                                 Pre-Stocking
                               </span>
                             )}
                           </td>
 
-                          <td>
-                            <span className="badge badge-tri-navy rounded-pill font-mono px-2.5 py-1 fw-semibold d-inline-flex align-items-center gap-1">
-                              <FaClock size={10} style={{ color: '#FC563C' }} />
+                          <td className="text-nowrap">
+                            <span className="badge badge-tri-navy rounded-pill font-mono px-2 py-0.5 extra-small fw-semibold d-inline-flex align-items-center gap-1" style={{ fontSize: '0.72rem' }}>
+                              <FaClock size={9} style={{ color: '#FC563C' }} />
                               {record.feeding_time || '-'}
                             </span>
                           </td>
@@ -2028,79 +2179,79 @@ export default function FeedingHistoryPage() {
                           <td>
                             {Number(record.amount_kg) > 0 || Number(record.amount_grams) > 0 ? (
                               <div>
-                                <span className="fw-bold text-dark font-mono" style={{ fontSize: '0.92rem' }}>
+                                <span className="fw-bold text-dark font-mono text-nowrap" style={{ fontSize: '0.88rem' }}>
                                   {Number(record.amount_kg || 0).toFixed(2)} kg
                                 </span>
-                                <span className="extra-small text-muted d-block font-mono">
+                                <span className="extra-small text-muted d-block font-mono text-truncate" style={{ maxWidth: 180, fontSize: '0.70rem' }} title={`${Math.round(Number(record.amount_grams || (Number(record.amount_kg || 0) * 1000))).toLocaleString()} g • ${record.feed_type || record.product_code || 'Starter Feed'}`}>
                                   {Math.round(Number(record.amount_grams || (Number(record.amount_kg || 0) * 1000))).toLocaleString()} g • {record.feed_type || record.product_code || 'Starter Feed'}
                                 </span>
                               </div>
                             ) : (
                               <div>
-                                <span className="fw-bold text-muted font-mono">0.00 kg (0 g)</span>
-                                <span className="extra-small text-muted d-block font-mono">
+                                <span className="fw-bold text-muted font-mono text-nowrap" style={{ fontSize: '0.88rem' }}>0.00 kg (0 g)</span>
+                                <span className="extra-small text-muted d-block font-mono text-truncate" style={{ maxWidth: 180, fontSize: '0.70rem' }}>
                                   No feed logged • {record.feed_type || record.product_code || 'Starter'}
                                 </span>
                               </div>
                             )}
                           </td>
 
-                          <td>
+                          <td className="text-nowrap">
                             {record.vitamin_name && record.vitamin_name !== 'None' ? (
-                              <span className="badge badge-tri-orange rounded-pill px-2.5 py-1 extra-small fw-bold d-inline-flex align-items-center gap-1">
-                                <FaLeaf size={9} />
+                              <span className="badge badge-tri-orange rounded-pill px-2 py-0.5 extra-small fw-bold d-inline-flex align-items-center gap-1 text-truncate" style={{ maxWidth: 140, fontSize: '0.70rem' }} title={record.vitamin_name}>
+                                <FaLeaf size={8} />
                                 {record.vitamin_name}
                               </span>
                             ) : (
-                              <span className="text-muted extra-small">None</span>
+                              <span className="text-muted extra-small" style={{ fontSize: '0.70rem' }}>None</span>
                             )}
                           </td>
 
-                          <td>
+                          <td className="text-nowrap">
                             <div>
-                              <strong className="text-dark font-mono d-block" style={{ fontSize: '0.84rem' }}>
+                              <strong className="text-dark font-mono d-block text-nowrap" style={{ fontSize: '0.82rem' }}>
                                 {record.record_date || '-'}
                               </strong>
-                              <span className="extra-small text-muted d-inline-flex align-items-center gap-1">
-                                <FaUserCheck size={9} className="text-success" />
+                              <span className="extra-small text-muted d-inline-flex align-items-center gap-1 text-nowrap" style={{ fontSize: '0.68rem' }}>
+                                <FaUserCheck size={8} className="text-success" />
                                 {record.recorded_by_name || 'Caretaker'}
                               </span>
                             </div>
                           </td>
 
-                          <td className="pe-3 text-center">
+                          <td className="pe-3 text-center text-nowrap">
                             <div className="d-flex align-items-center justify-content-center gap-1">
                               <button
                                 type="button"
                                 className="btn btn-sm btn-tri-outline rounded-circle d-inline-flex align-items-center justify-content-center p-0 shadow-xs hover-lift"
-                                style={{ width: 28, height: 28 }}
+                                style={{ width: 26, height: 26 }}
                                 onClick={() => setSelectedRecordDetails(record)}
                                 title="View Feeding Details"
                               >
-                                <FaEye size={11} style={{ color: '#FC563C' }} />
+                                <FaEye size={10} style={{ color: '#FC563C' }} />
                               </button>
                               <button
                                 type="button"
                                 className="btn btn-sm btn-tri-outline-orange rounded-circle d-inline-flex align-items-center justify-content-center p-0 shadow-xs hover-lift"
-                                style={{ width: 28, height: 28 }}
+                                style={{ width: 26, height: 26 }}
                                 onClick={() => handleOpenBackfill(record)}
                                 title="Edit this Feeding Record"
                               >
-                                <FaEdit size={11} />
+                                <FaEdit size={10} />
                               </button>
                               <button
                                 type="button"
                                 className="btn btn-sm btn-tri-outline rounded-circle d-inline-flex align-items-center justify-content-center p-0 shadow-xs hover-lift text-danger"
-                                style={{ width: 28, height: 28 }}
+                                style={{ width: 26, height: 26 }}
                                 onClick={() => handleDeleteHistoryRecord(record)}
                                 title="Delete this Feeding Record"
                               >
-                                <FaTrash size={10} />
+                                <FaTrash size={9} />
                               </button>
                               <button
                                 type="button"
                                 className="btn btn-sm btn-tri-outline rounded-circle d-inline-flex align-items-center justify-content-center p-0 shadow-xs hover-lift"
-                                style={{ width: 28, height: 28 }}
+                                style={{ width: 26, height: 26 }}
                                 onClick={() => {
                                   const matchedPond = assignedPonds.find(p => String(p.id) === String(record.pond_id)) || {
                                     id: record.pond_id,
@@ -2108,8 +2259,9 @@ export default function FeedingHistoryPage() {
                                     stocking_date: record.stocking_date,
                                   };
                                   setCalendarModalPond(matchedPond);
+                                  setCustomDate(record.record_date);
                                 }}
-                                title="View Pond Cycle Calendar"
+                                title="Inspect in Pond Cycle Calendar"
                               >
                                 <FaCalendarAlt size={10} style={{ color: '#FC563C' }} />
                               </button>
@@ -2416,26 +2568,105 @@ export default function FeedingHistoryPage() {
                   );
                 })()}
 
-                {/* NOTES / REMARKS CARD */}
-                <div
-                  className="rounded-4 p-3 bg-white shadow-xs"
-                  style={{
-                    border: '1px solid rgba(252, 86, 60, 0.1)',
-                    borderLeft: '4px solid #FC563C',
-                  }}
-                >
-                  <div className="d-flex align-items-center gap-1.5 mb-1">
-                    <FaCommentDots size={12} style={{ color: '#FC563C' }} />
-                    <span className="text-uppercase fw-bold extra-small text-muted tracking-wider" style={{ fontSize: '0.7rem' }}>
-                      Notes &amp; Field Observations
-                    </span>
-                  </div>
-                  <p className="text-secondary small mb-0 fw-medium" style={{ fontSize: '0.82rem', lineHeight: 1.5 }}>
-                    {selectedRecordDetails.notes && selectedRecordDetails.notes.trim() !== ''
-                      ? selectedRecordDetails.notes
-                      : 'No special remarks recorded for this feeding slot.'}
-                  </p>
-                </div>
+                {/* NOTES & FIELD OBSERVATIONS CARD */}
+                {(() => {
+                  const obs = formatFeedingObservation(selectedRecordDetails);
+                  if (!obs) return null;
+
+                  const dayRecords = (records || [])
+                    .filter(
+                      (r) =>
+                        String(r.pond_id) === String(selectedRecordDetails.pond_id) &&
+                        r.record_date === selectedRecordDetails.record_date
+                    )
+                    .sort(
+                      (a, b) =>
+                        STANDARD_SLOTS.indexOf(normalizeSlot(a.feeding_time)) -
+                        STANDARD_SLOTS.indexOf(normalizeSlot(b.feeding_time))
+                    );
+
+                  return (
+                    <div
+                      className="rounded-4 p-3 bg-white shadow-xs"
+                      style={{
+                        border: '1px solid rgba(252, 86, 60, 0.12)',
+                        borderLeft: `4px solid ${obs.accentColor || '#FC563C'}`,
+                      }}
+                    >
+                      <div className="d-flex align-items-center justify-content-between mb-2">
+                        <div className="d-flex align-items-center gap-1.5">
+                          <FaCommentDots size={13} style={{ color: obs.accentColor || '#FC563C' }} />
+                          <span className="text-uppercase fw-bold extra-small tracking-wider" style={{ color: '#0F172A', fontSize: '0.72rem' }}>
+                            Notes &amp; Field Observations
+                          </span>
+                        </div>
+                        <span
+                          className="badge rounded-pill extra-small px-2.5 py-1 fw-bold font-mono"
+                          style={obs.badgeStyle}
+                        >
+                          {obs.badgeText}
+                        </span>
+                      </div>
+
+                      {/* Primary Feeding Tray Status for this Slot */}
+                      <div
+                        className="p-3 rounded-3"
+                        style={{
+                          backgroundColor: obs.boxBg,
+                          border: `1px solid ${obs.boxBorder}`,
+                        }}
+                      >
+                        <h6
+                          className="fw-bold mb-0 font-mono tracking-tight"
+                          style={{ color: obs.accentColor, fontSize: '0.94rem' }}
+                        >
+                          {obs.statusText}
+                        </h6>
+                      </div>
+
+                      {/* Daily Feeding Monitoring Status for Each Slot */}
+                      {dayRecords.length > 1 && (
+                        <div className="mt-2.5 pt-2 border-top" style={{ borderColor: 'rgba(252, 86, 60, 0.08)' }}>
+                          <span className="text-uppercase fw-bold text-muted extra-small d-block mb-1.5" style={{ fontSize: '0.66rem', letterSpacing: '0.5px' }}>
+                            Daily Feeding Monitoring Status ({selectedRecordDetails.record_date}):
+                          </span>
+                          <div className="d-flex flex-column gap-1">
+                            {dayRecords.map((rec) => {
+                              const itemObs = formatFeedingObservation(rec);
+                              const isCurrent = rec.id === selectedRecordDetails.id;
+                              return (
+                                <div
+                                  key={rec.id}
+                                  className={`px-2 py-1 rounded-2 d-flex align-items-center justify-content-between font-mono extra-small ${isCurrent ? 'fw-bold shadow-xs' : 'text-secondary'}`}
+                                  style={{
+                                    backgroundColor: isCurrent ? itemObs.boxBg : 'transparent',
+                                    border: isCurrent ? `1px solid ${itemObs.boxBorder}` : '1px solid transparent',
+                                    color: isCurrent ? itemObs.accentColor : '#475569',
+                                    fontSize: '0.78rem',
+                                  }}
+                                >
+                                  <span>{itemObs.statusText}</span>
+                                  {isCurrent && (
+                                    <span className="badge rounded-pill extra-small px-2 py-0.5" style={itemObs.badgeStyle}>
+                                      Current
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {obs.customRemarks ? (
+                        <div className="extra-small text-muted pt-2 mt-2 border-top d-flex align-items-start gap-1" style={{ borderColor: 'rgba(252, 86, 60, 0.08)' }}>
+                          <strong className="text-dark flex-shrink-0">Caretaker Remarks:</strong>
+                          <span className="text-secondary">{obs.customRemarks}</span>
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* MODAL FOOTER */}

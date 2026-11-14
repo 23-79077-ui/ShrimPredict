@@ -1377,7 +1377,7 @@ export default function WaterQualityOcrModal({
     const checkExisting = async () => {
       try {
         const res = await api.get('/water_quality_records.php', {
-          params: { pond_id: selectedPondId, date: recordDate },
+          params: { pond_id: selectedPondId, date: recordDate, strict_date: 1 },
         });
 
         if (active && res.data?.success && res.data?.record) {
@@ -1620,6 +1620,53 @@ export default function WaterQualityOcrModal({
     });
   };
 
+  // Fast high-definition image compressor for Multimodal Vision API
+  const optimizeImageForVision = (input) => {
+    return new Promise((resolve) => {
+      try {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          const maxDim = 1400;
+          let w = img.naturalWidth || img.width;
+          let h = img.naturalHeight || img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w >= h) {
+              h = Math.round((h * maxDim) / w);
+              w = maxDim;
+            } else {
+              w = Math.round((w * maxDim) / h);
+              h = maxDim;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, w, h);
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', 0.88));
+        };
+        img.onerror = () => {
+          if (typeof input === 'string') resolve(input);
+          else resolve('');
+        };
+        if (input instanceof Blob) {
+          img.src = URL.createObjectURL(input);
+        } else if (typeof input === 'string') {
+          img.src = input;
+        } else {
+          resolve('');
+        }
+      } catch (e) {
+        resolve(typeof input === 'string' ? input : '');
+      }
+    });
+  };
+
   // Main Recognition Pipeline: Multi-Pass Precision Optical Recognition
   const processImage = async (imageSource, explicitFile = null) => {
     setPreviewUrl(imageSource);
@@ -1632,68 +1679,10 @@ export default function WaterQualityOcrModal({
       let base64Image = '';
       try {
         setScanProgress(25);
-        setScanStatusText('Connecting to Multimodal Vision Model...');
+        setScanStatusText('Optimizing image for fast transcription...');
 
-        // Bulletproof Base64 conversion: handles File, blob: URL, and data: URL
-        const targetFile = explicitFile || imageFile;
-
-        if (targetFile instanceof Blob) {
-          base64Image = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.onerror = reject;
-            reader.readAsDataURL(targetFile);
-          });
-        } else if (typeof imageSource === 'string' && imageSource.startsWith('data:')) {
-          base64Image = imageSource;
-        } else if (typeof imageSource === 'string' && (imageSource.startsWith('blob:') || imageSource.startsWith('http'))) {
-          try {
-            const blobRes = await fetch(imageSource);
-            const blobData = await blobRes.blob();
-            base64Image = await new Promise((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onloadend = () => resolve(reader.result);
-              reader.onerror = reject;
-              reader.readAsDataURL(blobData);
-            });
-          } catch (fetchErr) {
-            console.warn('Direct blob fetch failed, falling back to canvas base64 conversion:', fetchErr);
-            base64Image = await new Promise((resolve) => {
-              const img = new Image();
-              img.crossOrigin = 'anonymous';
-              img.onload = () => {
-                const c = document.createElement('canvas');
-                c.width = img.naturalWidth || img.width;
-                c.height = img.naturalHeight || img.height;
-                const ctx = c.getContext('2d');
-                ctx.drawImage(img, 0, 0);
-                resolve(c.toDataURL('image/jpeg', 0.95));
-              };
-              img.onerror = () => resolve(imageSource);
-              img.src = imageSource;
-            });
-          }
-        } else {
-          base64Image = String(imageSource || '');
-        }
-
-        // Final verification that base64Image is a data: URL, not a raw blob: URL
-        if (typeof base64Image === 'string' && base64Image.startsWith('blob:')) {
-          base64Image = await new Promise((resolve) => {
-            const img = new Image();
-            img.crossOrigin = 'anonymous';
-            img.onload = () => {
-              const c = document.createElement('canvas');
-              c.width = img.naturalWidth || img.width;
-              c.height = img.naturalHeight || img.height;
-              const ctx = c.getContext('2d');
-              ctx.drawImage(img, 0, 0);
-              resolve(c.toDataURL('image/jpeg', 0.95));
-            };
-            img.onerror = () => resolve(base64Image);
-            img.src = base64Image;
-          });
-        }
+        const targetFile = explicitFile || imageFile || imageSource;
+        base64Image = await optimizeImageForVision(targetFile);
 
         setScanProgress(50);
         setScanStatusText('Transcribing handwritten logsheet with Vision OCR...');

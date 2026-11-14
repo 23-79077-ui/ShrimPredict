@@ -121,9 +121,13 @@ Respond ONLY with a valid JSON object matching this exact schema:
 }
 
 Rules:
-- Preserve exact decimal points (e.g., '6.5' must be 6.5, not 6.0; '28.5' must be 28.5, not 28 or null).
-- Accurately read handwritten numbers (e.g., distinguish '23' from '12').
-- Output purely the raw JSON string with no markdown fences, explanations, or additional text.";
+- Preserve exact decimal points accurately:
+  * DO: if written as '6.5 mg/L', output 6.5 (do NOT output 6.0 or 9.0).
+  * TEMP: if written as '28.5 c', output 28.5 (do NOT output 28 or 29).
+  * PH: if written as '7.8', output 7.8 (do NOT round to 8.0).
+  * SALINITY: if written as '20ppt' or '20', output 20.0 (do NOT confuse with 23).
+- Distinguish '6' from '9', '20' from '23', and '7.8' from '8.0'.
+- Output ONLY the raw JSON string with no markdown fences, explanations, or additional text.";
 
     $extractedData = null;
     $modelUsed = null;
@@ -131,13 +135,13 @@ Rules:
 
     // 5. Option A: Call Gemini Vision API (Fast Flash models)
     if (!empty($geminiKey)) {
-        @set_time_limit(10);
+        @set_time_limit(15);
         $geminiModels = [
             'gemini-3.1-flash-lite',
-            'gemini-3-flash-preview',
             'gemini-flash-lite-latest',
-            'gemini-3.8-flash',
-            'gemini-flash-latest'
+            'gemini-3-flash-preview',
+            'gemini-2.5-flash-lite',
+            'gemini-3.8-flash'
         ];
         
         foreach ($geminiModels as $geminiModel) {
@@ -176,8 +180,8 @@ Rules:
                 CURLOPT_SSL_VERIFYPEER => false,
                 CURLOPT_SSL_VERIFYHOST => false,
                 CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
-                CURLOPT_TIMEOUT => 12,
-                CURLOPT_CONNECTTIMEOUT => 5
+                CURLOPT_TIMEOUT => 6,
+                CURLOPT_CONNECTTIMEOUT => 3
             ]);
 
             $response = curl_exec($ch);

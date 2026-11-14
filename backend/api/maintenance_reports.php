@@ -207,7 +207,7 @@ if ($method === 'POST') {
             $newId = $conn->lastInsertId();
 
             // Trigger Admin Notification automatically (user_id = null so it goes to Admin only)
-            $notifTitle = "New Maintenance Report: {$severityLevel} Severity";
+            $notifTitle = "New Incident Report : {$pondName}";
             $notifMsg = "{$caretakerName} reported an issue for {$pondName}: {$specificIssue} ({$problemType}).";
             createNotification($conn, $notifTitle, $notifMsg, $caretakerName, 'maintenance', $pondName, null, $newId);
 

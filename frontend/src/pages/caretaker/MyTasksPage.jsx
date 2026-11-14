@@ -133,15 +133,27 @@ export default function MyTasksPage() {
     };
   }, [loadTasks, t, today, user?.id]);
 
+  const isPondHarvesting = (pond) => {
+    if (!pond) return false;
+    const op = String(pond.operational_status || '').toLowerCase();
+    const hr = String(pond.harvest_readiness || '').toLowerCase();
+    return op.includes('harvest') || hr.includes('harvest');
+  };
+
+  const runningPonds = useMemo(() => ponds.filter((p) => !isPondHarvesting(p)), [ponds]);
+  const harvestingPonds = useMemo(() => ponds.filter((p) => isPondHarvesting(p)), [ponds]);
+  const allPondsHarvesting = ponds.length > 0 && runningPonds.length === 0;
+
   const tasks = useMemo(() => {
-    const pondIds = new Set(ponds.map((pond) => String(pond.id)));
+    const runningPondIds = new Set(runningPonds.map((pond) => String(pond.id)));
     const todaysFeeds = feedingRecords.filter((record) => {
       const recordDate = String(record.record_date || record.created_at || '').slice(0, 10);
-      return recordDate === today && pondIds.has(String(record.pond_id));
+      return recordDate === today && runningPondIds.has(String(record.pond_id));
     });
-    const waterByPond = new Map(waterChecklist.map((item) => [String(item.pond_id), item]));
+    const checklistItems = waterChecklist || [];
+    const waterByPond = new Map(checklistItems.map((item) => [String(item.pond_id), item]));
 
-    const waterTasks = ponds.map((pond) => {
+    const waterTasks = runningPonds.map((pond) => {
       const checklistItem = waterByPond.get(String(pond.id));
       const isComplete = Boolean(checklistItem?.is_verified || checklistItem?.is_verified_today || checklistItem?.record);
       return {
@@ -150,12 +162,12 @@ export default function MyTasksPage() {
         pond,
         isComplete,
         route: '/caretaker/dashboard',
-        title: t('myTasks.waterTitle', 'Complete the initial water-quality check'),
-        detail: t('myTasks.waterDetail', 'Verify dissolved oxygen, temperature, pH, and salinity before stocking shrimp.'),
+        title: t('myTasks.waterTitle', 'Complete the water-quality check'),
+        detail: t('myTasks.waterDetail', 'Verify dissolved oxygen, temperature, pH, and salinity.'),
       };
     });
 
-    const feedTasks = ponds.flatMap((pond) => {
+    const feedTasks = runningPonds.flatMap((pond) => {
       const pondFeeds = todaysFeeds.filter((record) => String(record.pond_id) === String(pond.id));
       const loggedSlots = new Set(pondFeeds.map((record) => normalizeFeedingTime(record.feeding_time)));
       const stockingDate = pond.stocking_date || '2000-01-01';
@@ -179,7 +191,7 @@ export default function MyTasksPage() {
         route: '/caretaker/my-pond',
         title: t('myTasks.feedTitle', 'Log the scheduled feeding'),
         detail: isYesterdayMissed && !loggedSlots.has(slot)
-          ? `⚠️ Locked: Missed feeding logs on ${yesterdayStr}. Catch up past day first.`
+          ? `Locked: Missed feeding logs on ${yesterdayStr}. Catch up past day first.`
           : t('myTasks.feedDesc', 'Verify ration and record feed tray consumption.'),
       }));
     });
@@ -195,7 +207,7 @@ export default function MyTasksPage() {
     }));
 
     return [...adminActionTasks, ...waterTasks, ...feedTasks];
-  }, [feedingRecords, ponds, scanActions, t, today, waterChecklist]);
+  }, [feedingRecords, runningPonds, scanActions, t, today, waterChecklist]);
 
   const completedCount = tasks.filter((task) => task.isComplete).length;
   const allComplete = tasks.length > 0 && completedCount === tasks.length;
@@ -269,19 +281,27 @@ export default function MyTasksPage() {
           <div>
             <h5 className="fw-bold text-dark mb-1">{t('myTasks.progress', 'Today’s progress')}</h5>
             <p className="small text-muted mb-0">
-              {allComplete
+              {allPondsHarvesting
+                ? 'Harvesting in Progress (Tasks Suspended)'
+                : allComplete
                 ? t('myTasks.allComplete', 'All listed tasks are complete. Great work!')
                 : t('myTasks.progressCount', '{done} of {total} tasks complete')
                   .replace('{done}', String(completedCount))
                   .replace('{total}', String(tasks.length))}
             </p>
           </div>
-          <span className={`badge rounded-pill px-3 py-2 ${allComplete ? 'bg-success' : 'bg-light text-dark border'}`}>
-            {tasks.length ? `${Math.round((completedCount / tasks.length) * 100)}%` : '0%'}
+          <span className={`badge rounded-pill px-3 py-2 ${allPondsHarvesting ? 'bg-warning text-dark' : allComplete ? 'bg-success' : 'bg-light text-dark border'}`}>
+            {allPondsHarvesting ? 'Harvest' : tasks.length ? `${Math.round((completedCount / tasks.length) * 100)}%` : '0%'}
           </span>
         </div>
         <div className="progress" role="progressbar" aria-valuenow={completedCount} aria-valuemin="0" aria-valuemax={tasks.length || 1} style={{ height: 9 }}>
-          <div className="progress-bar" style={{ width: `${tasks.length ? (completedCount / tasks.length) * 100 : 0}%`, backgroundColor: '#FC563C' }} />
+          <div
+            className="progress-bar"
+            style={{
+              width: `${allPondsHarvesting ? 100 : tasks.length ? (completedCount / tasks.length) * 100 : 0}%`,
+              backgroundColor: allPondsHarvesting ? '#D97706' : '#FC563C'
+            }}
+          />
         </div>
       </section>
 
@@ -295,8 +315,63 @@ export default function MyTasksPage() {
           <h5 className="fw-bold">{t('myTasks.noPondsTitle', 'No ponds assigned')}</h5>
           <p className="text-muted mb-0">{t('myTasks.noPonds', 'Ask your farm administrator to assign a pond to your caretaker account.')}</p>
         </div>
+      ) : allPondsHarvesting && tasks.length === 0 ? (
+        <div
+          className="caretaker-tasks-card border rounded-4 text-center p-4 p-md-5 mb-4 shadow-sm"
+          style={{ backgroundColor: '#FFFBEB', borderColor: '#FDE68A' }}
+        >
+          <div
+            className="rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3 shadow-xs"
+            style={{ width: 56, height: 56, backgroundColor: '#FEF3C7', color: '#D97706', fontSize: '1.6rem' }}
+          >
+            🌾
+          </div>
+          <h4 className="fw-extrabold text-dark mb-1">
+            {harvestingPonds.map((p) => p.pond_name).join(', ')} — Harvest Underway
+          </h4>
+          <span className="badge rounded-pill fw-bold mb-3 px-3 py-1.5" style={{ backgroundColor: '#FDE68A', color: '#78350F', fontSize: '0.8rem' }}>
+            Pre-Harvest Protocol Active • Daily Feeding Suspended
+          </span>
+          <p className="text-secondary mb-4 mx-auto" style={{ maxWidth: 440, lineHeight: 1.6 }}>
+            Routine 5-slot feeding schedules and daily check tasks are suspended for this pond. Gut evacuation and harvest netting operations are underway. Please monitor pond drainage and await restocking or new pond assignment from Farm Administration.
+          </p>
+          <div className="d-flex justify-content-center gap-2 flex-wrap">
+            <button
+              type="button"
+              className="btn btn-warning fw-bold px-4 py-2 text-dark shadow-xs"
+              onClick={() => navigate('/caretaker/my-pond')}
+            >
+              View Harvest Status in My Pond →
+            </button>
+            <button
+              type="button"
+              className="btn btn-outline-secondary px-3 py-2 fw-semibold"
+              onClick={() => navigate('/caretaker/reports')}
+            >
+              Submit Report
+            </button>
+          </div>
+        </div>
       ) : (
         <div className="d-flex flex-column gap-3 mb-4 pb-3">
+          {harvestingPonds.length > 0 && !allPondsHarvesting && (
+            <div className="alert alert-warning d-flex align-items-center justify-content-between p-3 rounded-3 mb-0">
+              <div className="d-flex align-items-center gap-2">
+                <span>🌾</span>
+                <span>
+                  <strong>{harvestingPonds.map((p) => p.pond_name).join(', ')}</strong> is in harvest (routine feeding paused). Showing active tasks for running ponds.
+                </span>
+              </div>
+              <button
+                type="button"
+                className="btn btn-sm btn-link p-0 fw-bold text-decoration-none"
+                style={{ color: '#B45309' }}
+                onClick={() => navigate('/caretaker/my-pond')}
+              >
+                View Harvest →
+              </button>
+            </div>
+          )}
           {tasks.map((task, index) => {
             const isNext = index === firstIncompleteIndex;
             return (

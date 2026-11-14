@@ -844,7 +844,17 @@ export default function MyPondPage() {
           feedingTime: matchingLog.feeding_time,
           productCode: matchingLog.product_code || autoProductCode,
           vitaminName: matchingLog.vitamin_name || defaultVitamins,
-          notes: matchingLog.notes || '',
+          notes: (matchingLog.notes || '')
+            .replace(/Scheduled:\s*[\d\.]+\s*kg/gi, '')
+            .replace(/Trays?\s*(\(\d+\))?:\s*[^|]+/gi, '')
+            .replace(/Broadcast:\s*[\d\.]+\s*kg/gi, '')
+            .replace(/Tray check:\s*[^|]+/gi, '')
+            .replace(/Tray monitoring[^\n|]+/gi, '')
+            .replace(/\d+(st|nd|rd|th)\s*feeding session[^\n|]*/gi, '')
+            .split('|')
+            .map((s) => s.trim())
+            .filter(Boolean)
+            .join(' | '),
         },
       }));
     } else {
@@ -995,13 +1005,16 @@ export default function MyPondPage() {
     const previousTime = previousLog?.feeding_time || previousFeedingLogForSelectedSlot?.feeding_time || 'previous';
 
     // Farm Check Tray Protocol:
-    // - Unconsumed / Leftover: Reduce by 2.0 kg (-2.0 kg, min 0.5 kg)
-    // - Completely Consumed (Empty / Naubos): Increase by 1.0 kg (+1.0 kg)
+    // - 4/4 Trays Naubos: Increase by 2.0 kg (+2.0 kg)
+    // - 3/4 Trays Naubos: Maintain same ration (+0.0 kg)
+    // - 2/4 or less Trays Naubos: Reduce by 2.0 kg (-2.0 kg, min 0.5 kg)
     const baseKg = prevKg > 0 ? prevKg : (previousDayLastFeed?.amount_kg ? Number(previousDayLastFeed.amount_kg) : 4.0);
-    const amountIfConsumedKg = Number((baseKg + 1.0).toFixed(2));
-    const amountIfConsumedGrams = Math.round(amountIfConsumedKg * 1000);
-    const amountIfLeftoverKg = Math.max(0.5, Number((baseKg - 2.0).toFixed(2)));
-    const amountIfLeftoverGrams = Math.round(amountIfLeftoverKg * 1000);
+    const amountIf4TraysKg = Number((baseKg + 2.0).toFixed(2));
+    const amountIf4TraysGrams = Math.round(amountIf4TraysKg * 1000);
+    const amountIf3TraysKg = Number(baseKg.toFixed(2));
+    const amountIf3TraysGrams = Math.round(amountIf3TraysKg * 1000);
+    const amountIf2TraysKg = Math.max(0.5, Number((baseKg - 2.0).toFixed(2)));
+    const amountIf2TraysGrams = Math.round(amountIf2TraysKg * 1000);
 
     const { value, isConfirmed } = await Swal.fire({
       title: 'Feeding Tray Inspection',
@@ -1014,72 +1027,75 @@ export default function MyPondPage() {
       buttonsStyling: false,
       html: `
         <div style="text-align:left; font-family: inherit;">
-          <p class="text-secondary small mb-3">
-            Inspect all 4 check trays in <strong>${selectedPond?.pond_name || 'this pond'}</strong>:
+          <p class="text-secondary small mb-2.5">
+            Inspect all 4 check trays for <strong>${selectedPond?.pond_name || 'this pond'}</strong> prior to the <strong>${activeTime}</strong> feeding (from ${previousTime} feed):
           </p>
           <div class="tray-options d-flex flex-column gap-2 mb-3">
-            <label id="lbl-tray-leftover" for="opt_tray_leftover" class="p-3 rounded-3 border d-flex align-items-center gap-3 cursor-pointer bg-white text-dark shadow-xs" style="cursor: pointer; border: 2px solid #FC563C !important; transition: all 0.2s ease;">
-              <input type="radio" name="tray_status" id="opt_tray_leftover" value="leftover" checked style="accent-color: #FC563C; width: 18px; height: 18px; cursor: pointer;" />
-              <strong class="d-block" style="color: #FC563C !important; font-size: 0.95rem; font-weight: 700;">Unconsumed Feed Detected</strong>
+            <label id="lbl-tray-4" for="opt_tray_4" class="p-2.5 rounded-3 border d-flex align-items-center gap-2.5 cursor-pointer bg-white text-dark shadow-xs" style="cursor: pointer; border: 2px solid #16A34A !important; transition: all 0.2s ease;">
+              <input type="radio" name="tray_status" id="opt_tray_4" value="4_trays" checked style="accent-color: #16A34A; width: 18px; height: 18px; cursor: pointer;" />
+              <div>
+                <strong class="d-block" style="color: #16A34A; font-size: 0.92rem; font-weight: 700;">4/4 Check Trays Consumed (Empty)</strong>
+                <small class="text-muted extra-small">High appetite &bull; +2.00 kg added for next feeding (${amountIf4TraysKg.toFixed(2)} kg)</small>
+              </div>
             </label>
-            <label id="lbl-tray-consumed" for="opt_tray_consumed" class="p-3 rounded-3 border d-flex align-items-center gap-3 cursor-pointer bg-white text-dark shadow-xs" style="cursor: pointer; border: 1.5px solid #CBD5E1; transition: all 0.2s ease;">
-              <input type="radio" name="tray_status" id="opt_tray_consumed" value="consumed" style="accent-color: #FC563C; width: 18px; height: 18px; cursor: pointer;" />
-              <strong class="d-block text-dark" style="font-size: 0.95rem; font-weight: 700;">All 4 Check Trays Consumed</strong>
+            <label id="lbl-tray-3" for="opt_tray_3" class="p-2.5 rounded-3 border d-flex align-items-center gap-2.5 cursor-pointer bg-white text-dark shadow-xs" style="cursor: pointer; border: 1.5px solid #CBD5E1; transition: all 0.2s ease;">
+              <input type="radio" name="tray_status" id="opt_tray_3" value="3_trays" style="accent-color: #2563EB; width: 18px; height: 18px; cursor: pointer;" />
+              <div>
+                <strong class="d-block text-dark" style="font-size: 0.92rem; font-weight: 700;">3/4 Check Trays Consumed (1 tray leftover)</strong>
+                <small class="text-muted extra-small">Moderate appetite &bull; Maintain previous ration (${amountIf3TraysKg.toFixed(2)} kg)</small>
+              </div>
+            </label>
+            <label id="lbl-tray-2" for="opt_tray_2" class="p-2.5 rounded-3 border d-flex align-items-center gap-2.5 cursor-pointer bg-white text-dark shadow-xs" style="cursor: pointer; border: 1.5px solid #CBD5E1; transition: all 0.2s ease;">
+              <input type="radio" name="tray_status" id="opt_tray_2" value="2_trays" style="accent-color: #DC2626; width: 18px; height: 18px; cursor: pointer;" />
+              <div>
+                <strong class="d-block text-dark" style="font-size: 0.92rem; font-weight: 700;">2/4 Check Trays Consumed (2 trays unconsumed)</strong>
+                <small class="text-muted extra-small">Low appetite &bull; -2.00 kg reduced for next feeding (${amountIf2TraysKg.toFixed(2)} kg)</small>
+              </div>
             </label>
           </div>
-          <div class="mb-2">
-            <label for="input_remaining_tray_g" class="form-label small fw-semibold text-dark mb-1">Remaining Feed in Trays (grams, out of 80g)</label>
-            <input type="number" id="input_remaining_tray_g" class="form-control form-control-sm" min="0" max="80" step="1" value="15" />
-            <div id="tray_consumption_preview" class="extra-small text-muted mt-1">Estimated consumption: 81.25% &bull; Next dosage adjusted by -2 kg</div>
+          <div id="tray_consumption_preview" class="extra-small fw-semibold text-muted text-center p-2 rounded-2" style="background:#F8FAFC; border:1px solid #E2E8F0;">
+            Result: 4/4 trays consumed &bull; Next dosage: ${amountIf4TraysKg.toFixed(2)} kg (+2.00 kg)
           </div>
         </div>
       `,
       didOpen: () => {
-        const l1 = document.getElementById('lbl-tray-leftover');
-        const l2 = document.getElementById('lbl-tray-consumed');
-        const r1 = document.getElementById('opt_tray_leftover');
-        const r2 = document.getElementById('opt_tray_consumed');
-        const remInput = document.getElementById('input_remaining_tray_g');
+        const l4 = document.getElementById('lbl-tray-4');
+        const l3 = document.getElementById('lbl-tray-3');
+        const l2 = document.getElementById('lbl-tray-2');
+        const r4 = document.getElementById('opt_tray_4');
+        const r3 = document.getElementById('opt_tray_3');
+        const r2 = document.getElementById('opt_tray_2');
         const previewEl = document.getElementById('tray_consumption_preview');
-        const updatePreview = () => {
-          const rem = Math.max(0, Math.min(80, parseFloat(remInput?.value || '0') || 0));
-          const pct = Math.round(((80 - rem) / 80) * 10000) / 100;
-          const isConsumed = Boolean(r2 && r2.checked);
-          if (previewEl) {
-            previewEl.textContent = `Estimated consumption: ${isConsumed ? 100 : pct}% • Next dosage: ${isConsumed ? amountIfConsumedKg : amountIfLeftoverKg} kg`;
-          }
-        };
+
         const updateStyles = () => {
-          if (r1 && r1.checked) {
-            if (l1) l1.style.border = '2px solid #FC563C';
+          if (r4 && r4.checked) {
+            if (l4) l4.style.border = '2px solid #16A34A';
+            if (l3) l3.style.border = '1.5px solid #CBD5E1';
             if (l2) l2.style.border = '1.5px solid #CBD5E1';
+            if (previewEl) previewEl.innerHTML = `<span class="text-success fw-bold">4/4 Trays Consumed</span> &bull; Added: <strong>+2.00 kg</strong> &bull; Next dosage: <strong>${amountIf4TraysKg.toFixed(2)} kg</strong>`;
+          } else if (r3 && r3.checked) {
+            if (l3) l3.style.border = '2px solid #2563EB';
+            if (l4) l4.style.border = '1.5px solid #CBD5E1';
+            if (l2) l2.style.border = '1.5px solid #CBD5E1';
+            if (previewEl) previewEl.innerHTML = `<span class="text-primary fw-bold">3/4 Trays Consumed</span> &bull; Maintained: <strong>0.00 kg</strong> &bull; Next dosage: <strong>${amountIf3TraysKg.toFixed(2)} kg</strong>`;
           } else if (r2 && r2.checked) {
-            if (l2) l2.style.border = '2px solid #FC563C';
-            if (l1) l1.style.border = '1.5px solid #CBD5E1';
-            if (remInput) remInput.value = '0';
+            if (l2) l2.style.border = '2px solid #DC2626';
+            if (l4) l4.style.border = '1.5px solid #CBD5E1';
+            if (l3) l3.style.border = '1.5px solid #CBD5E1';
+            if (previewEl) previewEl.innerHTML = `<span class="text-danger fw-bold">2/4 Trays Consumed</span> &bull; Reduced: <strong>-2.00 kg</strong> &bull; Next dosage: <strong>${amountIf2TraysKg.toFixed(2)} kg</strong>`;
           }
-          updatePreview();
         };
-        if (remInput) remInput.oninput = updatePreview;
-        if (l1 && r1) {
-          l1.onclick = () => { r1.checked = true; updateStyles(); };
-          r1.onchange = updateStyles;
-        }
-        if (l2 && r2) {
-          l2.onclick = () => { r2.checked = true; updateStyles(); };
-          r2.onchange = updateStyles;
-        }
+
+        if (l4 && r4) { l4.onclick = () => { r4.checked = true; updateStyles(); }; r4.onchange = updateStyles; }
+        if (l3 && r3) { l3.onclick = () => { r3.checked = true; updateStyles(); }; r3.onchange = updateStyles; }
+        if (l2 && r2) { l2.onclick = () => { r2.checked = true; updateStyles(); }; r2.onchange = updateStyles; }
       },
       showCancelButton: true,
       confirmButtonText: 'Confirm Tray Inspection',
       cancelButtonText: 'Skip Inspection',
       preConfirm: () => {
         const checked = document.querySelector('input[name="tray_status"]:checked');
-        const remVal = parseFloat(document.getElementById('input_remaining_tray_g')?.value || '0');
-        return {
-          statusValue: checked ? checked.value : 'leftover',
-          remainingGrams: checked?.value === 'consumed' ? 0 : Math.max(0, Number.isFinite(remVal) ? remVal : 0),
-        };
+        return checked ? checked.value : '4_trays';
       },
     });
 
@@ -1092,8 +1108,8 @@ export default function MyPondPage() {
             [selectedPondId]: {
               ...current,
               feedingTime: activeTime,
-              amountKg: String(amountIfLeftoverKg),
-              amountGrams: String(amountIfLeftoverGrams),
+              amountKg: String(amountIf3TraysKg),
+              amountGrams: String(amountIf3TraysGrams),
             },
           };
         }
@@ -1103,24 +1119,31 @@ export default function MyPondPage() {
     }
 
     const statusChoice = typeof value === 'object' ? value.statusValue : value;
-    const remTrayG = typeof value === 'object' ? (Number(value.remainingGrams) || 0) : (statusChoice === 'consumed' ? 0 : 15);
-    const consumptionPct = Math.round(Math.max(0, Math.min(100, ((80 - Math.min(80, remTrayG)) / 80) * 100)) * 100) / 100;
+    let suggestedGrams = amountIf4TraysGrams;
+    let suggestedKg = amountIf4TraysKg;
+    let statusLabel = '4/4 Check Trays Consumed (+2kg Next Feed)';
+    let remG = 0;
+    let consumptionPct = 100;
 
-    let suggestedGrams = amountIfLeftoverGrams;
-    let suggestedKg = amountIfLeftoverKg;
-    let statusLabel = `Unconsumed Feed Detected (${remTrayG}g left • ${consumptionPct}% consumed • -2kg)`;
-
-    if (statusChoice === 'consumed') {
-      suggestedGrams = amountIfConsumedGrams;
-      suggestedKg = amountIfConsumedKg;
-      statusLabel = 'Completely Consumed (Empty • 100% consumed • +1kg)';
+    if (statusChoice === '3_trays') {
+      suggestedGrams = amountIf3TraysGrams;
+      suggestedKg = amountIf3TraysKg;
+      statusLabel = '3/4 Check Trays Consumed (Maintain Feed)';
+      remG = 20;
+      consumptionPct = 75;
+    } else if (statusChoice === '2_trays' || statusChoice === 'leftover') {
+      suggestedGrams = amountIf2TraysGrams;
+      suggestedKg = amountIf2TraysKg;
+      statusLabel = '2/4 Check Trays Consumed (-2kg Next Feed)';
+      remG = 40;
+      consumptionPct = 50;
     }
 
     const monitoringResult = {
       status: statusLabel,
       trayStatusValue: statusChoice,
-      remainingTrayFeedGrams: remTrayG,
-      consumptionPercentage: statusChoice === 'consumed' ? 100 : consumptionPct,
+      remainingTrayFeedGrams: remG,
+      consumptionPercentage: consumptionPct,
       suggestedAmountKg: suggestedKg,
       suggestedAmountGrams: suggestedGrams,
     };
@@ -1282,14 +1305,45 @@ export default function MyPondPage() {
     const formulaDisplay = isNurseryStage
       ? `${amount.toFixed(2)}kg (100% Broadcast • Nursery)`
       : `${amount.toFixed(2)}kg - ${totalTrayFeedKg.toFixed(2)}kg = ${broadcastFeedKg.toFixed(2)}kg`;
-    const trayNotes = isNurseryStage
-      ? `Nursery Day ${currentDoc}: 100% Broadcast (${amount.toFixed(2)}kg)`
-      : [
-          `Scheduled: ${amount.toFixed(2)}kg`,
-          `Trays (${feedingTrayCount}): ${totalTrayFeedGrams}g (${totalTrayFeedKg.toFixed(2)}kg)`,
-          `Broadcast: ${broadcastFeedKg.toFixed(2)}kg`,
-          `Tray check: ${trayMonitoring?.status || trayMonitoring}`,
-        ].join(' | ');
+    const getPriorSlotLabel = (slot) => {
+      const s = (slot || '').toUpperCase();
+      if (s.includes('6:00 AM') || s === '06:00 AM' || s === '6:00') return '6:00 PM (Last Night)';
+      if (s.includes('9:00 AM') || s === '09:00 AM' || s === '9:00') return '6:00 AM';
+      if (s.includes('12:00 PM') || s === '12:00') return '9:00 AM';
+      if (s.includes('3:00 PM') || s === '15:00' || s === '3:00') return '12:00 PM';
+      if (s.includes('6:00 PM') || s === '18:00' || s === '6:00') return '3:00 PM';
+      return 'previous';
+    };
+
+    const priorSlotName = getPriorSlotLabel(form.feedingTime);
+    let trayNotes = '';
+    if (isNurseryStage) {
+      trayNotes = `Nursery stage (0/0 check trays): 100% direct broadcast feeding, no check trays deployed`;
+    } else {
+      const is4 = trayMonitoring?.trayStatusValue === '4_trays' || /4\/4|4_trays/i.test(trayMonitoring?.status || '');
+      const is3 = trayMonitoring?.trayStatusValue === '3_trays' || /3\/4|3_trays/i.test(trayMonitoring?.status || '');
+      if (is4) {
+        trayNotes = `Check tray monitoring prior to ${form.feedingTime} feeding (from ${priorSlotName} feed): 4/4 check trays consumed (100% consumed / 0g leftover • +2.00 kg added to next feeding)`;
+      } else if (is3) {
+        trayNotes = `Check tray monitoring prior to ${form.feedingTime} feeding (from ${priorSlotName} feed): 3/4 check trays consumed (1 tray leftover • Previous ration maintained / 0.00 kg adjustment)`;
+      } else {
+        trayNotes = `Check tray monitoring prior to ${form.feedingTime} feeding (from ${priorSlotName} feed): 2/4 check trays consumed (2 trays unconsumed • -2.00 kg reduced for next feeding)`;
+      }
+    }
+
+    const cleanUserRemarks = (form.notes || '')
+      .replace(/Scheduled:\s*[\d\.]+\s*kg/gi, '')
+      .replace(/Trays?\s*(\(\d+\))?:\s*[^|]+/gi, '')
+      .replace(/Broadcast:\s*[\d\.]+\s*kg/gi, '')
+      .replace(/Tray check:\s*[^|]+/gi, '')
+      .replace(/Tray monitoring[^\n|]+/gi, '')
+      .replace(/\d+(st|nd|rd|th)\s*feeding session[^\n|]*/gi, '')
+      .split('|')
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .join(' | ');
+
+    const finalNotes = cleanUserRemarks ? `${trayNotes} | ${cleanUserRemarks}` : trayNotes;
 
     setSubmitting(true);
     try {
@@ -1313,7 +1367,7 @@ export default function MyPondPage() {
         remaining_tray_feed_grams: trayMonitoring?.remainingTrayFeedGrams ?? undefined,
         consumption_percentage: trayMonitoring?.consumptionPercentage ?? undefined,
         recommended_next_feed_kg: trayMonitoring?.suggestedAmountKg ?? undefined,
-        notes: [form.notes, trayNotes].filter(Boolean).join(' | '),
+        notes: finalNotes,
         record_date: todayDateStr,
         recorded_by: user?.full_name || 'Caretaker',
         recorded_by_name: user?.full_name || 'Caretaker',
@@ -1504,18 +1558,22 @@ export default function MyPondPage() {
                     style={{
                       backgroundColor: isSelected
                         ? 'rgba(255, 255, 255, 0.22)'
-                        : (isNursery ? (isDark ? 'rgba(255,255,255,0.08)' : '#F1F5F9') : 'rgba(252, 86, 60, 0.06)'),
+                        : (pond.operational_status === 'Harvesting in Progress' ? '#FEF3C7' : pond.operational_status === 'Ready for Harvest' ? '#FEF9C3' : isNursery ? (isDark ? 'rgba(255,255,255,0.08)' : '#F1F5F9') : 'rgba(252, 86, 60, 0.06)'),
                       color: isSelected
                         ? '#FFFFFF'
-                        : '#FC563C',
+                        : (pond.operational_status === 'Harvesting in Progress' ? '#92400E' : pond.operational_status === 'Ready for Harvest' ? '#854D0E' : '#FC563C'),
                       border: isSelected
                         ? '1px solid rgba(255, 255, 255, 0.35)'
-                        : (isNursery ? (isDark ? '1px solid rgba(255,255,255,0.15)' : '1px solid #CBD5E1') : '1px solid rgba(252, 86, 60, 0.14)'),
+                        : (pond.operational_status === 'Harvesting in Progress' ? '1px solid #FCD34D' : pond.operational_status === 'Ready for Harvest' ? '1px solid #FDE047' : isNursery ? (isDark ? '1px solid rgba(255,255,255,0.15)' : '1px solid #CBD5E1') : '1px solid rgba(252, 86, 60, 0.14)'),
                       fontSize: '0.67rem',
                       fontWeight: 700,
                     }}
                   >
-                    {isNursery ? `Day ${pond.doc} • Nursery` : `Day ${pond.doc} • Grow-out`}
+                    {pond.operational_status === 'Harvesting in Progress'
+                      ? `🌾 Day ${pond.doc} • Harvesting in Progress`
+                      : pond.operational_status === 'Ready for Harvest'
+                      ? `🟡 Day ${pond.doc} • Ready for Harvest`
+                      : (isNursery ? `Day ${pond.doc} • Nursery` : `Day ${pond.doc} • Grow-out`)}
                   </span>
 
                   {isVerified ? (
@@ -1616,6 +1674,97 @@ export default function MyPondPage() {
           >
             <FaCalendarAlt size={11} /> View Full Cycle Calendar
           </button>
+        </div>
+      )}
+
+      {/* HARVESTING IN PROGRESS / PRE-HARVEST PREPARATION OPERATIONS CARD */}
+      {selectedPond && (selectedPond.operational_status === 'Harvesting in Progress' || selectedPond.operational_status === 'Ready for Harvest') && (
+        <div
+          className="bg-white border rounded-4 p-4 mb-4 shadow-sm"
+          style={{
+            borderColor: '#FDE047',
+            background: 'linear-gradient(135deg, #FFFDF0 0%, #FFFFFF 100%)',
+            borderLeft: '5px solid #D97706',
+          }}
+        >
+          <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+            <div className="d-flex align-items-center gap-2">
+              <span
+                className="rounded-circle d-flex align-items-center justify-content-center"
+                style={{ width: 36, height: 36, backgroundColor: '#FEF3C7', color: '#D97706', fontSize: '1.2rem' }}
+              >
+                🌾
+              </span>
+              <div>
+                <h5 className="fw-extrabold mb-0" style={{ color: '#92400E' }}>
+                  {selectedPond.operational_status === 'Harvesting in Progress'
+                    ? `${selectedPond.pond_name} — Harvesting in Progress`
+                    : `${selectedPond.pond_name} — Ready for Harvest`}
+                </h5>
+                <span className="extra-small text-muted">
+                  Pre-Harvest Fasting Protocol Active • Field Preparations Underway
+                </span>
+              </div>
+            </div>
+
+            <span
+              className="badge rounded-pill fw-bold px-3 py-1.5"
+              style={{
+                backgroundColor: '#D97706',
+                color: '#FFFFFF',
+                fontSize: '0.75rem',
+              }}
+            >
+              ✓ Admin Harvest Alert Acknowledged
+            </span>
+          </div>
+
+          {/* Notice Banner */}
+          <div className="p-3 rounded-3 mb-3 border" style={{ backgroundColor: '#FEF9C3', borderColor: '#FDE68A' }}>
+            <div className="extra-small fw-bold text-dark mb-1 d-flex align-items-center gap-1.5">
+              <span>⚠️</span>
+              <span>Pre-Harvest Feeding Guard (Gut Evacuation Phase Active):</span>
+            </div>
+            <div className="extra-small text-secondary" style={{ lineHeight: 1.5 }}>
+              Standard daily feeding is paused for this pond to allow shrimp digestive tracts to clear before netting. This prevents black veins, ensures prime export grade, and saves feeding cost.
+            </div>
+          </div>
+
+          {/* Preparation Status Grid */}
+          <div className="row g-2">
+            <div className="col-12 col-md-6 col-lg-3">
+              <div className="p-2.5 rounded-3 border bg-white h-100 shadow-2xs">
+                <div className="extra-small text-muted fw-semibold mb-1">1. Water Level &amp; Sluice Gate</div>
+                <div className="small fw-bold text-success d-flex align-items-center gap-1">
+                  <FaCheckCircle size={12} /> Filter Screen Ready
+                </div>
+              </div>
+            </div>
+            <div className="col-12 col-md-6 col-lg-3">
+              <div className="p-2.5 rounded-3 border bg-white h-100 shadow-2xs">
+                <div className="extra-small text-muted fw-semibold mb-1">2. Ice Supply &amp; Crates</div>
+                <div className="small fw-bold text-success d-flex align-items-center gap-1">
+                  <FaCheckCircle size={12} /> Slurry Ice Positioned
+                </div>
+              </div>
+            </div>
+            <div className="col-12 col-md-6 col-lg-3">
+              <div className="p-2.5 rounded-3 border bg-white h-100 shadow-2xs">
+                <div className="extra-small text-muted fw-semibold mb-1">3. Shell Hardness</div>
+                <div className="small fw-bold text-success d-flex align-items-center gap-1">
+                  <FaCheckCircle size={12} /> Post-Molt Verified
+                </div>
+              </div>
+            </div>
+            <div className="col-12 col-md-6 col-lg-3">
+              <div className="p-2.5 rounded-3 border bg-white h-100 shadow-2xs">
+                <div className="extra-small text-muted fw-semibold mb-1">4. Field Lead</div>
+                <div className="small fw-bold text-primary d-flex align-items-center gap-1">
+                  <span>👤</span> {user?.full_name || 'Cj Arroyo'}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

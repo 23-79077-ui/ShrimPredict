@@ -391,6 +391,21 @@ export default function ReportsPage() {
 
       if (response.data?.success) {
         const reportId = response.data?.id || response.data?.report_id || '';
+
+        // Trigger real-time floating alert banner and audio chime immediately
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('shrim-show-live-alert', {
+              detail: {
+                title: `Report Submitted : ${pondName}`,
+                tag: 'Dispatched to Admin',
+                action_type: 'report_submitted',
+                pond_name: pondName,
+              },
+            })
+          );
+        }
+
         await Swal.fire({
           icon: 'success',
           title: 'Incident Report Submitted Successfully!',

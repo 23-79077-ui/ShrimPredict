@@ -307,8 +307,8 @@ export const fil = {
   'myTasks.loading': 'Iniloload ang iyong mga gawain…',
   'myTasks.noPondsTitle': 'Walang nakatalagang palaisdaan',
   'myTasks.noPonds': 'Hilingin sa administrador ng palaisdaan na magtalaga ng palaisdaan sa iyong account.',
-  'myTasks.waterTitle': 'Kumpletuhin ang paunang pagsusuri ng kalidad ng tubig',
-  'myTasks.waterDetail': 'Suriin ang dissolved oxygen, temperatura, pH, at alat bago maglagay ng hipon.',
+  'myTasks.waterTitle': 'Kumpletuhin ang pagsusuri ng kalidad ng tubig',
+  'myTasks.waterDetail': 'Suriin ang dissolved oxygen, temperatura, pH, at alat.',
   'myTasks.feedTitle': 'Itala ang nakatakdang pagpapakain',
   'myTasks.feedDesc': 'I-verify ang rasyon at itala ang pagkonsumo sa feeding tray.',
   'myTasks.slot': 'Oras ng pagpapakain',
@@ -474,5 +474,6 @@ export const fil = {
   'settings.langDesc': 'Piliin ang nais mong wika para sa interface ng ShrimPredict.',
   'settings.langEnglishLabel': 'Ingles / English (United States)',
   'settings.langFilipinoLabel': 'Filipino / Tagalog (Pilipinas)',
-  'settings.langSelectNotice': 'Agarang magkakabisa ang pagbabago sa lahat ng nabigasyon, kontrol, at mga screen ng sistema.'
+  'settings.langSelectNotice': 'Agarang magkakabisa ang pagbabago sa lahat ng nabigasyon, kontrol, at mga screen ng sistema.',
+  'Play Sound': 'Patunugin'
 };

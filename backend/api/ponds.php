@@ -224,19 +224,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
             $stockingDateStr = !empty($p['stocking_date']) ? $p['stocking_date'] : null;
             $ageDays = null;
-            if ($stockingDateStr) {
-                $stockingDt = new DateTime($stockingDateStr);
-                $ageDays = $stockingDt->diff($now)->days;
-                $totalAgeSum += $ageDays;
-            }
-
-            $readiness = is_numeric($p['harvest_readiness'] ?? null) ? (float)$p['harvest_readiness'] : 0.0;
-            $readinessCategory = 'Not Ready';
-            if ($readiness >= 100) {
-                $readinessCategory = 'Ready to Harvest';
-            } else if ($readiness >= 95) {
-                $readinessCategory = 'Upcoming';
-            }
 
             $diseaseNormalized = strtolower((string)($disease ?? ''));
             if ($diseaseNormalized !== '' && $diseaseNormalized !== 'healthy' && $diseaseNormalized !== 'none') {
@@ -276,8 +263,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             }
 
             $feedProgress = $hRow ? (float)$hRow['feed_progress_percentage'] : ($cycleTarget > 0 ? round(($totalFeed / $cycleTarget) * 100, 2) : 0);
-            if ($hRow && !empty($hRow['readiness_status'])) {
-                $readinessCategory = $hRow['readiness_status'];
+
+            // Strict Harvest Readiness Criteria:
+            // 1. Feeding consumption target must reach 15,000 kg (feed progress >= 100%)
+            // 2. Average body weight from weekly sampling must reach 23.0 grams up (23g+)
+            // Regardless of Day of Culture (DOC 90+), a pond CANNOT be Ready to Harvest until both are satisfied.
+            $hasTargetFeed = ($totalFeed >= 15000.0) || ($cycleTarget > 0 && $totalFeed >= $cycleTarget && $totalFeed >= 12000.0);
+            $hasTargetWeight = ($shrimpWeight >= 23.0);
+
+            if ($hasTargetFeed && $hasTargetWeight) {
+                $readinessCategory = 'Ready to Harvest';
+                $readiness = 100.0;
+            } else if ($totalFeed >= 13500.0 && $shrimpWeight >= 20.0) {
+                $readinessCategory = 'Nearly Ready';
+                $readiness = round(min(95.0, ($totalFeed / 15000.0) * 100), 2);
+            } else if ($totalFeed >= 8000.0 || $shrimpWeight >= 15.0) {
+                $readinessCategory = 'Developing';
+                $readiness = round(min(85.0, ($totalFeed / 15000.0) * 100), 2);
+            } else {
+                $readinessCategory = 'Not Ready';
+                $readiness = round(min(50.0, ($totalFeed / 15000.0) * 100), 2);
+            }
+
+            // Calculate Day of Culture (DOC) capped at harvest date once ready to harvest
+            if ($stockingDateStr) {
+                $stockingDt = new DateTime($stockingDateStr);
+                $endDt = $now;
+                if ($hasTargetFeed && $hasTargetWeight) {
+                    if (!empty($p['expected_harvest_date'])) {
+                        $endDt = new DateTime($p['expected_harvest_date']);
+                    } else if (!empty($feedRow['latest_feed_date'])) {
+                        $endDt = new DateTime($feedRow['latest_feed_date']);
+                    }
+                }
+                $ageDays = $stockingDt->diff($endDt)->days + 1;
+                $totalAgeSum += $ageDays;
             }
 
             $rawStatus = trim((string)($p['status'] ?? ''));

@@ -12,7 +12,10 @@ $openaiKey = getenv('OPENAI_API_KEY');
 $envPaths = [
     __DIR__ . '/../../.env',
     __DIR__ . '/../.env',
-    __DIR__ . '/.env'
+    __DIR__ . '/.env',
+    'C:/Users/Cristel/Documents/ShrimPredict/.env',
+    'C:/xampp/htdocs/shrim_predict_api/.env',
+    'C:/xampp/htdocs/shrim_predict_api/backend/.env'
 ];
 
 foreach ($envPaths as $path) {

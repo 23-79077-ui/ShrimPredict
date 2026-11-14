@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import Swal from 'sweetalert2';
 import { useAuth } from '../../context/AuthContext';
@@ -23,11 +24,13 @@ import {
 
 export default function CaretakerNotificationsPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { t, isFilipino } = useLanguage();
   const [notifications, setNotifications] = useState([]);
   const [scanActions, setScanActions] = useState({});
   const [counts, setCounts] = useState({ unread: 0, active: 0, archived: 0, deleted: 0 });
   const [loading, setLoading] = useState(true);
+  const [acknowledgingId, setAcknowledgingId] = useState(null);
 
   // Filters state
   const [currentTab, setCurrentTab] = useState('active'); // 'active' | 'unread' | 'archived' | 'deleted'
@@ -246,6 +249,72 @@ export default function CaretakerNotificationsPage() {
         title: t('Action update failed'),
         text: error?.response?.data?.message || error.message || t('Unable to update this action.'),
       });
+    }
+  };
+
+  const handleAcknowledgeHarvest = async (notif) => {
+    try {
+      setAcknowledgingId(notif.id);
+      const targetPondId = notif.pond_id || notif.target_id || user?.pond_id || 1;
+      const res = await api.post('/harvest_predictions.php', {
+        action: 'acknowledge_harvest_prep',
+        pond_id: targetPondId,
+        pond_name: notif.pond_name || '',
+        user_id: user?.id,
+        caretaker_name: user?.full_name || 'Caretaker',
+      });
+
+      if (res.data?.success) {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('shrim-notification-updated', String(Date.now()));
+          window.dispatchEvent(new Event('shrim-notification-updated'));
+          window.dispatchEvent(new Event('shrim-feed-updated'));
+        }
+
+        await Swal.fire({
+          icon: 'success',
+          title: 'Harvest Preparation Acknowledged!',
+          html: `
+            <div class="text-start mt-2 p-3 bg-light rounded-3 border">
+              <div class="fw-bold text-dark mb-1">
+                Pond: <span class="text-primary">${notif.pond_name || 'Pond A1'}</span>
+              </div>
+              <div class="extra-small text-muted mb-2">
+                Status updated to: <span class="badge bg-warning text-dark fw-bold">Harvesting in Progress</span>
+              </div>
+              <div class="extra-small text-success fw-bold">
+                ✓ Live confirmation notification sent to Administrator.
+              </div>
+            </div>
+          `,
+          confirmButtonText: 'Open My Pond',
+          confirmButtonColor: '#FC563C',
+          showCancelButton: true,
+          cancelButtonText: 'Stay Here',
+        }).then((result) => {
+          if (result.isConfirmed) {
+            navigate('/caretaker/my-pond');
+          }
+        });
+
+        loadNotifications();
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: res.data?.message || 'Failed to acknowledge harvest preparation.',
+        });
+      }
+    } catch (err) {
+      console.error('Error acknowledging harvest prep:', err);
+      const msg = err.response?.data?.message || err.message || 'Failed to connect to the server.';
+      Swal.fire({
+        icon: 'error',
+        title: 'Acknowledgment Error',
+        text: msg,
+      });
+    } finally {
+      setAcknowledgingId(null);
     }
   };
 
@@ -510,6 +579,54 @@ export default function CaretakerNotificationsPage() {
                               onClick={() => handleScanActionStatus(notif, 'Done')}
                             >
                               <FaCheckCircle size={10} className="me-1" /> {t('Mark done')}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {notif.action_type === 'harvest_ready' && currentTab !== 'deleted' && (
+                        <div
+                          className="mt-3 rounded-3 p-3 border shadow-xs"
+                          style={{
+                            backgroundColor: '#FFFBEB',
+                            borderColor: '#FDE68A',
+                          }}
+                        >
+                          <div className="d-flex align-items-center justify-content-between gap-2 mb-2 flex-wrap">
+                            <span className="extra-small fw-extrabold" style={{ color: '#92400E' }}>
+                              🌾 {t('Pre-Harvest Protocol & Site Preparation')}
+                            </span>
+                            <span
+                              className="badge rounded-pill fw-bold extra-small"
+                              style={{ backgroundColor: notif.is_read ? '#D1FAE5' : '#FEF3C7', color: notif.is_read ? '#065F46' : '#B45309' }}
+                            >
+                              {notif.is_read ? t('✓ Acknowledged') : t('Action Required')}
+                            </span>
+                          </div>
+
+                          <p className="extra-small text-secondary mb-2.5" style={{ lineHeight: 1.45 }}>
+                            {t('Admin marked this pond ready for harvest. Stop feeding immediately (gut evacuation protocol) and prepare nets, crates, ice, and pond drainage.')}
+                          </p>
+
+                          <div className="d-flex gap-2 flex-wrap">
+                            <button
+                              type="button"
+                              className="btn btn-sm fw-bold shadow-xs d-inline-flex align-items-center gap-1.5"
+                              style={{ backgroundColor: '#D97706', color: '#FFFFFF', borderRadius: 8 }}
+                              onClick={() => handleAcknowledgeHarvest(notif)}
+                              disabled={acknowledgingId === notif.id}
+                            >
+                              <FaCheckCircle size={12} />
+                              {acknowledgingId === notif.id ? t('Acknowledging…') : t('✓ Acknowledge & Start Pre-Harvest Prep')}
+                            </button>
+
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-secondary fw-semibold extra-small"
+                              style={{ borderRadius: 8 }}
+                              onClick={() => navigate('/caretaker/my-pond')}
+                            >
+                              {t('View in My Pond')} →
                             </button>
                           </div>
                         </div>

@@ -306,8 +306,8 @@ export const en = {
   'myTasks.loading': 'Loading your tasks…',
   'myTasks.noPondsTitle': 'No ponds assigned',
   'myTasks.noPonds': 'Ask your farm administrator to assign a pond to your caretaker account.',
-  'myTasks.waterTitle': 'Complete the initial water-quality check',
-  'myTasks.waterDetail': 'Verify dissolved oxygen, temperature, pH, and salinity before stocking shrimp.',
+  'myTasks.waterTitle': 'Complete the water-quality check',
+  'myTasks.waterDetail': 'Verify dissolved oxygen, temperature, pH, and salinity.',
   'myTasks.feedTitle': 'Log the scheduled feeding',
   'myTasks.feedDesc': 'Verify ration and record feed tray consumption.',
   'myTasks.slot': 'Feeding slot',
@@ -473,5 +473,6 @@ export const en = {
   'settings.langDesc': 'Choose your preferred language for the ShrimPredict platform interface.',
   'settings.langEnglishLabel': 'English (United States)',
   'settings.langFilipinoLabel': 'Filipino / Tagalog (Pilipinas)',
-  'settings.langSelectNotice': 'Changes apply immediately across all navigation, controls, and system views.'
+  'settings.langSelectNotice': 'Changes apply immediately across all navigation, controls, and system views.',
+  'Play Sound': 'Play Sound'
 };

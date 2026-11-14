@@ -31,8 +31,10 @@ import {
   FaEye,
   FaEyeSlash,
   FaSignOutAlt,
-  FaCog
+  FaCog,
+  FaVolumeUp
 } from 'react-icons/fa';
+import { playNotificationSound } from '../../utils/audioChime';
 import { useSearchParams } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import api from '../../services/api';
@@ -961,27 +963,37 @@ export default function CaretakerSettingsPage() {
                             </button>
                           </div>
 
-                          <div className="p-3 bg-white border rounded-3 d-flex justify-content-between align-items-center">
+                          <div className="p-3 bg-white border rounded-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
                             <div>
                               <div className="fw-bold text-dark">Audio Alert Sounds</div>
                               <small className="text-muted">Play a gentle sound notification when new alerts or logs arrive.</small>
                             </div>
-                            <button
-                              type="button"
-                              className="btn border-0 p-0 fs-3"
-                              onClick={() =>
-                                setNotificationSettings((prev) => ({
-                                  ...prev,
-                                  sound_alerts: prev.sound_alerts === 'ON' ? 'OFF' : 'ON'
-                                }))
-                              }
-                            >
-                              {notificationSettings.sound_alerts === 'ON' ? (
-                                <FaToggleOn className="text-success" />
-                              ) : (
-                                <FaToggleOff className="text-muted opacity-50" />
-                              )}
-                            </button>
+                            <div className="d-flex align-items-center gap-2.5">
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-light border px-2.5 py-1 extra-small rounded-pill d-inline-flex align-items-center gap-1 text-secondary hover-lift"
+                                onClick={() => playNotificationSound()}
+                                title="Click to test live audio chime"
+                              >
+                                <FaVolumeUp size={11} className="text-primary" /> Test Chime
+                              </button>
+                              <button
+                                type="button"
+                                className="btn border-0 p-0 fs-3"
+                                onClick={() =>
+                                  setNotificationSettings((prev) => ({
+                                    ...prev,
+                                    sound_alerts: prev.sound_alerts === 'ON' ? 'OFF' : 'ON'
+                                  }))
+                                }
+                              >
+                                {notificationSettings.sound_alerts === 'ON' ? (
+                                  <FaToggleOn className="text-success" />
+                                ) : (
+                                  <FaToggleOff className="text-muted opacity-50" />
+                                )}
+                              </button>
+                            </div>
                           </div>
                         </div>
 

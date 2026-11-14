@@ -19,6 +19,9 @@ import {
   FaSync,
   FaTrashRestore,
   FaExternalLinkAlt,
+  FaBullhorn,
+  FaPaperPlane,
+  FaTimes,
 } from 'react-icons/fa';
 import { useLanguage } from '../../context/LanguageContext';
 
@@ -38,6 +41,115 @@ export default function NotificationsPage() {
   const [openDropdownId, setOpenDropdownId] = useState(null);
 
   const dropdownRef = useRef(null);
+
+  // Compose Live Alert State
+  const [showComposeModal, setShowComposeModal] = useState(false);
+  const [caretakersList, setCaretakersList] = useState([]);
+  const [pondsList, setPondsList] = useState([]);
+  const [sendingAlert, setSendingAlert] = useState(false);
+  const [composeForm, setComposeForm] = useState({
+    recipientType: 'all', // 'all' | 'single'
+    caretakerId: '',
+    pondName: 'Pond A1',
+    alertType: 'harvest_ready',
+    title: 'Ready for Harvest: Pond A1',
+    message: 'Pond A1 has reached 15,000 kg feed target and 24.5g average body weight. You may now coordinate pond drainage and harvest preparation equipment.',
+  });
+
+  useEffect(() => {
+    const fetchMetadata = async () => {
+      try {
+        const [cRes, pRes] = await Promise.allSettled([
+          api.get('/users.php?role=caretaker'),
+          api.get('/ponds.php'),
+        ]);
+        if (cRes.status === 'fulfilled') {
+          const list = Array.isArray(cRes.value.data)
+            ? cRes.value.data
+            : (Array.isArray(cRes.value.data?.users) ? cRes.value.data.users : []);
+          setCaretakersList(list);
+          if (list.length > 0) {
+            setComposeForm((prev) => ({ ...prev, caretakerId: String(list[0].id) }));
+          }
+        }
+        if (pRes.status === 'fulfilled') {
+          const pList = Array.isArray(pRes.value.data?.ponds) ? pRes.value.data.ponds : [];
+          setPondsList(pList);
+        }
+      } catch (e) {}
+    };
+    fetchMetadata();
+  }, []);
+
+  const applyPreset = (type) => {
+    const pName = composeForm.pondName || 'Pond A1';
+    if (type === 'harvest') {
+      setComposeForm((prev) => ({
+        ...prev,
+        alertType: 'harvest_ready',
+        title: `Ready for Harvest: ${pName}`,
+        message: `${pName} has completed the 15,000 kg feeding target and reached harvest-ready shrimp weight (24.5g). Prepare harvest equipment, drainage pipes, and aerator standby.`,
+      }));
+    } else if (type === 'water') {
+      setComposeForm((prev) => ({
+        ...prev,
+        alertType: 'urgent_action',
+        title: `Urgent Water Parameter Check: ${pName}`,
+        message: `Abnormal water parameter readings detected in ${pName}. Verify DO, temperature, and pH immediately and activate supplemental aeration.`,
+      }));
+    } else if (type === 'feed') {
+      setComposeForm((prev) => ({
+        ...prev,
+        alertType: 'feeding_advisory',
+        title: `Feeding Ration Advisory: ${pName}`,
+        message: `4/4 feeding check trays were fully consumed on ${pName}. Add +2.00 kg feed on the next scheduled slot per farm SOP.`,
+      }));
+    }
+  };
+
+  const handleDispatchLiveAlert = async (e) => {
+    e?.preventDefault();
+    if (!composeForm.title.trim() || !composeForm.message.trim()) {
+      Swal.fire({ icon: 'warning', title: t('Missing Information'), text: t('Please provide both title and message.') });
+      return;
+    }
+    setSendingAlert(true);
+    try {
+      const selectedCt = caretakersList.find((c) => String(c.id) === String(composeForm.caretakerId));
+      const res = await api.post('/notifications.php', {
+        title: composeForm.title.trim(),
+        message: composeForm.message.trim(),
+        user_id: composeForm.recipientType === 'all' ? 'all' : (composeForm.caretakerId || null),
+        caretaker_name: composeForm.recipientType === 'all' ? 'All Caretakers' : (selectedCt?.full_name || 'Caretaker'),
+        action_type: composeForm.alertType,
+        pond_name: composeForm.pondName || '',
+        broadcast: composeForm.recipientType === 'all',
+      });
+      if (res.data?.success) {
+        setShowComposeModal(false);
+        loadNotifications();
+        window.dispatchEvent(new Event('shrim-notification-updated'));
+        Swal.fire({
+          icon: 'success',
+          title: t('Live Alert Dispatched!'),
+          text: composeForm.recipientType === 'all'
+            ? t('Alert successfully sent to ALL caretakers. They will receive a live notification with sound on their screens.')
+            : `${t('Alert successfully sent to')} ${selectedCt?.full_name || 'Caretaker'}. ${t('They will receive a live notification with sound on their screen.')}`,
+          confirmButtonColor: '#FC563C',
+        });
+      } else {
+        throw new Error(res.data?.message || 'Failed to dispatch alert.');
+      }
+    } catch (err) {
+      Swal.fire({
+        icon: 'error',
+        title: t('Dispatch Failed'),
+        text: err?.response?.data?.message || err.message || t('Unable to send alert. Please try again.'),
+      });
+    } finally {
+      setSendingAlert(false);
+    }
+  };
 
   // Helper to compute target YYYY-MM-DD date based on filter
   const getFilterDateString = useCallback(() => {
@@ -332,6 +444,14 @@ export default function NotificationsPage() {
         <div className="d-flex align-items-center gap-2 flex-wrap">
           <button
             type="button"
+            className="btn btn-sm d-inline-flex align-items-center gap-1.5 px-3.5 py-2 shadow-xs hover-lift rounded-3 text-white"
+            style={{ backgroundColor: '#FC563C', fontWeight: 600 }}
+            onClick={() => setShowComposeModal(true)}
+          >
+            <FaBullhorn size={12} /> {t('Send Live Alert to Caretaker')}
+          </button>
+          <button
+            type="button"
             className="btn btn-sm minimal-filter-control d-inline-flex align-items-center gap-1.5 px-3 py-2 shadow-2xs hover-shadow"
             onClick={loadNotifications}
             disabled={loading}
@@ -601,6 +721,224 @@ export default function NotificationsPage() {
         })()}
         </div>
       </div>
+
+      {/* Compose Live Alert Modal */}
+      {showComposeModal && (
+        <div
+          className="modal show d-block"
+          tabIndex="-1"
+          style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', zIndex: 10550 }}
+        >
+          <div className="modal-dialog modal-dialog-centered modal-lg">
+            <div className="modal-content border-0 shadow-2xl rounded-4 overflow-hidden">
+              {/* Modal Header */}
+              <div
+                className="modal-header px-4 py-3 border-0 text-white"
+                style={{ background: 'linear-gradient(135deg, #1E293B 0%, #0F172A 100%)' }}
+              >
+                <div className="d-flex align-items-center gap-2.5">
+                  <div
+                    className="rounded-circle d-flex align-items-center justify-content-center"
+                    style={{ width: 38, height: 38, backgroundColor: 'rgba(252, 86, 60, 0.2)', color: '#FC563C' }}
+                  >
+                    <FaBullhorn size={16} />
+                  </div>
+                  <div>
+                    <h5 className="modal-title fw-extrabold mb-0 text-white" style={{ fontSize: '1.15rem' }}>
+                      {t('Send Live Notification to Caretaker')}
+                    </h5>
+                    <small className="text-white-50 extra-small">
+                      {t('Dispatches an instant floating toast with chime sound directly to the caretaker screen')}
+                    </small>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn-close btn-close-white opacity-70 hover-opacity-100"
+                  onClick={() => setShowComposeModal(false)}
+                />
+              </div>
+
+              {/* Modal Body */}
+              <form onSubmit={handleDispatchLiveAlert}>
+                <div className="modal-body p-4 bg-white">
+                  {/* Quick Preset Templates */}
+                  <div className="mb-3.5 p-3 rounded-3" style={{ backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0' }}>
+                    <div className="d-flex align-items-center justify-content-between mb-2">
+                      <span className="extra-small fw-bold text-uppercase tracking-wider text-secondary">
+                        ⚡ {t('Quick Fill Operational Presets:')}
+                      </span>
+                    </div>
+                    <div className="d-flex align-items-center gap-2 flex-wrap">
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-warning extra-small rounded-pill fw-bold d-inline-flex align-items-center gap-1"
+                        style={{ backgroundColor: composeForm.alertType === 'harvest_ready' ? '#FEF3C7' : '#FFFFFF', color: '#D97706', borderColor: '#FCD34D' }}
+                        onClick={() => applyPreset('harvest')}
+                      >
+                        🌾 {t('Ready for Harvest Alert')}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-danger extra-small rounded-pill fw-bold d-inline-flex align-items-center gap-1"
+                        style={{ backgroundColor: composeForm.alertType === 'urgent_action' ? '#FEE2E2' : '#FFFFFF', color: '#DC2626', borderColor: '#FCA5A5' }}
+                        onClick={() => applyPreset('water')}
+                      >
+                        💧 {t('Urgent Water Parameter Check')}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-primary extra-small rounded-pill fw-bold d-inline-flex align-items-center gap-1"
+                        style={{ backgroundColor: composeForm.alertType === 'feeding_advisory' ? '#EFF6FF' : '#FFFFFF', color: '#2563EB', borderColor: '#BFDBFE' }}
+                        onClick={() => applyPreset('feed')}
+                      >
+                        🍽️ {t('Feeding Adjustment SOP')}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="row g-3 mb-3">
+                    {/* Recipient Target */}
+                    <div className="col-12 col-md-6">
+                      <label className="form-label extra-small fw-bold text-uppercase tracking-wider text-secondary mb-1">
+                        {t('Recipient Caretaker')} <span className="text-danger">*</span>
+                      </label>
+                      <select
+                        className="form-select form-select-sm rounded-3 py-2"
+                        value={composeForm.recipientType === 'all' ? 'all' : composeForm.caretakerId}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === 'all') {
+                            setComposeForm((prev) => ({ ...prev, recipientType: 'all', caretakerId: '' }));
+                          } else {
+                            setComposeForm((prev) => ({ ...prev, recipientType: 'single', caretakerId: val }));
+                          }
+                        }}
+                      >
+                        <option value="all">📢 {t('All Assigned Caretakers (Broadcast to Everyone)')}</option>
+                        {caretakersList.map((c) => (
+                          <option key={c.id} value={String(c.id)}>
+                            👤 {c.full_name} ({c.email || 'Caretaker'})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Associated Pond */}
+                    <div className="col-12 col-md-6">
+                      <label className="form-label extra-small fw-bold text-uppercase tracking-wider text-secondary mb-1">
+                        {t('Associated Pond (Optional)')}
+                      </label>
+                      <select
+                        className="form-select form-select-sm rounded-3 py-2"
+                        value={composeForm.pondName}
+                        onChange={(e) => {
+                          const p = e.target.value;
+                          setComposeForm((prev) => ({
+                            ...prev,
+                            pondName: p,
+                            title: prev.alertType === 'harvest_ready' ? `Ready for Harvest: ${p}` : prev.title,
+                          }));
+                        }}
+                      >
+                        <option value="">{t('None / Farm-wide General')}</option>
+                        {pondsList.map((p) => (
+                          <option key={p.id} value={p.pond_name}>
+                            🏊 {p.pond_name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="row g-3 mb-3">
+                    {/* Alert Type */}
+                    <div className="col-12 col-md-6">
+                      <label className="form-label extra-small fw-bold text-uppercase tracking-wider text-secondary mb-1">
+                        {t('Alert Priority / Type')}
+                      </label>
+                      <select
+                        className="form-select form-select-sm rounded-3 py-2"
+                        value={composeForm.alertType}
+                        onChange={(e) => setComposeForm((prev) => ({ ...prev, alertType: e.target.value }))}
+                      >
+                        <option value="harvest_ready">🌾 Harvest Ready (Ready for Harvest)</option>
+                        <option value="urgent_action">🚨 Urgent Action Required</option>
+                        <option value="feeding_advisory">🍽️ Feeding Advisory</option>
+                        <option value="water_quality">💧 Water Quality Notice</option>
+                        <option value="admin_announcement">📢 General Farm Announcement</option>
+                      </select>
+                    </div>
+
+                    {/* Notification Title */}
+                    <div className="col-12 col-md-6">
+                      <label className="form-label extra-small fw-bold text-uppercase tracking-wider text-secondary mb-1">
+                        {t('Notification Title')} <span className="text-danger">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        className="form-control form-control-sm rounded-3 py-2"
+                        placeholder={t('e.g. Ready for Harvest: Pond A1')}
+                        value={composeForm.title}
+                        onChange={(e) => setComposeForm((prev) => ({ ...prev, title: e.target.value }))}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* Message Content */}
+                  <div className="mb-2">
+                    <label className="form-label extra-small fw-bold text-uppercase tracking-wider text-secondary mb-1">
+                      {t('Alert Message / Action Instructions')} <span className="text-danger">*</span>
+                    </label>
+                    <textarea
+                      className="form-control form-control-sm rounded-3 p-2.5"
+                      rows="4"
+                      placeholder={t('Enter the exact instructions or notice the caretaker will see on their screen...')}
+                      value={composeForm.message}
+                      onChange={(e) => setComposeForm((prev) => ({ ...prev, message: e.target.value }))}
+                      required
+                    />
+                    <small className="text-muted extra-small mt-1 d-block">
+                      💡 {t("The caretaker's device will play a chime sound and pop up a real-time floating card with this message.")}
+                    </small>
+                  </div>
+                </div>
+
+                {/* Modal Footer */}
+                <div className="modal-footer px-4 py-3 bg-light border-top d-flex justify-content-between">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-light px-3.5 py-2 rounded-pill fw-semibold text-secondary"
+                    onClick={() => setShowComposeModal(false)}
+                    disabled={sendingAlert}
+                  >
+                    {t('Cancel')}
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn btn-sm text-white px-4 py-2 rounded-pill fw-bold shadow-xs hover-lift d-inline-flex align-items-center gap-1.5"
+                    style={{ backgroundColor: '#FC563C' }}
+                    disabled={sendingAlert}
+                  >
+                    {sendingAlert ? (
+                      <>
+                        <div className="spinner-border spinner-border-sm me-1" role="status" />
+                        {t('Dispatching Live Alert...')}
+                      </>
+                    ) : (
+                      <>
+                        <FaPaperPlane size={11} />
+                        {t('Dispatch Live Alert Now')}
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

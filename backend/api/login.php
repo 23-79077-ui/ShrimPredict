@@ -144,7 +144,8 @@ if (empty($user['password_changed_at'])) {
         'rc@gmail.com' => ['rc12345', 'admin123'],
         're@gmail.com' => ['re12345', 'admin123'],
         'admin@shrimpredict.com' => ['admin123'],
-        'cristel@gmail.com' => ['password123', 'admin123', 'cristel12345']
+        'cristel@gmail.com' => ['password123', 'admin123', 'cristel12345'],
+        'lc@gmail.com' => ['lc12345', 'password123', 'admin123']
     ];
 
     if (isset($knownValidPasswords[$userEmail]) && in_array($password, $knownValidPasswords[$userEmail], true)) {
