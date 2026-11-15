@@ -128,6 +128,7 @@ export default function AdminLayout() {
   const dismissedAlertIdsRef = useRef(new Set());
   const chimedAlertIdsRef = useRef(new Set());
   const dismissTimerRef = useRef(null);
+  const allActiveNotifsRef = useRef([]);
 
   // Category Dock Horizontal Swipe State
   const [navScroll, setNavScroll] = useState({
@@ -244,13 +245,16 @@ export default function AdminLayout() {
       const res = await api.get('/notifications.php?status=active');
       if (res.data?.success) {
         const notifs = Array.isArray(res.data.notifications) ? res.data.notifications : [];
+        allActiveNotifsRef.current = notifs;
         setUnreadCount(res.data.counts?.unread || 0);
         setRecentNotifs(notifs.slice(0, 6));
 
         // Find unread incoming reports/alerts from caretakers that haven't been dismissed in this session
         const unreadAlerts = notifs.filter((n) => !n.is_read && !dismissedAlertIdsRef.current.has(n.id));
 
-        if (unreadAlerts.length > 0) {
+        // When admin is viewing the Alerts section, do not pop up floating toasts to avoid bombarding
+        const isAlertsPage = location.pathname.startsWith('/admin/alerts');
+        if (unreadAlerts.length > 0 && !isAlertsPage) {
           const newest = unreadAlerts[0];
 
           // Trigger live notification chime immediately on first detection of this alert
@@ -267,12 +271,69 @@ export default function AdminLayout() {
           dismissTimerRef.current = setTimeout(() => {
             handleDismissAlert(newest.id);
           }, 15000);
+        } else if (isAlertsPage && activeLiveAlert) {
+          setActiveLiveAlert(null);
         }
       }
     } catch (e) {
       // Silently catch fetch errors
     }
   };
+
+  const handleViewLiveAlert = (alertToView) => {
+    if (!alertToView) return;
+    const alertId = alertToView.id;
+    handleDismissAlert(alertId);
+
+    if (alertId) {
+      api.post('/notifications.php', { action: 'mark_read', id: alertId }).catch(() => { });
+    }
+
+    // When navigating to Alerts, suppress following unread pop-up toasts so admin is not bombarded
+    try {
+      if (allActiveNotifsRef.current && Array.isArray(allActiveNotifsRef.current)) {
+        allActiveNotifsRef.current.forEach((n) => {
+          if (n?.id) dismissedAlertIdsRef.current.add(n.id);
+        });
+      }
+      if (Array.isArray(recentNotifs)) {
+        recentNotifs.forEach((n) => {
+          if (n?.id) dismissedAlertIdsRef.current.add(n.id);
+        });
+      }
+    } catch (e) {
+      console.warn('Error suppressing notifications:', e);
+    }
+
+    const actionType = (alertToView.action_type || '').toLowerCase();
+    if (actionType === 'harvest_prep') {
+      navigate('/admin/harvest');
+    } else if (
+      actionType === 'feeding' ||
+      actionType === 'disease_scan' ||
+      actionType === 'water_quality' ||
+      actionType === 'maintenance'
+    ) {
+      navigate('/admin/alerts?tab=feed_scans');
+    } else {
+      navigate('/admin/alerts');
+    }
+  };
+
+  // Automatically dismiss and suppress pop-up notifications when viewing the Alerts section
+  useEffect(() => {
+    if (location.pathname.startsWith('/admin/alerts')) {
+      if (allActiveNotifsRef.current && Array.isArray(allActiveNotifsRef.current)) {
+        allActiveNotifsRef.current.forEach((n) => {
+          if (n?.id) dismissedAlertIdsRef.current.add(n.id);
+        });
+      }
+      if (activeLiveAlert) {
+        dismissedAlertIdsRef.current.add(activeLiveAlert.id);
+        setActiveLiveAlert(null);
+      }
+    }
+  }, [location.pathname, activeLiveAlert]);
 
   useEffect(() => {
     fetchUnreadNotifications();
@@ -309,13 +370,24 @@ export default function AdminLayout() {
 
   const handleLogout = (e) => {
     if (e && typeof e.preventDefault === 'function') e.preventDefault();
+    const savedTheme = localStorage.getItem('shrim_theme');
+    const savedPref = localStorage.getItem('shrim_theme_preference');
+    const savedLang = localStorage.getItem('shrim_language');
+
     try {
       logout();
     } catch (err) {
       console.error('Logout error:', err);
     }
-    localStorage.clear();
+
+    localStorage.removeItem('shrim_user');
+    localStorage.removeItem('user');
     sessionStorage.clear();
+
+    if (savedTheme) localStorage.setItem('shrim_theme', savedTheme);
+    if (savedPref) localStorage.setItem('shrim_theme_preference', savedPref);
+    if (savedLang) localStorage.setItem('shrim_language', savedLang);
+
     window.location.href = '/login';
   };
 
@@ -597,9 +669,8 @@ export default function AdminLayout() {
                           recentNotifs.map((n) => (
                             <div
                               key={n.id}
-                              className={`p-3 border-bottom transition-all cursor-pointer ${
-                                !n.is_read ? (theme === 'dark' ? 'bg-primary-subtle bg-opacity-10' : 'bg-light') : ''
-                              }`}
+                              className={`p-3 border-bottom transition-all cursor-pointer ${!n.is_read ? (theme === 'dark' ? 'bg-primary-subtle bg-opacity-10' : 'bg-light') : ''
+                                }`}
                               style={{
                                 borderColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.06)' : '#F1F5F9',
                                 fontSize: '0.8rem'
@@ -987,8 +1058,8 @@ export default function AdminLayout() {
         <Outlet />
       </main>
 
-      {/* Real-time Live Caretaker Incident Notification Toast with Sound Chime */}
-      {activeLiveAlert && (
+      {/* Real-time Live Caretaker Incident Notification Toast with Sound Chime (Suppressed while on Alerts page) */}
+      {activeLiveAlert && !location.pathname.startsWith('/admin/alerts') && (
         <div className={`live-alert-toast-container ${isAlertDismissing ? 'live-alert-exiting' : ''}`}>
           <div
             className="card live-alert-toast-card border-0"
@@ -1000,7 +1071,12 @@ export default function AdminLayout() {
           >
             <div className="p-3 px-sm-3.5 py-sm-3">
               <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
-                <div className="d-flex align-items-center gap-2.5 min-w-0">
+                <div
+                  className="d-flex align-items-center gap-2.5 min-w-0"
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => handleViewLiveAlert(activeLiveAlert)}
+                  title={t('Click to open in Alerts')}
+                >
                   <div
                     className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 live-alert-pulse-admin"
                     style={{
@@ -1018,8 +1094,8 @@ export default function AdminLayout() {
                       {activeLiveAlert.action_type === 'maintenance'
                         ? `New Incident Report : ${activeLiveAlert.pond_name || 'Pond'}`
                         : activeLiveAlert.action_type === 'harvest_prep'
-                        ? `Harvest Prep Started : ${activeLiveAlert.pond_name || 'Pond'}`
-                        : (activeLiveAlert.title || 'New Field Report')}
+                          ? `Harvest Prep Started : ${activeLiveAlert.pond_name || 'Pond'}`
+                          : (activeLiveAlert.title || 'New Field Report')}
                     </h6>
                     <span
                       className="badge rounded-pill extra-small fw-semibold"
@@ -1049,20 +1125,9 @@ export default function AdminLayout() {
                     type="button"
                     className="btn btn-sm text-white extra-small px-3.5 py-1.5 rounded-pill fw-bold shadow-xs hover-lift"
                     style={{ backgroundColor: '#FC563C' }}
-                    onClick={() => {
-                      handleDismissAlert(activeLiveAlert?.id);
-                      if (activeLiveAlert.action_type === 'maintenance') {
-                        navigate('/admin/reports');
-                      } else if (activeLiveAlert.action_type === 'harvest_prep') {
-                        navigate('/admin/harvest');
-                      } else {
-                        navigate('/admin/alerts');
-                      }
-                    }}
+                    onClick={() => handleViewLiveAlert(activeLiveAlert)}
                   >
-                    {activeLiveAlert.action_type === 'maintenance'
-                      ? t('View Report')
-                      : activeLiveAlert.action_type === 'harvest_prep'
+                    {activeLiveAlert.action_type === 'harvest_prep'
                       ? t('View Harvest')
                       : t('View Alert')} →
                   </button>

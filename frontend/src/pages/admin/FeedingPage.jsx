@@ -84,24 +84,29 @@ export default function FeedingPage() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const targetPond = searchParams.get('pond');
+  const targetTab = searchParams.get('tab');
+  const targetDate = searchParams.get('date');
+  const targetTime = searchParams.get('time') || searchParams.get('highlight_time');
+  const targetId = searchParams.get('highlight_id') || searchParams.get('id');
 
   const [records, setRecords] = useState([]);
   const [ponds, setPonds] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Active View Tab: 'fleet' (Per-pond matrix) | 'stream' (Detailed log stream)
-  const [activeTab, setActiveTab] = useState('fleet');
+  const [activeTab, setActiveTab] = useState(targetTab === 'stream' ? 'stream' : 'fleet');
 
   // Filters & Sorting State
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPond, setSelectedPond] = useState(targetPond || 'all');
-  const [dateFilter, setDateFilter] = useState('today'); // 'today' | 'yesterday' | 'week' | 'month' | 'all' | 'custom'
-  const [customDate, setCustomDate] = useState('');
+  const [dateFilter, setDateFilter] = useState(targetDate || 'all'); // Default to 'all' so real database records are immediately shown
+  const [customDate, setCustomDate] = useState(targetDate && targetDate !== 'all' ? targetDate : '');
   const [stageFilter, setStageFilter] = useState('all'); // 'all' | 'nursery' | 'growout'
   const [calendarModalPond, setCalendarModalPond] = useState(null);
   const [sortBy, setSortBy] = useState('date-desc'); // 'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc' | 'pond-asc'
   const [feedingChartRange, setFeedingChartRange] = useState('7_days'); // '7_days' | '14_days' | '30_days' | 'all_cycle' | 'by_pond'
   const [chartPond, setChartPond] = useState(targetPond || 'Pond D1');
+  const [flashRecordId, setFlashRecordId] = useState(null);
 
   // Admin Log Feeding Modal State
   const [showLogModal, setShowLogModal] = useState(false);
@@ -148,6 +153,58 @@ export default function FeedingPage() {
       setChartPond(selectedPond);
     }
   }, [selectedPond]);
+
+  useEffect(() => {
+    if (targetTab === 'stream') {
+      setActiveTab('stream');
+    }
+    if (targetDate) {
+      if (targetDate === 'all') {
+        setDateFilter('all');
+      } else {
+        setDateFilter('custom');
+        setCustomDate(targetDate);
+      }
+    }
+    if (targetPond) {
+      setSelectedPond(targetPond);
+      setChartPond(targetPond);
+    }
+  }, [targetTab, targetDate, targetPond]);
+
+  useEffect(() => {
+    if ((targetId || targetTime || targetPond) && records.length > 0) {
+      const match = records.find((r) => {
+        if (targetId && String(r.id) === String(targetId)) return true;
+        const timeMatch = targetTime && String(r.feeding_time || '').toLowerCase().includes(targetTime.toLowerCase());
+        const pondMatch = targetPond && String(r.pond_name || '').toLowerCase() === targetPond.toLowerCase();
+        return timeMatch && pondMatch;
+      });
+
+      if (match) {
+        setFlashRecordId(match.id);
+        setTimeout(() => {
+          const el = document.getElementById(`feeding-row-${match.id}`);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          } else {
+            const sec = document.getElementById('feeding-log-stream-section');
+            if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, 350);
+
+        const timer = setTimeout(() => {
+          setFlashRecordId(null);
+        }, 3500);
+        return () => clearTimeout(timer);
+      } else {
+        setTimeout(() => {
+          const sec = document.getElementById('feeding-log-stream-section');
+          if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 350);
+      }
+    }
+  }, [targetId, targetTime, targetPond, records]);
 
   // Format Helper for YYYY-MM-DD
   const formatYMD = (date) => {
@@ -1680,23 +1737,23 @@ export default function FeedingPage() {
       </div>
 
       {/* 4. MAIN FEEDING LOGS SECTION WITH MULTI-FILTER CONTROL BAR & VIEW SWITCHER */}
-      <div className="bg-white border rounded-4 p-4 mb-4 shadow-2xs" style={{ borderColor: '#E2E8F0' }}>
+      <div id="feeding-log-stream-section" className="bg-white border rounded-4 p-4 mb-4 shadow-2xs" style={{ borderColor: '#E2E8F0' }}>
         {/* Top Control Bar: Title & View Mode Switcher */}
         <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3 pb-3 border-bottom" style={{ borderColor: '#E2E8F0' }}>
           <div>
             <h5 className="fw-extrabold text-dark mb-0 tracking-tight d-flex align-items-center gap-2">
               <FaHistory style={{ color: '#FC563C' }} />
               {dateFilter === 'today'
-                ? t("Today's Feeding Intelligence")
+                ? t("Today's Feeding Log Stream")
                 : dateFilter === 'yesterday'
-                  ? t("Yesterday's Feeding Intelligence")
+                  ? t("Yesterday's Feeding Log Stream")
                   : dateFilter === 'week'
-                    ? t("This Week's Feeding Intelligence")
+                    ? t("This Week's Feeding Log Stream")
                     : dateFilter === 'month'
-                      ? t("This Month's Feeding Intelligence")
+                      ? t("This Month's Feeding Log Stream")
                       : dateFilter === 'custom' && customDate
-                        ? `${t('Feeding Intelligence')} (${customDate})`
-                        : t('All Historical Feeding Records')}
+                        ? `${t('Feeding Log Stream')} (${customDate})`
+                        : t('Feeding Log Stream (All Records)')}
             </h5>
             <p className="text-muted small mb-0" style={{ fontSize: '0.82rem' }}>
               {t('Showing')} {filteredRecords.length} {t('records totaling')} {metrics.filteredTotalKg} kg {t('feed mass.')}
@@ -2028,7 +2085,11 @@ export default function FeedingPage() {
                     </tr>
                   ) : (
                     filteredRecords.map((r) => (
-                      <tr key={r.id} className="border-bottom">
+                      <tr
+                        key={r.id}
+                        id={`feeding-row-${r.id}`}
+                        className={`border-bottom transition-all ${flashRecordId === r.id ? 'flash-row-highlight' : ''}`}
+                      >
                         <td className="ps-3 py-3">
                           <span
                             className="badge rounded-pill fw-bold px-2.5 py-1"

@@ -69,6 +69,7 @@ function AppRoutes() {
         <Route path="pond-reports" element={<PondMonitoringPage />} />
         <Route path="ponds" element={<PondMonitoringPage />} />
         <Route path="feeding" element={<FeedingPage />} />
+        <Route path="feeding-logs" element={<FeedingPage />} />
         <Route path="harvest" element={<HarvestPage />} />
         <Route path="users" element={<UsersPage />} />
         <Route path="alerts" element={<AlertsPage />} />

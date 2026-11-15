@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import AdminFilterToolbar from '../../components/AdminFilterToolbar';
 import {
   FaExclamationTriangle,
@@ -79,6 +80,20 @@ function getStatusBadge(status, t = (k) => k) {
 
 export default function AlertsPage() {
   const { t } = useLanguage();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+
+  // Active section switcher: 'incidents' (Action Center Alerts) vs 'feed_scans' (Feeding & Scanning Logs)
+  const activeSection = searchParams.get('tab') === 'feed_scans' ? 'feed_scans' : 'incidents';
+
+  const handleSectionSwitch = (tabKey) => {
+    if (tabKey === 'incidents') {
+      setSearchParams({});
+    } else {
+      setSearchParams({ tab: tabKey });
+    }
+  };
+
   const [alerts, setAlerts] = useState([]);
   const [caretakers, setCaretakers] = useState([]);
   const [ponds, setPonds] = useState([]);
@@ -91,13 +106,25 @@ export default function AlertsPage() {
 
   const [loading, setLoading] = useState(true);
 
-  // Filters State
+  // Caretaker Notifications / Activity Stream State
+  const [caretakerNotifs, setCaretakersNotifs] = useState([]);
+  const [loadingNotifs, setLoadingNotifs] = useState(false);
+  const [notifCounts, setNotifCounts] = useState({ unread: 0, active: 0 });
+
+  // Filters State for Action Center Alerts
   const [searchQuery, setSearchQuery] = useState('');
   const [severityFilter, setSeverityFilter] = useState('All');
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [pondFilter, setPondFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
   const [dateFilter, setDateFilter] = useState('All');
+
+  // Filters State for Feeding & Caretaker Scanning Logs Stream
+  const [notifSearch, setNotifSearch] = useState('');
+  const [notifTypeFilter, setNotifTypeFilter] = useState('All'); // All, feeding, disease_scan, water_quality, maintenance
+  const [notifPondFilter, setNotifPondFilter] = useState('All');
+  const [notifCaretakerFilter, setNotifCaretakerFilter] = useState('All');
+  const [notifStatusFilter, setNotifStatusFilter] = useState('All'); // All, unread, read
 
   // Modal States
   const [selectedAlert, setSelectedAlert] = useState(null); // View Details Modal
@@ -127,11 +154,157 @@ export default function AlertsPage() {
     }
   };
 
+  const loadCaretakerNotifs = async () => {
+    setLoadingNotifs(true);
+    try {
+      const res = await api.get('/notifications.php?status=all');
+      if (res.data?.success) {
+        setCaretakersNotifs(safeArray(res.data.notifications));
+        if (res.data.counts) {
+          setNotifCounts(res.data.counts);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading caretaker notifications:', error);
+    } finally {
+      setLoadingNotifs(false);
+    }
+  };
+
   useEffect(() => {
     loadAlerts();
+    loadCaretakerNotifs();
+
+    const handleUpdate = () => {
+      loadCaretakerNotifs();
+    };
+
+    window.addEventListener('shrim-feed-updated', handleUpdate);
+    window.addEventListener('shrim-notification-updated', handleUpdate);
+    window.addEventListener('shrim-report-updated', handleUpdate);
+    return () => {
+      window.removeEventListener('shrim-feed-updated', handleUpdate);
+      window.removeEventListener('shrim-notification-updated', handleUpdate);
+      window.removeEventListener('shrim-report-updated', handleUpdate);
+    };
   }, []);
 
-  // Filter Logic
+  const handleMarkSingleNotifRead = async (id) => {
+    try {
+      await api.post('/notifications.php', { action: 'mark_read', id });
+      setCaretakersNotifs((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, is_read: 1 } : n))
+      );
+      setNotifCounts((prev) => ({
+        ...prev,
+        unread: Math.max(0, (prev.unread || 1) - 1)
+      }));
+      window.dispatchEvent(new CustomEvent('shrim-notification-updated'));
+    } catch (err) {
+      console.error('Failed to mark notification read:', err);
+    }
+  };
+
+  const handleMarkAllNotifsRead = async () => {
+    try {
+      await api.post('/notifications.php', { action: 'mark_all_read', scope: 'all' });
+      setCaretakersNotifs((prev) => prev.map((n) => ({ ...n, is_read: 1 })));
+      setNotifCounts((prev) => ({ ...prev, unread: 0 }));
+      window.dispatchEvent(new CustomEvent('shrim-notification-updated'));
+      Swal.fire({
+        icon: 'success',
+        title: t('All Logs Marked as Read'),
+        timer: 1500,
+        showConfirmButton: false
+      });
+    } catch (err) {
+      console.error('Failed to mark all read:', err);
+    }
+  };
+
+  const handleDeleteNotif = async (id) => {
+    try {
+      await api.post('/notifications.php', { action: 'delete', id });
+      setCaretakersNotifs((prev) => prev.filter((n) => n.id !== id));
+      window.dispatchEvent(new CustomEvent('shrim-notification-updated'));
+    } catch (err) {
+      console.error('Failed to delete notification:', err);
+    }
+  };
+
+  const handleViewFeedingLog = (n) => {
+    const timeMatch = (n.message || '').match(/(\d{1,2}:\d{2}\s*(?:AM|PM))/i);
+    const slotTime = timeMatch ? timeMatch[1] : '';
+    const dateMatch = (n.message || '').match(/(\d{4}-\d{2}-\d{2})/);
+    const recordDate = dateMatch ? dateMatch[1] : 'all';
+    const pondParam = n.pond_name ? `pond=${encodeURIComponent(n.pond_name)}` : '';
+    const timeParam = slotTime ? `time=${encodeURIComponent(slotTime)}&highlight_time=${encodeURIComponent(slotTime)}` : '';
+    const dateParam = `date=${recordDate}`;
+    const tabParam = `tab=stream`;
+    const idParam = n.target_id ? `highlight_id=${n.target_id}` : '';
+    const params = [tabParam, dateParam, pondParam, timeParam, idParam].filter(Boolean).join('&');
+    navigate(`/admin/feeding?${params}#feeding-log-stream-section`);
+  };
+
+  const handleViewScanReport = (n) => {
+    const pondParam = n.pond_name ? `pond=${encodeURIComponent(n.pond_name)}` : '';
+    const idParam = n.target_id ? `report_id=${encodeURIComponent(n.target_id)}&id=${encodeURIComponent(n.target_id)}` : '';
+    const params = [pondParam, idParam].filter(Boolean).join('&');
+    navigate(`/admin/scan-reports${params ? '?' + params : ''}#caretaker-scan-history-section`);
+  };
+
+  // Distinct pond and caretaker lists for feeding/scan filters
+  const availableNotifPonds = Array.from(
+    new Set(
+      [
+        ...ponds.map((p) => (typeof p === 'string' ? p : p?.pond_name || p?.name || '')),
+        ...caretakerNotifs.map((n) => n.pond_name || '')
+      ].filter(Boolean)
+    )
+  ).sort();
+
+  const availableNotifCaretakers = Array.from(
+    new Set(
+      [
+        ...caretakers.map((c) => (typeof c === 'string' ? c : c?.name || c?.username || '')),
+        ...caretakerNotifs.map((n) => n.caretaker_name || '')
+      ].filter(Boolean)
+    )
+  ).sort();
+
+  const feedingCount = caretakerNotifs.filter((n) => n.action_type === 'feeding').length;
+  const scanCount = caretakerNotifs.filter((n) => n.action_type === 'disease_scan').length;
+  const waterCount = caretakerNotifs.filter((n) => n.action_type === 'water_quality').length;
+  const maintCount = caretakerNotifs.filter((n) => n.action_type === 'maintenance').length;
+
+  // Filtered Activity Logs Stream
+  const filteredNotifs = caretakerNotifs.filter((n) => {
+    if (notifSearch.trim()) {
+      const q = notifSearch.toLowerCase();
+      const titleMatch = (n.title || '').toLowerCase().includes(q);
+      const msgMatch = (n.message || '').toLowerCase().includes(q);
+      const pondMatch = (n.pond_name || '').toLowerCase().includes(q);
+      const ctMatch = (n.caretaker_name || '').toLowerCase().includes(q);
+      if (!titleMatch && !msgMatch && !pondMatch && !ctMatch) return false;
+    }
+    if (notifTypeFilter !== 'All') {
+      if (n.action_type !== notifTypeFilter) return false;
+    }
+    if (notifPondFilter !== 'All') {
+      if (n.pond_name !== notifPondFilter) return false;
+    }
+    if (notifCaretakerFilter !== 'All') {
+      if (n.caretaker_name !== notifCaretakerFilter) return false;
+    }
+    if (notifStatusFilter === 'unread') {
+      if (Number(n.is_read) === 1) return false;
+    } else if (notifStatusFilter === 'read') {
+      if (Number(n.is_read) === 0) return false;
+    }
+    return true;
+  });
+
+  // Filter Logic for Action Center Alerts
   const filteredAlerts = alerts.filter((a) => {
     // 1. Search Query (Title, Message, Pond, Caretaker)
     if (searchQuery.trim()) {
@@ -251,48 +424,55 @@ export default function AlertsPage() {
           });
 
           if (res.data && res.data.success) {
-            Swal.fire({ icon: 'success', title: 'Alert Resolved', text: 'Alert status updated to Resolved.', timer: 1800, showConfirmButton: false });
+            Swal.fire({ icon: 'success', title: 'Alert Resolved', text: 'Alert marked as Resolved.', timer: 1800, showConfirmButton: false });
             if (selectedAlert && selectedAlert.id === alert.id) {
               setSelectedAlert({ ...selectedAlert, status: 'Resolved' });
             }
             loadAlerts();
           }
         } catch (err) {
-          Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to update alert status.' });
+          Swal.fire({ icon: 'error', title: 'Update Error', text: 'Failed to update alert status.' });
         }
       }
     });
   };
 
-  // Open Assign Follow-up Modal
+  // Assign Caretaker Follow-up Modal Opener
   const openAssignModal = (alert) => {
     setAssigningAlert(alert);
     setFollowupForm({
-      assigned_caretaker_name: alert.assigned_caretaker_name || caretakers[0] || 'Maria Santos',
+      assigned_caretaker_name: alert.assigned_caretaker_name || (caretakers[0] || ''),
       follow_up_notes: alert.follow_up_notes || ''
     });
   };
 
-  // Save Assign Follow-up
+  // Save Assignment Handler
   const handleSaveFollowup = async (e) => {
     e.preventDefault();
     if (!assigningAlert) return;
 
     try {
       const res = await api.post('/alerts.php', {
-        action: 'assign_followup',
+        action: 'assign_caretaker',
         alert_id: assigningAlert.id,
         assigned_caretaker_name: followupForm.assigned_caretaker_name,
         follow_up_notes: followupForm.follow_up_notes
       });
 
       if (res.data && res.data.success) {
-        Swal.fire({ icon: 'success', title: 'Follow-up Assigned', text: `Assigned to ${followupForm.assigned_caretaker_name}. Status changed to In Progress.`, timer: 1800, showConfirmButton: false });
+        Swal.fire({ icon: 'success', title: 'Assignment Saved', text: 'Caretaker follow-up instructions saved.', timer: 1800, showConfirmButton: false });
         setAssigningAlert(null);
+        if (selectedAlert && selectedAlert.id === assigningAlert.id) {
+          setSelectedAlert({
+            ...selectedAlert,
+            assigned_caretaker_name: followupForm.assigned_caretaker_name,
+            follow_up_notes: followupForm.follow_up_notes
+          });
+        }
         loadAlerts();
       }
     } catch (err) {
-      Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to assign follow-up.' });
+      Swal.fire({ icon: 'error', title: 'Save Failed', text: 'Could not assign caretaker follow-up.' });
     }
   };
 
@@ -330,11 +510,11 @@ export default function AlertsPage() {
 
   return (
     <div className="pb-5">
-      {/* 1. TITLE HEADER ROW */}
+      {/* 1. TITLE HEADER ROW (BIOSECURITY TERM COMPLETELY REMOVED) */}
       <div className="d-flex align-items-center justify-content-between flex-wrap gap-2.5 mb-3">
         <div className="d-flex align-items-center gap-2.5">
           <h3 className="fw-extrabold mb-0 tracking-tight text-dark" style={{ fontSize: '1.48rem', letterSpacing: '-0.02em' }}>
-            {t('Alerts & Biosecurity Early Warning')}
+            {t('Alerts & Early Warning')}
           </h3>
           <span
             className="badge rounded-pill d-inline-flex align-items-center gap-1.5 px-2.5 py-1"
@@ -348,7 +528,7 @@ export default function AlertsPage() {
             }}
           >
             <span className="pulse-dot-green" />
-            {t('• Incident Triage')}
+            {t('• Incident Triage & Caretaker Stream')}
           </span>
         </div>
 
@@ -357,10 +537,13 @@ export default function AlertsPage() {
           <button
             type="button"
             className="btn btn-sm minimal-filter-control d-inline-flex align-items-center gap-1.5 px-3 py-2 shadow-2xs hover-shadow"
-            onClick={loadAlerts}
-            disabled={loading}
+            onClick={() => {
+              loadAlerts();
+              loadCaretakerNotifs();
+            }}
+            disabled={loading || loadingNotifs}
           >
-            <FaSync size={11} className={loading ? 'fa-spin' : ''} /> {t('Refresh')}
+            <FaSync size={11} className={loading || loadingNotifs ? 'fa-spin' : ''} /> {t('Refresh')}
           </button>
 
           <button
@@ -373,362 +556,940 @@ export default function AlertsPage() {
         </div>
       </div>
 
-      {/* 2. 4 TOP OPERATIONAL KPI CARDS */}
-      <div className="row g-3 g-xl-4 mb-4">
-        {/* Critical Alerts */}
-        <div className="col-12 col-sm-6 col-xl-3">
-          <div className="shrimp-kpi-card">
-            <div>
-              <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">
-                  {t('Critical Alerts')}
-                </span>
-                <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: 34, height: 34, backgroundColor: '#FEF2F2', color: '#DC2626' }}>
-                  <FaExclamationTriangle size={15} />
-                </div>
-              </div>
-              <h2 className="fw-extrabold mb-1" style={{ color: (summary.critical_alerts || 0) > 0 ? '#DC2626' : '#172A39', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
-                {summary.critical_alerts || 0}
-              </h2>
-            </div>
-            <div className="pt-2">
-              <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-secondary small fw-medium">
-                  {t('Immediate Intervention')}
-                </span>
-                <span className="badge rounded-pill px-2.5 py-1 extra-small" style={{ backgroundColor: '#FEF2F2', color: '#DC2626', fontWeight: 600 }}>
-                  {t('Action Needed')}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Warnings */}
-        <div className="col-12 col-sm-6 col-xl-3">
-          <div className="shrimp-kpi-card">
-            <div>
-              <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">
-                  {t('Active Warnings')}
-                </span>
-                <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: 34, height: 34, backgroundColor: '#FFF7ED', color: '#FC563C' }}>
-                  <FaBell size={15} />
-                </div>
-              </div>
-              <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
-                {summary.warnings || 0}
-              </h2>
-            </div>
-            <div className="pt-2">
-              <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-secondary small fw-medium">
-                  {t('High & Medium')}
-                </span>
-                <span className="badge rounded-pill px-2.5 py-1 extra-small" style={{ backgroundColor: '#FFF7ED', color: '#C2410C', fontWeight: 600 }}>
-                  {t('Watch List')}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Resolved */}
-        <div className="col-12 col-sm-6 col-xl-3">
-          <div className="shrimp-kpi-card">
-            <div>
-              <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">
-                  {t('Resolved Issues')}
-                </span>
-                <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: 34, height: 34, backgroundColor: '#ECFDF5', color: '#059669' }}>
-                  <FaCheckCircle size={15} />
-                </div>
-              </div>
-              <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
-                {summary.resolved || 0}
-              </h2>
-            </div>
-            <div className="pt-2">
-              <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-secondary small fw-medium">
-                  {t('Addressed Incidents')}
-                </span>
-                <span className="badge rounded-pill px-2.5 py-1 extra-small" style={{ backgroundColor: '#ECFDF5', color: '#059669', fontWeight: 600 }}>
-                  {t('Closed')}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Pending */}
-        <div className="col-12 col-sm-6 col-xl-3">
-          <div className="shrimp-kpi-card">
-            <div>
-              <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">
-                  {t('Pending Queue')}
-                </span>
-                <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: 34, height: 34, backgroundColor: '#F1F5F9', color: '#172A39' }}>
-                  <FaClock size={15} />
-                </div>
-              </div>
-              <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
-                {summary.pending || 0}
-              </h2>
-            </div>
-            <div className="pt-2">
-              <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                <span className="text-secondary small fw-medium">
-                  {t('Awaiting Caretaker')}
-                </span>
-                <span className="badge rounded-pill px-2.5 py-1 extra-small" style={{ backgroundColor: '#F1F5F9', color: '#475569', fontWeight: 600 }}>
-                  {t('Active Queue')}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 3. UNIFIED CONTROL & FILTER TOOLBAR */}
-      <AdminFilterToolbar
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        searchPlaceholder={t('Search Alert Title, Message, Pond, or Caretaker...')}
-        showFilters={true}
-        onExportCSV={handleExportCSV}
-        onRefresh={loadAlerts}
-        loading={loading}
-        tabs={[
-          { id: 'All', label: t('All Severities'), count: alerts.length },
-          { id: 'Critical', label: t('Critical'), count: summary.critical_alerts || 0 },
-          { id: 'High', label: t('High Risk') },
-          { id: 'Medium', label: t('Warning'), count: summary.warnings || 0 },
-          { id: 'Low', label: t('Low Priority') }
-        ]}
-        activeTab={severityFilter}
-        onTabChange={setSeverityFilter}
-        metaRight={
-          <>
-            {t('Action Center Queue:')} <strong>{t('Live Pond Alerts')}</strong>
-          </>
-        }
-        filterFields={[
-          {
-            label: t('Alert Type'),
-            type: 'select',
-            value: categoryFilter,
-            onChange: setCategoryFilter,
-            colClass: 'col-12 col-md-3',
-            options: [
-              { value: 'All', label: t('All Alert Types') },
-              { value: 'Disease', label: t('Disease Alert') },
-              { value: 'Harvest', label: t('Harvest Alert') },
-              { value: 'Feeding', label: t('Feeding Alert') },
-              { value: 'Image Upload', label: t('Image Upload') },
-              { value: 'Caretaker Activity', label: t('Caretaker Activity') },
-              { value: 'Pond Status', label: t('Pond Status') }
-            ]
-          },
-          {
-            label: t('Pond Select'),
-            type: 'select',
-            value: pondFilter,
-            onChange: setPondFilter,
-            colClass: 'col-12 col-md-2',
-            options: [
-              { value: 'All', label: t('All Ponds') },
-              ...ponds.map((p) => {
-                const name = typeof p === 'string' ? p : (p?.pond_name || p?.name || '');
-                return { value: name, label: name };
-              }).filter((item) => Boolean(item.value))
-            ]
-          },
-          {
-            label: t('Status'),
-            type: 'select',
-            value: statusFilter,
-            onChange: setStatusFilter,
-            colClass: 'col-12 col-md-2',
-            options: [
-              { value: 'All', label: t('All Statuses') },
-              { value: 'Pending', label: t('Pending') },
-              { value: 'In Progress', label: t('In Progress') },
-              { value: 'Resolved', label: t('Resolved') }
-            ]
-          },
-          {
-            label: t('Date Window'),
-            type: 'select',
-            value: dateFilter,
-            onChange: setDateFilter,
-            colClass: 'col-12 col-md-3',
-            options: [
-              { value: 'All', label: t('All Time') },
-              { value: 'Today', label: t('Today') },
-              { value: 'This Week', label: t('This Week') }
-            ]
-          }
-        ]}
-        onResetFilters={() => {
-          setSearchQuery('');
-          setSeverityFilter('All');
-          setCategoryFilter('All');
-          setPondFilter('All');
-          setStatusFilter('All');
-          setDateFilter('All');
-        }}
-      />
-
-      {/* 3. ALERTS ACTION CENTER CARDS GRID (3-COLUMN ROW LAYOUT) */}
-      <div className="bg-white border rounded-4 p-4 mb-4 shadow-2xs" style={{ borderColor: '#E2E8F0' }}>
-        <div className="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom" style={{ borderColor: '#E2E8F0' }}>
-          <div>
-            <h5 className="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
-              <FaExclamationTriangle style={{ color: '#FC563C' }} /> {t('Alerts Action Center')}
-            </h5>
-            <p className="text-secondary mb-0 small">{t('Real-time critical events requiring immediate caretaker action and monitoring.')}</p>
-          </div>
-          <div className="d-flex align-items-center gap-2 flex-wrap">
-            <span className="badge rounded-pill px-3 py-1.5 extra-small border" style={{ backgroundColor: '#F8FAFC', color: '#475569', borderColor: '#E2E8F0' }}>
-              {t('Showing')} {filteredAlerts.length} {t('of')} {alerts.length} {t('Alerts')}
+      {/* 2. PROMINENT TOP SELECTION SWITCHER TABS (Placed directly at top so it is 100% visible) */}
+      <div
+        className="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4 p-2 rounded-4 bg-white border shadow-2xs"
+        style={{ borderColor: '#E2E8F0' }}
+      >
+        <div className="d-inline-flex align-items-center p-1 rounded-3 bg-light border" style={{ borderColor: '#E2E8F0' }}>
+          {/* TAB 1: Action Center Alerts */}
+          <button
+            type="button"
+            className={`btn px-4 py-2.5 rounded-3 fw-bold d-inline-flex align-items-center gap-2.5 transition-all ${activeSection === 'incidents'
+                ? 'bg-white text-dark shadow-xs border'
+                : 'text-secondary border-0 bg-transparent hover-lift'
+              }`}
+            style={{
+              fontSize: '0.92rem',
+              borderColor: activeSection === 'incidents' ? '#CBD5E1' : 'transparent',
+              fontWeight: activeSection === 'incidents' ? 700 : 600,
+            }}
+            onClick={() => handleSectionSwitch('incidents')}
+          >
+            <FaExclamationTriangle className="text-danger" size={15} />
+            <span>{t('Action Center Alerts')}</span>
+            <span className="badge rounded-pill bg-danger bg-opacity-10 text-danger extra-small px-2.5 py-0.5">
+              {alerts.length}
             </span>
-          </div>
+          </button>
+
+          {/* TAB 2: Feeding & Scanning Logs Stream */}
+          <button
+            type="button"
+            className={`btn px-4 py-2.5 rounded-3 fw-bold d-inline-flex align-items-center gap-2.5 transition-all ${activeSection === 'feed_scans'
+                ? 'bg-white text-dark shadow-xs border'
+                : 'text-secondary border-0 bg-transparent hover-lift'
+              }`}
+            style={{
+              fontSize: '0.92rem',
+              borderColor: activeSection === 'feed_scans' ? '#CBD5E1' : 'transparent',
+              fontWeight: activeSection === 'feed_scans' ? 700 : 600,
+            }}
+            onClick={() => handleSectionSwitch('feed_scans')}
+          >
+            <FaUtensils style={{ color: '#FC563C' }} size={14} />
+            <span>{t('Feeding & Scanning Logs')}</span>
+            {notifCounts.unread > 0 ? (
+              <span className="badge rounded-pill text-white extra-small px-2.5 py-0.5 shadow-xs" style={{ backgroundColor: '#FC563C' }}>
+                {notifCounts.unread} {t('New')}
+              </span>
+            ) : (
+              <span className="badge rounded-pill bg-secondary bg-opacity-10 text-secondary extra-small px-2.5 py-0.5">
+                {caretakerNotifs.length}
+              </span>
+            )}
+          </button>
         </div>
 
-        {loading ? (
-          <div className="text-center py-5 text-muted">
-            <div className="spinner-border text-primary" role="status"></div>
-            <p className="mt-2">{t('Loading Alerts Action Center...')}</p>
-          </div>
-        ) : filteredAlerts.length === 0 ? (
-          <div className="text-center py-5 text-muted border rounded-4 bg-light">
-            <FaCheckCircle size={36} className="text-success mb-2 opacity-50" />
-            <h6 className="fw-bold mb-1">{t('No Active Alerts Found')}</h6>
-            <p className="small mb-0">{t('All farm alerts match your clean criteria.')}</p>
-          </div>
-        ) : (
-          /* RESPONSIVE SPACIOUS GRID - CAPPED TO SHOW ~3-4 DATA CARDS WITH IN-PLACE SCROLLING */
-          <div className="admin-scrollable-cards-4items" style={{ maxHeight: '480px', overflowY: 'auto', paddingRight: '4px' }}>
-            <div className="row g-4">
-              {filteredAlerts.map((alert) => {
-                const catMeta = getCategoryMeta(alert.category);
-                const isResolved = alert.status === 'Resolved';
-
-                return (
-                  <div key={alert.id} className="col-12 col-md-6 col-lg-6 col-xxl-4">
-                    <div
-                      className={`alert-action-card p-4 h-100 d-flex flex-column justify-content-between ${
-                        alert.severity === 'Critical' ? 'critical' : ''
-                      }`}
-                      style={{ minHeight: 320 }}
-                    >
-                      <div>
-                        {/* Top Header Row: Severity Pill + Category Tag + Status Badge */}
-                        <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3 pb-2 border-bottom border-light">
-                          <div className="d-flex align-items-center gap-1.5 flex-wrap">
-                            {getSeverityBadge(alert.severity, t)}
-                          </div>
-                          <div className="d-flex align-items-center gap-1.5 flex-wrap ms-auto">
-                            <span className={`badge border ${catMeta.badgeClass} px-2.5 py-1 rounded-pill extra-small font-mono fw-semibold`}>
-                              {catMeta.icon} {t(alert.category)}
-                            </span>
-                            {getStatusBadge(alert.status, t)}
-                          </div>
-                        </div>
-
-                        {/* Alert Title & Pond Pill Row */}
-                        <div className="d-flex align-items-start justify-content-between gap-2 mb-2">
-                          <h5 className="fw-bold text-dark mb-0 fs-6 flex-grow-1" style={{ lineHeight: 1.3 }}>{t(alert.title)}</h5>
-                          <span className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2.5 py-1 rounded-pill extra-small fw-semibold flex-shrink-0">
-                            <FaWater className="me-1" size={10} /> {alert.affected_pond_name}
-                          </span>
-                        </div>
-
-                        {/* Short Description */}
-                        <p className="extra-small text-muted mb-3" style={{ lineHeight: 1.5 }}>
-                          {t(alert.message)}
-                        </p>
-
-                        {/* Caretaker & Recommended Action Box (Clean Un-overlapped Spacing) */}
-                        <div className="p-3 rounded-4 alert-action-inner-box mb-3">
-                          <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 extra-small text-muted mb-2 pb-2 border-bottom">
-                            <div className="d-flex align-items-center gap-1.5 flex-wrap">
-                              <FaUser className="text-primary flex-shrink-0" size={12} />
-                              <span className="me-1">{t('Caretaker:')}</span>
-                              <strong className="text-dark fw-bold">{alert.assigned_caretaker_name}</strong>
-                            </div>
-                            <div className="d-flex align-items-center gap-1 extra-small text-muted ms-auto">
-                              <FaClock size={11} className="text-secondary flex-shrink-0" />
-                              <span>{t(alert.time_ago || 'Today')}</span>
-                            </div>
-                          </div>
-
-                          {/* Action Protocol text */}
-                          {alert.recommended_action && (
-                            <div className="extra-small text-dark fw-semibold d-flex align-items-start gap-2 pt-1" style={{ lineHeight: 1.4 }}>
-                              <FaLightbulb className="text-warning flex-shrink-0 mt-0.5" size={13} />
-                              <span>{t(alert.recommended_action)}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Bottom Action Buttons Row (Un-squeezed Clean Actions) */}
-                      <div className="pt-3 border-top mt-auto">
-                        <div className="d-flex align-items-center justify-content-between gap-1.5 flex-wrap">
-                          {/* View Details */}
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-alert-details px-2 py-1.5 rounded-3 d-flex align-items-center justify-content-center gap-1 extra-small fw-semibold flex-grow-1"
-                            onClick={() => setSelectedAlert(alert)}
-                          >
-                            <FaEye size={11} /> {t('Details')}
-                          </button>
-
-                          {/* Resolve Button */}
-                          <button
-                            type="button"
-                            className={`btn btn-sm px-2 py-1.5 rounded-3 d-flex align-items-center justify-content-center gap-1 extra-small fw-bold flex-grow-1 ${
-                              isResolved ? 'admin-btn-resolved-state' : 'btn-outline-success'
-                            }`}
-                            disabled={isResolved}
-                            onClick={() => handleResolveAlert(alert)}
-                          >
-                            <FaCheckCircle size={11} /> {isResolved ? t('Resolved') : t('Resolve')}
-                          </button>
-
-                          {/* Assign Follow-up */}
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-outline-secondary px-2 py-1.5 rounded-3 d-flex align-items-center justify-content-center gap-1 extra-small fw-semibold flex-grow-1"
-                            onClick={() => openAssignModal(alert)}
-                          >
-                            <FaUserCheck size={11} /> {t('Assign')}
-                          </button>
-
-                          {/* Delete Icon Button */}
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-outline-danger p-1.5 rounded-3 flex-shrink-0 d-flex align-items-center justify-content-center"
-                            style={{ width: 32, height: 32 }}
-                            title={t('Delete Alert')}
-                            onClick={() => handleDeleteAlert(alert)}
-                          >
-                            <FaTrashAlt size={11} />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+        {/* Right side controls for Feeding & Scanning Logs */}
+        {activeSection === 'feed_scans' && (
+          <div className="d-flex align-items-center gap-2 flex-wrap pe-2 ms-auto">
+            {notifCounts.unread > 0 && (
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1.5 px-3 py-2 rounded-3 fw-bold extra-small shadow-2xs"
+                onClick={handleMarkAllNotifsRead}
+              >
+                <FaCheckCircle size={12} /> {t('Mark All Logs Read')}
+              </button>
+            )}
+            <button
+              type="button"
+              className="btn btn-sm minimal-filter-control d-inline-flex align-items-center gap-1.5 px-3 py-2 rounded-3 fw-semibold extra-small shadow-2xs"
+              onClick={loadCaretakerNotifs}
+              disabled={loadingNotifs}
+            >
+              <FaSync size={11} className={loadingNotifs ? 'fa-spin' : ''} /> {t('Refresh Stream')}
+            </button>
           </div>
         )}
       </div>
+
+      {/* 3. SECTION 1: INCIDENT TRIAGE & ACTION CENTER ALERTS */}
+      {activeSection === 'incidents' && (
+        <>
+          {/* 4 TOP OPERATIONAL KPI CARDS FOR INCIDENTS */}
+          <div className="row g-3 g-xl-4 mb-4">
+            {/* Critical Alerts */}
+            <div className="col-12 col-sm-6 col-xl-3">
+              <div className="shrimp-kpi-card">
+                <div>
+                  <div className="d-flex align-items-center justify-content-between mb-3">
+                    <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">
+                      {t('Critical Alerts')}
+                    </span>
+                    <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: 34, height: 34, backgroundColor: '#FEF2F2', color: '#DC2626' }}>
+                      <FaExclamationTriangle size={15} />
+                    </div>
+                  </div>
+                  <h2 className="fw-extrabold mb-1" style={{ color: (summary.critical_alerts || 0) > 0 ? '#DC2626' : '#172A39', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+                    {summary.critical_alerts || 0}
+                  </h2>
+                </div>
+                <div className="pt-2">
+                  <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                    <span className="text-secondary small fw-medium">
+                      {t('Immediate Intervention')}
+                    </span>
+                    <span className="badge rounded-pill px-2.5 py-1 extra-small" style={{ backgroundColor: '#FEF2F2', color: '#DC2626', fontWeight: 600 }}>
+                      {t('Action Needed')}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Warnings */}
+            <div className="col-12 col-sm-6 col-xl-3">
+              <div className="shrimp-kpi-card">
+                <div>
+                  <div className="d-flex align-items-center justify-content-between mb-3">
+                    <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">
+                      {t('Active Warnings')}
+                    </span>
+                    <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: 34, height: 34, backgroundColor: '#FFF7ED', color: '#FC563C' }}>
+                      <FaBell size={15} />
+                    </div>
+                  </div>
+                  <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+                    {summary.warnings || 0}
+                  </h2>
+                </div>
+                <div className="pt-2">
+                  <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                    <span className="text-secondary small fw-medium">
+                      {t('High & Medium')}
+                    </span>
+                    <span className="badge rounded-pill px-2.5 py-1 extra-small" style={{ backgroundColor: '#FFF7ED', color: '#C2410C', fontWeight: 600 }}>
+                      {t('Watch List')}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Resolved */}
+            <div className="col-12 col-sm-6 col-xl-3">
+              <div className="shrimp-kpi-card">
+                <div>
+                  <div className="d-flex align-items-center justify-content-between mb-3">
+                    <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">
+                      {t('Resolved Issues')}
+                    </span>
+                    <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: 34, height: 34, backgroundColor: '#ECFDF5', color: '#059669' }}>
+                      <FaCheckCircle size={15} />
+                    </div>
+                  </div>
+                  <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+                    {summary.resolved || 0}
+                  </h2>
+                </div>
+                <div className="pt-2">
+                  <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                    <span className="text-secondary small fw-medium">
+                      {t('Addressed Incidents')}
+                    </span>
+                    <span className="badge rounded-pill px-2.5 py-1 extra-small" style={{ backgroundColor: '#ECFDF5', color: '#059669', fontWeight: 600 }}>
+                      {t('Closed')}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Pending */}
+            <div className="col-12 col-sm-6 col-xl-3">
+              <div className="shrimp-kpi-card">
+                <div>
+                  <div className="d-flex align-items-center justify-content-between mb-3">
+                    <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">
+                      {t('Pending Queue')}
+                    </span>
+                    <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: 34, height: 34, backgroundColor: '#F1F5F9', color: '#172A39' }}>
+                      <FaClock size={15} />
+                    </div>
+                  </div>
+                  <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+                    {summary.pending || 0}
+                  </h2>
+                </div>
+                <div className="pt-2">
+                  <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                    <span className="text-secondary small fw-medium">
+                      {t('Awaiting Caretaker')}
+                    </span>
+                    <span className="badge rounded-pill px-2.5 py-1 extra-small" style={{ backgroundColor: '#F1F5F9', color: '#475569', fontWeight: 600 }}>
+                      {t('Active Queue')}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* UNIFIED CONTROL & FILTER TOOLBAR (Action Center Queue: Live Pond Alerts REMOVED) */}
+          <AdminFilterToolbar
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            searchPlaceholder={t('Search Alert Title, Message, Pond, or Caretaker...')}
+            showFilters={true}
+            onExportCSV={handleExportCSV}
+            onRefresh={loadAlerts}
+            loading={loading}
+            tabs={[
+              { id: 'All', label: t('All Severities'), count: alerts.length },
+              { id: 'Critical', label: t('Critical'), count: summary.critical_alerts || 0 },
+              { id: 'High', label: t('High Risk') },
+              { id: 'Medium', label: t('Warning'), count: summary.warnings || 0 },
+              { id: 'Low', label: t('Low Priority') }
+            ]}
+            activeTab={severityFilter}
+            onTabChange={setSeverityFilter}
+            metaRight={null}
+            filterFields={[
+              {
+                label: t('Alert Type'),
+                type: 'select',
+                value: categoryFilter,
+                onChange: setCategoryFilter,
+                colClass: 'col-12 col-md-3',
+                options: [
+                  { value: 'All', label: t('All Alert Types') },
+                  { value: 'Disease', label: t('Disease Alert') },
+                  { value: 'Harvest', label: t('Harvest Alert') },
+                  { value: 'Feeding', label: t('Feeding Alert') },
+                  { value: 'Image Upload', label: t('Image Upload') },
+                  { value: 'Caretaker Activity', label: t('Caretaker Activity') },
+                  { value: 'Pond Status', label: t('Pond Status') }
+                ]
+              },
+              {
+                label: t('Pond Select'),
+                type: 'select',
+                value: pondFilter,
+                onChange: setPondFilter,
+                colClass: 'col-12 col-md-2',
+                options: [
+                  { value: 'All', label: t('All Ponds') },
+                  ...ponds.map((p) => {
+                    const name = typeof p === 'string' ? p : (p?.pond_name || p?.name || '');
+                    return { value: name, label: name };
+                  }).filter((item) => Boolean(item.value))
+                ]
+              },
+              {
+                label: t('Status'),
+                type: 'select',
+                value: statusFilter,
+                onChange: setStatusFilter,
+                colClass: 'col-12 col-md-2',
+                options: [
+                  { value: 'All', label: t('All Statuses') },
+                  { value: 'Pending', label: t('Pending') },
+                  { value: 'In Progress', label: t('In Progress') },
+                  { value: 'Resolved', label: t('Resolved') }
+                ]
+              },
+              {
+                label: t('Date Window'),
+                type: 'select',
+                value: dateFilter,
+                onChange: setDateFilter,
+                colClass: 'col-12 col-md-3',
+                options: [
+                  { value: 'All', label: t('All Time') },
+                  { value: 'Today', label: t('Today') },
+                  { value: 'This Week', label: t('This Week') }
+                ]
+              }
+            ]}
+            onResetFilters={() => {
+              setSearchQuery('');
+              setSeverityFilter('All');
+              setCategoryFilter('All');
+              setPondFilter('All');
+              setStatusFilter('All');
+              setDateFilter('All');
+            }}
+          />
+
+          {/* ALERTS ACTION CENTER CARDS GRID (3-COLUMN ROW LAYOUT) */}
+          <div className="bg-white border rounded-4 p-4 mb-4 shadow-2xs" style={{ borderColor: '#E2E8F0' }}>
+            <div className="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom" style={{ borderColor: '#E2E8F0' }}>
+              <div>
+                <h5 className="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
+                  <FaExclamationTriangle style={{ color: '#FC563C' }} /> {t('Alerts Action Center')}
+                </h5>
+                <p className="text-secondary mb-0 small">{t('Real-time critical events requiring immediate caretaker action and monitoring.')}</p>
+              </div>
+              <div className="d-flex align-items-center gap-2 flex-wrap">
+                <span className="badge rounded-pill px-3 py-1.5 extra-small border" style={{ backgroundColor: '#F8FAFC', color: '#475569', borderColor: '#E2E8F0' }}>
+                  {t('Showing')} {filteredAlerts.length} {t('of')} {alerts.length} {t('Alerts')}
+                </span>
+              </div>
+            </div>
+
+            {loading ? (
+              <div className="text-center py-5 text-muted">
+                <div className="spinner-border text-primary" role="status"></div>
+                <p className="mt-2">{t('Loading Alerts Action Center...')}</p>
+              </div>
+            ) : filteredAlerts.length === 0 ? (
+              <div className="text-center py-5 text-muted border rounded-4 bg-light">
+                <FaCheckCircle size={36} className="text-success mb-2 opacity-50" />
+                <h6 className="fw-bold mb-1">{t('No Active Alerts Found')}</h6>
+                <p className="small mb-0">{t('All farm alerts match your clean criteria.')}</p>
+              </div>
+            ) : (
+              /* RESPONSIVE SPACIOUS GRID - CAPPED TO SHOW ~3-4 DATA CARDS WITH IN-PLACE SCROLLING */
+              <div className="admin-scrollable-cards-4items" style={{ maxHeight: '480px', overflowY: 'auto', paddingRight: '4px' }}>
+                <div className="row g-4">
+                  {filteredAlerts.map((alert) => {
+                    const catMeta = getCategoryMeta(alert.category);
+                    const isResolved = alert.status === 'Resolved';
+
+                    return (
+                      <div key={alert.id} className="col-12 col-md-6 col-lg-6 col-xxl-4">
+                        <div
+                          className={`alert-action-card p-4 h-100 d-flex flex-column justify-content-between ${alert.severity === 'Critical' ? 'critical' : ''
+                            }`}
+                          style={{ minHeight: 320 }}
+                        >
+                          <div>
+                            {/* Top Header Row: Severity Pill + Category Tag + Status Badge */}
+                            <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3 pb-2 border-bottom border-light">
+                              <div className="d-flex align-items-center gap-1.5 flex-wrap">
+                                {getSeverityBadge(alert.severity, t)}
+                              </div>
+                              <div className="d-flex align-items-center gap-1.5 flex-wrap ms-auto">
+                                <span className={`badge border ${catMeta.badgeClass} px-2.5 py-1 rounded-pill extra-small font-mono fw-semibold`}>
+                                  {catMeta.icon} {t(alert.category)}
+                                </span>
+                                {getStatusBadge(alert.status, t)}
+                              </div>
+                            </div>
+
+                            {/* Alert Title & Pond Pill Row */}
+                            <div className="d-flex align-items-start justify-content-between gap-2 mb-2">
+                              <h5 className="fw-bold text-dark mb-0 fs-6 flex-grow-1" style={{ lineHeight: 1.3 }}>{t(alert.title)}</h5>
+                              <span className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2.5 py-1 rounded-pill extra-small fw-semibold flex-shrink-0">
+                                <FaWater className="me-1" size={10} /> {alert.affected_pond_name}
+                              </span>
+                            </div>
+
+                            {/* Short Description */}
+                            <p className="extra-small text-muted mb-3" style={{ lineHeight: 1.5 }}>
+                              {t(alert.message)}
+                            </p>
+
+                            {/* Caretaker & Recommended Action Box (Clean Un-overlapped Spacing) */}
+                            <div className="p-3 rounded-4 alert-action-inner-box mb-3">
+                              <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 extra-small text-muted mb-2 pb-2 border-bottom">
+                                <div className="d-flex align-items-center gap-1.5 flex-wrap">
+                                  <FaUser className="text-primary flex-shrink-0" size={12} />
+                                  <span className="me-1">{t('Caretaker:')}</span>
+                                  <strong className="text-dark fw-bold">{alert.assigned_caretaker_name}</strong>
+                                </div>
+                                <div className="d-flex align-items-center gap-1 extra-small text-muted ms-auto">
+                                  <FaClock size={11} className="text-secondary flex-shrink-0" />
+                                  <span>{t(alert.time_ago || 'Today')}</span>
+                                </div>
+                              </div>
+
+                              {/* Action Protocol text */}
+                              {alert.recommended_action && (
+                                <div className="extra-small text-dark fw-semibold d-flex align-items-start gap-2 pt-1" style={{ lineHeight: 1.4 }}>
+                                  <FaLightbulb className="text-warning flex-shrink-0 mt-0.5" size={13} />
+                                  <span>{t(alert.recommended_action)}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Bottom Action Buttons Row (Un-squeezed Clean Actions) */}
+                          <div className="pt-3 border-top mt-auto">
+                            <div className="d-flex align-items-center justify-content-between gap-1.5 flex-wrap">
+                              {/* View Details */}
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-alert-details px-2 py-1.5 rounded-3 d-flex align-items-center justify-content-center gap-1 extra-small fw-semibold flex-grow-1"
+                                onClick={() => setSelectedAlert(alert)}
+                              >
+                                <FaEye size={11} /> {t('Details')}
+                              </button>
+
+                              {/* Resolve Button */}
+                              <button
+                                type="button"
+                                className={`btn btn-sm px-2 py-1.5 rounded-3 d-flex align-items-center justify-content-center gap-1 extra-small fw-bold flex-grow-1 ${isResolved ? 'admin-btn-resolved-state' : 'btn-outline-success'
+                                  }`}
+                                disabled={isResolved}
+                                onClick={() => handleResolveAlert(alert)}
+                              >
+                                <FaCheckCircle size={11} /> {isResolved ? t('Resolved') : t('Resolve')}
+                              </button>
+
+                              {/* Assign Follow-up */}
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline-secondary px-2 py-1.5 rounded-3 d-flex align-items-center justify-content-center gap-1 extra-small fw-semibold flex-grow-1"
+                                onClick={() => openAssignModal(alert)}
+                              >
+                                <FaUserCheck size={11} /> {t('Assign')}
+                              </button>
+
+                              {/* Delete Icon Button */}
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline-danger p-1.5 rounded-3 flex-shrink-0 d-flex align-items-center justify-content-center"
+                                style={{ width: 32, height: 32 }}
+                                title={t('Delete Alert')}
+                                onClick={() => handleDeleteAlert(alert)}
+                              >
+                                <FaTrashAlt size={11} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* 4. SECTION 2: FEEDING RECORDS & CARETAKER SCANNING LOGS STREAM */}
+      {activeSection === 'feed_scans' && (
+        <>
+          {/* 4 TOP OPERATIONAL KPI CARDS FOR FEEDING & SCANNING LOGS */}
+          <div className="row g-3 g-xl-4 mb-4">
+            {/* Total Recorded Logs */}
+            <div className="col-12 col-sm-6 col-xl-3">
+              <div className="shrimp-kpi-card">
+                <div>
+                  <div className="d-flex align-items-center justify-content-between mb-3">
+                    <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">
+                      {t('Total Activity Logs')}
+                    </span>
+                    <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: 34, height: 34, backgroundColor: '#F1F5F9', color: '#172A39' }}>
+                      <FaBell size={15} />
+                    </div>
+                  </div>
+                  <h2 className="fw-extrabold mb-1 text-dark" style={{ fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+                    {caretakerNotifs.length}
+                  </h2>
+                </div>
+                <div className="pt-2">
+                  <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                    <span className="text-secondary small fw-medium">
+                      {t('Caretaker Stream')}
+                    </span>
+                    <span className="badge rounded-pill px-2.5 py-1 extra-small" style={{ backgroundColor: '#F1F5F9', color: '#475569', fontWeight: 600 }}>
+                      {t('Recorded')}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Feeding Records */}
+            <div className="col-12 col-sm-6 col-xl-3">
+              <div className="shrimp-kpi-card">
+                <div>
+                  <div className="d-flex align-items-center justify-content-between mb-3">
+                    <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">
+                      {t('Feeding Entries')}
+                    </span>
+                    <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: 34, height: 34, backgroundColor: '#FFF5F3', color: '#FC563C' }}>
+                      <FaUtensils size={15} />
+                    </div>
+                  </div>
+                  <h2 className="fw-extrabold mb-1" style={{ color: '#FC563C', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+                    {feedingCount}
+                  </h2>
+                </div>
+                <div className="pt-2">
+                  <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                    <span className="text-secondary small fw-medium">
+                      {t('Daily Feeding Logs')}
+                    </span>
+                    <span className="badge rounded-pill px-2.5 py-1 extra-small" style={{ backgroundColor: '#FFF5F3', color: '#C2410C', fontWeight: 600 }}>
+                      {t('Verified')}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Disease Scans */}
+            <div className="col-12 col-sm-6 col-xl-3">
+              <div className="shrimp-kpi-card">
+                <div>
+                  <div className="d-flex align-items-center justify-content-between mb-3">
+                    <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">
+                      {t('Disease Scans')}
+                    </span>
+                    <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: 34, height: 34, backgroundColor: '#F5F3FF', color: '#7C3AED' }}>
+                      <FaCamera size={15} />
+                    </div>
+                  </div>
+                  <h2 className="fw-extrabold mb-1" style={{ color: '#7C3AED', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+                    {scanCount}
+                  </h2>
+                </div>
+                <div className="pt-2">
+                  <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                    <span className="text-secondary small fw-medium">
+                      {t('Diagnostic Scans')}
+                    </span>
+                    <span className="badge rounded-pill px-2.5 py-1 extra-small" style={{ backgroundColor: '#F5F3FF', color: '#6D28D9', fontWeight: 600 }}>
+                      {t('Scans')}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Unread Updates */}
+            <div className="col-12 col-sm-6 col-xl-3">
+              <div className="shrimp-kpi-card">
+                <div>
+                  <div className="d-flex align-items-center justify-content-between mb-3">
+                    <span className="text-secondary extra-small fw-bold text-uppercase tracking-wider">
+                      {t('Unread Logs')}
+                    </span>
+                    <div className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: 34, height: 34, backgroundColor: notifCounts.unread > 0 ? '#FEF2F2' : '#ECFDF5', color: notifCounts.unread > 0 ? '#DC2626' : '#059669' }}>
+                      {notifCounts.unread > 0 ? <FaBell size={15} /> : <FaCheckCircle size={15} />}
+                    </div>
+                  </div>
+                  <h2 className="fw-extrabold mb-1" style={{ color: notifCounts.unread > 0 ? '#DC2626' : '#059669', fontSize: '2.1rem', letterSpacing: '-0.03em' }}>
+                    {notifCounts.unread}
+                  </h2>
+                </div>
+                <div className="pt-2">
+                  <div className="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                    <span className="text-secondary small fw-medium">
+                      {notifCounts.unread > 0 ? t('Pending Review') : t('All Caught Up')}
+                    </span>
+                    <span className={`badge rounded-pill px-2.5 py-1 extra-small ${notifCounts.unread > 0 ? 'bg-danger bg-opacity-10 text-danger' : 'bg-success bg-opacity-10 text-success'}`} style={{ fontWeight: 600 }}>
+                      {notifCounts.unread > 0 ? t('Action Needed') : t('All Read')}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* MAIN FEEDING & SCANNING LOGS CONTAINER */}
+          <div className="bg-white border rounded-4 p-4 mb-4 shadow-2xs" style={{ borderColor: '#E2E8F0' }}>
+            {/* Header Row */}
+            <div className="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom flex-wrap gap-2" style={{ borderColor: '#E2E8F0' }}>
+              <div>
+                <h5 className="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
+                  <FaUtensils style={{ color: '#FC563C' }} /> {t('Feeding Records & Caretaker Scanning Logs')}
+                </h5>
+                <p className="text-secondary mb-0 small">
+                  {t('Recorded stream of caretaker feeding entries, disease scans, water tests, and pond updates.')}
+                </p>
+              </div>
+              <div className="d-flex align-items-center gap-2 flex-wrap">
+                <span className="badge rounded-pill px-3 py-1.5 extra-small border" style={{ backgroundColor: '#F8FAFC', color: '#475569', borderColor: '#E2E8F0' }}>
+                  {t('Showing')} {filteredNotifs.length} {t('of')} {caretakerNotifs.length} {t('Logs')}
+                </span>
+              </div>
+            </div>
+
+            {/* Quick Category Filter Pills */}
+            <div className="d-flex align-items-center gap-2 flex-wrap mb-3.5">
+              <button
+                type="button"
+                className={`btn btn-sm px-3 py-1.5 rounded-pill extra-small fw-bold transition-all ${notifTypeFilter === 'All'
+                    ? 'btn-dark text-white'
+                    : 'btn-light border text-secondary'
+                  }`}
+                onClick={() => setNotifTypeFilter('All')}
+              >
+                {t('All Activity')} ({caretakerNotifs.length})
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm px-3 py-1.5 rounded-pill extra-small fw-bold transition-all ${notifTypeFilter === 'feeding'
+                    ? 'btn-danger text-white'
+                    : 'btn-light border text-secondary'
+                  }`}
+                style={notifTypeFilter === 'feeding' ? { backgroundColor: '#FC563C', borderColor: '#FC563C' } : {}}
+                onClick={() => setNotifTypeFilter('feeding')}
+              >
+                <FaUtensils className="me-1" size={11} /> {t('Feeding Logs')} ({feedingCount})
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm px-3 py-1.5 rounded-pill extra-small fw-bold transition-all ${notifTypeFilter === 'disease_scan'
+                    ? 'btn-primary text-white'
+                    : 'btn-light border text-secondary'
+                  }`}
+                onClick={() => setNotifTypeFilter('disease_scan')}
+              >
+                <FaCamera className="me-1" size={11} /> {t('Disease Scans')} ({scanCount})
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm px-3 py-1.5 rounded-pill extra-small fw-bold transition-all ${notifTypeFilter === 'water_quality'
+                    ? 'btn-info text-white'
+                    : 'btn-light border text-secondary'
+                  }`}
+                onClick={() => setNotifTypeFilter('water_quality')}
+              >
+                <FaWater className="me-1" size={11} /> {t('Water Quality')} ({waterCount})
+              </button>
+              {maintCount > 0 && (
+                <button
+                  type="button"
+                  className={`btn btn-sm px-3 py-1.5 rounded-pill extra-small fw-bold transition-all ${notifTypeFilter === 'maintenance'
+                      ? 'btn-warning text-dark'
+                      : 'btn-light border text-secondary'
+                    }`}
+                  onClick={() => setNotifTypeFilter('maintenance')}
+                >
+                  <FaExclamationCircle className="me-1" size={11} /> {t('Maintenance')} ({maintCount})
+                </button>
+              )}
+            </div>
+
+            {/* Search and Dropdowns Row */}
+            <div className="row g-2.5 mb-4 align-items-center">
+              <div className="col-12 col-md-5">
+                <div className="input-group input-group-sm">
+                  <span className="input-group-text bg-light border-end-0 text-muted">
+                    <FaSearch size={12} />
+                  </span>
+                  <input
+                    type="text"
+                    className="form-control border-start-0 ps-0"
+                    placeholder={t('Search notification message, caretaker, or pond...')}
+                    value={notifSearch}
+                    onChange={(e) => setNotifSearch(e.target.value)}
+                  />
+                  {notifSearch && (
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary border-start-0"
+                      onClick={() => setNotifSearch('')}
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="col-6 col-md-2">
+                <select
+                  className="form-select form-select-sm"
+                  value={notifPondFilter}
+                  onChange={(e) => setNotifPondFilter(e.target.value)}
+                >
+                  <option value="All">{t('All Ponds')}</option>
+                  {availableNotifPonds.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="col-6 col-md-2">
+                <select
+                  className="form-select form-select-sm"
+                  value={notifCaretakerFilter}
+                  onChange={(e) => setNotifCaretakerFilter(e.target.value)}
+                >
+                  <option value="All">{t('All Caretakers')}</option>
+                  {availableNotifCaretakers.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="col-6 col-md-2">
+                <select
+                  className="form-select form-select-sm"
+                  value={notifStatusFilter}
+                  onChange={(e) => setNotifStatusFilter(e.target.value)}
+                >
+                  <option value="All">{t('All Statuses')}</option>
+                  <option value="unread">{t('Unread Only')}</option>
+                  <option value="read">{t('Read Only')}</option>
+                </select>
+              </div>
+
+              <div className="col-6 col-md-1 text-end">
+                <button
+                  type="button"
+                  className="btn btn-sm btn-light border text-secondary extra-small w-100 py-1.5"
+                  onClick={() => {
+                    setNotifSearch('');
+                    setNotifTypeFilter('All');
+                    setNotifPondFilter('All');
+                    setNotifCaretakerFilter('All');
+                    setNotifStatusFilter('All');
+                  }}
+                >
+                  {t('Reset')}
+                </button>
+              </div>
+            </div>
+
+            {/* Notification Cards Stream */}
+            {loadingNotifs ? (
+              <div className="text-center py-5 text-muted">
+                <div className="spinner-border text-primary" role="status"></div>
+                <p className="mt-2">{t('Loading Caretaker Activity Logs...')}</p>
+              </div>
+            ) : filteredNotifs.length === 0 ? (
+              <div className="text-center py-5 text-muted border rounded-4 bg-light">
+                <FaCheckCircle size={36} className="text-success mb-2 opacity-50" />
+                <h6 className="fw-bold mb-1">{t('No Activity Logs Found')}</h6>
+                <p className="small mb-0">{t('No caretaker feeding entries or scans match your filter.')}</p>
+              </div>
+            ) : (
+              <div className="admin-scrollable-3items">
+                <div className="d-flex flex-column gap-3">
+                  {filteredNotifs.map((n) => {
+                    const isUnread = Number(n.is_read) === 0;
+                    const isFeeding = n.action_type === 'feeding';
+                    const isDisease = n.action_type === 'disease_scan';
+                    const isWater = n.action_type === 'water_quality';
+                    const isMaintenance = n.action_type === 'maintenance';
+
+                    return (
+                      <div
+                        key={n.id}
+                        className={`card border rounded-4 p-3.5 transition-all shadow-2xs ${isUnread ? 'border-primary bg-primary bg-opacity-5' : 'bg-white'
+                          }`}
+                        style={{
+                          borderLeftWidth: isUnread ? '5px' : '1px',
+                          borderLeftColor: isUnread ? '#FC563C' : undefined
+                        }}
+                      >
+                        <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap">
+                          {/* Left Side: Category Icon + Content */}
+                          <div className="d-flex align-items-start gap-3 flex-grow-1 min-w-0">
+                            <div
+                              className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                              style={{
+                                width: 42,
+                                height: 42,
+                                backgroundColor: isFeeding
+                                  ? '#FFF5F3'
+                                  : isDisease
+                                    ? '#F5F3FF'
+                                    : isWater
+                                      ? '#ECFEFF'
+                                      : '#FEF2F2',
+                                color: isFeeding
+                                  ? '#FC563C'
+                                  : isDisease
+                                    ? '#7C3AED'
+                                    : isWater
+                                      ? '#0284C7'
+                                      : '#DC2626'
+                              }}
+                            >
+                              {isFeeding ? (
+                                <FaUtensils size={16} />
+                              ) : isDisease ? (
+                                <FaCamera size={16} />
+                              ) : isWater ? (
+                                <FaWater size={16} />
+                              ) : (
+                                <FaExclamationCircle size={16} />
+                              )}
+                            </div>
+
+                            <div className="flex-grow-1 min-w-0">
+                              {/* Badges Row */}
+                              <div className="d-flex align-items-center gap-2 flex-wrap mb-1.5">
+                                <span
+                                  className="badge rounded-pill extra-small fw-bold px-2.5 py-1"
+                                  style={{
+                                    backgroundColor: isFeeding
+                                      ? '#FFF5F3'
+                                      : isDisease
+                                        ? '#F5F3FF'
+                                        : isWater
+                                          ? '#ECFEFF'
+                                          : '#FEF2F2',
+                                    color: isFeeding
+                                      ? '#C2410C'
+                                      : isDisease
+                                        ? '#6D28D9'
+                                        : isWater
+                                          ? '#0369A1'
+                                          : '#B91C1C',
+                                    border: `1px solid ${isFeeding
+                                        ? '#FFDDD6'
+                                        : isDisease
+                                          ? '#DDD6FE'
+                                          : isWater
+                                            ? '#BAE6FD'
+                                            : '#FECACA'
+                                      }`
+                                  }}
+                                >
+                                  {isFeeding
+                                    ? t('Feeding Log')
+                                    : isDisease
+                                      ? t('Disease Scan')
+                                      : isWater
+                                        ? t('Water Quality')
+                                        : t('Maintenance')}
+                                </span>
+
+                                {n.pond_name && (
+                                  <span className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill extra-small fw-semibold px-2.5 py-1">
+                                    <FaWater className="me-1" size={10} /> {n.pond_name}
+                                  </span>
+                                )}
+
+                                {n.caretaker_name && (
+                                  <span className="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 rounded-pill extra-small fw-semibold px-2.5 py-1">
+                                    <FaUser className="me-1" size={10} /> {n.caretaker_name}
+                                  </span>
+                                )}
+
+                                <span className="extra-small text-muted d-inline-flex align-items-center gap-1 ms-auto">
+                                  <FaClock size={10} /> {n.created_at}
+                                </span>
+
+                                {isUnread && (
+                                  <span
+                                    className="badge rounded-pill text-white extra-small fw-bold px-2 py-0.5"
+                                    style={{ backgroundColor: '#FC563C' }}
+                                  >
+                                    {t('NEW')}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Full Notification Content Message */}
+                              <p className="fw-bold text-dark fs-6 mb-1" style={{ lineHeight: 1.45 }}>
+                                {n.message}
+                              </p>
+
+                              <p className="extra-small text-muted mb-0">
+                                {n.title || t('Caretaker Field Update')}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Right Side: Quick Action Buttons (High Contrast & Non-fading on Hover) */}
+                          <div className="d-flex align-items-center gap-2 flex-shrink-0 ms-auto">
+                            {isFeeding && (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-action-stream-feed extra-small rounded-3 d-inline-flex align-items-center gap-1.5 fw-bold px-3 py-1.5 shadow-2xs"
+                                onClick={() => handleViewFeedingLog(n)}
+                              >
+                                <FaUtensils size={11} /> {t('View in Feeding Logs')} <FaArrowRight size={10} />
+                              </button>
+                            )}
+
+                            {isDisease && (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-action-stream-vivid extra-small rounded-3 d-inline-flex align-items-center gap-1.5 fw-bold px-3 py-1.5 shadow-2xs"
+                                onClick={() => handleViewScanReport(n)}
+                              >
+                                <FaEye size={11} /> {t('View Scan Reports')} <FaArrowRight size={10} />
+                              </button>
+                            )}
+
+                            {isWater && (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-action-stream-water extra-small rounded-3 d-inline-flex align-items-center gap-1.5 fw-bold px-3 py-1.5 shadow-2xs"
+                                onClick={() => navigate(`/admin/water-quality?pond=${encodeURIComponent(n.pond_name || '')}`)}
+                              >
+                                <FaWater size={11} /> {t('View Water Quality')} <FaArrowRight size={10} />
+                              </button>
+                            )}
+
+                            {isMaintenance && (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-action-stream-maint extra-small rounded-3 d-inline-flex align-items-center gap-1.5 fw-bold px-3 py-1.5 shadow-2xs"
+                                onClick={() => navigate(`/admin/reports?pond=${encodeURIComponent(n.pond_name || '')}`)}
+                              >
+                                <FaExclamationCircle size={11} /> {t('View Report')} <FaArrowRight size={10} />
+                              </button>
+                            )}
+
+                            {isUnread && (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-light border extra-small rounded-3 d-inline-flex align-items-center gap-1 text-success fw-bold px-2.5 py-1.5"
+                                onClick={() => handleMarkSingleNotifRead(n.id)}
+                                title={t('Mark as Read')}
+                              >
+                                <FaCheckCircle size={11} /> {t('Mark Read')}
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-danger p-1.5 rounded-3 d-inline-flex align-items-center justify-content-center"
+                              style={{ width: 32, height: 32 }}
+                              title={t('Delete Log')}
+                              onClick={() => handleDeleteNotif(n.id)}
+                            >
+                              <FaTrashAlt size={11} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
       {/* ULTRA-PREMIUM VIEW ALERT DETAILS MODAL WITH CLEAN TOP-ROW ICON & SPACING */}
       {selectedAlert && (
@@ -747,8 +1508,8 @@ export default function AlertsPage() {
                     selectedAlert.severity === 'Critical'
                       ? 'linear-gradient(135deg, #991b1b 0%, #dc2626 100%)'
                       : selectedAlert.severity === 'High'
-                      ? 'linear-gradient(135deg, #b45309 0%, #f59e0b 100%)'
-                      : 'linear-gradient(135deg, #FC563C 0%, #1e40af 100%)'
+                        ? 'linear-gradient(135deg, #b45309 0%, #f59e0b 100%)'
+                        : 'linear-gradient(135deg, #FC563C 0%, #1e40af 100%)'
                 }}
               >
                 <div className="d-flex align-items-center gap-3">
@@ -791,7 +1552,7 @@ export default function AlertsPage() {
 
               {/* Modal Body */}
               <div className="modal-body p-4 bg-white">
-                {/* Status & Caretaker Grid (Top-to-Bottom Card Layout for 100% Clean Margins!) */}
+                {/* Status & Caretaker Grid */}
                 <div className="row g-3 mb-4">
                   {/* Card 1: CURRENT STATUS */}
                   <div className="col-12 col-md-4">
@@ -837,7 +1598,7 @@ export default function AlertsPage() {
                   </div>
                 </div>
 
-                {/* Alert Event Description (Generous Padding & Line-Height!) */}
+                {/* Alert Event Description */}
                 <h6 className="fw-bold text-dark mb-2 d-flex align-items-center gap-2">
                   <FaExclamationCircle className="text-primary" /> {t('Alert Event Description')}
                 </h6>
@@ -845,7 +1606,7 @@ export default function AlertsPage() {
                   <p className="text-dark mb-0 fs-6" style={{ lineHeight: 1.6 }}>{t(selectedAlert.message)}</p>
                 </div>
 
-                {/* Recommended Action Protocol (Generous Padding & Line-Height!) */}
+                {/* Recommended Action Protocol */}
                 <h6 className="fw-bold text-dark mb-2 d-flex align-items-center gap-2">
                   <FaLightbulb className="text-warning" /> {t('Recommended Actions / What to Do')}
                 </h6>
@@ -855,7 +1616,7 @@ export default function AlertsPage() {
                   </p>
                 </div>
 
-                {/* Caretaker Follow-up Log (Generous Padding & Line-Height!) */}
+                {/* Caretaker Follow-up Log */}
                 {selectedAlert.follow_up_notes && (
                   <>
                     <h6 className="fw-bold text-dark mb-2 d-flex align-items-center gap-2">

@@ -34,6 +34,7 @@ export default function MyTasksPage() {
   const [feedingRecords, setFeedingRecords] = useState([]);
   const [waterChecklist, setWaterChecklist] = useState([]);
   const [scanActions, setScanActions] = useState([]);
+  const [pondsMissedInfo, setPondsMissedInfo] = useState({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [actionLoadError, setActionLoadError] = useState('');
@@ -50,13 +51,14 @@ export default function MyTasksPage() {
 
     setLoading(true);
     setLoadError('');
-    const [pondsResult, feedsResult, waterResult, actionsResult] = await Promise.allSettled([
+    const [pondsResult, feedsResult, waterResult, actionsResult, missedResult] = await Promise.allSettled([
       api.get('/caretaker_ponds.php', { params: { user_id: user.id } }),
       api.get('/feeding_records.php', {
         params: { user_id: user.id, recorded_by_name: user.full_name || '' },
       }),
       api.get('/water_quality_records.php', { params: { caretaker_id: user.id } }),
       api.get('/shrimp_scan_actions.php', { params: { user_id: user.id } }),
+      api.get('/feeding_records.php', { params: { action: 'check_missed_days' } }),
     ]);
 
     const errors = [];
@@ -91,6 +93,10 @@ export default function MyTasksPage() {
     } else {
       setScanActions([]);
       setActionLoadError(t('myTasks.actionError', 'Could not load admin-assigned actions.'));
+    }
+
+    if (missedResult.status === 'fulfilled' && missedResult.value.data?.ponds_missed_info) {
+      setPondsMissedInfo(missedResult.value.data.ponds_missed_info);
     }
 
     if (assignedPonds.length === 0 && user.pond_id) {
@@ -168,32 +174,76 @@ export default function MyTasksPage() {
     });
 
     const feedTasks = runningPonds.flatMap((pond) => {
-      const pondFeeds = todaysFeeds.filter((record) => String(record.pond_id) === String(pond.id));
-      const loggedSlots = new Set(pondFeeds.map((record) => normalizeFeedingTime(record.feeding_time)));
-      const stockingDate = pond.stocking_date || '2000-01-01';
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = getLocalDateString(yesterday);
-      const hasYesterdayLog = feedingRecords.some((record) => {
-        const recordDate = String(record.record_date || record.created_at || '').slice(0, 10);
-        return String(record.pond_id) === String(pond.id) && recordDate === yesterdayStr;
-      });
-      const isYesterdayMissed = stockingDate <= yesterdayStr && !hasYesterdayLog;
+      const pondMissed = pondsMissedInfo[pond.id] || pondsMissedInfo[String(pond.id)];
+      const hasMissed = Boolean(pondMissed?.has_missed_days && pondMissed?.first_missed_date);
+      const activeDate = hasMissed ? pondMissed.first_missed_date : today;
 
-      return feedingSlots.map((slot) => ({
-        id: `feed-${pond.id}-${slot}`,
+      const activeFeeds = feedingRecords.filter(
+        (record) => String(record.pond_id) === String(pond.id) &&
+          String(record.record_date || record.created_at || '').slice(0, 10) === activeDate
+      );
+      const loggedSlots = new Set(activeFeeds.map((record) => normalizeFeedingTime(record.feeding_time)));
+
+      // If hasMissed: caretaker must catch up on activeDate.
+      // Farm protocol establishes that the caretaker completes all 5 cycles in a single session.
+      // Only ONE task card is displayed for this pond for the earliest missed day.
+      if (hasMissed) {
+        const nextSlot = feedingSlots.find((t) => !loggedSlots.has(normalizeFeedingTime(t))) || '6:00 AM';
+        return [{
+          id: `feed-${pond.id}-${activeDate}`,
+          type: 'feeding',
+          pond,
+          slot: nextSlot,
+          isComplete: false,
+          isLocked: false,
+          isCatchUp: true,
+          missedDate: activeDate,
+          completedSlotsCount: loggedSlots.size,
+          totalSlotsCount: feedingSlots.length,
+          route: '/caretaker/my-pond',
+          title: `Log scheduled feeding (Catch Up: ${activeDate})`,
+          detail: `Missed feeding on ${activeDate} (${pondMissed.total_missed_count} missed days total). All 5 cycles must be logged sequentially (${loggedSlots.size} of 5 completed).`,
+        }];
+      }
+
+      // Fresh routine logs for today (all past missed days caught up):
+      // Only ONE active feeding task per pond is shown at a time.
+      // Once 6:00 AM is logged, it is replaced by 9:00 AM, then 12:00 PM, 3:00 PM, 6:00 PM.
+      const nextSlot = feedingSlots.find((t) => !loggedSlots.has(normalizeFeedingTime(t)));
+      if (nextSlot) {
+        return [{
+          id: `feed-${pond.id}-${activeDate}-${nextSlot}`,
+          type: 'feeding',
+          pond,
+          slot: nextSlot,
+          isComplete: false,
+          isLocked: false,
+          isCatchUp: false,
+          missedDate: null,
+          completedSlotsCount: loggedSlots.size,
+          totalSlotsCount: feedingSlots.length,
+          route: '/caretaker/my-pond',
+          title: t('myTasks.feedTitle', 'Log the scheduled feeding'),
+          detail: `${t('myTasks.feedDesc', 'Verify ration and record feed tray consumption.')} (${loggedSlots.size} of 5 completed)`,
+        }];
+      }
+
+      // All 5 feeding slots logged for today!
+      return [{
+        id: `feed-${pond.id}-${activeDate}-done`,
         type: 'feeding',
         pond,
-        slot,
-        isComplete: loggedSlots.has(slot),
-        isLocked: isYesterdayMissed && !loggedSlots.has(slot),
-        missedDate: isYesterdayMissed ? yesterdayStr : null,
+        slot: 'All sessions recorded',
+        isComplete: true,
+        isLocked: false,
+        isCatchUp: false,
+        missedDate: null,
+        completedSlotsCount: 5,
+        totalSlotsCount: 5,
         route: '/caretaker/my-pond',
-        title: t('myTasks.feedTitle', 'Log the scheduled feeding'),
-        detail: isYesterdayMissed && !loggedSlots.has(slot)
-          ? `Locked: Missed feeding logs on ${yesterdayStr}. Catch up past day first.`
-          : t('myTasks.feedDesc', 'Verify ration and record feed tray consumption.'),
-      }));
+        title: t('myTasks.feedCompletedTitle', 'Daily feedings complete'),
+        detail: `${pond.pond_name || `Pond #${pond.id}`}: All 5 scheduled feeding sessions for today are verified.`,
+      }];
     });
 
     const adminActionTasks = scanActions.map((action) => ({
@@ -207,7 +257,7 @@ export default function MyTasksPage() {
     }));
 
     return [...adminActionTasks, ...waterTasks, ...feedTasks];
-  }, [feedingRecords, runningPonds, scanActions, t, today, waterChecklist]);
+  }, [feedingRecords, runningPonds, scanActions, t, today, waterChecklist, pondsMissedInfo]);
 
   const completedCount = tasks.filter((task) => task.isComplete).length;
   const allComplete = tasks.length > 0 && completedCount === tasks.length;
@@ -284,10 +334,10 @@ export default function MyTasksPage() {
               {allPondsHarvesting
                 ? 'Harvesting in Progress (Tasks Suspended)'
                 : allComplete
-                ? t('myTasks.allComplete', 'All listed tasks are complete. Great work!')
-                : t('myTasks.progressCount', '{done} of {total} tasks complete')
-                  .replace('{done}', String(completedCount))
-                  .replace('{total}', String(tasks.length))}
+                  ? t('myTasks.allComplete', 'All listed tasks are complete. Great work!')
+                  : t('myTasks.progressCount', '{done} of {total} tasks complete')
+                    .replace('{done}', String(completedCount))
+                    .replace('{total}', String(tasks.length))}
             </p>
           </div>
           <span className={`badge rounded-pill px-3 py-2 ${allPondsHarvesting ? 'bg-warning text-dark' : allComplete ? 'bg-success' : 'bg-light text-dark border'}`}>
@@ -400,10 +450,10 @@ export default function MyTasksPage() {
                         {isNext && <span className="badge rounded-pill extra-small fw-bold px-2 py-0.5" style={{ backgroundColor: '#FFF1ED', color: '#C2410C' }}>{t('myTasks.next', 'NEXT')}</span>}
                         {task.type === 'admin-action' ? (
                           <span className={`badge rounded-pill extra-small fw-bold px-2 py-0.5 ${task.action.status === 'Done'
-                              ? 'bg-success-subtle text-success'
-                              : task.action.status === 'In Progress'
-                                ? 'bg-primary-subtle text-primary'
-                                : 'bg-warning-subtle text-warning-emphasis'
+                            ? 'bg-success-subtle text-success'
+                            : task.action.status === 'In Progress'
+                              ? 'bg-primary-subtle text-primary'
+                              : 'bg-warning-subtle text-warning-emphasis'
                             }`}>
                             {t(task.action.status)}
                           </span>
@@ -414,6 +464,14 @@ export default function MyTasksPage() {
                       {task.type === 'admin-action' && `${t('myTasks.adminDecision', 'Admin decision')} · `}
                       {task.pond.pond_name || task.pond.name || `${t('myTasks.pond', 'Pond')} #${task.pond.id}`}
                       {task.slot ? ` · ${task.slot}` : ''}
+                      {task.isCatchUp && (
+                        <span
+                          className="badge rounded-pill extra-small ms-1.5 fw-bold"
+                          style={{ backgroundColor: '#FEE2E2', color: '#DC2626', border: '1px solid #FCA5A5' }}
+                        >
+                          Catch-Up ({task.missedDate})
+                        </span>
+                      )}
                     </div>
                     <p className="small text-muted mb-0">{task.detail}</p>
                   </div>
