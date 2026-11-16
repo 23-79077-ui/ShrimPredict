@@ -1132,19 +1132,35 @@ def _compute_consensus_ensemble(
 
     desktop_canon = {}
 
+    unified_canon = {}
+
     for m in models_evaluated:
 
         if m["model"] == "Desktop MobileNet":
 
             desktop_canon = m["probs"]
 
-            break
+        elif m["model"] == "Unified EfficientNetV2":
+
+            unified_canon = m["probs"]
 
 
 
-    # If Desktop Model has >= 95% confidence on WSSV, ensure WSSV is embraced
+    # If Unified Model has >= 70% confidence on WSSV, ensure WSSV is embraced
 
-    if desktop_canon.get("WSSV", 0) >= 95.0 and ensemble_probs["WSSV"] < 50.0:
+    if unified_canon.get("WSSV", 0) >= 70.0 and winner_class != "WSSV":
+
+        winner_class = "WSSV"
+
+        winner_confidence = max(ensemble_probs["WSSV"], unified_canon["WSSV"])
+
+        ensemble_probs["WSSV"] = winner_confidence
+
+        ensemble_probs["Healthy"] = round(max(0.0, 100.0 - winner_confidence), 2)
+
+        selection_reason = f"Unified Transfer Model detected WSSV with strong confidence ({winner_confidence}%)."
+
+    elif desktop_canon.get("WSSV", 0) >= 95.0 and ensemble_probs["WSSV"] < 50.0:
 
         winner_class = "WSSV"
 
@@ -1152,25 +1168,19 @@ def _compute_consensus_ensemble(
 
         selection_reason = f"Desktop Model detected WSSV with overwhelming confidence ({winner_confidence}%)."
 
-    elif not enable_additional and winner_class == "Black Gill" and winner_confidence < 75.0 and ensemble_probs["Healthy"] >= 25.0:
+    elif not enable_additional and winner_class == "Black Gill" and (desktop_canon.get("Healthy", 0.0) >= 80.0 or ensemble_probs["Healthy"] >= 25.0):
 
-        # In initial caretaker primary scan, modest Black Gill score (<75%) does not overthrow Healthy
+        # In initial caretaker primary scan, healthy baseline takes precedence unless additional scan is enabled
 
-        if ensemble_probs["Healthy"] >= 45.0:
+        winner_class = "Healthy"
 
-            winner_class = "Healthy"
+        winner_confidence = max(ensemble_probs["Healthy"], desktop_canon.get("Healthy", 0.0))
 
-            winner_confidence = ensemble_probs["Healthy"]
+        ensemble_probs["Healthy"] = winner_confidence
 
-            selection_reason = f"Healthy primary consensus ({winner_confidence}%) prevailed over weak secondary Black Gill indication."
+        ensemble_probs["Black Gill"] = round(max(0.0, 100.0 - winner_confidence), 2)
 
-        else:
-
-            winner_class = "Healthy"
-
-            winner_confidence = ensemble_probs["Healthy"]
-
-            selection_reason = "Primary scan focused on Healthy/WSSV baseline."
+        selection_reason = f"Healthy consensus ({winner_confidence}%) confirmed in primary scan."
 
     else:
 
