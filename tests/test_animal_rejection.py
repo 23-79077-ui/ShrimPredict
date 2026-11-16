@@ -23,6 +23,21 @@ def test_elephant_rejection():
     assert count_res['shrimp_count'] == 0
     assert count_res['display_status'] == 'No Shrimp Detected'
 
+def test_person_rejection():
+    test_image = Path('backend/uploads/1784956363_profile.jpg')
+    if not test_image.exists():
+        return
+
+    result = validate_image_content(test_image)
+    assert result['shrimp_detected'] is False
+    assert result['presence_state'] == 'no_shrimp'
+    assert 'person' in result['message'].lower() or 'human' in result['message'].lower()
+
+    count_res = count_shrimp_in_image(test_image)
+    assert count_res['shrimp_detected'] is False
+    assert count_res['shrimp_count'] == 0
+    assert count_res['display_status'] == 'No Shrimp Detected'
+
 def test_real_raw_shrimp_acceptance():
     test_image = Path(r'C:\Users\HP\Desktop\Shrimp\Shrimp\dataset-tools\shrimp-dataset\Healthy\2840.jpg')
     if not test_image.exists():

@@ -31,7 +31,17 @@ IMAGENET_STD = np.array([0.229, 0.224, 0.225], dtype=np.float32).reshape(1, 3, 1
 DECAPOD_CLASSES = [112, 118, 119, 120, 121, 122, 123, 124, 125, 126]
 TECH_CLASSES = [487, 508, 527, 590, 620, 664, 673, 681, 782, 810, 878, 916]
 DOC_FURNITURE_CLASSES = [446, 478, 526, 549, 649, 695, 909, 921]
-HUMAN_CLOTHING_CLASSES = [608, 611, 834, 855]
+HUMAN_CLOTHING_CLASSES = [
+    400, 411, 419, 424, 425, 434, 435, 445, 452, 457, 459, 460, 474, 501, 502,
+    514, 515, 516, 529, 560, 567, 579, 582, 585, 592, 593, 608, 610, 611, 614,
+    615, 629, 630, 631, 643, 652, 655, 658, 668, 676, 677, 680, 692, 697, 734,
+    747, 748, 756, 770, 773, 777, 780, 796, 799, 805, 806, 828, 834, 837, 838,
+    841, 842, 851, 855, 869, 888, 902, 983
+]
+VEHICLE_CLASSES = [
+    403, 407, 436, 444, 468, 475, 479, 511, 555, 569, 573, 575, 627, 654, 656,
+    665, 670, 671, 675, 705, 717, 734, 751, 817, 829, 864, 866, 867, 895
+]
 
 DOG_CLASSES = set(range(151, 269))
 CAT_CLASSES = set(range(281, 294))
@@ -241,16 +251,34 @@ class ShrimpPresenceValidator:
                 "content_category": "Invalid",
             }
 
-        # Check semantic animal classes first to prevent non-shrimp animals from being falsely diagnosed
+        # Check semantic non-shrimp categories first (humans, animals, vehicles, tech, documents)
+        skin_ratio = float(feat[10])
+        rectilinear_ratio = float(feat[8])
+        paper_doc_ratio = float(feat[15])
+
         probs = self._last_probs
         if probs is not None:
             top1 = int(np.argmax(probs))
             top1_prob = float(probs[top1])
             p_decapod = float(np.sum(probs[DECAPOD_CLASSES]))
+
             p_elephant = float(np.sum([probs[i] for i in ELEPHANTS]))
             p_dog = float(np.sum([probs[i] for i in DOG_CLASSES]))
             p_cat = float(np.sum([probs[i] for i in CAT_CLASSES]))
             p_farm = float(np.sum([probs[i] for i in FARM_UNGULATE_CLASSES]))
+
+            # 1. Humans / People (Tao)
+            p_human_full = float(np.sum([probs[c] for c in HUMAN_CLOTHING_CLASSES if c < len(probs)]))
+            is_human = False
+            if p_decapod < 0.03 and p_elephant < 0.25 and p_dog < 0.35 and p_cat < 0.35 and p_farm < 0.35:
+                if p_human_full >= 0.20 or (top1 in HUMAN_CLOTHING_CLASSES and top1_prob >= 0.15):
+                    is_human = True
+                elif skin_ratio >= 0.14 and p_human_full >= 0.08:
+                    is_human = True
+                elif skin_ratio >= 0.20 and p_human_full >= 0.05 and p_decapod < 0.01:
+                    is_human = True
+
+            # 2. Non-shrimp Animals (Elephants, Dogs, Cats, Cattle, Birds, etc.)
             p_primate = float(np.sum([probs[i] for i in PRIMATES]))
             p_carnivore = float(np.sum([probs[i] for i in WILD_CARNIVORES]))
             p_bear = float(np.sum([probs[i] for i in BEARS]))
@@ -261,76 +289,92 @@ class ShrimpPresenceValidator:
             p_insect = float(np.sum([probs[i] for i in INSECTS_ARACHNIDS]))
 
             is_animal = False
-            detected_animal_name = "Animal"
-            animal_conf = 0.0
-
-            if p_decapod < 0.05:
+            if p_decapod < 0.05 and not is_human:
                 if p_elephant >= 0.35 or (top1 in ELEPHANTS and top1_prob >= 0.25):
                     is_animal = True
-                    animal_conf = max(p_elephant, top1_prob)
-                    detected_animal_name = f"Elephant ({self.get_class_name(top1)})"
                 elif p_dog >= 0.65 or (top1 in DOG_CLASSES and top1_prob >= 0.40 and p_dog >= 0.50):
                     is_animal = True
-                    animal_conf = max(p_dog, top1_prob)
-                    detected_animal_name = f"Dog ({self.get_class_name(top1)})"
                 elif p_cat >= 0.65 or (top1 in CAT_CLASSES and top1_prob >= 0.40 and p_cat >= 0.50):
                     is_animal = True
-                    animal_conf = max(p_cat, top1_prob)
-                    detected_animal_name = f"Cat ({self.get_class_name(top1)})"
                 elif p_farm >= 0.50 or (top1 in FARM_UNGULATE_CLASSES and top1_prob >= 0.40 and p_farm >= 0.45):
                     is_animal = True
-                    animal_conf = max(p_farm, top1_prob)
-                    detected_animal_name = f"Livestock / Farm Animal ({self.get_class_name(top1)})"
                 elif p_primate >= 0.55 or (top1 in PRIMATES and top1_prob >= 0.40 and p_primate >= 0.45):
                     is_animal = True
-                    animal_conf = max(p_primate, top1_prob)
-                    detected_animal_name = f"Primate ({self.get_class_name(top1)})"
                 elif p_carnivore >= 0.55 or (top1 in WILD_CARNIVORES and top1_prob >= 0.40 and p_carnivore >= 0.45):
                     is_animal = True
-                    animal_conf = max(p_carnivore, top1_prob)
-                    detected_animal_name = f"Wild Animal ({self.get_class_name(top1)})"
                 elif p_bear >= 0.55 or (top1 in BEARS and top1_prob >= 0.40 and p_bear >= 0.45):
                     is_animal = True
-                    animal_conf = max(p_bear, top1_prob)
-                    detected_animal_name = f"Bear ({self.get_class_name(top1)})"
                 elif p_bird >= 0.65 or (top1 in BIRDS and top1_prob >= 0.45 and p_bird >= 0.55):
                     is_animal = True
-                    animal_conf = max(p_bird, top1_prob)
-                    detected_animal_name = f"Bird ({self.get_class_name(top1)})"
                 elif p_reptile >= 0.60 or (top1 in REPTILES and top1_prob >= 0.45 and p_reptile >= 0.55):
                     is_animal = True
-                    animal_conf = max(p_reptile, top1_prob)
-                    detected_animal_name = f"Reptile / Amphibian ({self.get_class_name(top1)})"
                 elif p_rodent >= 0.55 or (top1 in RODENTS_RABBITS and top1_prob >= 0.40 and p_rodent >= 0.45):
                     is_animal = True
-                    animal_conf = max(p_rodent, top1_prob)
-                    detected_animal_name = f"Rodent / Small Mammal ({self.get_class_name(top1)})"
                 elif p_other_mammals >= 0.55 or (top1 in OTHER_MAMMALS and top1_prob >= 0.40 and p_other_mammals >= 0.45):
                     is_animal = True
-                    animal_conf = max(p_other_mammals, top1_prob)
-                    detected_animal_name = f"Mammal ({self.get_class_name(top1)})"
                 elif p_insect >= 0.60 or (top1 in INSECTS_ARACHNIDS and top1_prob >= 0.45 and p_insect >= 0.55):
                     is_animal = True
-                    animal_conf = max(p_insect, top1_prob)
-                    detected_animal_name = f"Insect / Arachnid ({self.get_class_name(top1)})"
 
-            if is_animal:
+            # 3. Vehicles
+            p_vehicle = float(np.sum([probs[c] for c in VEHICLE_CLASSES if c < len(probs)]))
+            is_vehicle = False
+            if p_decapod < 0.03 and not is_human and not is_animal:
+                if p_vehicle >= 0.35 or (top1 in VEHICLE_CLASSES and top1_prob >= 0.25):
+                    is_vehicle = True
+
+            # 4. Electronic Devices / Keyboards / Screens
+            p_tech_full = float(np.sum([probs[c] for c in TECH_CLASSES if c < len(probs)]))
+            is_tech = False
+            if p_decapod < 0.03 and not is_human and not is_animal and not is_vehicle:
+                if p_tech_full >= 0.35 or (top1 in TECH_CLASSES and top1_prob >= 0.25) or rectilinear_ratio >= 0.78:
+                    is_tech = True
+
+            # 5. Documents / Paper Text
+            is_doc = False
+            if p_decapod < 0.03 and not is_human and not is_animal and not is_vehicle and not is_tech:
+                if paper_doc_ratio >= 0.55:
+                    is_doc = True
+
+            if is_human or is_animal or is_vehicle or is_tech or is_doc:
+                category_name = (
+                    "Person / Human" if is_human else (
+                        "Non-Shrimp Animal" if is_animal else (
+                            "Vehicle" if is_vehicle else (
+                                "Electronic Device" if is_tech else "Document"
+                            )
+                        )
+                    )
+                )
+                rejection_msg = (
+                    "No shrimp detected. Person or human detected. Only real shrimp can be scanned for disease diagnosis."
+                    if is_human else (
+                        "No shrimp detected. Non-shrimp animal detected. Only real shrimp can be scanned for disease diagnosis."
+                        if is_animal else (
+                            "No shrimp detected. Vehicle or transport detected. Only real shrimp can be scanned for disease diagnosis."
+                            if is_vehicle else (
+                                "No shrimp detected. Electronic device or keyboard detected. Only real shrimp can be scanned for disease diagnosis."
+                                if is_tech else
+                                "No shrimp detected. Paper document detected. Only real shrimp can be scanned for disease diagnosis."
+                            )
+                        )
+                    )
+                )
                 return {
                     "shrimp_detected": False,
                     "presence_state": "no_shrimp",
                     "status": "No Shrimp Detected",
                     "display_status": "No Shrimp Detected",
-                    "predicted_class": "Animal (Non-Shrimp)",
-                    "confidence": round(animal_conf * 100.0, 2),
+                    "predicted_class": category_name,
+                    "confidence": 100.0,
                     "probability_shrimp": 0.0,
-                    "message": f"Non-shrimp animal detected ({detected_animal_name}). Please upload a clear photo of a real shrimp for disease diagnosis.",
+                    "message": rejection_msg,
                     "is_cooked": False,
                     "is_crayfish": False,
-                    "content_category": "Animal (Non-Shrimp)",
+                    "content_category": category_name,
                 }
 
-        # Check for cooked shrimp only after ruling out non-shrimp animals
-        if detect_cooked_orange_shrimp(img_bgr):
+        # Check for cooked shrimp only after ruling out humans, animals, vehicles, and electronics
+        if skin_ratio < 0.16 and detect_cooked_orange_shrimp(img_bgr):
             return {
                 "shrimp_detected": True,
                 "is_cooked": True,
@@ -376,16 +420,16 @@ class ShrimpPresenceValidator:
             confidence = round((1.0 - prob_shrimp) * 100.0, 2)
             if p_tech > 0.40 or rectilinear_ratio > 0.80:
                 content_category = "Laptop / Computer"
-                message = "Laptop or computer keyboard detected. No shrimp detected."
+                message = "Laptop or computer keyboard detected. Only real shrimp can be scanned for disease diagnosis."
             elif skin_ratio > 0.50 and non_skin_edges < 0.015:
                 content_category = "Human Hand"
-                message = "Human hand detected without any shrimp. No shrimp detected."
+                message = "Human hand detected without any shrimp. Only real shrimp can be scanned for disease diagnosis."
             elif paper_ratio > 0.55:
                 content_category = "Document"
-                message = "Paper document or printed text detected. No shrimp detected."
+                message = "Paper document or printed text detected. Only real shrimp can be scanned for disease diagnosis."
             else:
                 content_category = "Background / Object"
-                message = "No shrimp detected in the image."
+                message = "No shrimp detected in the image. Only real shrimp can be scanned for disease diagnosis."
         else:
             presence_state = "uncertain"
             shrimp_detected = False
