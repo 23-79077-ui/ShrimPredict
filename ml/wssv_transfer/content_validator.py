@@ -14,6 +14,11 @@ import numpy as np
 import cv2
 import onnxruntime as ort
 
+try:
+    from quality_validator import detect_cooked_orange_shrimp
+except ImportError:
+    from .quality_validator import detect_cooked_orange_shrimp
+
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parents[1]
 MODELS_DIR = SCRIPT_DIR.parent / "models"
@@ -23,10 +28,23 @@ ONNX_PATH = MODELS_DIR / "mobilenetv2-7.onnx"
 IMAGENET_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32).reshape(1, 3, 1, 1)
 IMAGENET_STD = np.array([0.229, 0.224, 0.225], dtype=np.float32).reshape(1, 3, 1, 1)
 
-DECAPOD_CLASSES = [118, 119, 120, 121, 122, 123, 124, 125, 112]
+DECAPOD_CLASSES = [112, 118, 119, 120, 121, 122, 123, 124, 125, 126]
 TECH_CLASSES = [487, 508, 527, 590, 620, 664, 673, 681, 782, 810, 878, 916]
 DOC_FURNITURE_CLASSES = [446, 478, 526, 549, 649, 695, 909, 921]
 HUMAN_CLOTHING_CLASSES = [608, 611, 834, 855]
+
+DOG_CLASSES = set(range(151, 269))
+CAT_CLASSES = set(range(281, 294))
+WILD_CARNIVORES = set(range(269, 281))
+BEARS = set(range(294, 298))
+FARM_UNGULATE_CLASSES = set(range(339, 356))
+ELEPHANTS = {101, 385, 386}
+PRIMATES = set(range(365, 385))
+RODENTS_RABBITS = set(range(330, 339))
+OTHER_MAMMALS = set(range(356, 365)) | {387, 388}
+BIRDS = (set(range(7, 21)) | set(range(22, 25)) | set(range(80, 101)) | set(range(127, 139)) | set(range(140, 151)))
+REPTILES = set(range(25, 72))
+INSECTS_ARACHNIDS = set(range(72, 80)) | set(range(300, 330))
 
 
 class ShrimpPresenceValidator:
@@ -49,6 +67,24 @@ class ShrimpPresenceValidator:
             "shrimp_detected_min": 0.65,
             "no_shrimp_max": 0.35,
         })
+        self._last_probs = None
+        self.class_index = self._load_class_index()
+
+    def _load_class_index(self) -> dict:
+        idx_path = MODELS_DIR / "imagenet_class_index.json"
+        if idx_path.exists():
+            try:
+                with open(idx_path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                pass
+        return {}
+
+    def get_class_name(self, idx: int) -> str:
+        entry = self.class_index.get(str(idx))
+        if entry and len(entry) >= 2:
+            return entry[1].replace("_", " ").title()
+        return f"Class {idx}"
 
     @classmethod
     def get_instance(cls) -> ShrimpPresenceValidator:
@@ -74,6 +110,7 @@ class ShrimpPresenceValidator:
         logits = self.session.run([self.output_name], {self.input_name: arr})[0][0]
         exp_logits = np.exp(logits - np.max(logits))
         probs = exp_logits / np.sum(exp_logits)
+        self._last_probs = probs
 
         p_decapod = float(np.sum(probs[DECAPOD_CLASSES]))
         p_tech = float(np.sum(probs[TECH_CLASSES]))
@@ -200,7 +237,113 @@ class ShrimpPresenceValidator:
                 "probability_shrimp": 0.0,
                 "message": "Invalid or unreadable image file.",
                 "is_cooked": False,
+                "is_crayfish": False,
                 "content_category": "Invalid",
+            }
+
+        # Check semantic animal classes first to prevent non-shrimp animals from being falsely diagnosed
+        probs = self._last_probs
+        if probs is not None:
+            top1 = int(np.argmax(probs))
+            top1_prob = float(probs[top1])
+            p_decapod = float(np.sum(probs[DECAPOD_CLASSES]))
+            p_elephant = float(np.sum([probs[i] for i in ELEPHANTS]))
+            p_dog = float(np.sum([probs[i] for i in DOG_CLASSES]))
+            p_cat = float(np.sum([probs[i] for i in CAT_CLASSES]))
+            p_farm = float(np.sum([probs[i] for i in FARM_UNGULATE_CLASSES]))
+            p_primate = float(np.sum([probs[i] for i in PRIMATES]))
+            p_carnivore = float(np.sum([probs[i] for i in WILD_CARNIVORES]))
+            p_bear = float(np.sum([probs[i] for i in BEARS]))
+            p_bird = float(np.sum([probs[i] for i in BIRDS]))
+            p_reptile = float(np.sum([probs[i] for i in REPTILES]))
+            p_rodent = float(np.sum([probs[i] for i in RODENTS_RABBITS]))
+            p_other_mammals = float(np.sum([probs[i] for i in OTHER_MAMMALS]))
+            p_insect = float(np.sum([probs[i] for i in INSECTS_ARACHNIDS]))
+
+            is_animal = False
+            detected_animal_name = "Animal"
+            animal_conf = 0.0
+
+            if p_decapod < 0.05:
+                if p_elephant >= 0.35 or (top1 in ELEPHANTS and top1_prob >= 0.25):
+                    is_animal = True
+                    animal_conf = max(p_elephant, top1_prob)
+                    detected_animal_name = f"Elephant ({self.get_class_name(top1)})"
+                elif p_dog >= 0.65 or (top1 in DOG_CLASSES and top1_prob >= 0.40 and p_dog >= 0.50):
+                    is_animal = True
+                    animal_conf = max(p_dog, top1_prob)
+                    detected_animal_name = f"Dog ({self.get_class_name(top1)})"
+                elif p_cat >= 0.65 or (top1 in CAT_CLASSES and top1_prob >= 0.40 and p_cat >= 0.50):
+                    is_animal = True
+                    animal_conf = max(p_cat, top1_prob)
+                    detected_animal_name = f"Cat ({self.get_class_name(top1)})"
+                elif p_farm >= 0.50 or (top1 in FARM_UNGULATE_CLASSES and top1_prob >= 0.40 and p_farm >= 0.45):
+                    is_animal = True
+                    animal_conf = max(p_farm, top1_prob)
+                    detected_animal_name = f"Livestock / Farm Animal ({self.get_class_name(top1)})"
+                elif p_primate >= 0.55 or (top1 in PRIMATES and top1_prob >= 0.40 and p_primate >= 0.45):
+                    is_animal = True
+                    animal_conf = max(p_primate, top1_prob)
+                    detected_animal_name = f"Primate ({self.get_class_name(top1)})"
+                elif p_carnivore >= 0.55 or (top1 in WILD_CARNIVORES and top1_prob >= 0.40 and p_carnivore >= 0.45):
+                    is_animal = True
+                    animal_conf = max(p_carnivore, top1_prob)
+                    detected_animal_name = f"Wild Animal ({self.get_class_name(top1)})"
+                elif p_bear >= 0.55 or (top1 in BEARS and top1_prob >= 0.40 and p_bear >= 0.45):
+                    is_animal = True
+                    animal_conf = max(p_bear, top1_prob)
+                    detected_animal_name = f"Bear ({self.get_class_name(top1)})"
+                elif p_bird >= 0.65 or (top1 in BIRDS and top1_prob >= 0.45 and p_bird >= 0.55):
+                    is_animal = True
+                    animal_conf = max(p_bird, top1_prob)
+                    detected_animal_name = f"Bird ({self.get_class_name(top1)})"
+                elif p_reptile >= 0.60 or (top1 in REPTILES and top1_prob >= 0.45 and p_reptile >= 0.55):
+                    is_animal = True
+                    animal_conf = max(p_reptile, top1_prob)
+                    detected_animal_name = f"Reptile / Amphibian ({self.get_class_name(top1)})"
+                elif p_rodent >= 0.55 or (top1 in RODENTS_RABBITS and top1_prob >= 0.40 and p_rodent >= 0.45):
+                    is_animal = True
+                    animal_conf = max(p_rodent, top1_prob)
+                    detected_animal_name = f"Rodent / Small Mammal ({self.get_class_name(top1)})"
+                elif p_other_mammals >= 0.55 or (top1 in OTHER_MAMMALS and top1_prob >= 0.40 and p_other_mammals >= 0.45):
+                    is_animal = True
+                    animal_conf = max(p_other_mammals, top1_prob)
+                    detected_animal_name = f"Mammal ({self.get_class_name(top1)})"
+                elif p_insect >= 0.60 or (top1 in INSECTS_ARACHNIDS and top1_prob >= 0.45 and p_insect >= 0.55):
+                    is_animal = True
+                    animal_conf = max(p_insect, top1_prob)
+                    detected_animal_name = f"Insect / Arachnid ({self.get_class_name(top1)})"
+
+            if is_animal:
+                return {
+                    "shrimp_detected": False,
+                    "presence_state": "no_shrimp",
+                    "status": "No Shrimp Detected",
+                    "display_status": "No Shrimp Detected",
+                    "predicted_class": "Animal (Non-Shrimp)",
+                    "confidence": round(animal_conf * 100.0, 2),
+                    "probability_shrimp": 0.0,
+                    "message": f"Non-shrimp animal detected ({detected_animal_name}). Please upload a clear photo of a real shrimp for disease diagnosis.",
+                    "is_cooked": False,
+                    "is_crayfish": False,
+                    "content_category": "Animal (Non-Shrimp)",
+                }
+
+        # Check for cooked shrimp only after ruling out non-shrimp animals
+        if detect_cooked_orange_shrimp(img_bgr):
+            return {
+                "shrimp_detected": True,
+                "is_cooked": True,
+                "valid_shrimp_present": False,
+                "presence_state": "cooked_shrimp",
+                "status": "cooked_shrimp",
+                "display_status": "Unavailable to scan: Cooked Shrimp",
+                "predicted_class": "Cooked Shrimp",
+                "confidence": 98.0,
+                "probability_shrimp": 0.98,
+                "message": "Shrimp was detected, but it appears to be cooked. Please upload raw uncooked shrimp for diagnosis.",
+                "is_crayfish": False,
+                "content_category": "Cooked Shrimp",
             }
 
         feat_scaled = self.scaler.transform([feat])
@@ -252,31 +395,17 @@ class ShrimpPresenceValidator:
             content_category = "Uncertain"
             message = "Unable to Identify Shrimp. Please Retake or Upload a Clearer Image."
 
-        # Check for cooked shrimp only if shrimp is positively identified
-        is_cooked = False
-        if shrimp_detected:
-            hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
-            skin_m = cv2.inRange(hsv, np.array([0, 30, 60], dtype=np.uint8), np.array([25, 190, 255], dtype=np.uint8))
-            non_skin = cv2.bitwise_not(skin_m)
-            orange_m = cv2.inRange(hsv, np.array([5, 140, 120], dtype=np.uint8), np.array([22, 255, 255], dtype=np.uint8))
-            cooked_in_specimen = cv2.bitwise_and(orange_m, orange_m, mask=non_skin)
-            specimen_area = np.count_nonzero(non_skin)
-            cooked_area = np.count_nonzero(cooked_in_specimen)
-            cooked_ratio = cooked_area / max(1, specimen_area)
-            if cooked_ratio >= 0.55:
-                is_cooked = True
-                content_category = "Cooked Shrimp"
-                message = "Shrimp was detected, but it appears to be cooked."
-
         return {
             "shrimp_detected": shrimp_detected,
             "presence_state": presence_state,
             "status": status,
+            "display_status": "Ready for Scan" if shrimp_detected else ("Unable to Identify Shrimp. Please Retake or Upload a Clearer Image." if presence_state == "uncertain" else "No Shrimp Detected"),
             "predicted_class": predicted_class,
             "confidence": confidence,
             "probability_shrimp": round(prob_shrimp, 4),
             "message": message,
-            "is_cooked": is_cooked,
+            "is_cooked": False,
+            "is_crayfish": False,
             "content_category": content_category,
         }
 

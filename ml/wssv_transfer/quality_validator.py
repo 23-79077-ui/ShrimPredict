@@ -9,10 +9,9 @@ import numpy as np
 from PIL import Image, ImageOps
 
 
-def detect_cooked_orange_shrimp(image, threshold: float = 0.55) -> bool:
-    """Return True only when a high concentration of strongly saturated orange/red pixels
-    is detected. This ignores brown/orange shell tones and white-spot lesions that are
-    common in WSSV-positive shrimp.
+def detect_cooked_orange_shrimp(image, threshold: float = 0.065) -> bool:
+    """Return True when characteristic cooked shrimp orange/red coloration (astaxanthin pigment)
+    is detected across the specimen area or image, distinguishing cooked shrimp from raw shrimp.
     """
     if image is None:
         return False
@@ -32,15 +31,42 @@ def detect_cooked_orange_shrimp(image, threshold: float = 0.55) -> bool:
     if img.size == 0 or img.ndim != 3:
         return False
 
-    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    h, w = img.shape[:2]
+    if max(h, w) > 400:
+        scale = 320.0 / max(h, w)
+        img_small = cv2.resize(img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
+    else:
+        img_small = img
 
-    # Restrict strictly to strongly saturated cooked orange tones (HSV Hue 3–25, avoiding dark shells & pinkish/magenta trays).
-    mask1 = cv2.inRange(hsv, np.array([3, 170, 140], dtype=np.uint8), np.array([25, 255, 255], dtype=np.uint8))
-    mask2 = cv2.inRange(hsv, np.array([0, 180, 150], dtype=np.uint8), np.array([8, 255, 255], dtype=np.uint8))
-    bright_orange_mask = cv2.bitwise_or(mask1, mask2)
+    hsv = cv2.cvtColor(img_small, cv2.COLOR_BGR2HSV)
+    b = img_small[:, :, 0].astype(np.int32)
+    g = img_small[:, :, 1].astype(np.int32)
+    r = img_small[:, :, 2].astype(np.int32)
 
-    bright_orange_ratio = float(np.mean(bright_orange_mask > 0)) if bright_orange_mask.size else 0.0
-    return bright_orange_ratio >= threshold
+    h_channel = hsv[:, :, 0]
+    s_channel = hsv[:, :, 1]
+    v_channel = hsv[:, :, 2]
+
+    # Astaxanthin cooked hue range in HSV:
+    # Warm red-orange (0-28) or wrapped deep red (170-180)
+    # S >= 65 (cooked flesh is vividly pigmented; raw shrimp is desaturated S < 50)
+    # V >= 70 (sufficient brightness for cooked specimen)
+    hue_match = ((h_channel <= 28) | (h_channel >= 170)) & (s_channel >= 65) & (v_channel >= 70)
+
+    # RGB constraint: cooked shrimp is distinctly red/orange (R significantly greater than G and B)
+    # This separates cooked shrimp from human skin and pale tan raw shrimp
+    rgb_match = (r > (g + 18)) & (r > (b + 35)) & (r >= 100)
+
+    cooked_mask = hue_match & rgb_match
+    total_pixels = cooked_mask.size
+    ratio_total = float(np.count_nonzero(cooked_mask) / max(1, total_pixels))
+
+    # Specimen foreground isolation (excluding uniform dark or pure white plate backgrounds)
+    foreground_mask = (v_channel > 35) & (s_channel > 20)
+    fg_count = np.count_nonzero(foreground_mask)
+    ratio_foreground = float(np.count_nonzero(cooked_mask & foreground_mask) / max(1, fg_count))
+
+    return ratio_total >= threshold or (ratio_foreground >= 0.16 and ratio_total >= 0.035)
 
 
 def validate_image_quality(image_path: Path) -> dict:

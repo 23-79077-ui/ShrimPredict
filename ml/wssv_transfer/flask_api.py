@@ -2113,100 +2113,65 @@ def predict_endpoint():
 
 
         if stage1_res.get("is_cooked", False):
-
             print("[STAGE 1 FAILED] Cooked shrimp detected before ML inference.", file=sys.stderr)
-
             return jsonify({
-
                 "success": True,
-
                 "shrimp_detected": True,
-
                 "is_cooked": True,
-
-                "content_category": stage1_res.get("content_category", "Shrimp"),
-
+                "content_category": stage1_res.get("content_category", "Cooked Shrimp"),
                 "image_quality": "N/A",
-
                 "prediction": None,
-
                 "disease_name": None,
-
                 "status": "Error",
-
+                "display_status": "Unavailable to scan: Cooked Shrimp",
                 "confidence": 0,
-
                 "confidence_score": 0,
-
                 "risk_level": "None",
-
-                "message": "Shrimp was detected, but it appears to be cooked.",
-
+                "message": "Shrimp was detected, but it appears to be cooked. Please upload raw uncooked shrimp for diagnosis.",
                 "stage1_details": stage1_res,
-
             })
 
-
-
         # ==========================================
-
         # STAGE 2: Image Quality Validation
-
         # ==========================================
-
         stage2_res = validate_image_quality(temp_path)
-
         if not stage2_res.get("is_quality_valid", True):
-
             print(f"[STAGE 2 FAILED] Poor Quality: {stage2_res.get('message')}", file=sys.stderr)
-
             return jsonify({
-
                 "success": True,
-
                 "shrimp_detected": True,
-
                 "content_category": stage1_res.get("content_category", "Shrimp"),
-
                 "image_quality": "Poor Image Quality",
-
                 "prediction": None,
-
                 "disease_name": None,
-
                 "status": "Poor Image Quality",
-
                 "confidence": 0,
-
                 "confidence_score": 0,
-
                 "risk_level": "None",
-
                 "message": stage2_res.get("message", "Please upload a clearer image of a shrimp."),
-
                 "stage2_details": stage2_res,
-
             })
 
-
-
         # ==========================================
-
         # STAGE 2B: Cooked Shrimp Safety Guard
-
         # ==========================================
-
-        if detect_cooked_orange_shrimp(temp_path, threshold=0.55):
-
-            print("[COOKED SHIMP GUARD] Bright orange/red pixels exceeded threshold before ML inference.", file=sys.stderr)
-
+        if detect_cooked_orange_shrimp(temp_path):
+            print("[COOKED SHRIMP GUARD] Astaxanthin orange pigmentation detected before ML inference.", file=sys.stderr)
             return jsonify({
-
+                "success": True,
+                "shrimp_detected": True,
+                "is_cooked": True,
+                "content_category": "Cooked Shrimp",
+                "image_quality": "N/A",
+                "prediction": None,
+                "disease_name": None,
                 "status": "Error",
-
-                "message": "Shrimp was detected, but it appears to be cooked.",
-
-            }), 400
+                "display_status": "Unavailable to scan: Cooked Shrimp",
+                "confidence": 0,
+                "confidence_score": 0,
+                "risk_level": "None",
+                "message": "Shrimp was detected, but it appears to be cooked. Please upload raw uncooked shrimp for diagnosis.",
+            })
 
 
 

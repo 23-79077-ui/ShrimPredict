@@ -87,7 +87,6 @@ $previewShrimpDetected = (bool)($previewResult['shrimp_detected'] ?? false);
 $previewIsCooked = !empty($previewResult['is_cooked']);
 
 if ($previewPresenceState === 'uncertain' || ($previewResult['status'] ?? '') === 'uncertain') {
-    http_response_code(400);
     echo json_encode([
         'success' => false,
         'message' => 'Unable to Identify Shrimp. Please Retake or Upload a Clearer Image.',
@@ -98,7 +97,6 @@ if ($previewPresenceState === 'uncertain' || ($previewResult['status'] ?? '') ==
 }
 
 if ($previewIsCooked || ($previewResult['status'] ?? '') === 'cooked_shrimp') {
-    http_response_code(400);
     echo json_encode([
         'success' => false,
         'message' => 'Shrimp was detected, but it appears to be cooked. Please upload raw uncooked shrimp for diagnosis.',
@@ -109,10 +107,11 @@ if ($previewIsCooked || ($previewResult['status'] ?? '') === 'cooked_shrimp') {
 }
 
 if (!$previewShrimpDetected) {
-    http_response_code(400);
     echo json_encode([
         'success' => false,
-        'message' => $previewResult['message'] ?? 'No shrimp detected. Please upload a clear image containing a shrimp.',
+        'shrimp_detected' => false,
+        'presence_state' => $previewPresenceState ?: 'no_shrimp',
+        'message' => $previewResult['message'] ?? 'No shrimp detected. Please upload a clear photo of a real shrimp for disease diagnosis.',
         'preview' => $previewResult,
     ]);
     exit;
@@ -188,6 +187,37 @@ if (empty($prediction) || (isset($prediction['success']) && $prediction['success
         'message' => 'Invalid AI model response from the Flask API.',
         'ai_response' => $prediction,
         'raw_response' => $aiResponse,
+    ]);
+    exit;
+}
+
+if (!empty($prediction['is_cooked']) || ($prediction['status'] ?? '') === 'cooked_shrimp') {
+    echo json_encode([
+        'success' => false,
+        'is_cooked' => true,
+        'message' => $prediction['message'] ?? 'Shrimp was detected, but it appears to be cooked. Please upload raw uncooked shrimp for diagnosis.',
+        'prediction' => $prediction,
+    ]);
+    exit;
+}
+
+if (isset($prediction['shrimp_detected']) && $prediction['shrimp_detected'] === false) {
+    echo json_encode([
+        'success' => false,
+        'shrimp_detected' => false,
+        'presence_state' => $prediction['presence_state'] ?? 'no_shrimp',
+        'message' => $prediction['message'] ?? 'No shrimp detected. Please upload a clear photo of a real shrimp for disease diagnosis.',
+        'prediction' => $prediction,
+    ]);
+    exit;
+}
+
+if (isset($prediction['status']) && $prediction['status'] === 'Poor Image Quality') {
+    echo json_encode([
+        'success' => false,
+        'image_quality' => 'Poor Image Quality',
+        'message' => $prediction['message'] ?? 'Please upload a clearer image of a shrimp.',
+        'prediction' => $prediction,
     ]);
     exit;
 }

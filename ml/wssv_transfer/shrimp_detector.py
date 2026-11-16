@@ -55,12 +55,13 @@ def count_shrimp_in_image(image_path: Path) -> dict:
             "shrimp_count": 0,
             "presence_state": "no_shrimp",
             "status": "no_shrimp",
-            "display_status": "No Shrimp Detected",
-            "predicted_class": "No Shrimp",
+            "display_status": validator_result.get("display_status", "No Shrimp Detected"),
+            "predicted_class": validator_result.get("predicted_class", "No Shrimp"),
             "confidence": validator_result.get("confidence", 0.0),
             "probability_shrimp": validator_result.get("probability_shrimp", 0.0),
             "message": validator_result.get("message", "No shrimp detected."),
             "is_cooked": False,
+            "is_crayfish": False,
             "content_category": validator_result.get("content_category", "Non-Shrimp"),
         }
 
@@ -78,30 +79,32 @@ def count_shrimp_in_image(image_path: Path) -> dict:
             "probability_shrimp": validator_result.get("probability_shrimp", 0.0),
             "message": "Unable to Identify Shrimp. Please Retake or Upload a Clearer Image.",
             "is_cooked": False,
+            "is_crayfish": False,
             "content_category": "Uncertain",
         }
 
-    # State is shrimp_detected
-    is_cooked = bool(validator_result.get("is_cooked", False))
-    image = cv2.imread(str(image_path))
-    shrimp_count = _count_contours(image) if image is not None else 1
-
+    # State is cooked_shrimp or shrimp_detected
+    is_cooked = bool(validator_result.get("is_cooked", False) or state == "cooked_shrimp")
     if is_cooked:
         return {
             "success": True,
             "shrimp_detected": True,
             "valid_shrimp_present": False,
-            "shrimp_count": shrimp_count,
+            "shrimp_count": 1,
             "presence_state": "cooked_shrimp",
             "status": "cooked_shrimp",
             "display_status": "Unavailable to scan: Cooked Shrimp",
             "predicted_class": "Cooked Shrimp",
-            "confidence": validator_result.get("confidence", 0.0),
-            "probability_shrimp": validator_result.get("probability_shrimp", 0.0),
+            "confidence": validator_result.get("confidence", 98.0),
+            "probability_shrimp": validator_result.get("probability_shrimp", 0.98),
             "message": "Shrimp was detected, but it appears to be cooked. Please upload raw uncooked shrimp for diagnosis.",
             "is_cooked": True,
+            "is_crayfish": False,
             "content_category": "Cooked Shrimp",
         }
+
+    image = cv2.imread(str(image_path))
+    shrimp_count = _count_contours(image) if image is not None else 1
 
     return {
         "success": True,
@@ -116,6 +119,7 @@ def count_shrimp_in_image(image_path: Path) -> dict:
         "probability_shrimp": validator_result.get("probability_shrimp", 0.0),
         "message": "Shrimp successfully detected.",
         "is_cooked": False,
+        "is_crayfish": False,
         "content_category": "Shrimp",
     }
 

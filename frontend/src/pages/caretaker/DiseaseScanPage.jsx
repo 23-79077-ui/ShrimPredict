@@ -234,9 +234,17 @@ export default function DiseaseScanPage() {
       const isCrayfish = Boolean(response?.data?.is_crayfish === true || response?.data?.is_crayfish === 1);
       const presenceState = response?.data?.presence_state || (response?.data?.status === 'uncertain' ? 'uncertain' : (response?.data?.shrimp_detected ? 'shrimp_detected' : 'no_shrimp'));
       const isUncertain = presenceState === 'uncertain';
-      const detected = !isUncertain && ([response?.data?.shrimp_detected, response?.data?.valid_shrimp_present]
-        .some((value) => value === true || value === 1 || value === '1' || value === 'true')
-        || response?.data?.status === 'success');
+      const isShrimpDetected = Boolean(
+        response?.data?.shrimp_detected === true ||
+        response?.data?.shrimp_detected === 1 ||
+        response?.data?.shrimp_detected === '1' ||
+        response?.data?.shrimp_detected === 'true' ||
+        response?.data?.valid_shrimp_present === true ||
+        response?.data?.valid_shrimp_present === 1 ||
+        response?.data?.valid_shrimp_present === '1' ||
+        response?.data?.valid_shrimp_present === 'true'
+      );
+      const detected = !isUncertain && !isCooked && !isCrayfish && presenceState === 'shrimp_detected' && isShrimpDetected;
       const parsedCount = Number(response?.data?.shrimp_count);
       const count = detected ? Math.max(1, Number.isFinite(parsedCount) ? parsedCount : 1) : 0;
       setPreviewCount({
@@ -245,18 +253,44 @@ export default function DiseaseScanPage() {
         state: isCooked ? 'cooked' : (isUncertain ? 'uncertain' : (detected ? 'shrimp_detected' : 'no_shrimp')),
         is_cooked: isCooked,
         is_crayfish: isCrayfish,
-        status: isCooked ? 'Unavailable to scan: Cooked Shrimp' : (isUncertain ? 'Uncertain / Retake Image' : (detected ? 'Ready for Scan' : 'No shrimp detected')),
-        display_status: response?.data?.display_status || (detected ? 'Ready for Scan' : 'No shrimp detected'),
+        status: isCooked ? 'Unavailable to scan: Cooked Shrimp' : (isUncertain ? 'Uncertain / Retake Image' : (detected ? 'Ready for Scan' : (response?.data?.display_status || 'No shrimp detected'))),
+        display_status: response?.data?.display_status || (isCooked ? 'Unavailable to scan: Cooked Shrimp' : (detected ? 'Ready for Scan' : 'No shrimp detected')),
         message: response?.data?.message || 'Preview result unavailable.',
         confidence: response?.data?.confidence || 0,
       });
 
       // Automatic analysis once shrimp target is positively confirmed
-      if (detected && !isCooked && !isCrayfish && !isUncertain && autoScanTriggeredRef.current) {
+      if (autoScanTriggeredRef.current) {
         autoScanTriggeredRef.current = false;
-        setTimeout(() => {
-          handleScanRef.current?.(false, file);
-        }, 350);
+        if (isCooked) {
+          Swal.fire({
+            icon: 'error',
+            title: 'Unavailable to scan',
+            text: 'Shrimp was detected, but it appears to be cooked. Please upload raw uncooked shrimp for diagnosis.',
+          });
+        } else if (isCrayfish) {
+          Swal.fire({
+            icon: 'error',
+            title: 'Unavailable to scan',
+            text: 'A crayfish was detected. Please upload an image of a shrimp.',
+          });
+        } else if (isUncertain) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Unable to Identify Shrimp',
+            text: response?.data?.message || 'The system cannot confidently determine whether a shrimp is present. Please retake or upload a clearer, well-lit photo.',
+          });
+        } else if (!detected) {
+          Swal.fire({
+            icon: 'error',
+            title: 'No Shrimp Detected',
+            text: response?.data?.message || 'No shrimp detected in the image. Please upload a clear photo of a real shrimp for disease diagnosis.',
+          });
+        } else {
+          setTimeout(() => {
+            handleScanRef.current?.(false, file);
+          }, 350);
+        }
       }
 
     } catch (error) {
@@ -840,17 +874,7 @@ export default function DiseaseScanPage() {
 
         });
 
-        setResult({
-
-          shrimp_detected: true,
-
-          is_crayfish: true,
-
-          status: 'Error',
-
-          message: 'A crayfish was detected. Please upload an image of a shrimp.',
-
-        });
+        setResult(null);
 
         return;
 
@@ -872,17 +896,47 @@ export default function DiseaseScanPage() {
 
         });
 
-        setResult({
+        setResult(null);
 
-          shrimp_detected: true,
+        return;
 
-          is_cooked: true,
+      }
 
-          status: 'Error',
 
-          message: 'Shrimp was detected, but it appears to be cooked.',
+
+      if (response.data?.shrimp_detected === false || response.data?.presence_state === 'no_shrimp') {
+
+        Swal.fire({
+
+          icon: 'error',
+
+          title: 'No Shrimp Detected',
+
+          text: response.data?.message || 'No shrimp detected in the image. Please upload a clear photo of a real shrimp for disease diagnosis.',
 
         });
+
+        setResult(null);
+
+        return;
+
+      }
+
+
+
+      if (response.data?.presence_state === 'uncertain') {
+
+        Swal.fire({
+
+          icon: 'warning',
+
+          title: 'Unable to Identify Shrimp',
+
+          text: response.data?.message || 'Please retake or upload a clearer, well-lit photo of a shrimp.',
+
+        });
+
+        setResult(null);
 
         return;
 
@@ -1024,15 +1078,79 @@ export default function DiseaseScanPage() {
 
         || 'Model unavailable.';
 
-      Swal.fire({
+      const isCooked = Boolean(error.response?.data?.is_cooked
 
-        icon: 'error',
+        || error.response?.data?.ai_response?.is_cooked
 
-        title: 'Scan failed',
+        || /cooked/i.test(message));
 
-        text: message,
+      const isNoShrimp = Boolean(error.response?.data?.shrimp_detected === false
 
-      });
+        || error.response?.data?.ai_response?.shrimp_detected === false
+
+        || /no shrimp/i.test(message)
+
+        || /animal/i.test(message));
+
+      if (isCooked) {
+
+        Swal.fire({
+
+          icon: 'error',
+
+          title: 'Unavailable to scan',
+
+          text: 'Shrimp was detected, but it appears to be cooked. Please upload raw uncooked shrimp for diagnosis.',
+
+        });
+
+        setResult({
+
+          shrimp_detected: true,
+
+          is_cooked: true,
+
+          status: 'Error',
+
+          message: 'Shrimp was detected, but it appears to be cooked. Please upload raw uncooked shrimp for diagnosis.',
+
+        });
+
+      } else if (isNoShrimp) {
+
+        Swal.fire({
+
+          icon: 'error',
+
+          title: 'No Shrimp Detected',
+
+          text: message || 'No shrimp detected in the image. Please upload a clear photo of a real shrimp for disease diagnosis.',
+
+        });
+
+        setResult({
+
+          shrimp_detected: false,
+
+          status: 'No Shrimp Detected',
+
+          message: message || 'No shrimp detected in the image.',
+
+        });
+
+      } else {
+
+        Swal.fire({
+
+          icon: 'error',
+
+          title: 'Scan failed',
+
+          text: message,
+
+        });
+
+      }
 
     } finally {
 
@@ -1672,7 +1790,16 @@ export default function DiseaseScanPage() {
 
   const isPrimaryResult = isPrimaryDiagnosisLabel(resultName);
 
-  const shouldShowAdditionalPrompt = Boolean(result && !additionalScanEnabled && (showAdditionalPrompt || !isPrimaryResult));
+  const shouldShowAdditionalPrompt = Boolean(
+    result &&
+    result.shrimp_detected !== false &&
+    !result.is_cooked &&
+    !result.is_crayfish &&
+    result.status !== 'No Shrimp Detected' &&
+    result.status !== 'Error' &&
+    !additionalScanEnabled &&
+    (showAdditionalPrompt || !isPrimaryResult)
+  );
 
   const localizedHealthStatus = isFilipino
 
@@ -2115,19 +2242,15 @@ export default function DiseaseScanPage() {
                     >
 
                       <span className="small fw-semibold">
-                        {scanning
-                          ? 'Analyzing shrimp health...'
-                          : (previewLoading || (image && !previewCount))
-                          ? 'Inspecting shrimp target...'
-                          : (previewCount?.is_crayfish
-                            ? 'Crayfish Detected'
-                            : (previewCount?.is_cooked
-                              ? 'Cooked shrimp detected'
-                              : (previewCount?.state === 'uncertain'
-                                ? 'Unable to Identify Shrimp'
-                                : (previewCount?.detected
-                                  ? 'Detected Shrimp Target'
-                                  : 'No shrimp detected in image'))))}
+                        {(() => {
+                          if (scanning) return 'Analyzing shrimp health...';
+                          if (previewLoading || (image && !previewCount)) return 'Inspecting shrimp target...';
+                          if (previewCount?.is_crayfish) return 'Crayfish Detected';
+                          if (previewCount?.is_cooked) return 'Cooked shrimp detected';
+                          if (previewCount?.state === 'uncertain') return 'Unable to Identify Shrimp';
+                          if (previewCount?.detected) return 'Detected Shrimp Target';
+                          return previewCount?.display_status || 'No shrimp detected in image';
+                        })()}
                       </span>
                       <span
                         className="badge rounded-pill extra-small fw-bold px-2.5 py-1"
@@ -2163,19 +2286,15 @@ export default function DiseaseScanPage() {
                           }`,
                         }}
                       >
-                        {scanning
-                          ? 'Auto-Analyzing...'
-                          : (previewLoading || (image && !previewCount))
-                          ? 'Inspecting shrimp...'
-                          : (previewCount?.is_crayfish
-                            ? 'Invalid: Crayfish Detected'
-                            : (previewCount?.is_cooked
-                              ? 'Unavailable to scan: Cooked Shrimp'
-                              : (previewCount?.state === 'uncertain'
-                                ? 'Uncertain / Retake Image'
-                                : (previewCount?.detected
-                                  ? (previewCount?.status || 'Ready for Scan')
-                                  : (previewCount?.status || 'No shrimp detected')))))}
+                        {(() => {
+                          if (scanning) return 'Auto-Analyzing...';
+                          if (previewLoading || (image && !previewCount)) return 'Inspecting shrimp...';
+                          if (previewCount?.is_crayfish) return 'Invalid: Crayfish Detected';
+                          if (previewCount?.is_cooked) return 'Unavailable to scan: Cooked Shrimp';
+                          if (previewCount?.state === 'uncertain') return 'Uncertain / Retake Image';
+                          if (previewCount?.detected) return previewCount?.status || 'Ready for Scan';
+                          return previewCount?.status || 'No shrimp detected';
+                        })()}
                       </span>
 
                     </div>
