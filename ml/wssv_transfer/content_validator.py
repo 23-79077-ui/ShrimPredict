@@ -53,7 +53,7 @@ PRIMATES = set(range(365, 385))
 RODENTS_RABBITS = set(range(330, 339))
 OTHER_MAMMALS = set(range(356, 365)) | {387, 388}
 BIRDS = (set(range(7, 21)) | set(range(22, 25)) | set(range(80, 101)) | set(range(127, 139)) | set(range(140, 151)))
-REPTILES = set(range(25, 72))
+REPTILES = set(range(33, 69))
 INSECTS_ARACHNIDS = set(range(72, 80)) | set(range(300, 330))
 
 
@@ -327,7 +327,9 @@ class ShrimpPresenceValidator:
             p_tech_full = float(np.sum([probs[c] for c in TECH_CLASSES if c < len(probs)]))
             is_tech = False
             if p_decapod < 0.03 and not is_human and not is_animal and not is_vehicle:
-                if p_tech_full >= 0.35 or (top1 in TECH_CLASSES and top1_prob >= 0.25) or rectilinear_ratio >= 0.78:
+                if p_tech_full >= 0.35 or (top1 in TECH_CLASSES and top1_prob >= 0.25):
+                    is_tech = True
+                elif p_tech_full >= 0.15 and rectilinear_ratio >= 0.75:
                     is_tech = True
 
             # 5. Documents / Paper Text
@@ -375,7 +377,7 @@ class ShrimpPresenceValidator:
                 }
 
         # Check for cooked shrimp only after ruling out humans, animals, vehicles, and electronics
-        if skin_ratio < 0.16 and detect_cooked_orange_shrimp(img_bgr):
+        if detect_cooked_orange_shrimp(img_bgr):
             return {
                 "shrimp_detected": True,
                 "is_cooked": True,
@@ -401,9 +403,9 @@ class ShrimpPresenceValidator:
         non_skin_edges = float(feat[11])
         paper_ratio = float(feat[15])
 
-        # Three-tier outcome determination
-        shrimp_min = self.thresholds.get("shrimp_detected_min", 0.65)
-        no_shrimp_max = self.thresholds.get("no_shrimp_max", 0.35)
+        # Three-tier outcome determination (calibrated for raw mottled/WSD shrimp vs negative samples)
+        shrimp_min = 0.50
+        no_shrimp_max = 0.30
 
         if prob_shrimp >= shrimp_min:
             presence_state = "shrimp_detected"
