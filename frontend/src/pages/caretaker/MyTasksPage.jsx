@@ -39,6 +39,7 @@ export default function MyTasksPage() {
   const [loadError, setLoadError] = useState('');
   const [actionLoadError, setActionLoadError] = useState('');
   const [updatingActionId, setUpdatingActionId] = useState(null);
+  const [selectedTaskPondFilter, setSelectedTaskPondFilter] = useState('all');
 
   const today = useMemo(() => getLocalDateString(), []);
 
@@ -258,9 +259,35 @@ export default function MyTasksPage() {
     return [...adminActionTasks, ...waterTasks, ...feedTasks];
   }, [feedingRecords, runningPonds, scanActions, t, today, waterChecklist, pondsMissedInfo]);
 
-  const completedCount = tasks.filter((task) => task.isComplete).length;
-  const allComplete = tasks.length > 0 && completedCount === tasks.length;
-  const firstIncompleteIndex = tasks.findIndex((task) => !task.isComplete);
+  const filteredTasks = useMemo(() => {
+    if (selectedTaskPondFilter === 'all') return tasks;
+    const filterVal = String(selectedTaskPondFilter).trim().toLowerCase();
+    const targetPond = ponds.find(
+      (p) => String(p.id).trim().toLowerCase() === filterVal || String(p.pond_name || '').trim().toLowerCase() === filterVal
+    );
+    const targetId = targetPond ? String(targetPond.id).trim().toLowerCase() : filterVal;
+    const targetName = targetPond ? String(targetPond.pond_name || '').trim().toLowerCase() : filterVal;
+
+    return tasks.filter((task) => {
+      const taskPondId = String(task.pond?.id ?? '').trim().toLowerCase();
+      const taskPondName = String(task.pond?.pond_name ?? task.pond?.name ?? '').trim().toLowerCase();
+      return (
+        taskPondId === targetId ||
+        taskPondName === targetName ||
+        taskPondId === targetName ||
+        taskPondName === targetId
+      );
+    });
+  }, [tasks, selectedTaskPondFilter, ponds]);
+
+  const selectedTaskPondObj = ponds.find(
+    (p) => String(p.id) === String(selectedTaskPondFilter) || String(p.pond_name || '').toLowerCase() === String(selectedTaskPondFilter).toLowerCase()
+  );
+  const isSelectedPondHarvesting = Boolean(selectedTaskPondObj && isPondHarvesting(selectedTaskPondObj));
+
+  const completedCount = filteredTasks.filter((task) => task.isComplete).length;
+  const allComplete = filteredTasks.length > 0 && completedCount === filteredTasks.length;
+  const firstIncompleteIndex = filteredTasks.findIndex((task) => !task.isComplete);
 
   const updateAdminAction = async (task, status) => {
     setUpdatingActionId(task.action.id);
@@ -326,29 +353,68 @@ export default function MyTasksPage() {
       )}
 
       <section className="caretaker-tasks-card border rounded-4 p-3 p-md-4 mb-4 shadow-sm">
+        {/* Pond Filter Pills (shown if multiple ponds assigned) */}
+        {ponds.length > 1 && (
+          <div className="chart-range-pill-container p-2 rounded-3 mb-3 d-flex align-items-center gap-1.5 flex-wrap border">
+            <span className="extra-small fw-bold text-uppercase d-flex align-items-center gap-1 ps-2 text-secondary">
+              <FaWater /> {t('common.pond', 'Pond')}:
+            </span>
+            <button
+              type="button"
+              className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all d-inline-flex align-items-center gap-1.5 ${
+                selectedTaskPondFilter === 'all' ? 'btn-chart-range-active shadow-xs' : 'btn-chart-range-inactive'
+              }`}
+              onClick={() => setSelectedTaskPondFilter('all')}
+            >
+              {selectedTaskPondFilter === 'all' && <FaCheck size={9} />}
+              {t('common.allPonds', 'All Ponds')}
+            </button>
+            {ponds.map((pond) => {
+              const pId = String(pond.id);
+              const pName = pond.pond_name || pond.name || `Pond ${pond.id}`;
+              const isSelected = String(selectedTaskPondFilter) === pId;
+              return (
+                <button
+                  key={pond.id || pName}
+                  type="button"
+                  className={`btn btn-sm rounded-pill px-3 py-1 extra-small fw-bold transition-all d-inline-flex align-items-center gap-1.5 ${
+                    isSelected ? 'btn-chart-range-active shadow-xs' : 'btn-chart-range-inactive'
+                  }`}
+                  onClick={() => setSelectedTaskPondFilter(pId)}
+                >
+                  {isSelected && <FaCheck size={9} />}
+                  {pName}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         <div className="d-flex justify-content-between align-items-center mb-2">
           <div>
             <h5 className="fw-bold text-dark mb-1">{t('myTasks.progress', 'Today’s progress')}</h5>
             <p className="small text-muted mb-0">
-              {allPondsHarvesting
+              {allPondsHarvesting || isSelectedPondHarvesting
                 ? 'Harvesting in Progress (Tasks Suspended)'
                 : allComplete
                   ? t('myTasks.allComplete', 'All listed tasks are complete. Great work!')
-                  : t('myTasks.progressCount', '{done} of {total} tasks complete')
-                    .replace('{done}', String(completedCount))
-                    .replace('{total}', String(tasks.length))}
+                  : filteredTasks.length === 0
+                    ? 'No active tasks for this pond today.'
+                    : t('myTasks.progressCount', '{done} of {total} tasks complete')
+                      .replace('{done}', String(completedCount))
+                      .replace('{total}', String(filteredTasks.length))}
             </p>
           </div>
-          <span className={`badge rounded-pill px-3 py-2 ${allPondsHarvesting ? 'bg-warning text-dark' : allComplete ? 'bg-success' : 'bg-light text-dark border'}`}>
-            {allPondsHarvesting ? 'Harvest' : tasks.length ? `${Math.round((completedCount / tasks.length) * 100)}%` : '0%'}
+          <span className={`badge rounded-pill px-3 py-2 ${(allPondsHarvesting || isSelectedPondHarvesting) ? 'bg-warning text-dark' : allComplete ? 'bg-success' : 'bg-light text-dark border'}`}>
+            {(allPondsHarvesting || isSelectedPondHarvesting) ? 'Harvest' : filteredTasks.length ? `${Math.round((completedCount / filteredTasks.length) * 100)}%` : '0%'}
           </span>
         </div>
-        <div className="progress" role="progressbar" aria-valuenow={completedCount} aria-valuemin="0" aria-valuemax={tasks.length || 1} style={{ height: 9 }}>
+        <div className="progress" role="progressbar" aria-valuenow={completedCount} aria-valuemin="0" aria-valuemax={filteredTasks.length || 1} style={{ height: 9 }}>
           <div
             className="progress-bar"
             style={{
-              width: `${allPondsHarvesting ? 100 : tasks.length ? (completedCount / tasks.length) * 100 : 0}%`,
-              backgroundColor: allPondsHarvesting ? '#D97706' : '#FC563C'
+              width: `${(allPondsHarvesting || isSelectedPondHarvesting) ? 100 : filteredTasks.length ? (completedCount / filteredTasks.length) * 100 : 0}%`,
+              backgroundColor: (allPondsHarvesting || isSelectedPondHarvesting) ? '#D97706' : '#FC563C'
             }}
           />
         </div>
@@ -403,7 +469,7 @@ export default function MyTasksPage() {
         </div>
       ) : (
         <div className="d-flex flex-column gap-3 mb-4 pb-3">
-          {harvestingPonds.length > 0 && !allPondsHarvesting && (
+          {harvestingPonds.length > 0 && !allPondsHarvesting && selectedTaskPondFilter === 'all' && (
             <div className="alert alert-warning d-flex align-items-center justify-content-between p-3 rounded-3 mb-0">
               <div className="d-flex align-items-center gap-2">
                 <span>🌾</span>
@@ -421,7 +487,44 @@ export default function MyTasksPage() {
               </button>
             </div>
           )}
-          {tasks.map((task, index) => {
+          {isSelectedPondHarvesting ? (
+            <div
+              className="caretaker-tasks-card border rounded-4 text-center p-4 p-md-5 shadow-sm"
+              style={{ backgroundColor: '#FFFBEB', borderColor: '#FDE68A' }}
+            >
+              <div
+                className="rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3 shadow-xs"
+                style={{ width: 48, height: 48, backgroundColor: '#FEF3C7', color: '#D97706', fontSize: '1.4rem' }}
+              >
+                🌾
+              </div>
+              <h5 className="fw-extrabold text-dark mb-1">
+                {selectedTaskPondObj?.pond_name || 'Selected Pond'} — Harvest Underway
+              </h5>
+              <span className="badge rounded-pill fw-bold mb-2.5 px-3 py-1" style={{ backgroundColor: '#FDE68A', color: '#78350F', fontSize: '0.75rem' }}>
+                Pre-Harvest Protocol Active • Daily Feeding Suspended
+              </span>
+              <p className="text-secondary mb-3 mx-auto extra-small" style={{ maxWidth: 440, lineHeight: 1.6 }}>
+                Routine 5-slot feeding schedules and daily check tasks are suspended for this pond. Gut evacuation and harvest netting operations are underway.
+              </p>
+              <button
+                type="button"
+                className="btn btn-warning btn-sm fw-bold px-3 py-2 text-dark shadow-xs"
+                onClick={() => navigate('/caretaker/my-pond')}
+              >
+                View Harvest Status in My Pond →
+              </button>
+            </div>
+          ) : filteredTasks.length === 0 ? (
+            <div className="caretaker-tasks-card border rounded-4 text-center p-5 text-muted shadow-sm">
+              <FaCheckCircle className="fs-2 mb-2 text-success opacity-75" />
+              <h5 className="fw-bold text-dark mb-1">No active tasks</h5>
+              <p className="text-muted extra-small mb-0">
+                No tasks found for {selectedTaskPondObj?.pond_name || 'the selected pond'} today.
+              </p>
+            </div>
+          ) : (
+            filteredTasks.map((task, index) => {
             const isNext = index === firstIncompleteIndex;
             return (
               <article
@@ -543,7 +646,7 @@ export default function MyTasksPage() {
                 </div>
               </article>
             );
-          })}
+          }))}
         </div>
       )}
     </main>

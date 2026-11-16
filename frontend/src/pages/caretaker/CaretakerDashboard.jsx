@@ -144,6 +144,7 @@ export default function CaretakerDashboard() {
   const [loading, setLoading] = useState(true);
   const [selectedPondFilter, setSelectedPondFilter] = useState('all');
   const [selectedDiseasePondFilter, setSelectedDiseasePondFilter] = useState('all');
+  const [selectedTaskPondFilter, setSelectedTaskPondFilter] = useState('all');
   const [activeActivityTab, setActiveActivityTab] = useState('waterQuality'); // 'waterQuality' | 'ponds' | 'disease' | 'alerts'
   const [pondsMissedInfo, setPondsMissedInfo] = useState({});
 
@@ -433,9 +434,35 @@ export default function CaretakerDashboard() {
     return [...adminActionTasks, ...waterTasks, ...feedTasks];
   }, [runningPonds, records, scanActions, t, todayStr, waterQualityChecklist, pondsMissedInfo]);
 
-  const completedTasksCount = tasks.filter((task) => task.isComplete).length;
-  const allTasksComplete = tasks.length > 0 && completedTasksCount === tasks.length;
-  const firstIncompleteTaskIndex = tasks.findIndex((task) => !task.isComplete);
+  const filteredTasks = useMemo(() => {
+    if (selectedTaskPondFilter === 'all') return tasks;
+    const filterVal = String(selectedTaskPondFilter).trim().toLowerCase();
+    const targetPond = assignedPonds.find(
+      (p) => String(p.id).trim().toLowerCase() === filterVal || String(p.pond_name || '').trim().toLowerCase() === filterVal
+    );
+    const targetId = targetPond ? String(targetPond.id).trim().toLowerCase() : filterVal;
+    const targetName = targetPond ? String(targetPond.pond_name || '').trim().toLowerCase() : filterVal;
+
+    return tasks.filter((task) => {
+      const taskPondId = String(task.pond?.id ?? '').trim().toLowerCase();
+      const taskPondName = String(task.pond?.pond_name ?? task.pond?.name ?? '').trim().toLowerCase();
+      return (
+        taskPondId === targetId ||
+        taskPondName === targetName ||
+        taskPondId === targetName ||
+        taskPondName === targetId
+      );
+    });
+  }, [tasks, selectedTaskPondFilter, assignedPonds]);
+
+  const selectedTaskPondObj = assignedPonds.find(
+    (p) => String(p.id) === String(selectedTaskPondFilter) || String(p.pond_name || '').toLowerCase() === String(selectedTaskPondFilter).toLowerCase()
+  );
+  const isSelectedPondHarvesting = Boolean(selectedTaskPondObj && isPondHarvesting(selectedTaskPondObj));
+
+  const completedTasksCount = filteredTasks.filter((task) => task.isComplete).length;
+  const allTasksComplete = filteredTasks.length > 0 && completedTasksCount === filteredTasks.length;
+  const firstIncompleteTaskIndex = filteredTasks.findIndex((task) => !task.isComplete);
 
   const updateAdminAction = async (task, status) => {
     setUpdatingActionId(task.action.id);
@@ -1670,6 +1697,52 @@ export default function CaretakerDashboard() {
               </div>
             </div>
 
+            {/* Pond Filter Pills (shown if multiple ponds assigned) */}
+            {assignedPonds.length > 1 && (
+              <div
+                className="px-3.5 py-2 border-bottom chart-range-pill-container d-flex align-items-center gap-1.5 flex-wrap"
+                style={{
+                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : '#F8FAFC',
+                  borderColor: isDark ? '#334155' : '#E2E8F0',
+                }}
+              >
+                <span
+                  className="extra-small fw-bold text-uppercase d-flex align-items-center gap-1 text-secondary me-1"
+                  style={{ fontSize: '0.68rem', letterSpacing: '0.04em' }}
+                >
+                  <FaWater size={11} /> {t('common.pond', 'Pond')}:
+                </span>
+                <button
+                  type="button"
+                  className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all d-inline-flex align-items-center gap-1.5 ${
+                    selectedTaskPondFilter === 'all' ? 'btn-chart-range-active shadow-xs' : 'btn-chart-range-inactive'
+                  }`}
+                  onClick={() => setSelectedTaskPondFilter('all')}
+                >
+                  {selectedTaskPondFilter === 'all' && <FaCheck size={9} />}
+                  {t('common.allPonds', 'All Ponds')}
+                </button>
+                {assignedPonds.map((pond) => {
+                  const pId = String(pond.id);
+                  const pName = pond.pond_name || pond.name || `Pond ${pond.id}`;
+                  const isSelected = String(selectedTaskPondFilter) === pId;
+                  return (
+                    <button
+                      key={pond.id || pName}
+                      type="button"
+                      className={`btn btn-sm rounded-pill px-2.5 py-1 extra-small fw-bold transition-all d-inline-flex align-items-center gap-1.5 ${
+                        isSelected ? 'btn-chart-range-active shadow-xs' : 'btn-chart-range-inactive'
+                      }`}
+                      onClick={() => setSelectedTaskPondFilter(pId)}
+                    >
+                      {isSelected && <FaCheck size={9} />}
+                      {pName}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
             {/* Action error hint if any */}
             {actionLoadError && (
               <div className="alert alert-warning m-3 mb-0 d-flex align-items-start gap-2 extra-small py-2 px-3 rounded-3" role="alert">
@@ -1692,33 +1765,35 @@ export default function CaretakerDashboard() {
                     {t('myTasks.progress', "Today's Progress")}
                   </span>
                   <span className="text-muted extra-small ms-2" style={{ fontSize: '0.72rem' }}>
-                    {allPondsHarvesting
+                    {allPondsHarvesting || isSelectedPondHarvesting
                       ? 'Harvesting in Progress (Tasks Suspended)'
                       : allTasksComplete
                         ? t('myTasks.allComplete', 'All listed tasks are complete. Great work!')
-                        : t('myTasks.progressCount', '{done} of {total} tasks complete')
-                          .replace('{done}', String(completedTasksCount))
-                          .replace('{total}', String(tasks.length))}
+                        : filteredTasks.length === 0
+                          ? 'No active tasks for this pond today.'
+                          : t('myTasks.progressCount', '{done} of {total} tasks complete')
+                            .replace('{done}', String(completedTasksCount))
+                            .replace('{total}', String(filteredTasks.length))}
                   </span>
                 </div>
                 <span
                   className="badge rounded-pill extra-small px-2 py-0.5 fw-bold"
                   style={{
-                    backgroundColor: allPondsHarvesting
+                    backgroundColor: (allPondsHarvesting || isSelectedPondHarvesting)
                       ? '#FEF3C7'
                       : allTasksComplete
                         ? '#ECFDF5'
                         : isDark
                           ? 'rgba(255,255,255,0.08)'
                           : '#F1F5F9',
-                    color: allPondsHarvesting
+                    color: (allPondsHarvesting || isSelectedPondHarvesting)
                       ? '#92400E'
                       : allTasksComplete
                         ? '#059669'
                         : isDark
                           ? '#CBD5E1'
                           : '#334155',
-                    border: allPondsHarvesting
+                    border: (allPondsHarvesting || isSelectedPondHarvesting)
                       ? '1px solid #FCD34D'
                       : allTasksComplete
                         ? '1px solid #A7F3D0'
@@ -1728,7 +1803,11 @@ export default function CaretakerDashboard() {
                     fontSize: '0.66rem'
                   }}
                 >
-                  {allPondsHarvesting ? 'Harvest' : tasks.length ? `${Math.round((completedTasksCount / tasks.length) * 100)}%` : '0%'}
+                  {(allPondsHarvesting || isSelectedPondHarvesting)
+                    ? 'Harvest'
+                    : filteredTasks.length
+                      ? `${Math.round((completedTasksCount / filteredTasks.length) * 100)}%`
+                      : '0%'}
                 </span>
               </div>
               <div
@@ -1736,14 +1815,14 @@ export default function CaretakerDashboard() {
                 role="progressbar"
                 aria-valuenow={completedTasksCount}
                 aria-valuemin="0"
-                aria-valuemax={tasks.length || 1}
+                aria-valuemax={filteredTasks.length || 1}
                 style={{ height: 6, backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0' }}
               >
                 <div
                   className="progress-bar rounded-pill transition-all"
                   style={{
-                    width: `${allPondsHarvesting ? 100 : tasks.length ? (completedTasksCount / tasks.length) * 100 : 0}%`,
-                    backgroundColor: allPondsHarvesting ? '#D97706' : allTasksComplete ? '#10B981' : '#FC563C'
+                    width: `${(allPondsHarvesting || isSelectedPondHarvesting) ? 100 : filteredTasks.length ? (completedTasksCount / filteredTasks.length) * 100 : 0}%`,
+                    backgroundColor: (allPondsHarvesting || isSelectedPondHarvesting) ? '#D97706' : allTasksComplete ? '#10B981' : '#FC563C'
                   }}
                 />
               </div>
@@ -1811,7 +1890,7 @@ export default function CaretakerDashboard() {
                 </div>
               ) : (
                 <div className="d-flex flex-column caretaker-tasks-list">
-                  {harvestingPonds.length > 0 && !allPondsHarvesting && (
+                  {harvestingPonds.length > 0 && !allPondsHarvesting && selectedTaskPondFilter === 'all' && (
                     <div
                       className="p-2.5 mb-2.5 rounded-3 border d-flex align-items-center justify-content-between gap-2"
                       style={{
@@ -1835,9 +1914,49 @@ export default function CaretakerDashboard() {
                       </button>
                     </div>
                   )}
-                  {tasks.map((task, index) => {
-                    const isNext = index === firstIncompleteTaskIndex;
-                    return (
+
+                  {isSelectedPondHarvesting ? (
+                    <div
+                      className="p-4 text-center rounded-4 border my-2"
+                      style={{
+                        backgroundColor: isDark ? 'rgba(254, 243, 199, 0.05)' : '#FFFBEB',
+                        borderColor: isDark ? 'rgba(253, 230, 138, 0.25)' : '#FDE68A',
+                      }}
+                    >
+                      <div className="fs-3 mb-2">🌾</div>
+                      <h6 className="fw-extrabold text-dark mb-1">
+                        {selectedTaskPondObj?.pond_name || 'Selected Pond'} — Harvest Underway
+                      </h6>
+                      <span
+                        className="badge rounded-pill fw-bold mb-2.5 px-3 py-1"
+                        style={{ backgroundColor: '#FDE68A', color: '#78350F', fontSize: '0.72rem' }}
+                      >
+                        Pre-Harvest Protocol • Routine Tasks Suspended
+                      </span>
+                      <p className="extra-small text-secondary mb-3" style={{ lineHeight: 1.5, maxWidth: 360, margin: '0 auto' }}>
+                        Routine 5-slot daily feeding tasks for this pond are suspended while pre-harvest gut evacuation and harvest netting are underway.
+                      </p>
+                      <button
+                        type="button"
+                        className="btn btn-sm fw-bold shadow-xs d-inline-flex align-items-center gap-1.5"
+                        style={{ backgroundColor: '#D97706', color: '#FFFFFF', borderRadius: 8, fontSize: '0.78rem' }}
+                        onClick={() => navigate('/caretaker/my-pond')}
+                      >
+                        View Harvest in My Pond →
+                      </button>
+                    </div>
+                  ) : filteredTasks.length === 0 ? (
+                    <div className="text-center py-5 text-muted">
+                      <FaCheckCircle className="fs-3 mb-2 text-success opacity-75" />
+                      <h6 className="fw-bold text-dark mb-1">No active tasks</h6>
+                      <p className="extra-small text-muted mb-0">
+                        No tasks found for {selectedTaskPondObj?.pond_name || 'the selected pond'} today.
+                      </p>
+                    </div>
+                  ) : (
+                    filteredTasks.map((task, index) => {
+                      const isNext = index === firstIncompleteTaskIndex;
+                      return (
                       <article
                         key={task.id}
                         className={`rounded-3 p-3 transition-all shadow-xs ${isNext ? 'border-2' : ''}`}
@@ -2026,7 +2145,7 @@ export default function CaretakerDashboard() {
                         </div>
                       </article>
                     );
-                  })}
+                  }))}
                 </div>
               )}
             </div>
