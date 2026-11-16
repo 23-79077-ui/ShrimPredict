@@ -212,29 +212,6 @@ export default function DiseaseScanPage() {
 
     }
 
-    // Field inspection mode: Live camera capture targets are pre-verified for direct scanning
-    if (isCapturedCameraRef.current || imageSource === 'Captured photo') {
-      setPreviewCount({
-        count: 1,
-        detected: true,
-        state: 'shrimp_detected',
-        is_cooked: false,
-        is_crayfish: false,
-        status: 'Ready for Scan',
-        display_status: 'Ready for Scan',
-        message: 'Shrimp successfully detected.',
-        confidence: 95.8,
-      });
-      setPreviewLoading(false);
-      if (autoScanTriggeredRef.current) {
-        autoScanTriggeredRef.current = false;
-        setTimeout(() => {
-          handleScanRef.current?.(false, file);
-        }, 350);
-      }
-      return;
-    }
-
     try {
 
       setPreviewLoading(true);
