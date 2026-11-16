@@ -141,9 +141,8 @@ export default function MyTasksPage() {
 
   const isPondHarvesting = (pond) => {
     if (!pond) return false;
-    const op = String(pond.operational_status || '').toLowerCase();
-    const hr = String(pond.harvest_readiness || '').toLowerCase();
-    return op.includes('harvest') || hr.includes('harvest');
+    const op = String(pond.operational_status || '').toLowerCase().trim();
+    return op === 'harvesting in progress' || op === 'harvesting' || op === 'harvest underway' || op === 'harvested';
   };
 
   const runningPonds = useMemo(() => ponds.filter((p) => !isPondHarvesting(p)), [ponds]);

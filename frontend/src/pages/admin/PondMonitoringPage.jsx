@@ -294,7 +294,8 @@ export default function PondMonitoringPage() {
         rawOverride === 'Recently Harvested' ||
         Boolean(p.is_harvested) ||
         String(p.status || '').toLowerCase() === 'harvested' ||
-        String(p.operational_status || '').toLowerCase().includes('harvest');
+        String(p.operational_status || '').toLowerCase() === 'harvested' ||
+        String(p.operational_status || '').toLowerCase() === 'recently harvested';
 
       const isNursery =
         rawOverride === 'Nursery State' ||

@@ -1813,7 +1813,9 @@ export default function MyPondPage() {
                     : `${selectedPond.pond_name} — Ready for Harvest`}
                 </h5>
                 <span className="extra-small text-muted">
-                  Pre-Harvest Fasting Protocol Active • Field Preparations Underway
+                  {selectedPond.operational_status === 'Harvesting in Progress'
+                    ? 'Pre-Harvest Fasting Protocol Active • Field Preparations Underway'
+                    : 'Admin Harvest Alert Issued • Awaiting Caretaker Acknowledgment'}
                 </span>
               </div>
             </div>
@@ -1833,13 +1835,19 @@ export default function MyPondPage() {
           </div>
 
           {/* Notice Banner */}
-          <div className="p-3 rounded-3 mb-3 border" style={{ backgroundColor: '#FEF9C3', borderColor: '#FDE68A' }}>
+          <div className="p-3 rounded-3 mb-3 border" style={{ backgroundColor: selectedPond.operational_status === 'Harvesting in Progress' ? '#FEF9C3' : '#FFFBEB', borderColor: selectedPond.operational_status === 'Harvesting in Progress' ? '#FDE68A' : '#FCD34D' }}>
             <div className="extra-small fw-bold text-dark mb-1 d-flex align-items-center gap-1.5">
-              <span>⚠️</span>
-              <span>Pre-Harvest Feeding Guard (Gut Evacuation Phase Active):</span>
+              <span>{selectedPond.operational_status === 'Harvesting in Progress' ? '⚠️' : '📢'}</span>
+              <span>
+                {selectedPond.operational_status === 'Harvesting in Progress'
+                  ? 'Pre-Harvest Feeding Guard (Gut Evacuation Phase Active):'
+                  : 'Action Required • Harvest Alert from Administrator:'}
+              </span>
             </div>
             <div className="extra-small text-secondary" style={{ lineHeight: 1.5 }}>
-              Standard daily feeding is paused for this pond to allow shrimp digestive tracts to clear before netting. This prevents black veins, ensures prime export grade, and saves feeding cost.
+              {selectedPond.operational_status === 'Harvesting in Progress'
+                ? 'Standard daily feeding is paused for this pond to allow shrimp digestive tracts to clear before netting. This prevents black veins, ensures prime export grade, and saves feeding cost.'
+                : 'Administrator has marked this pond ready for harvest based on target biomass and weight. Please go to your Notifications to click "Acknowledge & Start Pre-Harvest Prep" to officially transition into harvesting.'}
             </div>
           </div>
 
