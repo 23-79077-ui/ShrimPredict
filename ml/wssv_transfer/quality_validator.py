@@ -50,40 +50,44 @@ def detect_cooked_orange_shrimp(image, threshold: float = 0.065) -> bool:
 
     # Astaxanthin cooked hue range in HSV:
     # Warm red-orange (0-28) or wrapped deep red (170-180)
-    # S >= 65 (cooked flesh is vividly pigmented; raw shrimp is desaturated S < 50)
+    # S >= 70 (cooked flesh is vividly pigmented; raw shrimp is desaturated S < 50)
     # V >= 70 (sufficient brightness for cooked specimen)
-    hue_match = ((h_channel <= 28) | (h_channel >= 170)) & (s_channel >= 65) & (v_channel >= 70)
+    hue_match = ((h_channel <= 28) | (h_channel >= 170)) & (s_channel >= 70) & (v_channel >= 70)
 
     # RGB constraint: cooked shrimp is distinctly red/orange (R significantly greater than G and B)
-    rgb_match = (r > (g + 18)) & (r > (b + 35)) & (r >= 100)
+    rgb_match = (r > (g + 20)) & (r > (b + 35)) & (r >= 105)
 
     cooked_mask = hue_match & rgb_match
     total_pixels = cooked_mask.size
 
     # Human skin detection (caretaker hands holding raw shrimp)
-    skin_mask = (h_channel <= 25) & (s_channel >= 30) & (s_channel <= 180) & (v_channel >= 60) & (r > g) & (g > b)
+    skin_mask = (h_channel <= 25) & (s_channel >= 25) & (s_channel <= 180) & (v_channel >= 55) & (r > g) & (g > b)
     skin_ratio = float(np.count_nonzero(skin_mask) / max(1, total_pixels))
 
-    # Deep astaxanthin pigmentation (vivid neon orange/red unique to cooked crustacean flesh)
-    deep_astaxanthin = ((h_channel <= 22) | (h_channel >= 172)) & (s_channel >= 115) & (v_channel >= 80) & (r > (g + 30)) & (r > (b + 50))
-    deep_ratio = float(np.count_nonzero(deep_astaxanthin) / max(1, total_pixels))
+    # Deep astaxanthin pigmentation outside human skin
+    deep_astaxanthin = ((h_channel <= 22) | (h_channel >= 172)) & (s_channel >= 120) & (v_channel >= 80) & (r > (g + 30)) & (r > (b + 50))
+    deep_non_skin = deep_astaxanthin & (~skin_mask)
+    deep_non_skin_ratio = float(np.count_nonzero(deep_non_skin) / max(1, total_pixels))
+    deep_total_ratio = float(np.count_nonzero(deep_astaxanthin) / max(1, total_pixels))
 
     # Specimen foreground isolation (excluding uniform dark or pure white plate backgrounds)
     foreground_mask = (v_channel > 35) & (s_channel > 20)
     fg_count = max(1, int(np.count_nonzero(foreground_mask)))
 
+    cooked_non_skin = cooked_mask & (~skin_mask)
+    non_skin_ratio = float(np.count_nonzero(cooked_non_skin) / max(1, total_pixels))
+    fg_non_skin = foreground_mask & (~skin_mask)
+    fg_non_skin_count = max(1, int(np.count_nonzero(fg_non_skin)))
+    ratio_fg_non_skin = float(np.count_nonzero(cooked_non_skin & fg_non_skin) / fg_non_skin_count)
+
+    ratio_total = float(np.count_nonzero(cooked_mask) / max(1, total_pixels))
+    ratio_foreground = float(np.count_nonzero(cooked_mask & foreground_mask) / fg_count)
+
     if skin_ratio >= 0.10:
-        # Caretaker hand present: isolate cooked pigmentation from skin pixels
-        cooked_non_skin = cooked_mask & (~skin_mask)
-        non_skin_ratio = float(np.count_nonzero(cooked_non_skin) / max(1, total_pixels))
-        fg_non_skin = foreground_mask & (~skin_mask)
-        fg_non_skin_count = max(1, int(np.count_nonzero(fg_non_skin)))
-        ratio_fg_non_skin = float(np.count_nonzero(cooked_non_skin & fg_non_skin) / fg_non_skin_count)
-        return deep_ratio >= 0.12 or (non_skin_ratio >= 0.04 and ratio_fg_non_skin >= 0.10)
+        # Caretaker hand present: check non-skin cooked pigmentation
+        return (deep_non_skin_ratio >= 0.10) or (non_skin_ratio >= 0.08 and ratio_fg_non_skin >= 0.35)
     else:
-        ratio_total = float(np.count_nonzero(cooked_mask) / max(1, total_pixels))
-        ratio_foreground = float(np.count_nonzero(cooked_mask & foreground_mask) / fg_count)
-        return deep_ratio >= 0.08 or (ratio_total >= threshold and ratio_foreground >= 0.12)
+        return (deep_total_ratio >= 0.15) or (ratio_total >= 0.15 and ratio_foreground >= 0.38)
 
 
 def validate_image_quality(image_path: Path) -> dict:
