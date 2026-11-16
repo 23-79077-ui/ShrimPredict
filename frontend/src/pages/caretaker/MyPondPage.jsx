@@ -1821,12 +1821,14 @@ export default function MyPondPage() {
             <span
               className="badge rounded-pill fw-bold px-3 py-1.5"
               style={{
-                backgroundColor: '#D97706',
+                backgroundColor: selectedPond.operational_status === 'Harvesting in Progress' ? '#D97706' : '#DC2626',
                 color: '#FFFFFF',
                 fontSize: '0.75rem',
               }}
             >
-              ✓ Admin Harvest Alert Acknowledged
+              {selectedPond.operational_status === 'Harvesting in Progress'
+                ? '✓ Admin Harvest Alert Acknowledged'
+                : '⚠️ Action Required • Awaiting Acknowledgment'}
             </span>
           </div>
 
