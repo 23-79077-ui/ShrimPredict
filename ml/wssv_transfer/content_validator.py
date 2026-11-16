@@ -102,7 +102,7 @@ class ShrimpPresenceValidator:
             cls._instance = cls()
         return cls._instance
 
-    def extract_features(self, img_bgr: np.ndarray) -> np.ndarray | None:
+    def extract_features(self, img_bgr: np.ndarray | None) -> np.ndarray | None:
         if img_bgr is None or img_bgr.size == 0 or img_bgr.ndim != 3:
             return None
         h, w = img_bgr.shape[:2]
@@ -117,7 +117,8 @@ class ShrimpPresenceValidator:
         resized = cv2.resize(rgb, (224, 224), interpolation=cv2.INTER_LINEAR).astype(np.float32) / 255.0
         arr = resized.transpose(2, 0, 1)[np.newaxis, ...]
         arr = (arr - IMAGENET_MEAN) / IMAGENET_STD
-        logits = self.session.run([self.output_name], {self.input_name: arr})[0][0]
+        outputs = self.session.run([self.output_name], {self.input_name: arr})
+        logits = np.asarray(outputs[0])[0]
         exp_logits = np.exp(logits - np.max(logits))
         probs = exp_logits / np.sum(exp_logits)
         self._last_probs = probs
@@ -235,7 +236,7 @@ class ShrimpPresenceValidator:
             max_contour_extent,
         ], dtype=np.float32)
 
-    def validate(self, img_bgr: np.ndarray) -> dict:
+    def validate(self, img_bgr: np.ndarray | None) -> dict:
         feat = self.extract_features(img_bgr)
         if feat is None:
             return {
@@ -462,6 +463,20 @@ def validate_image_content(image_input) -> dict:
         if not path_obj.exists():
             raise FileNotFoundError(f"Image not found: {image_input}")
         img_bgr = cv2.imread(str(path_obj))
+        if img_bgr is None:
+            return {
+                "shrimp_detected": False,
+                "presence_state": "no_shrimp",
+                "status": "No Shrimp Detected",
+                "display_status": "No Shrimp Detected",
+                "predicted_class": "Invalid",
+                "confidence": 0.0,
+                "probability_shrimp": 0.0,
+                "message": "Invalid or unreadable image file.",
+                "is_cooked": False,
+                "is_crayfish": False,
+                "content_category": "Invalid",
+            }
 
     validator = ShrimpPresenceValidator.get_instance()
     return validator.validate(img_bgr)
