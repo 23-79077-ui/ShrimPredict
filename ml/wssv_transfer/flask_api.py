@@ -1146,25 +1146,33 @@ def _compute_consensus_ensemble(
 
 
 
-    # If Unified Model has >= 70% confidence on WSSV, ensure WSSV is embraced
+    # If Unified Model has >= 70% confidence on WSSV, ensure WSSV is embraced with its true detection confidence
 
-    if unified_canon.get("WSSV", 0) >= 70.0 and winner_class != "WSSV":
+    if unified_canon.get("WSSV", 0) >= 70.0:
 
         winner_class = "WSSV"
 
-        winner_confidence = max(ensemble_probs["WSSV"], unified_canon["WSSV"])
+        winner_confidence = max(ensemble_probs.get("WSSV", 0.0), unified_canon["WSSV"])
 
         ensemble_probs["WSSV"] = winner_confidence
 
         ensemble_probs["Healthy"] = round(max(0.0, 100.0 - winner_confidence), 2)
 
+        ensemble_probs["Black Gill"] = 0.0
+
         selection_reason = f"Unified Transfer Model detected WSSV with strong confidence ({winner_confidence}%)."
 
-    elif desktop_canon.get("WSSV", 0) >= 95.0 and ensemble_probs["WSSV"] < 50.0:
+    elif desktop_canon.get("WSSV", 0) >= 90.0:
 
         winner_class = "WSSV"
 
-        winner_confidence = desktop_canon["WSSV"]
+        winner_confidence = max(ensemble_probs.get("WSSV", 0.0), desktop_canon["WSSV"])
+
+        ensemble_probs["WSSV"] = winner_confidence
+
+        ensemble_probs["Healthy"] = round(max(0.0, 100.0 - winner_confidence), 2)
+
+        ensemble_probs["Black Gill"] = 0.0
 
         selection_reason = f"Desktop Model detected WSSV with overwhelming confidence ({winner_confidence}%)."
 
